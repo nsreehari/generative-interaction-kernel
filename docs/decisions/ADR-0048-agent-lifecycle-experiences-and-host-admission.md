@@ -16,11 +16,13 @@ several different concerns:
 Names such as AX, AX+, and ACX did not explain those responsibilities. More importantly, a catalog
 organized only by authority omitted the lifecycle an agent needs at every level: discover what is
 available, understand a target, examine current facts, validate an intent, simulate its result,
-preflight it against the target environment, and submit a proposal.
+preflight it against the target environment, and maintain a proposal draft for host completion.
 
-An agent does not execute authoritative changes itself. It submits typed intent through a tool call.
-The host authenticates, authorizes, admits, applies, persists, and audits any resulting change. This
-must remain true even when policy permits immediate autonomous application.
+An agent does not execute authoritative changes itself. During one host request, it reads or replaces
+a non-authoritative draft containing a complete ordered batch of typed domain actions. At completion,
+the host turns the latest valid draft into a proposal, supplies its identity and metadata, authenticates,
+authorizes, admits, applies, persists, and audits any resulting change. This must remain true even when
+policy permits immediate autonomous application.
 
 Blueprints add a second dimension. A runtime Blueprint describes the experience being used, while
 compiler or authoring meta-Blueprints describe how candidate Blueprints are customized or authored.
@@ -63,9 +65,9 @@ BlueprintHost may be adapted as an authority but does not import or call HBX its
 `@gik/blueprint-agent-host` depends on `@gik/agent-lifecycle-exp` and
 `@gik/durable-runtime`. The neutral lifecycle package has no reverse dependency.
 
-### Use one standard agent lifecycle
+### Use one standard agent lifecycle vocabulary
 
-Every agent lifecycle profile exposes these operations:
+The standard agent lifecycle vocabulary contains these operations:
 
 1. `manifest` describes the complete capability, target and intent kinds, proposal schema, and
    operation input schemas.
@@ -76,11 +78,47 @@ Every agent lifecycle profile exposes these operations:
 6. `simulate` computes expected outcomes without authoritative mutation.
 7. `preflight` checks the intent against the real target environment, dependencies, policy, and
    revision without applying it.
-8. `propose` submits typed intent for host handling.
+8. `read_in_progress_proposal` returns the current request-scoped proposal draft without mutation.
+9. `set_in_progress_proposal` atomically replaces the complete request-scoped proposal draft.
 
-`manifest`, `discover`, and `describe` remain distinct. The lifecycle implementation owns the stable
-operation manifest. A host registry owns discovery scope. Authored target material owns semantic
-description, with runtime and provider registries supplying enrichment.
+`manifest` is mandatory for every profile. A profile exposes the other operations that are
+meaningful for its target; it does not publish state-dependent tools whose required target state
+does not exist. Operation names retain the semantics above wherever they are exposed.
+
+Profiles must select operations explicitly in one of three ways:
+
+- `standard` exposes all operations;
+- `static-authoring` exposes `describe`, `validate`, `simulate`, `read_in_progress_proposal`, and
+  `set_in_progress_proposal` in addition to the mandatory `manifest`; and
+- an explicit custom operation list supports another target-appropriate subset.
+
+The selection is part of authored lifecycle material and is reflected literally in the capability
+manifest and generated tool family. A profile declares either one preset or an explicit list, never
+both. Omitting operation selection is invalid.
+
+Operation context and lifecycle effect are separate concerns:
+
+- `manifest` and `describe` use authored contract material and have no host-state dependency;
+- `validate` uses the agent-supplied candidate and performs pure checks;
+- `simulate` uses the candidate and caller-supplied or candidate-owned mock/initial state without
+  reading current host state;
+- `discover`, `inspect`, and `preflight` read current host scope, target state, or policy;
+- `read_in_progress_proposal` reads the draft associated with the host-created request identity;
+- `set_in_progress_proposal` validates and replaces that complete draft but does not create a receipt
+  or authoritatively apply it.
+
+A proposal draft contains a complete ordered action batch and optional rationale. It does not contain
+a proposal ID, receipt ID, target, capability, revision, actor, or timestamp; the host owns those
+fields. There is at most one draft per request and lifecycle profile. Replacement is atomic, so no
+`append_proposal` operation exists and a partially assembled action list is never authoritative.
+
+A static authoring profile is appropriate when an agent drafts publication of a self-contained
+artifact with its own initial state. Its draft contains exactly one typed `publish-blueprint` action.
+It does not expose `discover`, `inspect`, or `preflight` merely as no-op tools.
+
+Where exposed, `manifest`, `discover`, and `describe` remain distinct. The lifecycle implementation
+owns the stable operation manifest. A host registry owns discovery scope. Authored target material
+owns semantic description, with runtime and provider registries supplying enrichment.
 
 The host lifecycle exposes `receive`, `authorize`, `admit`, `apply`, `reject`, and `status`.
 Authorization answers whether the caller may request the change. Admission answers whether the
@@ -96,9 +134,10 @@ an arbitrary external side effect and its subsequent applied-status write.
 ### Translate profiles into tools mechanically
 
 A lifecycle profile consists of an authored capability manifest, lifecycle handlers, and a
-lower-snake-case prefix. `agentLifecycleTools(prefix, ops)` emits one `AgentTool` for each standard
-operation. Tool descriptions and input schemas come from the manifest; handlers delegate to the
-corresponding lifecycle operation.
+lower-snake-case prefix. `agentLifecycleTools(prefix, ops)` always emits `manifest` and emits one
+`AgentTool` for each additional operation declared by the capability manifest. Tool descriptions
+and input schemas come from the manifest; handlers delegate to the corresponding lifecycle
+operation.
 
 For example, a `use_blueprint` profile becomes:
 
@@ -110,7 +149,19 @@ use_blueprint_inspect
 use_blueprint_validate
 use_blueprint_simulate
 use_blueprint_preflight
-use_blueprint_propose
+use_blueprint_read_in_progress_proposal
+use_blueprint_set_in_progress_proposal
+```
+
+A `static-authoring` profile becomes:
+
+```text
+author_blueprint_manifest
+author_blueprint_describe
+author_blueprint_validate
+author_blueprint_simulate
+author_blueprint_read_in_progress_proposal
+author_blueprint_set_in_progress_proposal
 ```
 
 This is a JSON callable surface, not a transport-specific surface. Function tools, RPC, HTTP, a
@@ -120,11 +171,11 @@ local runner, or another carrier adapts the same tool metadata and handler contr
 
 Use these terms in architecture and documentation:
 
-- **UBX — Use Blueprint Experience:** understand a Blueprint runtime and propose declared runtime
-  actions.
-- **CBX — Customize Blueprint Experience:** UBX plus understand and propose policy-bounded
+- **UBX — Use Blueprint Experience:** understand a Blueprint runtime and draft declared runtime
+  actions for host completion.
+- **CBX — Customize Blueprint Experience:** UBX plus understand and draft policy-bounded
   structural customization.
-- **ABX — Author Blueprint Experience:** CBX plus understand and propose new or revised Blueprint
+- **ABX — Author Blueprint Experience:** CBX plus understand and draft new or revised Blueprint
   contracts, modes, policies, tiers, recipes, and services.
 - **HBX — Host Blueprint Experience:** ABX plus trusted receipt, authorization, admission,
   application, persistence, activation, rejection, and status.
@@ -145,13 +196,14 @@ Blueprint structure mode still governs proposals:
 - `fixed` permits declared runtime use but no structural mutation;
 - `adaptive` may auto-admit policy-allowed customization proposals;
 - `reconfigurable` accepts customization proposals for a separate authorization decision; and
-- authoring may propose a new contract or policy but does not activate it.
+- authoring may draft a new contract or policy for host completion but does not activate it.
 
 ### Require authored lifecycle material at profile binding
 
 `BlueprintDefinition.agentLifecycle.profiles` may contain `use`, `customize`, and `author` manifest
 material. Blueprint JSON Schema validates any declared entry. Each entry identifies and describes
-the profile, target kinds, intent kinds, goals, and constraints.
+the profile, target kinds, intent kinds, goals, constraints, and its operation preset or explicit
+operation list.
 
 Not every Blueprint must declare every profile:
 
@@ -167,9 +219,12 @@ This permits migration without silently fabricating agent semantics.
 ### Keep proposals non-authoritative
 
 An agent-facing tool never exposes direct state mutation, unrestricted structural patching,
-credential access, effect execution, or activation. `propose` returns a typed proposal targeting an
-identity and optional expected revision. A host may automatically authorize and admit a low-risk
-proposal, but the resulting application is still a host action and remains auditable as such.
+credential access, effect execution, or activation. The set operation accepts a complete typed
+action batch and replaces only the draft in the current request scope. The read operation returns
+that draft. On successful completion, the host uses its own request identity and current target facts
+to create the authoritative proposal envelope and receipt; it never trusts a model- or provider-supplied
+receipt ID. No draft means there is nothing to finalize. A host may automatically authorize and admit
+a low-risk proposal, but the resulting application is still a host action and remains auditable.
 
 ## Alternatives considered
 
@@ -209,6 +264,7 @@ profile family; transports and agent providers are outer adapters.
 ## Consequences
 
 - Agent tools become predictable and mechanically generated.
+- Profiles expose only meaningful operations while preserving one stable operation vocabulary.
 - Agent providers can consume the same schemas without defining platform authority.
 - Blueprint lifecycle semantics remain authored and versioned with the relevant application or
   meta-Blueprint.

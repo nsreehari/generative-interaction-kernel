@@ -27,26 +27,28 @@ function assertPrefix(prefix: string): void {
 export function agentLifecycleTools(prefix: string, ops: AgentLifecycleOps): AgentTool[] {
   assertPrefix(prefix);
   const manifest = ops.manifest();
-  return AGENT_LIFECYCLE_OPERATIONS.map((operation) => {
-    if (operation === "manifest") {
-      return {
-        name: `${prefix}_manifest`,
-        description: `Return the machine-readable ${manifest.id} capability manifest.`,
-        inputSchema: emptyInputSchema,
-        lifecycle: "agent" as const,
-        handler: () => ops.manifest(),
-      };
-    }
+  const tools: AgentTool[] = [{
+    name: `${prefix}_manifest`,
+    description: `Return the machine-readable ${manifest.id} capability manifest.`,
+    inputSchema: emptyInputSchema,
+    lifecycle: "agent",
+    handler: () => ops.manifest(),
+  }];
+  for (const operation of AGENT_LIFECYCLE_OPERATIONS) {
+    if (operation === "manifest") continue;
     const definition = manifest.operations[operation];
-    if (!definition) throw new Error(`Capability '${manifest.id}' does not define '${operation}'`);
-    return {
+    if (!definition) continue;
+    const handler = ops[operation];
+    if (!handler) throw new Error(`Capability '${manifest.id}' declares '${operation}' without a handler`);
+    tools.push({
       name: `${prefix}_${operation}`,
       description: definition.description,
       inputSchema: definition.inputSchema,
       lifecycle: "agent" as const,
-      handler: (input: unknown) => ops[operation](input as never),
-    };
-  });
+      handler: (input: unknown, context) => handler(input as never, context),
+    });
+  }
+  return tools;
 }
 
 export function agentHostLifecycleTools(prefix: string, ops: AgentHostLifecycleOps): AgentTool[] {

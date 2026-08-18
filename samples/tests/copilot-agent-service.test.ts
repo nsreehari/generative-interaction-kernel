@@ -23,7 +23,11 @@ function mcpFetch(structuredContent: Record<string, unknown>) {
   return { fetchImpl, requests };
 }
 
-function invocation(operation: string, input: Record<string, unknown>) {
+function invocation(
+  operation: string,
+  input: Record<string, unknown>,
+  config: Record<string, unknown> = {},
+) {
   return {
     kind: "copilot-agent",
     operation,
@@ -36,6 +40,7 @@ function invocation(operation: string, input: Record<string, unknown>) {
         server: `https://mcp.example/${operation}`,
         model: "gpt-5.4",
         workspaceRef: "C:/workspace",
+        ...config,
       },
       scope: "per-session",
     },
@@ -56,6 +61,31 @@ test("Copilot discovery lists provisioned MCP agents", async () => {
   });
 });
 
+test("Copilot chat can return strict JSON for service contracts", async () => {
+  const { fetchImpl, requests } = mcpFetch({
+    stdout: JSON.stringify({ markdown: "# Portfolio intelligence" }),
+    sessionId: "copilot-session",
+  });
+
+  const result = await executeCopilotAgentInvocation(invocation("chat", {
+    message: "Analyze the portfolio",
+    instructions: "Return only JSON.",
+  }, {
+    agent: "Portfolio-Intelligence-Agent",
+    responseMode: "json",
+    server: "https://mcp.example/portfolio-json",
+  }), fetchImpl);
+
+  assert.deepEqual(result, { markdown: "# Portfolio intelligence" });
+  assert.deepEqual((requests[1].params as { arguments: unknown }).arguments, {
+    message: "Analyze the portfolio\n\nReturn only JSON.",
+    agent: "Portfolio-Intelligence-Agent",
+    cwd: "C:/workspace",
+    model: "gpt-5.4",
+    runMode: "sync",
+  });
+});
+
 test("Copilot chat runs the selected provisioned agent", async () => {
   const { fetchImpl, requests } = mcpFetch({
     stdout: "Repository analysis complete",
@@ -65,6 +95,8 @@ test("Copilot chat runs the selected provisioned agent", async () => {
   const result = await executeCopilotAgentInvocation(invocation("chat", {
     message: "Analyze the repository",
     agentName: "reviewer",
+  }, {
+    server: "https://mcp.example/selected-chat",
   }), fetchImpl);
 
   assert.deepEqual(result, {

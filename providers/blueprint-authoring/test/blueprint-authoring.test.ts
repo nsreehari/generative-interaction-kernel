@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import type { Json } from "../../../kernel/src/index";
 import { StepOrchestrator } from "../../step-orchestrator/src/step-orchestrator";
 import { createBlueprintAuthoringRegistry, summarizeBlueprint } from "../src/blueprint-authoring";
-import samplesOverviewBlueprint from "../../../samples/blueprints/samples-overview/blueprint.json" with { type: "json" };
+import samplesOverviewBlueprint from "../../../samples/blueprints/half-baked/samples-overview/blueprint.json" with { type: "json" };
 
 function asJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;

@@ -8,6 +8,12 @@
           "enum": ["simple", "mock", "semantic"],
           "enumNames": ["Simple", "Mock", "Semantic"]
         },
+        "market-prices": {
+          "type": "string",
+          "title": "Market prices",
+          "enum": ["mock", "live"],
+          "enumNames": ["Mock", "Live"]
+        },
         "view": {
           "type": "string",
           "title": "View",
@@ -15,7 +21,7 @@
           "enumNames": ["Desktop", "Mobile"]
         }
       },
-      "required": ["intelligence-model", "view"]
+      "required": ["intelligence-model", "market-prices", "view"]
     },
     "saveLabel": "Apply context",
     "discardLabel": "Discard"
@@ -23,27 +29,31 @@
   "namedPresetContexts": {
     "simple-desktop": {
       "label": "Simple intelligence, desktop",
-      "context": { "intelligence-model": "simple", "view": "desktop" }
+      "context": { "intelligence-model": "simple", "market-prices": "mock", "view": "desktop" }
     },
     "simple-mobile": {
       "label": "Simple intelligence, mobile",
-      "context": { "intelligence-model": "simple", "view": "mobile" }
+      "context": { "intelligence-model": "simple", "market-prices": "mock", "view": "mobile" }
     },
     "mock-desktop": {
       "label": "Mock intelligence, desktop",
-      "context": { "intelligence-model": "mock", "view": "desktop" }
+      "context": { "intelligence-model": "mock", "market-prices": "mock", "view": "desktop" }
     },
     "mock-mobile": {
       "label": "Mock intelligence, mobile",
-      "context": { "intelligence-model": "mock", "view": "mobile" }
+      "context": { "intelligence-model": "mock", "market-prices": "mock", "view": "mobile" }
     },
     "semantic-desktop": {
       "label": "Semantic intelligence, desktop",
-      "context": { "intelligence-model": "semantic", "view": "desktop" }
+      "context": { "intelligence-model": "semantic", "market-prices": "mock", "view": "desktop" }
     },
     "semantic-mobile": {
       "label": "Semantic intelligence, mobile",
-      "context": { "intelligence-model": "semantic", "view": "mobile" }
+      "context": { "intelligence-model": "semantic", "market-prices": "mock", "view": "mobile" }
+    },
+    "live-market-desktop": {
+      "label": "Simple intelligence, live market, desktop",
+      "context": { "intelligence-model": "simple", "market-prices": "live", "view": "desktop" }
     }
   },
   "scenarios": []

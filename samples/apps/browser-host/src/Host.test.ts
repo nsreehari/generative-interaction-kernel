@@ -27,8 +27,8 @@ const receipt = (id: string): BlueprintProposalReceipt<UseProposal> => ({
   proposal: {
     id: `proposal-${id}`,
     capability: "use-blueprint",
-    target: { kind: "blueprint-instance", id: "incident-report-explorer-1a", instanceId: "default" },
-    actions: [{ kind: "improve-report", payload: { operation: "improveReport" } }],
+    target: { kind: "blueprint-instance", id: "incident-analysis-new-shell", instanceId: "default" },
+    actions: [{ kind: "analyze-report", payload: { operation: "analyzeReportBlueprint" } }],
     createdAt: "2026-08-05T00:00:00.000Z",
   },
   actor: { id: "ai-agent" },
@@ -41,25 +41,25 @@ const receipt = (id: string): BlueprintProposalReceipt<UseProposal> => ({
 test("sample host selects isolated memory or persistent IndexedDB proposal stores", async () => {
   const memory = createSampleBlueprintProposalStore({
     durableEnabled: false,
-    blueprintId: "incident-report-explorer-1a",
+    blueprintId: "incident-analysis-new-shell",
   });
   await memory.create(receipt("memory"));
   const freshMemory = createSampleBlueprintProposalStore({
     durableEnabled: false,
-    blueprintId: "incident-report-explorer-1a",
+    blueprintId: "incident-analysis-new-shell",
   });
   assert.equal(await freshMemory.get("memory"), undefined);
 
   const databaseName = `gik-host-test-${crypto.randomUUID()}`;
   const durable = createSampleBlueprintProposalStore({
     durableEnabled: true,
-    blueprintId: "incident-report-explorer-1a",
+    blueprintId: "incident-analysis-new-shell",
     databaseName,
   });
   await durable.create(receipt("durable"));
   const reopened = createSampleBlueprintProposalStore({
     durableEnabled: true,
-    blueprintId: "incident-report-explorer-1a",
+    blueprintId: "incident-analysis-new-shell",
     databaseName,
   });
   assert.deepEqual(await reopened.get("durable"), receipt("durable"));
@@ -100,7 +100,12 @@ test("portfolio tracker uses Blueprint-authored launch defaults", () => {
   try {
     renderToStaticMarkup(React.createElement(Host));
     assert.deepEqual(capturedProps.scenariosJson, getSampleBlueprintCatalog().demoScenarios["portfolio-tracker-new"]);
-    assert.deepEqual(capturedProps.externalContext, { "intelligence-model": "simple", view: "desktop" });
+    assert.deepEqual(capturedProps.externalContext, {
+      ai: "foundry",
+      "intelligence-model": "simple",
+      "market-prices": "mock",
+      view: "desktop",
+    });
   } finally {
     Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
   }

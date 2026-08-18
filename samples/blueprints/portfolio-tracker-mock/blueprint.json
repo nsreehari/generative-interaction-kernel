@@ -1,0 +1,76 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "portfolio-tracker-mock",
+    "kind": "runtime-blueprint",
+    "version": "1.0.0",
+    "structureMode": "fixed",
+    "interface": {
+      "events": ["fetch-quotes", "analyze"],
+      "outputs": {
+        "result": {
+          "from": "portfolioMock.result",
+          "description": "Result of the most recently completed mock portfolio operation."
+        }
+      }
+    },
+    "tiers": [{ "id": "runtime-document", "kind": "runtime-document" }],
+    "recipes": [],
+    "runtime": {
+      "expression": "jsonata",
+      "namespaces": ["portfolioMock"],
+      "actions": ["assign"],
+      "state": {
+        "portfolioMock": {
+          "result": null
+        }
+      }
+    },
+    "cells": {
+      "mock-controller": {
+        "id": "mock-controller",
+        "kind": "portfolio-mock-backend",
+        "behavior": {
+          "on": {
+            "fetch-quotes": [{
+              "do": "assign",
+              "target": "portfolioMock.result",
+              "args": {
+                "from": "($letters := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; $digits := '0123456789'; $charCode := function($character) { $contains($letters, $character) ? $length($substringBefore($letters, $character)) + 65 : $contains($digits, $character) ? $length($substringBefore($digits, $character)) + 48 : $character = '.' ? 46 : $character = '-' ? 45 : 95 }; $tickerHash := function($ticker) { ($symbol := $uppercase($ticker); $reduce([0..$length($symbol) - 1], function($hash, $index) { (($hash * 31) + $charCode($substring($symbol, $index, 1))) % 4294967296 }, 17)) }; $price := function($ticker) { $round(50 + (($tickerHash($ticker) % 45000) / 100), 2) }; $tickers := $keys($event.holdings); {'quotes': $count($tickers) = 0 ? {} : $merge($map($tickers, function($ticker) { {($ticker): {'ticker': $ticker, 'price': $price($ticker)}} })), 'provider': 'portfolio-market-data-mock'})"
+              }
+            }],
+            "analyze": [{
+              "do": "assign",
+              "target": "portfolioMock.result",
+              "args": {
+                "from": "($positions := $event.positions.*; $largestValue := $max($positions.value); $largest := $filter($positions, function($position) { $number($position.value) = $largestValue })[0]; $marketValue := $round($number($event.summary.marketValue), 2); $gainLoss := $round($number($event.summary.gainLoss), 2); {'markdown': '# Mock portfolio intelligence\\n\\nLargest position: ' & ($largest.ticker ? $string($largest.ticker) : 'none') & '\\n\\n- Market value: ' & $string($marketValue) & '\\n- Gain/loss: ' & $string($gainLoss) & '\\n\\n> Deterministic mock response for the current snapshot; not model-generated.', 'provider': 'portfolio-intelligence-mock'})"
+              }
+            }]
+          }
+        },
+        "events": {
+          "fetch-quotes": {
+            "payloadSchema": {
+              "type": "object",
+              "required": ["holdings"],
+              "properties": {
+                "holdings": { "type": "object" }
+              }
+            }
+          },
+          "analyze": {
+            "payloadSchema": {
+              "type": "object",
+              "required": ["positions", "summary"],
+              "properties": {
+                "positions": { "type": "object" },
+                "summary": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

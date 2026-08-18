@@ -152,19 +152,13 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 							responseSchema,
 						});
 					const tools = adapterContext.agentTools ?? [];
-					let proposalReceiptId: string | undefined;
+						let inProgressProposal = false;
 					for (let turn = 0; response.toolCalls.length > 0; turn += 1) {
 						if (turn >= 8) throw new Error("Foundry agent exceeded the lifecycle tool turn limit");
 						if (tools.length === 0) throw new Error("Foundry agent requested lifecycle tools that this host did not provide");
 						const outputs = await Promise.all(response.toolCalls.map(async (call) => {
-							const output = await executeAgentFunctionCall(tools, call);
-							if (call.name.endsWith("_propose")) {
-								const receipt = JSON.parse(output.output) as { id?: unknown; status?: unknown };
-								if (typeof receipt.id !== "string" || receipt.status !== "admitted") {
-									throw new Error("Blueprint proposal was not admitted by the host");
-								}
-								proposalReceiptId = receipt.id;
-							}
+							const output = await executeAgentFunctionCall(tools, call, { requestId: request.id });
+							if (call.name.endsWith("_set_in_progress_proposal")) inProgressProposal = true;
 							return { callId: output.call_id, output: output.output };
 						}));
 						response = await foundry.chat({
@@ -185,12 +179,12 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 					}
 					return {
 						output: structuredOutput ?? response as unknown as Json,
-						detail: structuredOutput === undefined
+						detail: structuredOutput === undefined && !inProgressProposal
 							? undefined
 							: {
 								responseId: response.responseId,
 								conversationId: response.conversationId,
-								...(proposalReceiptId ? { proposalReceiptId } : {}),
+								...(inProgressProposal ? { inProgressProposal: true } : {}),
 							},
 					};
 				} catch (error) {

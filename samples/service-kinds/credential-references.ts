@@ -8,6 +8,7 @@ export type SampleCredentialReference =
 
 export const SAMPLE_BLUEPRINT_CREDENTIAL_REFERENCES = [
   SAMPLE_CREDENTIAL_REFERENCES.foundry,
+  SAMPLE_CREDENTIAL_REFERENCES.httpProxy,
 ] as const satisfies readonly SampleCredentialReference[];
 
 export function isSampleCredentialReference(reference: string): reference is SampleCredentialReference {

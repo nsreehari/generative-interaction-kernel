@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createBlueprint } from "@gik/blueprint";
-import type { ResolvedNode } from "@gik/kernel";
+import type { Json, ResolvedNode } from "@gik/kernel";
 import {
   readHostedBlueprintDeclaration,
+  readBlueprintNodeDeclaration,
   resolveHostedBlueprint,
   type ReactBlueprintHostRegistry,
 } from "../src/primitives/hosted-blueprint";
+import { createHostedBlueprintProjection } from "../src/primitives/blueprint-host";
 import { bundleFromJson } from "../src/primitives/bundle";
 import { buildBundleRegistry } from "../src/primitives/registry";
 import { renderNode } from "../src/render";
@@ -101,11 +103,11 @@ test("renders a structural projection for a fallback-marked hosted node", () => 
     },
   });
   const registry = buildBundleRegistry(bundle, undefined, {
-    "gik:hosted-blueprint": () => <div data-hosted-blueprint />,
+    "gik:blueprint": () => <div data-hosted-blueprint />,
   });
   const node = {
     id: "hosted-child",
-    capability: "gik:hosted-blueprint",
+    capability: "gik:blueprint",
     visible: true,
     fallback: true,
     props: {},
@@ -116,4 +118,32 @@ test("renders a structural projection for a fallback-marked hosted node", () => 
 
   assert.match(markup, /data-hosted-blueprint/);
   assert.doesNotMatch(markup, /data-fallback/);
+});
+
+test("reads a direct Blueprint artifact from the public gik:blueprint prop", () => {
+  assert.deepEqual(readBlueprintNodeDeclaration({ blueprint: child as unknown as Json }), { inline: child });
+});
+
+test("renders nothing while a hosted Blueprint binding is empty", () => {
+  const HostedBlueprint = createHostedBlueprintProjection({
+    parentBlueprintId: "shell",
+    parentInstanceId: "shell:case-7",
+    contexts: {},
+  });
+  for (const props of [{}, { blueprint: null }]) {
+    const node = {
+      id: "analysis-slot",
+      capability: "gik:blueprint",
+      visible: true,
+      fallback: false,
+      props,
+      children: [],
+    } as ResolvedNode;
+
+    const markup = renderToStaticMarkup(
+      <HostedBlueprint node={node} emit={() => undefined}>{null}</HostedBlueprint>,
+    );
+
+    assert.equal(markup, "");
+  }
 });

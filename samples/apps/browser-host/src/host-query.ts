@@ -22,12 +22,18 @@ function cachedBlueprintFromPath(pathname: string): string | null {
 export function readHostQuery(search: string, pathname = ""): HostQuery {
   const params = new URLSearchParams(search);
   const intelligenceModel = params.get("intelligence-model");
+  const marketPrices = params.get("market-prices");
   const view = params.get("view");
   const ai = params.get("ai");
+  const model = params.get("model");
+  const sourceReport = params.get("source-report");
   const externalContext = {
     ...(intelligenceModel === null ? {} : { "intelligence-model": intelligenceModel }),
+    ...(marketPrices === null ? {} : { "market-prices": marketPrices }),
     ...(view === null ? {} : { view }),
     ...(ai === null ? {} : { ai }),
+    ...(model === null ? {} : { model }),
+    ...(sourceReport === null ? {} : { "source-report": sourceReport }),
   };
   return {
     targetId: params.get("b") ?? params.get("bundle") ?? cachedBlueprintFromPath(pathname),

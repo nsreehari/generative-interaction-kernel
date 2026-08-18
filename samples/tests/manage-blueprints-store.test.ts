@@ -81,18 +81,11 @@ test("listBlueprints exposes built-in artifacts as read-only", async () => {
   const rows = opValue(result?.ops, "manageBlueprints.blueprints") as JsonRecord[];
 
   assert.ok(rows.length > 0);
-  assert.equal(rows.some((row) => row.id === "samples-overview" && row.source === "repo" && row.readonly === true), true);
-  assert.equal(rows.some((row) => row.id === "samples-overview" && row.sourceLabel === "Built-in"), true);
-  assert.equal(rows.some((row) => row.id === "samples-overview" && row.scopeLabel === "Frontend"), true);
-  assert.equal(rows.some((row) => row.id === "backend-order-processing" && row.scopeLabel === "Backend"), true);
-  assert.equal(rows.some((row) => row.id === "middleware-continuity" && row.scopeLabel === "Middleware"), true);
-
-  const backend = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["backend-order-processing"] }));
-  const selected = opValue(backend?.ops, "manageBlueprints.selected") as JsonRecord;
-  assert.deepEqual(selected.tabs, [
-    { value: "overview", label: "Overview" },
-    { value: "draft", label: "JSON" },
-  ]);
+  assert.equal(rows.some((row) => row.id === "portfolio-tracker-new" && row.source === "repo" && row.readonly === true), true);
+  assert.equal(rows.some((row) => row.id === "portfolio-tracker-new" && row.sourceLabel === "Built-in"), true);
+  assert.equal(rows.some((row) => row.id === "portfolio-tracker-new" && row.scopeLabel === "Frontend"), true);
+  assert.equal(rows.some((row) => row.id === "backend-order-processing"), false);
+  assert.equal(rows.some((row) => row.id === "middleware-continuity"), false);
 
   const authored = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["portfolio-tracker-new"] }));
   assert.deepEqual((opValue(authored?.ops, "manageBlueprints.selected") as JsonRecord).tabs, [
@@ -100,7 +93,7 @@ test("listBlueprints exposes built-in artifacts as read-only", async () => {
     { value: "draft", label: "JSON" },
   ]);
 
-  const projected = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] }));
+  const projected = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["manage-blueprints"] }));
   assert.deepEqual((opValue(projected?.ops, "manageBlueprints.selected") as JsonRecord).tabs, [
     { value: "overview", label: "Overview" },
     { value: "draft", label: "JSON" },
@@ -144,29 +137,49 @@ test("ABX validates Blueprint candidates canonically without mutating manager st
   state.apply(Object.entries(managerBlueprint.state).map(([path, value]) => ({ op: "set" as const, path, value })));
   const lifecycle = createBlueprintAgentLifecycle(managerBlueprint, state);
   assert.deepEqual(lifecycle.tools.map(({ name }) => name), [
-    "author_blueprint_manifest", "author_blueprint_discover", "author_blueprint_describe", "author_blueprint_inspect",
-    "author_blueprint_validate", "author_blueprint_simulate", "author_blueprint_preflight", "author_blueprint_propose",
+    "author_blueprint_manifest", "author_blueprint_describe", "author_blueprint_validate",
+    "author_blueprint_simulate", "author_blueprint_read_in_progress_proposal",
+    "author_blueprint_set_in_progress_proposal",
   ]);
-  const artifact = resolveSampleBlueprintSource("samples-overview");
-  const target = {
-    kind: "blueprint-authoring-workspace",
-    id: managerBlueprint.blueprintId,
-    instanceId: managerBlueprint.instanceId,
-  };
-  const intent = { kind: "validate-blueprint", target, artifact, rationale: null };
+  const artifact = structuredClone(resolveSampleBlueprintSource("portfolio-tracker-new"));
+  artifact.payload.id = "agent-authored-portfolio";
+  const draft = { actions: [{ kind: "publish-blueprint" as const, artifact }], rationale: "Author a portfolio experience." };
   const expected = validateBlueprintForAuthoring(artifact);
   const validate = lifecycle.tools.find(({ name }) => name === "author_blueprint_validate")!;
-  const report = await validate.handler(intent) as Record<string, unknown>;
-  assert.equal(report.ok, expected.valid);
+  const report = await validate.handler(draft) as Record<string, unknown>;
+  assert.equal(report.valid, expected.valid);
   assert.deepEqual(report.errors, expected.errors);
   assert.deepEqual(report.warnings, expected.warnings);
   assert.deepEqual(report.execution, expected.execution);
 
   const before = structuredClone(state.snapshot());
-  const propose = lifecycle.tools.find(({ name }) => name === "author_blueprint_propose")!;
-  await assert.doesNotReject(() => Promise.resolve(propose.handler(intent)));
+  const scope = { requestId: "author-request-1" };
+  const read = lifecycle.tools.find(({ name }) => name === "author_blueprint_read_in_progress_proposal")!;
+  const set = lifecycle.tools.find(({ name }) => name === "author_blueprint_set_in_progress_proposal")!;
+  assert.equal(await read.handler({}, scope), undefined);
+  const superseded = structuredClone(draft);
+  superseded.actions[0].artifact.payload.id = "superseded-agent-blueprint";
+  await set.handler(superseded, scope);
+  await set.handler(draft, scope);
+  assert.deepEqual(await read.handler({}, scope), draft);
+  assert.equal((await readUserBlueprintArtifacts()).blueprints[artifact.payload.id], undefined);
+  assert.ok(lifecycle.settle);
+  await lifecycle.settle({ proposalScopeId: scope.requestId });
+  assert.deepEqual((await readUserBlueprintArtifacts()).blueprints[artifact.payload.id], artifact);
+  assert.equal((await readUserBlueprintArtifacts()).blueprints["superseded-agent-blueprint"], undefined);
   assert.deepEqual(state.snapshot(), before);
-  assert.equal(lifecycle.settle, undefined);
+
+  const definition = structuredClone(managerBlueprint.definition);
+  const author = definition.payload.agentLifecycle!.profiles!.author!;
+  delete (author as { operationPreset?: string }).operationPreset;
+  (author as { operations?: string[] }).operations = [
+    "describe", "validate", "simulate", "read_in_progress_proposal", "set_in_progress_proposal",
+  ];
+  assert.deepEqual(
+    createBlueprintAgentLifecycle({ ...managerBlueprint, definition } as typeof managerBlueprint, state)
+      .tools.map(({ name }) => name),
+    lifecycle.tools.map(({ name }) => name),
+  );
 });
 
 test("create, save, reload, challenge, and delete stay inside the user Blueprint catalog", async () => {
@@ -210,7 +223,7 @@ test("create, save, reload, challenge, and delete stay inside the user Blueprint
 test("repository ids cannot be overwritten or deleted", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const state = createState();
-  const loaded = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] }));
+  const loaded = await manageBlueprintsEffects.getBlueprint(context(state, { values: ["portfolio-tracker-new"] }));
   applyOps(state, loaded?.ops);
 
   const saved = await manageBlueprintsEffects.saveBlueprint(context(state));
@@ -224,30 +237,30 @@ test("repository ids cannot be overwritten or deleted", async () => {
 test("repository blueprints can be cloned, edited, saved, and deleted locally", async () => {
   Object.defineProperty(globalThis, "localStorage", { value: new MemoryStorage(), configurable: true });
   const state = createState();
-  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] })))?.ops);
+  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { values: ["portfolio-tracker-new"] })))?.ops);
 
   const cloned = await manageBlueprintsEffects.cloneBlueprint(context(state));
   applyOps(state, cloned?.ops);
   assert.equal(cloned?.outcome, "draft-created");
-  assert.equal(getPath(state, "manageBlueprints.editor.id"), "samples-overview-local");
+  assert.equal(getPath(state, "manageBlueprints.editor.id"), "portfolio-tracker-new-local");
   assert.equal(getPath(state, "manageBlueprints.tab"), "draft");
 
   const artifact = JSON.parse(String(getPath(state, "manageBlueprints.editor.blueprintText"))) as JsonRecord;
-  assert.equal((artifact.payload as JsonRecord).id, "samples-overview-local");
+  assert.equal((artifact.payload as JsonRecord).id, "portfolio-tracker-new-local");
   (artifact.payload as JsonRecord).version = "1.0.1-local";
   setPath(state, "manageBlueprints.editor.blueprintText", JSON.stringify(artifact));
 
   const saved = await manageBlueprintsEffects.saveBlueprint(context(state));
   applyOps(state, saved?.ops);
   assert.equal(saved?.outcome, "saved");
-  const stored = (await readUserBlueprintArtifacts()).blueprints["samples-overview-local"];
+  const stored = (await readUserBlueprintArtifacts()).blueprints["portfolio-tracker-new-local"];
   assert.equal(stored?.payload.version, "1.0.1-local");
 
   const requested = await manageBlueprintsEffects.requestDeleteBlueprint(context(state));
   assert.equal(requested?.outcome, "confirmation-required");
   const deleted = await manageBlueprintsEffects.deleteBlueprint(context(state));
   assert.equal(deleted?.outcome, "deleted");
-  assert.equal((await readUserBlueprintArtifacts()).blueprints["samples-overview-local"], undefined);
+  assert.equal((await readUserBlueprintArtifacts()).blueprints["portfolio-tracker-new-local"], undefined);
 }, 20_000);
 
 test("importBlueprint validates file text and opens an unsaved local draft", async () => {
@@ -300,22 +313,22 @@ test("preview exposes a validated structural Blueprint summary", async () => {
 
 test("preview references an unchanged persisted Blueprint", async () => {
   const state = createState();
-  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] })))?.ops);
+  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { values: ["portfolio-tracker-new"] })))?.ops);
 
   const preview = await manageBlueprintsEffects.selectBlueprintTab(context(state, { value: "preview" }));
 
-  assert.equal(opValue(preview?.ops, "manageBlueprints.previewReference"), "blueprint:samples-overview@2.0");
+  assert.equal(opValue(preview?.ops, "manageBlueprints.previewReference"), "blueprint:portfolio-tracker-new@1.0.0");
 });
 
 test("selecting the Preview tab renders the current Blueprint", async () => {
   const state = createState();
-  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { values: ["samples-overview"] })))?.ops);
+  applyOps(state, (await manageBlueprintsEffects.getBlueprint(context(state, { values: ["portfolio-tracker-new"] })))?.ops);
 
   const preview = await manageBlueprintsEffects.selectBlueprintTab(context(state, { value: "preview" }));
 
   assert.equal(opValue(preview?.ops, "manageBlueprints.tab"), "preview");
   assert.notEqual(opValue(preview?.ops, "manageBlueprints.previewBlueprint"), null);
-  assert.equal(opValue(preview?.ops, "manageBlueprints.previewReference"), "blueprint:samples-overview@2.0");
+  assert.equal(opValue(preview?.ops, "manageBlueprints.previewReference"), "blueprint:portfolio-tracker-new@1.0.0");
 });
 
 test("preview resolves the canonical tier and recipe chain", async () => {

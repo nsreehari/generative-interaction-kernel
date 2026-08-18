@@ -142,18 +142,18 @@ describe("Blueprint-backed services", () => {
     state.apply(Object.entries(runtime.state).map(([path, value]) => ({ op: "set" as const, path, value })));
     const host = createBlueprintServiceHost(runtime, state, {
       durableStorageConnections: {
-        "incident-runtime-cache": { api, ref },
+        "incident-assets-store": { api, ref },
       },
     });
 
     await host.invoke({
       kind: "invoke",
-      node: "incident-cache",
+      node: "incident-saved-reports",
       control: { tool: "writeIncidentAsset" },
       data: {
         source_report_key: "source-a",
         analysis_key: "incident-semantic/source-faithful-v1",
-        cached_analysis_envelope: { summary: "Persisted by the backend Blueprint" },
+        saved_report_envelope: { summary: "Persisted by the backend Blueprint" },
       },
     });
 

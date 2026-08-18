@@ -56,7 +56,7 @@ Orchestrator routing are unchanged; this is a rename, not a semantic change.
 ## Consequences
 
 - The closed grammar is now uniformly medium-neutral in name, matching the medium-blind kernel it
-  describes; the backend-order Blueprint and test (`samples/blueprints/backend-order-processing/`,
+  describes; the backend-order Blueprint and test (`samples/blueprints/half-baked/backend-order-processing/`,
   `kernel/test/backend-host.test.ts`) read correctly as routing, not screen navigation.
 - This is a **breaking wire-vocabulary change**: documents/manifests authored against `0.1` that
   used `navigate` must switch to `route`. Acceptable pre-1.0; no compatibility shim is provided.

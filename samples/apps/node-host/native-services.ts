@@ -3,16 +3,6 @@ import {
   createMemoryStorageApi,
   createMemoryStorageRef,
 } from "@gik/durable-runtime/storage/memory";
-import {
-  MOCK_MARKET_DATA_PROVIDER,
-  mockMarketDataHandler,
-} from "../../blueprints/portfolio-tracker-new/native/services/mock-market-data";
-import {
-  DETERMINISTIC_PORTFOLIO_PROVIDER,
-  MOCK_PORTFOLIO_INTELLIGENCE_PROVIDER,
-  mockPortfolioIntelligenceHandler,
-  portfolioIntelligenceHandler,
-} from "../../blueprints/portfolio-tracker-new/native/services/portfolio-intelligence";
 import { getSampleBlueprintCatalog } from "../../catalog/blueprint-catalog";
 import {
   createSeededStorageConnection,
@@ -25,17 +15,9 @@ export interface SampleNativeServices {
   durableStorageConnections?: Readonly<Record<string, DurableStorageConnection>>;
 }
 
-const portfolioServices: SampleNativeServices = {
-  deterministicHandlers: {
-    [DETERMINISTIC_PORTFOLIO_PROVIDER]: portfolioIntelligenceHandler,
-    [MOCK_PORTFOLIO_INTELLIGENCE_PROVIDER]: mockPortfolioIntelligenceHandler,
-    [MOCK_MARKET_DATA_PROVIDER]: mockMarketDataHandler,
-  },
-};
-
 const incidentAnalyzerServices: SampleNativeServices = {
   durableStorageConnections: {
-    "incident-runtime-cache": createSeededStorageConnection(
+    "incident-assets-store": createSeededStorageConnection(
       createMemoryStorageApi(),
       createMemoryStorageRef(incidentAssetSeed.namespace),
       incidentAssetSeed as StorageSeedCatalog,
@@ -48,10 +30,6 @@ const incidentShellServices: SampleNativeServices = {
 
 const modules: Readonly<Record<string, SampleNativeServices>> = {
   "incident-analysis-new-shell": incidentShellServices,
-  "incident-report-explorer-1a": incidentAnalyzerServices,
-  "incident-report-explorer-2": incidentAnalyzerServices,
-  "incident-report-explorer-3": incidentAnalyzerServices,
-  "portfolio-tracker-new": portfolioServices,
 };
 
 export function resolveSampleNativeServices(id: string): SampleNativeServices | undefined {

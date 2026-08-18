@@ -189,34 +189,7 @@
             "children"
           ]
         },
-        "fluent:panel": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "slots": [
-            "children"
-          ]
-        },
-        "primitive:note": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "fluent:text": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
         "fluent:spinner": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "primitive:alert": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
@@ -243,8 +216,7 @@
           "fluent": {
             "from": "fluent",
             "use": [
-              "spinner",
-              "text"
+              "spinner"
             ]
           },
           "primitive": {
@@ -268,7 +240,6 @@
             "agentName": "",
             "message": ""
           },
-          "request": null,
           "reply": "",
           "conversationId": ""
         }
@@ -298,12 +269,13 @@
           }
         }
       },
-      "fetch-agents": {
-        "id": "fetch-agents",
+      "agent-query-form": {
+        "id": "agent-query-form",
         "systemInputs": ["numSourcesRunning"],
+        "inputs": [{ "token": "agent.formValue", "as": "request" }],
         "sources": [
           {
-            "id": "fetch-agents.source",
+            "id": "agent-query-form.source",
             "service": "assistant",
             "operation": "discoverAgents",
             "contract": "ai-agent-list/v1",
@@ -313,31 +285,10 @@
         "compute": [
           {
             "id": "agent-options",
-            "expression": "$exists(sources.`fetch-agents.source`) ? [sources.`fetch-agents.source`.{'value':$, 'label':$}] : []",
+            "expression": "$exists(sources.`agent-query-form.source`) ? [sources.`agent-query-form.source`.{'value':$, 'label':$}] : []",
             "assign": "agent.agentOptions",
-            "dependencies": ["sources.fetch-agents.source"]
+            "dependencies": ["sources.agent-query-form.source"]
           }
-        ],
-        "outputs": [
-          {
-            "token": "ai-agent-options",
-            "from": "computed.agent.agentOptions"
-          }
-        ],
-        "view": {
-          "capability": "fluent:spinner",
-          "props": {
-            "label": "Loading agents",
-            "size": "medium"
-          },
-          "visibility": "systemInputs.numSourcesRunning > 0"
-        }
-      },
-      "agent-query-form": {
-        "id": "agent-query-form",
-        "inputs": [
-          { "token": "ai-agent-options", "as": "agentOptions", "required": true },
-          { "token": "agent.request", "as": "request" }
         ],
         "outputs": [
           {
@@ -355,19 +306,17 @@
                 "args": {
                   "from": "$event.values"
                 }
-              },
-              {
-                "do": "assign",
-                "target": "agent.request",
-                "args": {
-                  "from": "$event.values"
-                }
               }
             ]
           }
         },
         "view": {
           "capability": "primitive:form",
+          "before": [{
+            "capability": "fluent:spinner",
+            "props": { "label": "Loading agents", "size": "medium" },
+            "visibility": "systemInputs.numSourcesRunning > 0"
+          }],
           "props": {
             "saveLabel": "Ask",
             "discardLabel": "Discard",
@@ -448,22 +397,16 @@
         ],
         "placements": [
           {
-            "cell": "fetch-agents",
+            "cell": "agent-query-form",
             "parent": "ai-agent-root",
             "slot": "children",
             "order": 0
           },
           {
-            "cell": "agent-query-form",
-            "parent": "ai-agent-root",
-            "slot": "children",
-            "order": 1
-          },
-          {
             "cell": "agent-response",
             "parent": "ai-agent-root",
             "slot": "children",
-            "order": 2
+            "order": 1
           }
         ]
       }

@@ -8,12 +8,99 @@
     "structureMode": "fixed",
     "tiers": [
       { "id": "portfolio-logic", "kind": "portfolio-domain" },
+      { "id": "portfolio-market", "kind": "portfolio-domain" },
       { "id": "portfolio-presentation", "kind": "runtime-document" }
     ],
     "recipes": [
       {
-        "id": "portfolio-logic-to-presentation",
+        "id": "portfolio-logic-to-market",
         "from": "portfolio-logic",
+        "to": "portfolio-market",
+        "representations": [{
+          "id": "market-base",
+          "presentation": {
+            "roots": ["board"],
+            "placements": [
+              { "cell": "portfolio-holdings", "parent": "board", "slot": "children", "order": 0 },
+              { "cell": "market-prices", "parent": "board", "slot": "children", "order": 1 },
+              { "cell": "portfolio-value-cell", "parent": "board", "slot": "children", "order": 2 },
+              { "cell": "portfolio-intelligence", "parent": "board", "slot": "children", "order": 3 }
+            ]
+          }
+        }],
+        "fallback": "market-base",
+        "implementationPrograms": [
+          {
+            "id": "mock-market",
+            "when": "externalContext.`market-prices` = 'mock'",
+            "services": {
+              "portfolio-market-data": {
+                "blueprint": { "$ref": "blueprint:portfolio-tracker-mock@1.0.0" },
+                "version": "1",
+                "operations": {
+                  "refreshPrices": {
+                    "operation": "fetch-quotes",
+                    "contract": "portfolio-market-quotes/v1",
+                    "request": {
+                      "transform": { "kind": "jsonata", "expr": "input" }
+                    },
+                    "settlement": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "{'ops':[{'op':'set','path':'portfolio.stockQuotes','value':response.quotes}],'detail':{'provider':response.provider,'quoteCount':$count(response.quotes.*)}}"
+                      }
+                    }
+                  }
+                },
+                "scope": "per-blueprint"
+              }
+            }
+          },
+          {
+            "id": "live-market",
+            "when": "externalContext.`market-prices` = 'live'",
+            "services": {
+              "portfolio-market-data": {
+                "kind": "http-service",
+                "version": "1",
+                "operations": {
+                  "refreshPrices": {
+                    "operation": "fetch-quotes",
+                    "contract": "portfolio-market-quotes/v1",
+                    "request": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "{'requests':input.holdings.*.{'key':ticker,'url':'https://query1.finance.yahoo.com/v8/finance/chart/' & ticker & '?interval=1d&range=1d','headers':{'User-Agent':'Mozilla/5.0 (compatible; portfolio-tracker-demo/1.0)'}}}"
+                      }
+                    },
+                    "response": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "{'quotes':$count(response.results) > 0 ? $merge(response.results.{key:{'ticker':key,'price':$round(body.chart.result[0].meta.regularMarketPrice, 2)}}) : {},'provider':'yahoo-finance-http-service'}"
+                      }
+                    },
+                    "settlement": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "{'ops':[{'op':'set','path':'portfolio.stockQuotes','value':response.quotes}],'detail':{'provider':response.provider,'quoteCount':$count(response.quotes.*)}}"
+                      }
+                    }
+                  }
+                },
+                "config": {
+                  "endpoint": "${GIK_HTTP_PROXY_ORIGIN}",
+                  "credentialRef": "http-proxy/access-key"
+                },
+                "scope": "per-blueprint"
+              }
+            }
+          }
+        ],
+        "implementationFallback": "mock-market"
+      },
+      {
+        "id": "portfolio-market-to-presentation",
+        "from": "portfolio-market",
         "to": "portfolio-presentation",
         "representations": [
           {
@@ -79,15 +166,6 @@
                   "points": { "expression": "[portfolio.value.positions.*]" },
                   "summaryValue": { "from": "portfolio.value.summary.marketValue" }
                 }
-              },
-              "portfolio-intelligence": {
-                "capability": "primitive:note",
-                "props": { "tone": "info" },
-                "bindings": {
-                  "value": {
-                    "expression": "'Portfolio intelligence | Source: ' & portfolio.intelligence.provider & ' | ' & portfolio.intelligence.summary & ' | ' & $join(portfolio.intelligence.observations, ' | ')"
-                  }
-                }
               }
             },
             "decorators": [
@@ -150,11 +228,7 @@
             "views": {
               "portfolio-intelligence": {
                 "capability": "primitive:markdown",
-                "bindings": {
-                  "value": {
-                    "expression": "'# Portfolio intelligence\\n\\n' & portfolio.intelligence.summary & '\\n\\n## Observations\\n\\n- ' & $join(portfolio.intelligence.observations, '\\n- ') & '\\n\\n## Risks\\n\\n- ' & $join(portfolio.intelligence.risks, '\\n- ')"
-                  }
-                }
+                "bindings": { "value": { "from": "portfolio.intelligence.markdown" } }
               }
             }
           },
@@ -165,11 +239,7 @@
             "views": {
               "portfolio-intelligence": {
                 "capability": "primitive:markdown",
-                "bindings": {
-                  "value": {
-                    "expression": "'# Mock portfolio intelligence\\n\\n' & portfolio.intelligence.summary & '\\n\\n## Observations\\n\\n- ' & $join(portfolio.intelligence.observations, '\\n- ') & '\\n\\n## Risks\\n\\n- ' & $join(portfolio.intelligence.risks, '\\n- ')"
-                  }
-                }
+                "bindings": { "value": { "from": "portfolio.intelligence.markdown" } }
               }
             }
           },
@@ -179,19 +249,8 @@
             "extends": "desktop-base",
             "views": {
               "portfolio-intelligence": {
-                "capability": "portfolio:intelligence-projections",
-                "props": {
-                  "presentationContext": "portfolio-advisor",
-                  "showWorkflowAction": false,
-                  "projectionRecipe": {
-                    "contexts": {
-                      "portfolio-overview": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 },
-                      "portfolio-advisor": { "attention": "focused", "showDisclosure": ["always", "collapsed"], "maxSections": 8 }
-                    },
-                    "fallback": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 }
-                  }
-                },
-                "bindings": { "value": { "from": "portfolio.intelligence" } }
+                "capability": "gik:blueprint",
+                "bindings": { "blueprint": { "from": "portfolio.intelligence" } }
               }
             }
           },
@@ -202,11 +261,7 @@
             "views": {
               "portfolio-intelligence": {
                 "capability": "primitive:markdown",
-                "bindings": {
-                  "value": {
-                    "expression": "'# Portfolio intelligence\\n\\n' & portfolio.intelligence.summary & '\\n\\n## Observations\\n\\n- ' & $join(portfolio.intelligence.observations, '\\n- ') & '\\n\\n## Risks\\n\\n- ' & $join(portfolio.intelligence.risks, '\\n- ')"
-                  }
-                }
+                "bindings": { "value": { "from": "portfolio.intelligence.markdown" } }
               }
             }
           },
@@ -217,11 +272,7 @@
             "views": {
               "portfolio-intelligence": {
                 "capability": "primitive:markdown",
-                "bindings": {
-                  "value": {
-                    "expression": "'# Mock portfolio intelligence\\n\\n' & portfolio.intelligence.summary & '\\n\\n## Observations\\n\\n- ' & $join(portfolio.intelligence.observations, '\\n- ') & '\\n\\n## Risks\\n\\n- ' & $join(portfolio.intelligence.risks, '\\n- ')"
-                  }
-                }
+                "bindings": { "value": { "from": "portfolio.intelligence.markdown" } }
               }
             }
           },
@@ -231,19 +282,8 @@
             "extends": "mobile-base",
             "views": {
               "portfolio-intelligence": {
-                "capability": "portfolio:intelligence-projections",
-                "props": {
-                  "presentationContext": "portfolio-overview",
-                  "showWorkflowAction": false,
-                  "projectionRecipe": {
-                    "contexts": {
-                      "portfolio-overview": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 },
-                      "portfolio-advisor": { "attention": "focused", "showDisclosure": ["always", "collapsed"], "maxSections": 8 }
-                    },
-                    "fallback": { "attention": "glanceable", "showDisclosure": ["always"], "maxSections": 3 }
-                  }
-                },
-                "bindings": { "value": { "from": "portfolio.intelligence" } }
+                "capability": "gik:blueprint",
+                "bindings": { "blueprint": { "from": "portfolio.intelligence" } }
               }
             }
           }
@@ -251,14 +291,18 @@
         "fallback": "simple-desktop",
         "implementationPrograms": [
           {
-            "id": "simple-intelligence",
-            "when": "externalContext.`intelligence-model` = 'simple'",
+            "id": "simple-foundry",
+            "when": "externalContext.`intelligence-model` = 'simple' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')"
+          },
+          {
+            "id": "simple-copilot",
+            "when": "externalContext.`intelligence-model` = 'simple' and externalContext.ai = 'copilot'",
             "cells": {
               "portfolio-intelligence": {
                 "sources": [
                   {
                     "id": "portfolio-intelligence.source",
-                    "service": "portfolio-intelligence",
+                    "service": "portfolio-intelligence-copilot",
                     "operation": "requestIntelligence",
                     "contract": "portfolio-intelligence/v1",
                     "when": "inputs.`portfolio-value`.summary.marketValue > 0",
@@ -281,33 +325,9 @@
           {
             "id": "mock-intelligence",
             "when": "externalContext.`intelligence-model` = 'mock'",
-            "cells": {
-              "portfolio-intelligence": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence.source",
-                    "service": "portfolio-intelligence",
-                    "operation": "requestIntelligence",
-                    "contract": "portfolio-intelligence/v1",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}" },
-                    "output": { "kind": "jsonata", "expr": "response" }
-                  },
-                  {
-                    "id": "portfolio-intelligence-2.source",
-                    "service": "portfolio-intelligence-2",
-                    "operation": "requestIntelligence2",
-                    "contract": "portfolio-intelligence-2/v1",
-                    "when": "false",
-                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}" },
-                    "output": { "kind": "jsonata", "expr": "response" }
-                  }
-                ]
-              }
-            },
             "services": {
               "portfolio-intelligence": {
-                "kind": "deterministic-agent",
+                "blueprint": { "$ref": "blueprint:portfolio-tracker-mock@1.0.0" },
                 "version": "1",
                 "operations": {
                   "requestIntelligence": {
@@ -327,14 +347,13 @@
                     }
                   }
                 },
-                "config": { "handler": "portfolio-intelligence-mock" },
                 "scope": "per-blueprint"
               }
             }
           },
           {
-            "id": "semantic-intelligence",
-            "when": "externalContext.`intelligence-model` = 'semantic'",
+            "id": "semantic-foundry",
+            "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
             "cells": {
               "portfolio-intelligence": {
                 "sources": [
@@ -353,7 +372,35 @@
                     "operation": "requestIntelligence2",
                     "contract": "portfolio-intelligence-2/v1",
                     "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'componentCatalog':{'semanticSections':['fact','judgment','risk','uncertainty'],'runtimeCapabilities':['primitive:markdown'],'requiredReportState':['headline','summary','asOf','sections','markdown']}}" },
+                    "output": { "kind": "jsonata", "expr": "response" }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "semantic-copilot",
+            "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.ai = 'copilot'",
+            "cells": {
+              "portfolio-intelligence": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence.source",
+                    "service": "portfolio-intelligence",
+                    "operation": "requestIntelligence",
+                    "contract": "portfolio-intelligence/v1",
+                    "when": "false",
                     "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}" },
+                    "output": { "kind": "jsonata", "expr": "response" }
+                  },
+                  {
+                    "id": "portfolio-intelligence-2.source",
+                    "service": "portfolio-intelligence-2-copilot",
+                    "operation": "requestIntelligence2",
+                    "contract": "portfolio-intelligence-2/v1",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": { "kind": "jsonata", "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'componentCatalog':{'semanticSections':['fact','judgment','risk','uncertainty'],'runtimeCapabilities':['primitive:markdown'],'requiredReportState':['headline','summary','asOf','sections','markdown']}}" },
                     "output": { "kind": "jsonata", "expr": "response" }
                   }
                 ]
@@ -361,12 +408,12 @@
             }
           }
         ],
-        "implementationFallback": "simple-intelligence"
+        "implementationFallback": "simple-foundry"
       }
     ],
     "services": {
       "portfolio-market-data": {
-        "kind": "deterministic-agent",
+        "blueprint": { "$ref": "blueprint:portfolio-tracker-mock@1.0.0" },
         "version": "1",
         "operations": {
           "refreshPrices": {
@@ -383,7 +430,6 @@
             }
           }
         },
-        "config": { "handler": "portfolio-market-data-mock" },
         "scope": "per-blueprint"
       },
       "portfolio-intelligence": {
@@ -396,7 +442,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'message':'Analyze this portfolio using the supplied values as authoritative. Portfolio value JSON: ' & $string(input.portfolioValue),'instructions':'Use only the supplied portfolio value. Distinguish facts from judgments. Do not invent prices, events, sources, or constraints. Return concise structured portfolio intelligence.','maxOutputTokens':1800}"
+                "expr": "{'message':'Write a concise Markdown portfolio intelligence report using this supplied portfolio value as authoritative: ' & $string(input.portfolioValue),'instructions':'Return JSON with exactly one non-empty markdown property. Use only supplied portfolio facts. Distinguish facts from judgments and uncertainty. Do not invent prices, events, sources, constraints, or external research.','maxOutputTokens':1800}"
               }
             },
             "response": {
@@ -407,13 +453,9 @@
                   "message": "Portfolio intelligence response is invalid",
                   "schema": {
                     "type": "object",
-                    "required": ["summary", "observations", "risks", "evidence", "asOf"],
+                    "required": ["markdown"],
                     "properties": {
-                      "summary": { "type": "string", "minLength": 1 },
-                      "observations": { "type": "array", "items": { "type": "string" } },
-                      "risks": { "type": "array", "items": { "type": "string" } },
-                      "evidence": { "type": "array", "items": { "type": "string" } },
-                      "asOf": { "type": "string", "minLength": 1 }
+                      "markdown": { "type": "string", "minLength": 1 }
                     },
                     "additionalProperties": false
                   }
@@ -435,6 +477,50 @@
         },
         "scope": "per-blueprint"
       },
+      "portfolio-intelligence-copilot": {
+        "kind": "copilot-agent",
+        "version": "1",
+        "operations": {
+          "requestIntelligence": {
+            "operation": "chat",
+            "contract": "portfolio-intelligence/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Write a concise Markdown portfolio intelligence report using this supplied portfolio value as authoritative: ' & $string(input.portfolioValue),'instructions':'Return JSON with exactly one non-empty markdown property. Use only supplied portfolio facts. Distinguish facts from judgments and uncertainty. Do not invent prices, events, sources, constraints, or external research.'}"
+              }
+            },
+            "response": {
+              "validators": [{
+                "kind": "ajv-schema",
+                "code": "provider-structured-output",
+                "message": "Copilot portfolio intelligence response is invalid",
+                "schema": {
+                  "type": "object",
+                  "required": ["markdown"],
+                  "properties": { "markdown": { "type": "string", "minLength": 1 } },
+                  "additionalProperties": false
+                }
+              }]
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':$merge([response,{'provider':'copilot-agent:Portfolio-Intelligence-Agent'}])}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Intelligence-Agent'}}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "model": "gpt-5.4",
+          "workspaceRef": ".copilot-workspace",
+          "agent": "Portfolio-Intelligence-Agent",
+          "responseMode": "json"
+        },
+        "scope": "per-session"
+      },
       "portfolio-intelligence-2": {
         "kind": "foundry-agent",
         "version": "1",
@@ -445,7 +531,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'message':'Analyze this portfolio and propose useful semantic projections. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Interaction context JSON: ' & $string({'interaction':'investigate','subject':'portfolio intelligence','goal':'understand what deserves human attention','facets':['summary','signals','catalysts','risks','evidence']}),'instructions':'Build reusable semantic items first. Then return two or three alternative projection candidates that reference those items by id. Available primitives are hero-signal, metric-strip, signal-list, timeline, evidence-list, and narrative. Available priority tokens are primary, secondary, and tertiary. Available disclosure tokens are always, collapsed, and on-demand. Use only this catalog. A glanceable candidate should expose no more than three always-visible sections and lead with the most material signal. A focused candidate may retain evidence and supporting detail through progressive disclosure. The runtime recipe, not you, chooses the active candidate. Analyze only the supplied portfolio data; do not imply that external news or events were researched. Distinguish supplied facts, judgments, and uncertainty through semantic item kinds. Return no evidence unless it was supplied in the request. Keep the complete structured response within the supplied output token budget.','maxOutputTokens':2500}"
+                "expr": "{'message':'Create a self-contained GIK portfolio intelligence report Blueprint from this supplied data. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Component catalog JSON: ' & $string(input.componentCatalog),'instructions':'Return the complete Blueprint artifact directly. Preserve the exact schema-defined structure and use the supplied component catalog. Put semantic content in payload.runtime.state.report: headline, summary, asOf, sections, and markdown. Use only supplied portfolio facts; distinguish judgments and uncertainty; do not imply external research. The two authored tiers and primitive:markdown catalog entry are mandatory. Do not add services, effects, native code, references, controls, or host mutation instructions.','maxOutputTokens':4000}"
               }
             },
             "response": {
@@ -453,32 +539,154 @@
                 {
                   "kind": "ajv-schema",
                   "code": "provider-structured-output",
-                  "message": "Portfolio intelligence 2 response is invalid",
+                  "message": "Portfolio intelligence provider response is not a Blueprint envelope",
                   "schema": {
                     "type": "object",
-                    "required": ["headline", "summary", "asOf", "items", "evidence", "projectionCandidates"],
+                    "required": ["gik", "type", "payload"],
                     "properties": {
-                      "headline": { "type": "string", "minLength": 1 },
-                      "summary": { "type": "string", "minLength": 1 },
-                      "asOf": { "type": "string", "minLength": 1 },
-                      "items": { "type": "array", "minItems": 1 },
-                      "evidence": { "type": "array" },
-                      "projectionCandidates": { "type": "array", "minItems": 2, "maxItems": 3 }
+                      "gik": { "type": "string", "const": "0.1" },
+                      "type": { "type": "string", "const": "blueprint" },
+                      "payload": {
+                        "type": "object",
+                        "required": ["id", "kind", "version", "structureMode", "tiers", "recipes", "runtime", "cells"],
+                        "properties": {
+                          "id": { "type": "string", "const": "generated-semantic-report" },
+                          "kind": { "type": "string", "const": "semantic-report" },
+                          "version": { "type": "string", "const": "1.0.0" },
+                          "structureMode": { "type": "string", "const": "fixed" },
+                          "tiers": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "object",
+                              "required": ["id", "kind"],
+                              "properties": {
+                                "id": { "type": "string" },
+                                "kind": { "type": "string" }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "recipes": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "object", "required": ["id", "from", "to", "representations", "fallback"], "properties": { "id": { "type": "string", "const": "semantic-report-to-runtime" }, "from": { "type": "string", "const": "report-semantic" }, "to": { "type": "string", "const": "runtime-document" }, "representations": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "object", "required": ["id", "views", "presentation"], "properties": { "id": { "type": "string", "const": "report" }, "views": { "type": "object", "required": ["report"], "properties": { "report": { "type": "object", "required": ["capability", "bindings"], "properties": { "capability": { "type": "string", "const": "primitive:markdown" }, "bindings": { "type": "object", "required": ["value"], "properties": { "value": { "type": "object", "required": ["from"], "properties": { "from": { "type": "string", "const": "report.markdown" } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false }, "presentation": { "type": "object", "required": ["roots", "placements"], "properties": { "roots": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string", "const": "report" } }, "placements": { "type": "array", "maxItems": 0, "items": { "type": "object", "properties": {}, "additionalProperties": false } } }, "additionalProperties": false } }, "additionalProperties": false } }, "fallback": { "type": "string", "const": "report" } }, "additionalProperties": false } },
+                          "runtime": {
+                            "type": "object",
+                            "required": ["expression", "namespaces", "actions", "capabilities", "externals", "state"],
+                            "properties": {
+                              "expression": { "type": "string", "const": "jsonata" },
+                              "namespaces": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string", "const": "report" } },
+                              "actions": { "type": "array", "maxItems": 0, "items": { "type": "string" } },
+                              "capabilities": {
+                                "type": "object",
+                                "required": ["primitive:markdown"],
+                                "properties": {
+                                  "primitive:markdown": {
+                                    "type": "object",
+                                    "required": ["propsSchema"],
+                                    "properties": {
+                                      "propsSchema": {
+                                        "type": "object",
+                                        "required": ["type", "additionalProperties"],
+                                        "properties": {
+                                          "type": { "type": "string", "const": "object" },
+                                          "additionalProperties": { "type": "boolean", "const": true }
+                                        },
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "externals": {
+                                "type": "object",
+                                "required": ["projectionViews"],
+                                "properties": {
+                                  "projectionViews": {
+                                    "type": "object",
+                                    "required": ["primitive"],
+                                    "properties": {
+                                      "primitive": {
+                                        "type": "object",
+                                        "required": ["from", "use"],
+                                        "properties": {
+                                          "from": { "type": "string", "const": "primitive" },
+                                          "use": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string", "const": "markdown" } }
+                                        },
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "state": {
+                                "type": "object",
+                                "required": ["report"],
+                                "properties": {
+                                  "report": {
+                                    "type": "object",
+                                    "required": ["headline", "summary", "asOf", "sections", "markdown"],
+                                    "properties": {
+                                      "headline": { "type": "string", "minLength": 1 },
+                                      "summary": { "type": "string", "minLength": 1 },
+                                      "asOf": { "type": "string", "minLength": 1 },
+                                      "sections": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["heading", "body", "kind"], "properties": { "heading": { "type": "string", "minLength": 1 }, "body": { "type": "string", "minLength": 1 }, "kind": { "type": "string", "enum": ["fact", "judgment", "risk", "uncertainty"] } }, "additionalProperties": false } },
+                                      "markdown": { "type": "string", "minLength": 1 }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "cells": { "type": "object", "required": ["report"], "properties": { "report": { "type": "object", "required": ["id", "kind"], "properties": { "id": { "type": "string", "const": "report" }, "kind": { "type": "string", "const": "semantic-report" } }, "additionalProperties": false } }, "additionalProperties": false }
+                        },
+                        "additionalProperties": false
+                      }
                     },
                     "additionalProperties": false
                   }
                 },
                 {
-                  "kind": "jsonata",
-                  "expr": "$count(data.projectionCandidates[attention = 'glanceable']) > 0 and $count(data.projectionCandidates[attention = 'focused']) > 0",
-                  "message": "Portfolio intelligence 2 must provide glanceable and focused projections",
-                  "code": "projection-attention-coverage"
+                  "kind": "ajv-schema",
+                  "code": "report-blueprint-shape",
+                  "message": "Portfolio intelligence 2 response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": ["gik", "type", "payload"],
+                    "properties": {
+                      "gik": { "type": "string", "const": "0.1" },
+                      "type": { "type": "string", "const": "blueprint" },
+                      "payload": {
+                        "type": "object",
+                        "required": ["id", "kind", "version", "structureMode", "tiers", "recipes", "runtime", "cells"],
+                        "properties": {
+                          "id": { "type": "string", "const": "generated-semantic-report" },
+                          "kind": { "type": "string", "const": "semantic-report" },
+                          "version": { "type": "string", "const": "1.0.0" },
+                          "structureMode": { "type": "string", "const": "fixed" },
+                          "tiers": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "object", "required": ["id", "kind"], "properties": { "id": { "type": "string" }, "kind": { "type": "string" } }, "additionalProperties": false } },
+                          "recipes": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "object", "required": ["id", "from", "to", "representations", "fallback"], "properties": { "id": { "type": "string", "const": "semantic-report-to-runtime" }, "from": { "type": "string", "const": "report-semantic" }, "to": { "type": "string", "const": "runtime-document" }, "representations": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "object", "required": ["id", "views", "presentation"], "properties": { "id": { "type": "string", "const": "report" }, "views": { "type": "object", "required": ["report"], "properties": { "report": { "type": "object", "required": ["capability", "bindings"], "properties": { "capability": { "type": "string", "const": "primitive:markdown" }, "bindings": { "type": "object", "required": ["value"], "properties": { "value": { "type": "object", "required": ["from"], "properties": { "from": { "type": "string", "const": "report.markdown" } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false }, "presentation": { "type": "object", "required": ["roots", "placements"], "properties": { "roots": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string", "const": "report" } }, "placements": { "type": "array", "maxItems": 0, "items": { "type": "object", "additionalProperties": false } } }, "additionalProperties": false } }, "additionalProperties": false } }, "fallback": { "type": "string", "const": "report" } }, "additionalProperties": false } },
+                          "runtime": { "type": "object", "required": ["expression", "namespaces", "actions", "capabilities", "externals", "state"], "properties": { "expression": { "type": "string", "const": "jsonata" }, "namespaces": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string", "const": "report" } }, "actions": { "type": "array", "maxItems": 0, "items": { "type": "string" } }, "capabilities": { "type": "object", "required": ["primitive:markdown"], "properties": { "primitive:markdown": { "type": "object", "required": ["propsSchema"], "properties": { "propsSchema": { "type": "object", "required": ["type", "additionalProperties"], "properties": { "type": { "type": "string", "const": "object" }, "additionalProperties": { "type": "boolean", "const": true } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false }, "externals": { "type": "object", "required": ["projectionViews"], "properties": { "projectionViews": { "type": "object", "required": ["primitive"], "properties": { "primitive": { "type": "object", "required": ["from", "use"], "properties": { "from": { "type": "string", "const": "primitive" }, "use": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string", "const": "markdown" } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false }, "state": { "type": "object", "required": ["report"], "properties": { "report": { "type": "object", "required": ["headline", "summary", "asOf", "sections", "markdown"], "properties": { "headline": { "type": "string", "minLength": 1 }, "summary": { "type": "string", "minLength": 1 }, "asOf": { "type": "string", "minLength": 1 }, "sections": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["heading", "body", "kind"], "properties": { "heading": { "type": "string", "minLength": 1 }, "body": { "type": "string", "minLength": 1 }, "kind": { "type": "string", "enum": ["fact", "judgment", "risk", "uncertainty"] } }, "additionalProperties": false } }, "markdown": { "type": "string", "minLength": 1 } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false },
+                          "cells": { "type": "object", "required": ["report"], "properties": { "report": { "type": "object", "required": ["id", "kind"], "properties": { "id": { "type": "string", "const": "report" }, "kind": { "type": "string", "const": "semantic-report" } }, "additionalProperties": false } }, "additionalProperties": false }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
                 },
                 {
                   "kind": "jsonata",
-                  "expr": "$count(data.projectionCandidates[attention = 'glanceable'][$count(sections[disclosure = 'always']) > 3]) = 0",
-                  "message": "Each glanceable projection may expose at most three always-visible sections",
-                  "code": "glanceable-attention-budget"
+                  "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
+                  "message": "Portfolio report Blueprint must contain the semantic and runtime-document tiers",
+                  "code": "report-blueprint-tiers"
                 }
               ]
             },
@@ -497,27 +705,55 @@
           "credentialRef": "foundry-agent/access-key"
         },
         "scope": "per-blueprint"
+      },
+      "portfolio-intelligence-2-copilot": {
+        "kind": "copilot-agent",
+        "version": "1",
+        "operations": {
+          "requestIntelligence2": {
+            "operation": "chat",
+            "contract": "portfolio-intelligence-2/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Create a self-contained GIK portfolio intelligence report Blueprint from this supplied data. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Component catalog JSON: ' & $string(input.componentCatalog),'instructions':'Return only the complete Blueprint JSON artifact. Preserve the strict response contract and use the supplied component catalog. Use only supplied portfolio facts; distinguish judgments and uncertainty; do not imply external research.'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Intelligence-2-Agent'}}"
+              }
+            },
+            "onViolation": { "action": "fail" }
+          }
+        },
+        "config": {
+          "server": "http://127.0.0.1:7801/mcp",
+          "model": "gpt-5.4",
+          "workspaceRef": ".copilot-workspace",
+          "agent": "Portfolio-Intelligence-2-Agent",
+          "responseMode": "json"
+        },
+        "scope": "per-session"
       }
     },
     "runtime": {
       "expression": "jsonata",
       "namespaces": ["portfolio"],
-      "contexts": ["control"],
-      "actions": ["assign", "emit", "invoke", "route", "request"],
+      "actions": ["assign"],
       "capabilities": {
         "primitive:container": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
         "primitive:chart": { "propsSchema": { "type": "object", "additionalProperties": true } },
         "primitive:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
         "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true } },
-        "portfolio:intelligence-projections": { "propsSchema": { "type": "object", "additionalProperties": true } },
-        "fluent:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" },
-        "primitive:note": { "propsSchema": { "type": "object", "additionalProperties": true } }
+        "gik:blueprint": { "propsSchema": { "type": "object", "additionalProperties": true } },
+        "fluent:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" }
       },
       "externals": {
         "projectionViews": {
           "fluent": { "from": "fluent", "use": ["table"] },
-          "portfolio": { "from": "portfolio-tracker-new", "use": ["intelligence-projections"] },
-          "primitive": { "from": "primitive", "use": ["chart", "container", "editable-table", "markdown", "note"] }
+          "primitive": { "from": "primitive", "use": ["chart", "container", "editable-table", "markdown"] }
         }
       },
       "state": {
@@ -528,8 +764,7 @@
           },
           "stockQuotes": {},
           "value": { "positions": {}, "summary": { "marketValue": 0, "costBasis": 0, "gainLoss": 0 } },
-          "intelligence": null,
-          "investorProfile": null
+          "intelligence": null
         }
       }
     },
@@ -630,7 +865,6 @@
             "output": { "kind": "jsonata", "expr": "response" }
           }
         ],
-        "outputs": [{ "token": "portfolio-intelligence", "from": "computed.portfolio.intelligence" }],
         "compute": [
           {
             "id": "settled-portfolio-intelligence",
@@ -642,13 +876,7 @@
       },
       "board": {
         "id": "board",
-        "kind": "portfolio-board-cell",
-        "inputs": [
-          { "token": "holdings" },
-          { "token": "stock-quotes" },
-          { "token": "portfolio-value" },
-          { "token": "portfolio-intelligence" }
-        ]
+        "kind": "portfolio-board-cell"
       }
     }
   }

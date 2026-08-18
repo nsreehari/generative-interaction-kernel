@@ -43,7 +43,8 @@ function capabilityManifest(id: string): AgentCapabilityManifest {
       validate: operation("Validate"),
       simulate: operation("Simulate"),
       preflight: operation("Preflight"),
-      propose: operation("Propose"),
+      read_in_progress_proposal: operation("Read in-progress proposal"),
+      set_in_progress_proposal: operation("Set proposal"),
     },
   };
 }
@@ -57,7 +58,8 @@ function lifecycle(id: string): AgentLifecycleOps {
     validate: (input) => ({ operation: "validate", input }),
     simulate: (input) => ({ operation: "simulate", input }),
     preflight: (input) => ({ operation: "preflight", input }),
-    propose: (input) => ({ operation: "propose", input }),
+    read_in_progress_proposal: (input) => ({ operation: "read_in_progress_proposal", input }),
+    set_in_progress_proposal: (input) => ({ operation: "set_in_progress_proposal", input }),
   };
 }
 
@@ -87,7 +89,7 @@ function hostLifecycle(): AgentHostLifecycleOps {
   };
 }
 
-test("agent lifecycle profiles generate the standard manifest-to-propose tool family", async () => {
+test("agent lifecycle profiles generate the standard proposal workspace tool family", async () => {
   const tools = agentLifecycleTools("use_blueprint", lifecycle("use-blueprint"));
   assert.deepEqual(tools.map(({ name }) => name), [
     "use_blueprint_manifest",
@@ -97,10 +99,11 @@ test("agent lifecycle profiles generate the standard manifest-to-propose tool fa
     "use_blueprint_validate",
     "use_blueprint_simulate",
     "use_blueprint_preflight",
-    "use_blueprint_propose",
+    "use_blueprint_read_in_progress_proposal",
+    "use_blueprint_set_in_progress_proposal",
   ]);
   assert.equal(tools.every(({ lifecycle: kind }) => kind === "agent"), true);
-  assert.equal((await tools[7].handler({ event: "press" }) as { operation: string }).operation, "propose");
+  assert.equal((await tools[8].handler({ event: "press" }) as { operation: string }).operation, "set_in_progress_proposal");
 });
 
 test("host lifecycle profiles generate trusted receipt-to-application tools", () => {
@@ -132,7 +135,7 @@ test("UBX, CBX, ABX, HBX, and control are literal cumulative catalog projections
 
   const sizes = (["ubx", "cbx", "abx", "hbx", "control"] as const)
     .map((level) => catalog.project(level).tools.length);
-  assert.deepEqual(sizes, [8, 16, 24, 30, 31]);
+    assert.deepEqual(sizes, [9, 18, 27, 33, 34]);
   assert.equal(catalog.project("ubx").tools.every(({ lifecycle: kind }) => kind === "agent"), true);
   assert.equal(catalog.project("hbx").tools.some(({ name }) => name === "host_blueprint_apply"), true);
   assert.equal(catalog.project("abx").tools.some(({ name }) => name === "host_blueprint_apply"), false);
@@ -156,9 +159,9 @@ test("Blueprint lifecycle composition translates ops into conventional cumulativ
   });
 
   assert.equal(catalog.project("ubx").tools[0].name, "use_blueprint_manifest");
-  assert.equal(catalog.project("cbx").tools[8].name, "customize_blueprint_manifest");
-  assert.equal(catalog.project("abx").tools[16].name, "author_blueprint_manifest");
-  assert.equal(catalog.project("hbx").tools[24].name, "host_blueprint_receive");
+    assert.equal(catalog.project("cbx").tools[9].name, "customize_blueprint_manifest");
+    assert.equal(catalog.project("abx").tools[18].name, "author_blueprint_manifest");
+    assert.equal(catalog.project("hbx").tools[27].name, "host_blueprint_receive");
 });
 
 test("Blueprint profile binding requires authored material and matching implementation identity", () => {
@@ -172,6 +175,7 @@ test("Blueprint profile binding requires authored material and matching implemen
             description: "Use this Blueprint through its declared runtime contract.",
             targetKinds: ["blueprint-instance"],
             intentKinds: ["declared-event"],
+            operationPreset: "standard" as const,
           },
         },
       },
@@ -204,6 +208,7 @@ test("useBlueprint derives authored description and delegates live lifecycle ope
         description: "Use the incident report explorer.",
         targetKinds: ["blueprint-instance"],
         intentKinds: ["declared-event"],
+        operationPreset: "standard" as const,
         constraints: ["Preserve source facts."],
       } } },
       tiers: [{ id: "runtime", kind: "runtime-document" }],
@@ -224,16 +229,17 @@ test("useBlueprint derives authored description and delegates live lifecycle ope
     validate: () => ({ ok: true }),
     simulate: () => ({ state: "simulated" }),
     preflight: () => ({ ready: true }),
-    propose: () => { calls.push("propose"); return { id: "proposal-1" }; },
+    read_in_progress_proposal: () => undefined,
+    set_in_progress_proposal: () => { calls.push("set_in_progress_proposal"); return { id: "proposal-1" }; },
   };
   const ops = createBlueprintUseLifecycle({ blueprint, schemas, host });
-  const description = await ops.describe({}) as { identity: { id: string }; lifecycle: { constraints: string[] } };
+  const description = await ops.describe!({}) as { identity: { id: string }; lifecycle: { constraints: string[] } };
   assert.equal(description.identity.id, "incident-report-explorer-1a");
   assert.deepEqual(description.lifecycle.constraints, ["Preserve source facts."]);
 
   const tools = useBlueprint({ blueprint, schemas, host });
-  await tools.find(({ name }) => name === "use_blueprint_propose")!.handler({ event: "press" });
-  assert.deepEqual(calls, ["propose"]);
+  await tools.find(({ name }) => name === "use_blueprint_set_in_progress_proposal")!.handler({ event: "press" });
+  assert.deepEqual(calls, ["set_in_progress_proposal"]);
 });
 
 test("customizeBlueprint and authorBlueprint bind manifests from their meta-Blueprints", () => {
@@ -243,6 +249,7 @@ test("customizeBlueprint and authorBlueprint bind manifests from their meta-Blue
     description: `${id} meta-Blueprint.`,
     targetKinds: ["blueprint-candidate"],
     intentKinds: ["blueprint-patch"],
+    operationPreset: "standard" as const,
   });
   const metaBlueprint = {
     payload: {
@@ -263,7 +270,8 @@ test("customizeBlueprint and authorBlueprint bind manifests from their meta-Blue
     validate: () => ({ ok: true }),
     simulate: () => ({}),
     preflight: () => ({ ready: true }),
-    propose: () => ({ id: "proposal" }),
+    read_in_progress_proposal: () => undefined,
+    set_in_progress_proposal: () => ({ id: "proposal" }),
   };
 
   assert.equal(customizeBlueprint({ blueprint: metaBlueprint, schemas, host })[0].name, "customize_blueprint_manifest");
@@ -313,13 +321,14 @@ test("Blueprint use material projects to provisionable strict function metadata"
         description: "Use the sample Blueprint.",
         targetKinds: ["blueprint-instance"],
         intentKinds: ["run"],
+        operationPreset: "standard" as const,
       } } },
     },
   });
-  assert.equal(definitions.length, 8);
+  assert.equal(definitions.length, 9);
   assert.equal(definitions[0].name, "use_blueprint_manifest");
   assert.equal(definitions.every(({ type, strict }) => type === "function" && strict), true);
-  assert.deepEqual(definitions.find(({ name }) => name === "use_blueprint_propose")?.parameters,
+  assert.deepEqual(definitions.find(({ name }) => name === "use_blueprint_set_in_progress_proposal")?.parameters,
     BLUEPRINT_USE_SCHEMAS.intent);
 });
 
@@ -366,4 +375,103 @@ test("simple chat template keeps one identity and host authority across provider
   assert.equal(template.executionAuthority, "host");
   assert.match(toFoundryPromptDefinition(template, "gpt-test").instructions, /sample-workspace/);
   assert.match(toCopilotAgentMarkdown(template, { model: "gpt-test" }), /name: simple-chat/);
+});
+
+test("agent lifecycle profiles generate only declared operations", () => {
+  const manifest = capabilityManifest("static-authoring");
+  const ops: AgentLifecycleOps = {
+    manifest: () => ({
+      ...manifest,
+      operations: {
+        describe: manifest.operations.describe,
+        validate: manifest.operations.validate,
+        simulate: manifest.operations.simulate,
+        read_in_progress_proposal: manifest.operations.read_in_progress_proposal,
+        set_in_progress_proposal: manifest.operations.set_in_progress_proposal,
+      },
+    }),
+    describe: (input) => input,
+    validate: (input) => input,
+    simulate: (input) => input,
+    read_in_progress_proposal: (input) => input,
+    set_in_progress_proposal: (input) => input,
+  };
+  assert.deepEqual(agentLifecycleTools("author_blueprint", ops).map(({ name }) => name), [
+    "author_blueprint_manifest",
+    "author_blueprint_describe",
+    "author_blueprint_validate",
+    "author_blueprint_simulate",
+    "author_blueprint_read_in_progress_proposal",
+    "author_blueprint_set_in_progress_proposal",
+  ]);
+  assert.throws(
+    () => agentLifecycleTools("author_blueprint", { ...ops, validate: undefined }),
+    /declares 'validate' without a handler/,
+  );
+});
+
+test("Blueprint profiles require and resolve explicit operation selections", () => {
+  const profile = (id: string, selection:
+    | { operationPreset: "static-authoring" }
+    | { operations: readonly ["describe", "validate"] }) => ({
+    id,
+    version: "1.0.0",
+    description: `${id} profile.`,
+    targetKinds: ["blueprint-candidate"],
+    intentKinds: ["blueprint"],
+    ...selection,
+  });
+  const blueprint = {
+    payload: {
+      id: "blueprint-authoring",
+      kind: "blueprint-meta-graph",
+      version: "1.0.0",
+      agentLifecycle: { profiles: {
+        author: profile("author-blueprint", { operationPreset: "static-authoring" as const }),
+        customize: profile("customize-blueprint", { operations: ["describe", "validate"] as const }),
+      } },
+      runtime: {},
+    },
+  };
+  const schemas = { discover: objectSchema, target: objectSchema, intent: objectSchema, proposal: objectSchema };
+  const staticTools = authorBlueprint({
+    blueprint,
+    schemas,
+    host: {
+      validate: () => ({}),
+      simulate: () => ({}),
+      read_in_progress_proposal: () => undefined,
+      set_in_progress_proposal: () => ({}),
+    },
+  });
+  assert.deepEqual(staticTools.map(({ name }) => name), [
+    "author_blueprint_manifest",
+    "author_blueprint_describe",
+    "author_blueprint_validate",
+    "author_blueprint_simulate",
+    "author_blueprint_read_in_progress_proposal",
+    "author_blueprint_set_in_progress_proposal",
+  ]);
+  assert.deepEqual(customizeBlueprint({ blueprint, schemas, host: { validate: () => ({}) } }).map(({ name }) => name), [
+    "customize_blueprint_manifest",
+    "customize_blueprint_describe",
+    "customize_blueprint_validate",
+  ]);
+  const missingSelection = {
+    ...blueprint,
+    payload: {
+      ...blueprint.payload,
+      agentLifecycle: { profiles: { author: {
+        id: "invalid-author",
+        version: "1.0.0",
+        description: "Invalid omitted selection.",
+        targetKinds: ["blueprint-candidate"],
+        intentKinds: ["blueprint"],
+      } } },
+    },
+  };
+  assert.throws(
+    () => authorBlueprint({ blueprint: missingSelection as never, schemas, host: {} }),
+    /must declare operationPreset or operations/,
+  );
 });

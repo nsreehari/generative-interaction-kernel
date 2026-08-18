@@ -7,16 +7,6 @@ import {
   createMemoryStorageApi,
   createMemoryStorageRef,
 } from "@gik/durable-runtime/storage/memory";
-import {
-  MOCK_MARKET_DATA_PROVIDER,
-  mockMarketDataHandler,
-} from "../../../../blueprints/portfolio-tracker-new/native/services/mock-market-data";
-import {
-  DETERMINISTIC_PORTFOLIO_PROVIDER,
-  MOCK_PORTFOLIO_INTELLIGENCE_PROVIDER,
-  mockPortfolioIntelligenceHandler,
-  portfolioIntelligenceHandler,
-} from "../../../../blueprints/portfolio-tracker-new/native/services/portfolio-intelligence";
 import { getSampleBlueprintCatalog } from "../../../../catalog/blueprint-catalog";
 import {
   createSeededStorageConnection,
@@ -29,26 +19,9 @@ export interface SampleNativeServices {
   durableStorageConnections?: Readonly<Record<string, DurableStorageConnection>>;
 }
 
-const MOCK_SOURCE_LATENCY_MS = 600;
-
-function withMockLatency(handler: DeterministicServiceHandler): DeterministicServiceHandler {
-  return async (...args) => {
-    await new Promise((resolve) => setTimeout(resolve, MOCK_SOURCE_LATENCY_MS));
-    return handler(...args);
-  };
-}
-
-const portfolioServices: SampleNativeServices = {
-  deterministicHandlers: {
-    [DETERMINISTIC_PORTFOLIO_PROVIDER]: portfolioIntelligenceHandler,
-    [MOCK_PORTFOLIO_INTELLIGENCE_PROVIDER]: withMockLatency(mockPortfolioIntelligenceHandler),
-    [MOCK_MARKET_DATA_PROVIDER]: withMockLatency(mockMarketDataHandler),
-  },
-};
-
 const incidentAnalyzerServices: SampleNativeServices = {
   durableStorageConnections: {
-    "incident-runtime-cache": createSeededStorageConnection(
+    "incident-assets-store": createSeededStorageConnection(
       globalThis.indexedDB
         ? createIndexedDbStorageApi({ databaseName: "gik-samples-host" })
         : createMemoryStorageApi(),
@@ -65,10 +38,6 @@ const incidentShellServices: SampleNativeServices = {
 
 const modules: Readonly<Record<string, SampleNativeServices>> = {
   "incident-analysis-new-shell": incidentShellServices,
-  "incident-report-explorer-1a": incidentAnalyzerServices,
-  "incident-report-explorer-2": incidentAnalyzerServices,
-  "incident-report-explorer-3": incidentAnalyzerServices,
-  "portfolio-tracker-new": portfolioServices,
 };
 
 export function resolveSampleNativeServices(id: string): SampleNativeServices | undefined {

@@ -89,7 +89,7 @@ test("portfolio-tracker-new executes through the headless Node host HTTP control
     ]);
     const updated = await waitForState(
       baseUrl,
-      (state) => state.portfolio?.intelligence?.observations?.[0] === "Largest position: GOOG",
+      (state) => state.portfolio?.intelligence?.markdown?.includes("Largest position: GOOG") === true,
     );
     assert.deepEqual(Object.keys(updated.portfolio.holdings).sort(), ["AAPL", "GOOG"]);
     assert.deepEqual(Object.keys(updated.portfolio.stockQuotes).sort(), ["AAPL", "GOOG"]);
@@ -99,11 +99,9 @@ test("portfolio-tracker-new executes through the headless Node host HTTP control
       costBasis: 690,
       gainLoss: 192.07,
     });
-    assert.deepEqual(updated.portfolio.intelligence.observations, [
-      "Largest position: GOOG",
-      "Market value: 882.07",
-      "Gain/loss: 192.07",
-    ]);
+    assert.match(updated.portfolio.intelligence.markdown, /Largest position: GOOG/);
+    assert.match(updated.portfolio.intelligence.markdown, /Market value: 882.07/);
+    assert.match(updated.portfolio.intelligence.markdown, /Gain\/loss: 192.07/);
   } finally {
     await host.stop();
   }

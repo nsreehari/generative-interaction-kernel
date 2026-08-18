@@ -97,7 +97,7 @@ export function createBlueprintServiceHost(
     state,
     expression: new JsonataExpressionProvider({ safe: true }),
     agentTools: agentLifecycle.tools,
-    validatedProposalSettlement: agentLifecycle.settle,
+    inProgressProposalSettlement: agentLifecycle.settle,
     ...hostPolicy,
   });
 }

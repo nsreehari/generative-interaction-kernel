@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { InMemoryStateModel, unwrap, type Json, type ResolvedNode } from "@gik/kernel";
 import {
   analyzeCellImpact,
@@ -18,7 +18,7 @@ import {
   evaluateBlueprintCell,
   evaluateBlueprintCellId,
   formatBlueprintReference,
-  HOSTED_BLUEPRINT_CAPABILITY,
+  BLUEPRINT_CAPABILITY,
   PRESENTATION_FRAGMENT_CAPABILITY,
   HostedBlueprintReconciler,
   inspectExploration,
@@ -35,6 +35,7 @@ import {
   validateBlueprintArtifact,
   validateBlueprintForAuthoring,
   type BlueprintArtifact,
+  type HostedBlueprintMount,
 } from "../src/index";
 import { settleQueuedCellSourceEffect } from "../src/worker";
 
@@ -325,7 +326,7 @@ describe("@gik/blueprint", () => {
       },
     };
 
-    expect(HOSTED_BLUEPRINT_CAPABILITY).toBe("gik:hosted-blueprint");
+    expect(BLUEPRINT_CAPABILITY).toBe("gik:blueprint");
     const declaration = readHostedBlueprintDeclaration({ $ref: "blueprint:child@1" });
     expect(declaration).toEqual({ $ref: "blueprint:child@1" });
     if (!declaration) throw new Error("Expected a hosted Blueprint declaration");
@@ -349,7 +350,7 @@ describe("@gik/blueprint", () => {
       },
     });
     const hostedTree = (content: string): ResolvedNode => ({
-      capability: HOSTED_BLUEPRINT_CAPABILITY,
+      capability: BLUEPRINT_CAPABILITY,
       id: "child",
       props: { hostedBlueprint: { inline: child as unknown as Json }, content },
       visible: true,
@@ -371,6 +372,58 @@ describe("@gik/blueprint", () => {
 
     expect(mounted).toEqual(["parent:1/cells/child:first", "parent:1/cells/child:second"]);
     expect(unmounted).toEqual(["parent:1/cells/child", "parent:1/cells/child"]);
+  });
+
+  it("skips an empty hosted Blueprint declaration until one is available", async () => {
+    const child = blueprint("child");
+    const mounted: string[] = [];
+    const reconciler = new HostedBlueprintReconciler("parent", "parent:1", undefined, {
+      mount(hosted) {
+        mounted.push(hosted.definition.blueprint.payload.id);
+        return hosted.instanceId;
+      },
+      unmount() {},
+    });
+    const node = (blueprintValue: Json): ResolvedNode => ({
+      capability: BLUEPRINT_CAPABILITY,
+      id: "child",
+      props: { blueprint: blueprintValue },
+      visible: true,
+      fallback: false,
+      children: [],
+    });
+
+    await reconciler.reconcile(node(null));
+    expect(mounted).toEqual([]);
+
+    await reconciler.reconcile(node(child as unknown as Json));
+    expect(mounted).toEqual(["child"]);
+  });
+
+  it("strips the public blueprint prop from mounted child inputs", async () => {
+    const child = blueprint("child");
+    const mounted: HostedBlueprintMount[] = [];
+    const reconciler = new HostedBlueprintReconciler("parent", "parent:1", undefined, {
+      mount(hosted) {
+        mounted.push(hosted);
+        return hosted.instanceId;
+      },
+      unmount() {},
+    });
+
+    await reconciler.reconcile({
+      capability: BLUEPRINT_CAPABILITY,
+      id: "child",
+      props: { blueprint: child as unknown as Json, content: "first" },
+      visible: true,
+      fallback: false,
+      children: [],
+    });
+
+    expect(mounted).toHaveLength(1);
+    expect(mounted[0]?.inputs).toEqual({ content: "first" });
+    expect(mounted[0]?.inputs).not.toHaveProperty("blueprint");
+    expect(mounted[0]?.inputs).not.toHaveProperty("hostedBlueprint");
   });
 
   it("requires parent cells to bind required child Blueprint inputs", () => {
@@ -417,7 +470,7 @@ describe("@gik/blueprint", () => {
       mode: "compact",
       hostedBlueprint: { $ref: "blueprint:analysis@1.0.0" },
     });
-    expect(program.root.capability).toBe(HOSTED_BLUEPRINT_CAPABILITY);
+    expect(program.root.capability).toBe(BLUEPRINT_CAPABILITY);
   });
 
   it("preserves authored order when lowering multiple presentation roots", () => {
@@ -473,7 +526,49 @@ describe("@gik/blueprint", () => {
     expect(program.root?.props).toBeUndefined();
     expect(program.root?.edges?.readExpr?.hostedBlueprint).toBe(expectedExpression);
     expect(program.root?.edges?.read?.report).toBe("runtime.report");
-    expect(program.root?.capability).toBe(HOSTED_BLUEPRINT_CAPABILITY);
+    expect(program.root?.capability).toBe(BLUEPRINT_CAPABILITY);
+  });
+
+  it("binds an inline artifact through the public gik:blueprint capability", () => {
+    const parent = createBlueprint({
+      ...blueprint("parent").payload,
+      cells: {
+        report: {
+          id: "report",
+          view: {
+            capability: "gik:blueprint",
+            bindings: { blueprint: { from: "runtime.reportBlueprint" } },
+          },
+        },
+      },
+      projections: { presentation: { roots: ["report"] } },
+    });
+
+    const program = composeCellProgram(
+      { cells: parent.payload.cells ?? {}, projections: parent.payload.projections },
+      compileCellTopology("parent", parent.payload.cells ?? {}),
+    );
+
+    expect(program.root?.capability).toBe("gik:blueprint");
+    expect(program.root?.edges?.read?.blueprint).toBe("runtime.reportBlueprint");
+  });
+
+  it("resolves a direct inline artifact without consulting the host registry", async () => {
+    const child = blueprint("generated-report");
+    const registry = {
+      resolveArtifact: vi.fn(),
+      resolve: vi.fn(() => { throw new Error("inline artifact must not use the catalog"); }),
+    };
+
+    const resolved = await resolveHostedBlueprint({ inline: child }, registry, {
+      parentBlueprintId: "parent",
+      parentInstanceId: "parent-instance",
+      cellId: "report",
+    });
+
+    expect(resolved.blueprint).toBe(child);
+    expect(resolved.reference).toMatchObject({ id: "generated-report" });
+    expect(registry.resolve).not.toHaveBeenCalled();
   });
 
   it("lowers Cell sources into evaluator nodes and scopes run-state expressions", () => {

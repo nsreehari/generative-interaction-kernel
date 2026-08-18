@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createSampleCatalogBlueprintRegistry } from "../catalog/blueprint-catalog";
 import {
   createSeededStorageConnection,
+  storageSeedValue,
   storageSeedValues,
   type StorageSeedCatalog,
 } from "../catalog/storage-seed";
@@ -14,8 +15,11 @@ import { createSampleServiceKindRegistry } from "../service-kinds";
 import incidentAssetSeed from "../blueprints/incident-analysis-assets/seed-data/catalog.json" with { type: "json" };
 
 const seed = incidentAssetSeed as StorageSeedCatalog;
-const incidentSourceDocuments = storageSeedValues<{ id: string; label: string; content: string }>(seed, "source:");
-const incidentCachedAssets = storageSeedValues<Record<string, Json>>(seed, "seed-asset:");
+const incidentSourceDocuments = storageSeedValues<{
+  id: string;
+  label: string;
+  content: string;
+}>(seed, "source:");
 
 const operationNames = [
   "list-sources",
@@ -33,7 +37,7 @@ function createHost() {
     createMemoryStorageRef(`${seed.namespace}:${crypto.randomUUID()}`),
     seed,
   );
-  const nativeOptions = { durableStorageConnections: { "incident-runtime-cache": connection } };
+  const nativeOptions = { durableStorageConnections: { "incident-assets-store": connection } };
   const declarations: Record<string, ServiceDeclaration> = {
     assets: {
       blueprint: { $ref: "blueprint:incident-analysis-assets@1.0.0" },
@@ -91,16 +95,16 @@ describe("incident asset Blueprint service", () => {
     })).toEqual({
       assets: [{
         source_report_key: "password-spray-mailbox",
-        analysis_key: "blueprint:incident-report-explorer-2@1.0.0",
+        analysis_key: "incident-intelligence/glance-focused-v1",
       }, {
         source_report_key: "password-spray-mailbox",
-        analysis_key: "incident-intelligence/glance-focused-v1",
+        analysis_key: "semantic",
       }],
     });
     expect(await invoke(host, "get-asset", {
       source_report_key: "password-spray-mailbox",
-      analysis_key: "blueprint:incident-report-explorer-2@1.0.0",
-    })).toEqual(incidentCachedAssets[0]);
+      analysis_key: "semantic",
+    })).toEqual(storageSeedValue(seed, "seed-asset:password-spray-mailbox/semantic"));
   });
 
   it("writes, prefers, deletes, and clears runtime-authored assets", async () => {
@@ -109,16 +113,16 @@ describe("incident asset Blueprint service", () => {
       source_report_key: "password-spray-mailbox",
       analysis_key: "blueprint:test-analyzer@1.0.0",
     };
-    const cached_analysis_envelope = {
+    const saved_report_envelope = {
       arbitrary: { nested: ["analyzer", "owned", "content"] },
       version: 17,
     };
-    expect(await invoke(host, "put-asset", { ...coordinates, cached_analysis_envelope }))
-      .toEqual(cached_analysis_envelope);
-    expect(await invoke(host, "get-asset", coordinates)).toEqual(cached_analysis_envelope);
+    expect(await invoke(host, "put-asset", { ...coordinates, saved_report_envelope }))
+      .toEqual(saved_report_envelope);
+    expect(await invoke(host, "get-asset", coordinates)).toEqual(saved_report_envelope);
     expect(await invoke(host, "delete-asset", coordinates)).toEqual({ deleted: true });
     expect(await invoke(host, "get-asset", coordinates)).toBeNull();
-    await invoke(host, "put-asset", { ...coordinates, cached_analysis_envelope });
+    await invoke(host, "put-asset", { ...coordinates, saved_report_envelope });
     expect(await invoke(host, "clear-assets")).toEqual({ cleared: 1 });
     expect(await invoke(host, "get-asset", coordinates)).toBeNull();
   });
