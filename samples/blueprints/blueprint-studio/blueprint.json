@@ -29,13 +29,21 @@
                 "capability": "primitive:container",
                 "props": {
                   "variant": "row",
-                  "gap": "m",
-                  "fill": true,
+                  "gap": "l",
+                  "align": "start",
                   "fullWidth": true,
-                  "ariaLabel": "Blueprint Studio",
+                  "ariaLabel": "Blueprint Studio"
+                }
+              },
+              "blueprint-list-region": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "column",
+                  "gap": "s",
+                  "ariaLabel": "Blueprint catalog",
                   "style": {
-                    "gridTemplateColumns": "minmax(16rem, 22rem) minmax(0, 1fr)",
-                    "alignItems": "start"
+                    "flex": "0 0 22rem",
+                    "width": "22rem"
                   }
                 }
               },
@@ -79,7 +87,8 @@
                 "props": {
                   "variant": "column",
                   "gap": "m",
-                  "fill": true,
+                  "grow": true,
+                  "fullWidth": true,
                   "ariaLabel": "Selected Blueprint"
                 }
               },
@@ -112,8 +121,7 @@
                       }
                     }
                   }
-                ],
-                "visibility": "studio.selected != null"
+                ]
               },
               "blueprint-overview-pane": {
                 "capability": "primitive:markdown",
@@ -176,7 +184,7 @@
               "roots": ["studio-root"],
               "placements": [
                 {
-                  "cell": "blueprint-list",
+                  "cell": "blueprint-list-region",
                   "parent": "studio-root",
                   "slot": "children",
                   "order": 0
@@ -186,6 +194,12 @@
                   "parent": "studio-root",
                   "slot": "children",
                   "order": 1
+                },
+                {
+                  "cell": "blueprint-list",
+                  "parent": "blueprint-list-region",
+                  "slot": "children",
+                  "order": 0
                 },
                 {
                   "cell": "individual-blueprint-tabs",
@@ -346,6 +360,10 @@
       "studio-root": {
         "id": "studio-root"
       },
+      "blueprint-list-region": {
+        "id": "blueprint-list-region",
+        "kind": "blueprint-list-region"
+      },
       "blueprint-list": {
         "id": "blueprint-list",
         "kind": "blueprint-list",
@@ -454,6 +472,13 @@
       "individual-blueprint-tabs": {
         "id": "individual-blueprint-tabs",
         "kind": "blueprint-tabs",
+        "inputs": [
+          {
+            "token": "selectedBlueprintId",
+            "as": "selectedBlueprintId",
+            "required": true
+          }
+        ],
         "behavior": {
           "on": {
             "select": [

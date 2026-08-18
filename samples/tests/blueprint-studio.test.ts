@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedNode } from "@gik/kernel";
 
 import { createNodeHost } from "../apps/node-host/service";
 import {
@@ -19,6 +20,16 @@ async function eventually(assertion: () => void | Promise<void>): Promise<void> 
     }
   }
   throw lastError;
+}
+
+function findNode(node: ResolvedNode | undefined, id: string): ResolvedNode | undefined {
+  if (!node) return undefined;
+  if (node.id === id) return node;
+  for (const child of node.children ?? []) {
+    const found = findNode(child, id);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 describe("Blueprint Studio read shell", () => {
@@ -68,7 +79,13 @@ describe("Blueprint Studio read shell", () => {
     expect(representation?.views?.["individual-blueprint"]).toEqual(
       expect.objectContaining({ capability: "primitive:container" }),
     );
+    expect(representation?.views?.["blueprint-list-region"]).toEqual(
+      expect.objectContaining({ capability: "primitive:container" }),
+    );
     expect(representation?.presentation?.placements).toEqual(expect.arrayContaining([
+      { cell: "blueprint-list-region", parent: "studio-root", slot: "children", order: 0 },
+      { cell: "individual-blueprint", parent: "studio-root", slot: "children", order: 1 },
+      { cell: "blueprint-list", parent: "blueprint-list-region", slot: "children", order: 0 },
       { cell: "individual-blueprint-tabs", parent: "individual-blueprint", slot: "children", order: 0 },
       { cell: "blueprint-overview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 0 },
       { cell: "blueprint-form-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 1 },
@@ -86,7 +103,7 @@ describe("Blueprint Studio read shell", () => {
     });
     try {
       await host.controlface.whenIdle();
-      await eventually(() => {
+      await eventually(async () => {
         expect(host.controlface.getState().studio).toMatchObject({
           selectedBlueprintId: "",
           selected: null,
@@ -101,7 +118,7 @@ describe("Blueprint Studio read shell", () => {
         payload: { values: ["portfolio-tracker-new"] },
       });
       await host.controlface.whenIdle();
-      await eventually(() => {
+      await eventually(async () => {
         expect(host.controlface.getState().studio).toMatchObject({
           selectedBlueprintId: "portfolio-tracker-new",
           selected: {
@@ -109,6 +126,11 @@ describe("Blueprint Studio read shell", () => {
             source: "repo",
             readonly: true,
           },
+        });
+        const tree = await host.controlface.getTree();
+        expect(findNode(tree, "individual-blueprint-tabs")).toMatchObject({
+          capability: "fluent:tab-bar",
+          visible: true,
         });
       });
       expect([...host.hostedControlFaces().values()]).toHaveLength(0);
