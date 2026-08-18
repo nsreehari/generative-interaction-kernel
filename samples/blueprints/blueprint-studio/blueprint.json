@@ -70,7 +70,7 @@
                     "from": "studio.blueprintOptions"
                   },
                   "selectedValues": {
-                    "expression": "studio.selectedId != '' ? [studio.selectedId] : []"
+                    "expression": "studio.selectedBlueprintId != '' ? [studio.selectedBlueprintId] : []"
                   }
                 }
               },
@@ -294,7 +294,7 @@
       },
       "state": {
         "studio": {
-          "selectedId": "",
+          "selectedBlueprintId": "",
           "activeTab": "overview",
           "blueprints": [],
           "blueprintOptions": [],
@@ -313,8 +313,8 @@
         "systemInputs": ["numSourcesRunning"],
         "inputs": [
           {
-            "token": "studio.selectedId",
-            "as": "selection"
+            "token": "studio.selectedBlueprintId",
+            "as": "selectedBlueprintId"
           }
         ],
         "sources": [
@@ -345,9 +345,9 @@
         ],
         "outputs": [
           {
-            "token": "selected_bp",
-            "from": "inputs.selection",
-            "when": "$exists(inputs.selection) and $length(inputs.selection) > 0"
+            "token": "selectedBlueprintId",
+            "from": "inputs.selectedBlueprintId",
+            "when": "$exists(inputs.selectedBlueprintId) and $length(inputs.selectedBlueprintId) > 0"
           }
         ],
         "behavior": {
@@ -355,7 +355,7 @@
             "select": [
               {
                 "do": "assign",
-                "target": "studio.selectedId",
+                "target": "studio.selectedBlueprintId",
                 "args": {
                   "from": "$event.values[0]"
                 }
@@ -376,8 +376,8 @@
         "kind": "individual-blueprint",
         "inputs": [
           {
-            "token": "selected_bp",
-            "as": "selectedBp",
+            "token": "selectedBlueprintId",
+            "as": "selectedBlueprintId",
             "required": true
           }
         ],
@@ -389,7 +389,7 @@
             "contract": "blueprint-studio-record/v1",
             "input": {
               "kind": "jsonata",
-              "expr": "{'id':inputs.selectedBp}"
+              "expr": "{'id':inputs.selectedBlueprintId}"
             },
             "output": {
               "kind": "jsonata",

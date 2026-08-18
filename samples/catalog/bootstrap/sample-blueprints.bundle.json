@@ -574,7 +574,7 @@
                         "from": "studio.blueprintOptions"
                       },
                       "selectedValues": {
-                        "expression": "studio.selectedId != '' ? [studio.selectedId] : []"
+                        "expression": "studio.selectedBlueprintId != '' ? [studio.selectedBlueprintId] : []"
                       }
                     }
                   },
@@ -831,7 +831,7 @@
           },
           "state": {
             "studio": {
-              "selectedId": "",
+              "selectedBlueprintId": "",
               "activeTab": "overview",
               "blueprints": [],
               "blueprintOptions": [],
@@ -852,8 +852,8 @@
             ],
             "inputs": [
               {
-                "token": "studio.selectedId",
-                "as": "selection"
+                "token": "studio.selectedBlueprintId",
+                "as": "selectedBlueprintId"
               }
             ],
             "sources": [
@@ -888,9 +888,9 @@
             ],
             "outputs": [
               {
-                "token": "selected_bp",
-                "from": "inputs.selection",
-                "when": "$exists(inputs.selection) and $length(inputs.selection) > 0"
+                "token": "selectedBlueprintId",
+                "from": "inputs.selectedBlueprintId",
+                "when": "$exists(inputs.selectedBlueprintId) and $length(inputs.selectedBlueprintId) > 0"
               }
             ],
             "behavior": {
@@ -898,7 +898,7 @@
                 "select": [
                   {
                     "do": "assign",
-                    "target": "studio.selectedId",
+                    "target": "studio.selectedBlueprintId",
                     "args": {
                       "from": "$event.values[0]"
                     }
@@ -919,8 +919,8 @@
             "kind": "individual-blueprint",
             "inputs": [
               {
-                "token": "selected_bp",
-                "as": "selectedBp",
+                "token": "selectedBlueprintId",
+                "as": "selectedBlueprintId",
                 "required": true
               }
             ],
@@ -932,7 +932,7 @@
                 "contract": "blueprint-studio-record/v1",
                 "input": {
                   "kind": "jsonata",
-                  "expr": "{'id':inputs.selectedBp}"
+                  "expr": "{'id':inputs.selectedBlueprintId}"
                 },
                 "output": {
                   "kind": "jsonata",
@@ -3444,7 +3444,7 @@
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'componentCatalog':{'mode':'rich-components','semanticSections':['fact','judgment','risk','uncertainty'],'runtimeCapabilities':['primitive:markdown','primitive:container','primitive:datetime','fluent:text','fluent:list','fluent:table'],'capabilities':{'primitive:markdown':{'dataProp':'value','bindings':{'value':'string containing Markdown'}},'primitive:container':{'slots':['children'],'props':{'variant':['row','column','stack','flex'],'gap':['none','xs','s','m','l','xl'],'align':['start','center','end','stretch'],'justify':['start','center','end','space-between','space-around','space-evenly']}},'primitive:datetime':{'dataProp':'value','bindings':{'value':'ISO timestamp string or epoch number'},'props':{'variant':['date','time','timestamp'],'hourFormat':['24','12'],'showSeconds':'boolean','showTimeZone':'boolean'}},'fluent:text':{'dataProp':'value','bindings':{'value':'plain string'},'props':{'as':['span','p','div','label','h1','h2','h3','h4','h5','h6'],'variant':['body','caption','subtitle','title','display'],'block':'boolean'}},'fluent:list':{'dataProp':'items','bindings':{'items':'array of {value:string,label:string,disabled?:boolean}'},'props':{'variant':['standard','selectable']}},'fluent:table':{'dataProp':'rows','bindings':{'rows':'array of {id:string,cells:object}'},'props':{'columns':'array of {id:string,label:string}','variant':['standard','compact'],'size':['extra-small','small','medium']}}}}}"
+                          "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'allowedCapabilities':['primitive:markdown','primitive:container','primitive:datetime','fluent:text','fluent:list','fluent:table']}"
                         },
                         "output": {
                           "kind": "jsonata",
@@ -3484,7 +3484,7 @@
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'componentCatalog':{'mode':'rich-components','semanticSections':['fact','judgment','risk','uncertainty'],'runtimeCapabilities':['primitive:markdown','primitive:container','primitive:datetime','fluent:text','fluent:list','fluent:table'],'capabilities':{'primitive:markdown':{'dataProp':'value','bindings':{'value':'string containing Markdown'}},'primitive:container':{'slots':['children'],'props':{'variant':['row','column','stack','flex'],'gap':['none','xs','s','m','l','xl'],'align':['start','center','end','stretch'],'justify':['start','center','end','space-between','space-around','space-evenly']}},'primitive:datetime':{'dataProp':'value','bindings':{'value':'ISO timestamp string or epoch number'},'props':{'variant':['date','time','timestamp'],'hourFormat':['24','12'],'showSeconds':'boolean','showTimeZone':'boolean'}},'fluent:text':{'dataProp':'value','bindings':{'value':'plain string'},'props':{'as':['span','p','div','label','h1','h2','h3','h4','h5','h6'],'variant':['body','caption','subtitle','title','display'],'block':'boolean'}},'fluent:list':{'dataProp':'items','bindings':{'items':'array of {value:string,label:string,disabled?:boolean}'},'props':{'variant':['standard','selectable']}},'fluent:table':{'dataProp':'rows','bindings':{'rows':'array of {id:string,cells:object}'},'props':{'columns':'array of {id:string,label:string}','variant':['standard','compact'],'size':['extra-small','small','medium']}}}}}"
+                          "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'allowedCapabilities':['primitive:markdown','primitive:container','primitive:datetime','fluent:text','fluent:list','fluent:table']}"
                         },
                         "output": {
                           "kind": "jsonata",
@@ -4537,7 +4537,7 @@
                 "request": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "{'message':'Create a self-contained rich GIK portfolio intelligence report Blueprint from this supplied data. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Component catalog JSON: ' & $string(input.componentCatalog),'instructions':'Return only the complete Blueprint JSON artifact, without Markdown fences or commentary. Choose the report Cells and declarative layout that best communicate the supplied data, but use only capabilities in the supplied component catalog and obey their bindings, props, and slots. Use exactly the report-semantic/semantic-report-model and runtime-document/runtime-document tiers. Use only supplied portfolio facts; distinguish judgments and uncertainty; do not imply external research. Do not add services, sources, effects, behavior, actions, controls, native code, Blueprint references, or host mutation instructions.','maxOutputTokens':8000}"
+                    "expr": "($scaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'as-of':{'capability':'primitive:datetime','props':{'variant':'timestamp'},'bindings':{'value':{'from':'report.asOf'}}},'summary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.summaryMarkdown'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'as-of','parent':'report-root','slot':'children','order':1},{'cell':'summary','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}},'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:datetime':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown','container','datetime']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','asOf':'','summaryMarkdown':'','positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'as-of':{'id':'as-of','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; {'message':'Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Allowed capabilities: ' & $string(input.allowedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':'Return only the completed Blueprint JSON artifact. Call describe with kind capability and the allowed capability IDs before filling the scaffold. Use only supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.','allowedCapabilities':input.allowedCapabilities,'maxOutputTokens':8000})"
                   }
                 },
                 "response": {
@@ -4884,9 +4884,9 @@
                     },
                     {
                       "kind": "jsonata",
-                      "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
-                      "message": "Rich portfolio report must contain the semantic and runtime-document tiers",
-                      "code": "rich-report-tiers"
+                      "expr": "($allowed := $request.allowedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; $count($allowed) = 6 and 'primitive:markdown' in $allowed and 'primitive:container' in $allowed and 'primitive:datetime' in $allowed and 'fluent:text' in $allowed and 'fluent:list' in $allowed and 'fluent:table' in $allowed and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].representations[0].id = 'rich-report' and data.payload.recipes[0].fallback = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.`as-of`.capability = 'primitive:datetime' and $views.summary.capability = 'primitive:markdown' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 6 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.asOf) > 0 and $length($state.summaryMarkdown) > 0 and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')",
+                      "message": "Rich portfolio report must preserve the authorized report scaffold and fill every report slot",
+                      "code": "rich-report-scaffold"
                     }
                   ]
                 },
@@ -4919,7 +4919,7 @@
                 "request": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "{'message':'Create a self-contained rich GIK portfolio intelligence report Blueprint from this supplied data. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Component catalog JSON: ' & $string(input.componentCatalog),'instructions':'Return only the complete Blueprint JSON artifact, without Markdown fences or commentary. Choose the report Cells and declarative layout that best communicate the supplied data, but use only capabilities in the supplied component catalog and obey their bindings, props, and slots. Use exactly the report-semantic/semantic-report-model and runtime-document/runtime-document tiers. Use only supplied portfolio facts; distinguish judgments and uncertainty; do not imply external research. Do not add services, sources, effects, behavior, actions, controls, native code, Blueprint references, or host mutation instructions.'}"
+                    "expr": "($scaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'as-of':{'capability':'primitive:datetime','props':{'variant':'timestamp'},'bindings':{'value':{'from':'report.asOf'}}},'summary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.summaryMarkdown'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'as-of','parent':'report-root','slot':'children','order':1},{'cell':'summary','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}},'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:datetime':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown','container','datetime']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','asOf':'','summaryMarkdown':'','positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'as-of':{'id':'as-of','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; {'message':'Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Allowed capabilities: ' & $string(input.allowedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':'Return only the completed Blueprint JSON artifact. Call describe with kind capability and the allowed capability IDs before filling the scaffold. Use only supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.','allowedCapabilities':input.allowedCapabilities})"
                   }
                 },
                 "response": {
@@ -5266,9 +5266,9 @@
                     },
                     {
                       "kind": "jsonata",
-                      "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
-                      "message": "Rich portfolio report must contain the semantic and runtime-document tiers",
-                      "code": "rich-report-tiers"
+                      "expr": "($allowed := $request.allowedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; $count($allowed) = 6 and 'primitive:markdown' in $allowed and 'primitive:container' in $allowed and 'primitive:datetime' in $allowed and 'fluent:text' in $allowed and 'fluent:list' in $allowed and 'fluent:table' in $allowed and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].representations[0].id = 'rich-report' and data.payload.recipes[0].fallback = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.`as-of`.capability = 'primitive:datetime' and $views.summary.capability = 'primitive:markdown' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 6 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.asOf) > 0 and $length($state.summaryMarkdown) > 0 and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')",
+                      "message": "Rich portfolio report must preserve the authorized report scaffold and fill every report slot",
+                      "code": "rich-report-scaffold"
                     }
                   ]
                 },
@@ -12218,7 +12218,7 @@
                                 "from": "studio.blueprintOptions"
                               },
                               "selectedValues": {
-                                "expression": "studio.selectedId != '' ? [studio.selectedId] : []"
+                                "expression": "studio.selectedBlueprintId != '' ? [studio.selectedBlueprintId] : []"
                               }
                             }
                           },
@@ -12475,7 +12475,7 @@
                   },
                   "state": {
                     "studio": {
-                      "selectedId": "",
+                      "selectedBlueprintId": "",
                       "activeTab": "overview",
                       "blueprints": [],
                       "blueprintOptions": [],
@@ -12496,8 +12496,8 @@
                     ],
                     "inputs": [
                       {
-                        "token": "studio.selectedId",
-                        "as": "selection"
+                        "token": "studio.selectedBlueprintId",
+                        "as": "selectedBlueprintId"
                       }
                     ],
                     "sources": [
@@ -12532,9 +12532,9 @@
                     ],
                     "outputs": [
                       {
-                        "token": "selected_bp",
-                        "from": "inputs.selection",
-                        "when": "$exists(inputs.selection) and $length(inputs.selection) > 0"
+                        "token": "selectedBlueprintId",
+                        "from": "inputs.selectedBlueprintId",
+                        "when": "$exists(inputs.selectedBlueprintId) and $length(inputs.selectedBlueprintId) > 0"
                       }
                     ],
                     "behavior": {
@@ -12542,7 +12542,7 @@
                         "select": [
                           {
                             "do": "assign",
-                            "target": "studio.selectedId",
+                            "target": "studio.selectedBlueprintId",
                             "args": {
                               "from": "$event.values[0]"
                             }
@@ -12563,8 +12563,8 @@
                     "kind": "individual-blueprint",
                     "inputs": [
                       {
-                        "token": "selected_bp",
-                        "as": "selectedBp",
+                        "token": "selectedBlueprintId",
+                        "as": "selectedBlueprintId",
                         "required": true
                       }
                     ],
@@ -12576,7 +12576,7 @@
                         "contract": "blueprint-studio-record/v1",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'id':inputs.selectedBp}"
+                          "expr": "{'id':inputs.selectedBlueprintId}"
                         },
                         "output": {
                           "kind": "jsonata",
@@ -15143,7 +15143,7 @@
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'componentCatalog':{'mode':'rich-components','semanticSections':['fact','judgment','risk','uncertainty'],'runtimeCapabilities':['primitive:markdown','primitive:container','primitive:datetime','fluent:text','fluent:list','fluent:table'],'capabilities':{'primitive:markdown':{'dataProp':'value','bindings':{'value':'string containing Markdown'}},'primitive:container':{'slots':['children'],'props':{'variant':['row','column','stack','flex'],'gap':['none','xs','s','m','l','xl'],'align':['start','center','end','stretch'],'justify':['start','center','end','space-between','space-around','space-evenly']}},'primitive:datetime':{'dataProp':'value','bindings':{'value':'ISO timestamp string or epoch number'},'props':{'variant':['date','time','timestamp'],'hourFormat':['24','12'],'showSeconds':'boolean','showTimeZone':'boolean'}},'fluent:text':{'dataProp':'value','bindings':{'value':'plain string'},'props':{'as':['span','p','div','label','h1','h2','h3','h4','h5','h6'],'variant':['body','caption','subtitle','title','display'],'block':'boolean'}},'fluent:list':{'dataProp':'items','bindings':{'items':'array of {value:string,label:string,disabled?:boolean}'},'props':{'variant':['standard','selectable']}},'fluent:table':{'dataProp':'rows','bindings':{'rows':'array of {id:string,cells:object}'},'props':{'columns':'array of {id:string,label:string}','variant':['standard','compact'],'size':['extra-small','small','medium']}}}}}"
+                                  "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'allowedCapabilities':['primitive:markdown','primitive:container','primitive:datetime','fluent:text','fluent:list','fluent:table']}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
@@ -15183,7 +15183,7 @@
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'componentCatalog':{'mode':'rich-components','semanticSections':['fact','judgment','risk','uncertainty'],'runtimeCapabilities':['primitive:markdown','primitive:container','primitive:datetime','fluent:text','fluent:list','fluent:table'],'capabilities':{'primitive:markdown':{'dataProp':'value','bindings':{'value':'string containing Markdown'}},'primitive:container':{'slots':['children'],'props':{'variant':['row','column','stack','flex'],'gap':['none','xs','s','m','l','xl'],'align':['start','center','end','stretch'],'justify':['start','center','end','space-between','space-around','space-evenly']}},'primitive:datetime':{'dataProp':'value','bindings':{'value':'ISO timestamp string or epoch number'},'props':{'variant':['date','time','timestamp'],'hourFormat':['24','12'],'showSeconds':'boolean','showTimeZone':'boolean'}},'fluent:text':{'dataProp':'value','bindings':{'value':'plain string'},'props':{'as':['span','p','div','label','h1','h2','h3','h4','h5','h6'],'variant':['body','caption','subtitle','title','display'],'block':'boolean'}},'fluent:list':{'dataProp':'items','bindings':{'items':'array of {value:string,label:string,disabled?:boolean}'},'props':{'variant':['standard','selectable']}},'fluent:table':{'dataProp':'rows','bindings':{'rows':'array of {id:string,cells:object}'},'props':{'columns':'array of {id:string,label:string}','variant':['standard','compact'],'size':['extra-small','small','medium']}}}}}"
+                                  "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null,'allowedCapabilities':['primitive:markdown','primitive:container','primitive:datetime','fluent:text','fluent:list','fluent:table']}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
@@ -16236,7 +16236,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "{'message':'Create a self-contained rich GIK portfolio intelligence report Blueprint from this supplied data. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Component catalog JSON: ' & $string(input.componentCatalog),'instructions':'Return only the complete Blueprint JSON artifact, without Markdown fences or commentary. Choose the report Cells and declarative layout that best communicate the supplied data, but use only capabilities in the supplied component catalog and obey their bindings, props, and slots. Use exactly the report-semantic/semantic-report-model and runtime-document/runtime-document tiers. Use only supplied portfolio facts; distinguish judgments and uncertainty; do not imply external research. Do not add services, sources, effects, behavior, actions, controls, native code, Blueprint references, or host mutation instructions.','maxOutputTokens':8000}"
+                            "expr": "($scaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'as-of':{'capability':'primitive:datetime','props':{'variant':'timestamp'},'bindings':{'value':{'from':'report.asOf'}}},'summary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.summaryMarkdown'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'as-of','parent':'report-root','slot':'children','order':1},{'cell':'summary','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}},'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:datetime':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown','container','datetime']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','asOf':'','summaryMarkdown':'','positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'as-of':{'id':'as-of','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; {'message':'Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Allowed capabilities: ' & $string(input.allowedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':'Return only the completed Blueprint JSON artifact. Call describe with kind capability and the allowed capability IDs before filling the scaffold. Use only supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.','allowedCapabilities':input.allowedCapabilities,'maxOutputTokens':8000})"
                           }
                         },
                         "response": {
@@ -16583,9 +16583,9 @@
                             },
                             {
                               "kind": "jsonata",
-                              "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
-                              "message": "Rich portfolio report must contain the semantic and runtime-document tiers",
-                              "code": "rich-report-tiers"
+                              "expr": "($allowed := $request.allowedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; $count($allowed) = 6 and 'primitive:markdown' in $allowed and 'primitive:container' in $allowed and 'primitive:datetime' in $allowed and 'fluent:text' in $allowed and 'fluent:list' in $allowed and 'fluent:table' in $allowed and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].representations[0].id = 'rich-report' and data.payload.recipes[0].fallback = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.`as-of`.capability = 'primitive:datetime' and $views.summary.capability = 'primitive:markdown' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 6 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.asOf) > 0 and $length($state.summaryMarkdown) > 0 and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')",
+                              "message": "Rich portfolio report must preserve the authorized report scaffold and fill every report slot",
+                              "code": "rich-report-scaffold"
                             }
                           ]
                         },
@@ -16618,7 +16618,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "{'message':'Create a self-contained rich GIK portfolio intelligence report Blueprint from this supplied data. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Component catalog JSON: ' & $string(input.componentCatalog),'instructions':'Return only the complete Blueprint JSON artifact, without Markdown fences or commentary. Choose the report Cells and declarative layout that best communicate the supplied data, but use only capabilities in the supplied component catalog and obey their bindings, props, and slots. Use exactly the report-semantic/semantic-report-model and runtime-document/runtime-document tiers. Use only supplied portfolio facts; distinguish judgments and uncertainty; do not imply external research. Do not add services, sources, effects, behavior, actions, controls, native code, Blueprint references, or host mutation instructions.'}"
+                            "expr": "($scaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'as-of':{'capability':'primitive:datetime','props':{'variant':'timestamp'},'bindings':{'value':{'from':'report.asOf'}}},'summary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.summaryMarkdown'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'as-of','parent':'report-root','slot':'children','order':1},{'cell':'summary','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}},'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:datetime':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown','container','datetime']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','asOf':'','summaryMarkdown':'','positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'as-of':{'id':'as-of','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; {'message':'Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Allowed capabilities: ' & $string(input.allowedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':'Return only the completed Blueprint JSON artifact. Call describe with kind capability and the allowed capability IDs before filling the scaffold. Use only supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.','allowedCapabilities':input.allowedCapabilities})"
                           }
                         },
                         "response": {
@@ -16965,9 +16965,9 @@
                             },
                             {
                               "kind": "jsonata",
-                              "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
-                              "message": "Rich portfolio report must contain the semantic and runtime-document tiers",
-                              "code": "rich-report-tiers"
+                              "expr": "($allowed := $request.allowedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; $count($allowed) = 6 and 'primitive:markdown' in $allowed and 'primitive:container' in $allowed and 'primitive:datetime' in $allowed and 'fluent:text' in $allowed and 'fluent:list' in $allowed and 'fluent:table' in $allowed and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].representations[0].id = 'rich-report' and data.payload.recipes[0].fallback = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.`as-of`.capability = 'primitive:datetime' and $views.summary.capability = 'primitive:markdown' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 6 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.asOf) > 0 and $length($state.summaryMarkdown) > 0 and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')",
+                              "message": "Rich portfolio report must preserve the authorized report scaffold and fill every report slot",
+                              "code": "rich-report-scaffold"
                             }
                           ]
                         },
@@ -17265,6 +17265,6 @@
       ]
     }
   },
-  "bundleVersion": "d03149ea6403638b",
-  "digest": "sha256:d03149ea6403638b474ffe7d94bd18eaf1eded75bced82f8d4032f5567b786fd"
+  "bundleVersion": "19e1b6271d538da5",
+  "digest": "sha256:19e1b6271d538da5a2a3e5a3d631c67eaf9ccd6e1e59b8a6f5d7c12ea48321db"
 }
