@@ -8,7 +8,8 @@
     "properties": {
       "endpoint": { "type": "string", "minLength": 1 },
       "agent": { "type": "string", "minLength": 1 },
-      "credentialRef": { "type": "string", "minLength": 1 }
+      "credentialRef": { "type": "string", "minLength": 1 },
+      "responseMode": { "type": "string", "enum": ["text", "json"] }
     },
     "required": ["endpoint", "credentialRef"]
   },

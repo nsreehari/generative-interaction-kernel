@@ -285,6 +285,15 @@ export class DefaultServiceHost implements ServiceHost {
   private resolve(effect: OrchestratorEffect): ResolvedOperation {
     const invoke = effect.kind === "invoke" ? effect.control.tool : undefined;
     if (!invoke) throw new Error(`Service host cannot handle '${effect.kind}' effects`);
+    if (effect.kind === "invoke" && effect.control.serviceRef) {
+      const serviceId = effect.control.serviceRef;
+      const declaration = this.declaration(serviceId);
+      const operation = declaration.operations[invoke];
+      if (!operation) {
+        throw new Error(`Blueprint service '${serviceId}' does not declare invoke '${invoke}'`);
+      }
+      return { serviceId, declaration, invoke, operation };
+    }
     for (const [serviceId, declaration] of Object.entries(this.options.declarations)) {
       const operation = declaration.operations[invoke];
       if (operation) return { serviceId, declaration, invoke, operation };

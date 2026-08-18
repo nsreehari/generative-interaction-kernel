@@ -47,3 +47,30 @@ test("Foundry declarations require host-authorized endpoints", async () => {
   assert.equal(report.ok, false);
   assert.match(report.errors?.join(" ") ?? "", /not authorized/);
 });
+
+test("Copilot declarations accept named agents and JSON responses", async () => {
+  const registry = createSampleServiceKindRegistry({
+    hostCapabilities: ["copilot-executor", "workspace-resolver"],
+    execute: async () => ({}),
+  });
+  const report = await registry.validate({
+    kind: "copilot-agent",
+    version: "1",
+    operations: {
+      requestIntelligence: {
+        operation: "chat",
+        contract: "portfolio-intelligence/v1",
+        settlement: { transform: { kind: "jsonata", expr: "{'outcome':'completed'}" } },
+      },
+    },
+    config: {
+      server: "http://127.0.0.1:7801/mcp",
+      model: "gpt-5.4",
+      workspaceRef: ".copilot-workspace",
+      agent: "Portfolio-Intelligence-Agent",
+      responseMode: "json",
+    },
+  });
+
+  assert.deepEqual(report, { ok: true });
+});

@@ -293,9 +293,7 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         assert.equal(
           (activeService?.config as Record<string, unknown>)?.agent,
           intelligenceModel === "semantic"
-            ? semantic === "rich-components"
-              ? "Portfolio-Intelligence-3-Agent"
-              : "Portfolio-Intelligence-2-Agent"
+            ? "Portfolio-Intelligence-3-Agent"
             : "Portfolio-Intelligence-Agent",
         );
       }
@@ -304,10 +302,21 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         intelligenceModel === "semantic" ? "gik:blueprint" : "primitive:markdown",
       );
       if (intelligenceModel === "semantic") {
-        assert.match(activeSource?.input?.expr ?? "", /componentCatalog/);
-        assert.match(activeSource?.input?.expr ?? "", new RegExp(`'mode':'${semantic}'`));
+        assert.match(
+          activeSource?.input?.expr ?? "",
+          /acceptedCapabilities/,
+        );
+        assert.match(activeSource?.input?.expr ?? "", /promptTemplate/);
         assert.equal(
           (activeSource?.input?.expr ?? "").includes("'fluent:table'"),
+          semantic === "rich-components",
+        );
+        assert.equal(
+          (activeSource?.input?.expr ?? "").includes("'primitive:markdown'"),
+          semantic === "simple-markdown",
+        );
+        assert.equal(
+          (activeSource?.input?.expr ?? "").includes("'primitive:chart'"),
           semantic === "rich-components",
         );
         const semanticOperation = Array.isArray(activeService?.operations)
@@ -336,7 +345,7 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           );
           assert.equal(
             semanticOperation?.response?.validators?.some(
-             (validator) => validator.code === "rich-report-capability-catalog",
+             (validator) => validator.code === "rich-report-scaffold",
             ),
             true,
           );
@@ -429,7 +438,11 @@ test("portfolio semantic presentation defaults to simple Markdown when omitted",
   const source = terminal.cells?.["portfolio-intelligence"].sources?.[1];
 
   assert.equal(source?.service, "portfolio-intelligence-2");
-  assert.match(source?.input?.expr ?? "", /'mode':'simple-markdown'/);
+  assert.match(source?.input?.expr ?? "", /'acceptedCapabilities':\['primitive:markdown'\]/);
+  assert.equal(
+    (terminal.services?.["portfolio-intelligence-2"]?.config as Record<string, unknown>)?.agent,
+    "Portfolio-Intelligence-3-Agent",
+  );
   assert.equal(terminal.cells?.["portfolio-intelligence"].view?.capability, "gik:blueprint");
 });
 
@@ -494,6 +507,11 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
 });
 
 test("portfolio rich semantic admission enforces its capability catalog", () => {
+  const listView = (from: string) => ({
+    capability: "fluent:list",
+    bindings: { items: { from } },
+  });
+  const cell = (id: string) => ({ id, kind: "semantic-report" });
   const richBlueprint: BlueprintArtifact = {
     gik: "0.1",
     type: "blueprint",
@@ -513,26 +531,53 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
         representations: [{
           id: "rich-report",
           views: {
-            root: { capability: "primitive:container", props: { variant: "column", gap: "m" } },
-            title: { capability: "fluent:text", bindings: { value: { from: "report.headline" } }, props: { as: "h1", variant: "title" } },
-            asOf: { capability: "primitive:datetime", bindings: { value: { from: "report.asOf" } }, props: { variant: "timestamp" } },
+            "report-root": { capability: "primitive:container", props: { variant: "column", gap: "m" } },
+            headline: { capability: "fluent:text", bindings: { value: { from: "report.headline" } }, props: { as: "h1", variant: "title", block: true } },
+            "as-of": { capability: "primitive:datetime", bindings: { value: { from: "report.asOf" } }, props: { variant: "timestamp" } },
+            summary: { capability: "fluent:text", bindings: { value: { from: "report.summary" } }, props: { block: true } },
+            allocation: {
+              capability: "primitive:chart",
+              bindings: { points: { from: "report.allocation" } },
+              props: {
+                variant: "standard",
+                spec: {
+                  kind: "bar",
+                  title: "Position market values",
+                  description: "Market value by supplied position",
+                  fields: { label: "ticker", value: "value" },
+                },
+              },
+            },
             positions: {
               capability: "fluent:table",
               bindings: { rows: { from: "report.positions" } },
               props: {
                 columns: [
                   { id: "ticker", label: "Ticker" },
+                  { id: "quantity", label: "Quantity" },
+                  { id: "price", label: "Price" },
                   { id: "value", label: "Value" },
+                  { id: "gainLoss", label: "Gain/loss" },
                 ],
               },
             },
+            facts: listView("report.facts"),
+            judgments: listView("report.judgments"),
+            risks: listView("report.risks"),
+            uncertainties: listView("report.uncertainties"),
           },
           presentation: {
-            roots: ["root"],
+            roots: ["report-root"],
             placements: [
-              { cell: "title", parent: "root", slot: "children", order: 0 },
-              { cell: "asOf", parent: "root", slot: "children", order: 1 },
-              { cell: "positions", parent: "root", slot: "children", order: 2 },
+              { cell: "headline", parent: "report-root", slot: "children", order: 0 },
+              { cell: "as-of", parent: "report-root", slot: "children", order: 1 },
+              { cell: "summary", parent: "report-root", slot: "children", order: 2 },
+              { cell: "allocation", parent: "report-root", slot: "children", order: 3 },
+              { cell: "positions", parent: "report-root", slot: "children", order: 4 },
+              { cell: "facts", parent: "report-root", slot: "children", order: 5 },
+              { cell: "judgments", parent: "report-root", slot: "children", order: 6 },
+              { cell: "risks", parent: "report-root", slot: "children", order: 7 },
+              { cell: "uncertainties", parent: "report-root", slot: "children", order: 8 },
             ],
           },
         }],
@@ -545,28 +590,42 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
         capabilities: {
           "primitive:container": { propsSchema: { type: "object", additionalProperties: true }, slots: ["children"] },
           "primitive:datetime": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "value" },
+          "primitive:chart": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "points" },
           "fluent:text": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "value" },
+          "fluent:list": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "items" },
           "fluent:table": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "rows" },
         },
         externals: {
           projectionViews: {
-            primitive: { from: "primitive", use: ["container", "datetime"] },
-            fluent: { from: "fluent", use: ["text", "table"] },
+            primitive: { from: "primitive", use: ["container", "datetime", "chart"] },
+            fluent: { from: "fluent", use: ["text", "list", "table"] },
           },
         },
         state: {
           report: {
             headline: "Portfolio snapshot",
             asOf: "2026-08-18T00:00:00Z",
+            summary: "Supplied portfolio facts only.",
+            allocation: [{ ticker: "AAPL", value: 425.86 }],
             positions: [{ id: "AAPL", cells: { ticker: "AAPL", value: 425.86 } }],
+            facts: [{ value: "market-value", label: "Market value is $1,499.29." }],
+            judgments: [{ value: "concentration", label: "MSFT is the larger position." }],
+            risks: [{ value: "two-position-risk", label: "The supplied portfolio has two positions." }],
+            uncertainties: [{ value: "profile-missing", label: "No investor profile was supplied." }],
           },
         },
       },
       cells: {
-        root: { id: "root", kind: "semantic-report" },
-        title: { id: "title", kind: "semantic-report" },
-        asOf: { id: "asOf", kind: "semantic-report" },
-        positions: { id: "positions", kind: "semantic-report" },
+        "report-root": cell("report-root"),
+        headline: cell("headline"),
+        "as-of": cell("as-of"),
+        summary: cell("summary"),
+        allocation: cell("allocation"),
+        positions: cell("positions"),
+        facts: cell("facts"),
+        judgments: cell("judgments"),
+        risks: cell("risks"),
+        uncertainties: cell("uncertainties"),
       },
     },
   };
@@ -574,10 +633,24 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   const validators = portfolio.payload.services?.["portfolio-intelligence-3"]
     ?.operations.requestIntelligence2.response?.validators ?? [];
 
-  assert.equal(runDeclarativeValidators(validators, richBlueprint).ok, true);
+  const validatorOptions = {
+    bindings: {
+      request: {
+        acceptedCapabilities: [
+          "primitive:container",
+          "primitive:datetime",
+          "primitive:chart",
+          "fluent:text",
+          "fluent:list",
+          "fluent:table",
+        ],
+      },
+    },
+  };
+  assert.equal(runDeclarativeValidators(validators, richBlueprint, validatorOptions).ok, true);
   assert.equal(
     materializeBlueprint({ blueprint: richBlueprint }).payload.terminalBlueprint
-      .payload.cells?.root.view?.capability,
+      .payload.cells?.["report-root"].view?.capability,
     "primitive:container",
   );
 
@@ -585,8 +658,8 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   forbidden.payload.runtime.capabilities["primitive:alert"] = {
     propsSchema: { type: "object", additionalProperties: true },
   };
-  forbidden.payload.recipes[0].representations[0].views.title.capability = "primitive:alert";
-  const report = runDeclarativeValidators(validators, forbidden);
+  forbidden.payload.recipes[0].representations[0].views.headline.capability = "primitive:alert";
+  const report = runDeclarativeValidators(validators, forbidden, validatorOptions);
   assert.equal(report.ok, false);
   assert.equal(
     report.errors.some((error) => error.code === "rich-report-capability-catalog"),

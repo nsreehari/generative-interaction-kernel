@@ -245,6 +245,7 @@ export interface EmitAction {
 
 export interface InvokeControl {
   tool: string;
+  serviceRef?: string;
   responseSchema?: Record<string, Json>;
   sourceId?: string;
   sourceCellId?: string;

@@ -465,6 +465,7 @@ export function createCellGraphNodeExecutor(state: StateModel): GraphNodeExecuto
         node: node.id,
         control: {
           tool: source.operation,
+          serviceRef: source.service,
           sourceId: source.id,
           sourceCellId: cellId,
           sourceInputs,

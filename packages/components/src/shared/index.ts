@@ -1,10 +1,7 @@
 export * from "./definition";
+export * from "./agent-facing";
 export {
   createAgentFacingCapabilityCatalog,
-  mergeAgentFacingCapabilityCatalogs,
-  type AgentFacingCapabilityCatalog,
-  type AgentFacingCapabilityDetail,
-  type AgentFacingCapabilitySelection,
 } from "./component-authoring-internal";
 export * from "../GikComponent";
 export * from "../GikComponentDeclarative";

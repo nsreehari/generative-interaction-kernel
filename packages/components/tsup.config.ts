@@ -8,6 +8,7 @@ export default defineConfig({
     software: "src/software/index.ts",
     primitives: "src/primitives/index.ts",
     fluent: "src/fluent/index.ts",
+    "agent-facing": "src/agent-facing/index.ts",
   },
   format: ["esm"],
   dts: true,

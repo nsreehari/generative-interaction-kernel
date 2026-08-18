@@ -295,6 +295,7 @@ function scopeCellAction(cell: CellDefinition, action: Action): Action {
         ...scoped,
         control: {
           ...scoped.control,
+          serviceRef: matches[0].service,
           sourceId: matches[0].id,
           sourceCellId: cell.id,
           ...(matches[0].output ? { sourceOutputTransform: matches[0].output } : {}),

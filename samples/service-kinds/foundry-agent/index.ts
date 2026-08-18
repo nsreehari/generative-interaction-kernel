@@ -149,7 +149,8 @@ export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): Service
 					if (request.operation !== "chat") throw new Error(`Unsupported foundry-agent operation '${request.operation}'`);
 					const agentName = configuredAgent || String(input.agentName ?? "");
 					if (!agentName) throw new Error("foundry-agent requires config.agent or input.agentName");
-					const responseSchema = inputResponseSchema(input) ?? declaredResponseSchema(request, adapterContext);
+					const responseSchema = inputResponseSchema(input)
+						?? (responseMode === "json" ? undefined : declaredResponseSchema(request, adapterContext));
 					const foundry = await client();
 					let response = await foundry.chat({
 							message: String(input.message ?? ""),

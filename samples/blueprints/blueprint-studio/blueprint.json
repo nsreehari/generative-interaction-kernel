@@ -195,13 +195,13 @@
                 "capability": "gik:blueprint",
                 "bindings": {
                   "blueprint": {
-                    "expression": "studio.selected.artifact"
+                    "expression": "{'$ref':studio.previewBlueprintRef}"
                   },
                   "externalContext": {
                     "from": "studio.previewExternalContext"
                   },
                   "instanceKey": {
-                    "expression": "$string(studio.previewExternalContext)"
+                    "expression": "studio.previewBlueprintRef & ':' & $string(studio.previewExternalContext)"
                   }
                 },
                 "visibility": "studio.activeTab = 'preview'"
@@ -387,6 +387,7 @@
           "selected": null,
           "overviewMarkdown": "",
           "previewContextFormSpec": null,
+          "previewBlueprintRef": "",
           "previewExternalContext": {}
         }
       }
@@ -509,10 +510,23 @@
             "dependencies": ["sources.individual-blueprint.source"]
           },
           {
+            "id": "selected-blueprint-reference",
+            "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; 'blueprint:' & $bp.id & '@' & $bp.version)",
+            "assign": "studio.selectedBlueprintRef",
+            "dependencies": ["sources.individual-blueprint.source"]
+          },
+          {
             "id": "selected-blueprint-initial-context",
             "expression": "($spec := sources.`individual-blueprint.source`.artifact.payload.contextFormSpec; $spec ? $merge([$merge($keys($spec.fields.properties).($name := $; $field := $lookup($spec.fields.properties, $name); $exists($field.default) ? {$name:$field.default} : {})), $spec.initialValue ? $spec.initialValue : {}]) : {})",
             "assign": "studio.previewExternalContext",
             "dependencies": ["sources.individual-blueprint.source"]
+          }
+        ],
+        "outputs": [
+          {
+            "token": "selectedBlueprintRef",
+            "from": "computed.studio.selectedBlueprintRef",
+            "when": "$exists(computed.studio.selectedBlueprintRef)"
           }
         ]
       },
@@ -561,7 +575,21 @@
       },
       "blueprint-preview-content": {
         "id": "blueprint-preview-content",
-        "kind": "blueprint-preview-content"
+        "kind": "blueprint-preview-content",
+        "inputs": [
+          {
+            "token": "selectedBlueprintRef",
+            "as": "blueprintRef",
+            "required": true
+          }
+        ],
+        "compute": [
+          {
+            "id": "preview-blueprint-reference",
+            "expression": "inputs.blueprintRef",
+            "assign": "studio.previewBlueprintRef"
+          }
+        ]
       },
       "blueprint-preview-context-form": {
         "id": "blueprint-preview-context-form",
