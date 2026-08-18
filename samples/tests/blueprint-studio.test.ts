@@ -90,7 +90,8 @@ describe("Blueprint Studio read shell", () => {
       { cell: "blueprint-overview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 0 },
       { cell: "blueprint-form-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 1 },
       { cell: "blueprint-preview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 2 },
-      { cell: "blueprint-preview-content", parent: "blueprint-preview-pane", slot: "children", order: 0 },
+      { cell: "blueprint-preview-context-form", parent: "blueprint-preview-pane", slot: "children", order: 0 },
+      { cell: "blueprint-preview-content", parent: "blueprint-preview-pane", slot: "children", order: 1 },
     ]));
     expect(runtime.definition.payload.runtime?.externals?.effectHandlers ?? []).toEqual([]);
   });
@@ -126,6 +127,11 @@ describe("Blueprint Studio read shell", () => {
             source: "repo",
             readonly: true,
           },
+          previewExternalContext: {
+            "intelligence-model": "simple",
+            "market-prices": "mock",
+            view: "desktop",
+          },
         });
         const tree = await host.controlface.getTree();
         expect(findNode(tree, "individual-blueprint-tabs")).toMatchObject({
@@ -134,6 +140,25 @@ describe("Blueprint Studio read shell", () => {
         });
       });
       expect([...host.hostedControlFaces().values()]).toHaveLength(0);
+
+      await host.controlface.emit({
+        node: "blueprint-preview-context-form",
+        name: "save",
+        payload: {
+          values: {
+            "intelligence-model": "semantic",
+            "market-prices": "live",
+            view: "mobile",
+          },
+        },
+      });
+      expect(host.controlface.getState().studio).toMatchObject({
+        previewExternalContext: {
+          "intelligence-model": "semantic",
+          "market-prices": "live",
+          view: "mobile",
+        },
+      });
 
       await host.controlface.emit({
         node: "individual-blueprint-tabs",
@@ -145,6 +170,11 @@ describe("Blueprint Studio read shell", () => {
         const children = [...host.hostedControlFaces().values()];
         expect(children).toHaveLength(1);
         expect(children[0]?.getBlueprint()?.payload.id).toBe("portfolio-tracker-new");
+        expect(children[0]?.getState().externalContext).toEqual({
+          "intelligence-model": "semantic",
+          "market-prices": "live",
+          view: "mobile",
+        });
       });
     } finally {
       await host.stop();

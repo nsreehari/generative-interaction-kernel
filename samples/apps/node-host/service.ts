@@ -164,14 +164,18 @@ async function createComposedNodeRuntime(
     registry,
     {
       async mount(hosted) {
-        const childRuntime = openNodeBlueprint(hosted.definition.blueprint, hosted.inputs, environment);
+        const childRuntime = openNodeBlueprint(
+          hosted.definition.blueprint,
+          hosted.externalContext ?? {},
+          environment,
+        );
         const child = await createComposedNodeRuntime(
           hosted.definition.blueprint.payload.id,
           childRuntime,
           hosted.instanceId,
           environment,
           registry,
-          hosted.inputs,
+          hosted.externalContext ?? {},
           hosted.inputs,
           blueprintStorage,
         );

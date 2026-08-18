@@ -426,6 +426,38 @@ describe("@gik/blueprint", () => {
     expect(mounted[0]?.inputs).not.toHaveProperty("hostedBlueprint");
   });
 
+  it("separates hosted external context and instance identity from child inputs", async () => {
+    const child = blueprint("child");
+    const mounted: HostedBlueprintMount[] = [];
+    const reconciler = new HostedBlueprintReconciler("parent", "parent:1", undefined, {
+      mount(hosted) {
+        mounted.push(hosted);
+        return hosted.instanceId;
+      },
+      unmount() {},
+    });
+
+    await reconciler.reconcile({
+      capability: BLUEPRINT_CAPABILITY,
+      id: "child",
+      props: {
+        blueprint: child as unknown as Json,
+        externalContext: { view: "mobile" },
+        instanceKey: "mobile-preview",
+        content: "first",
+      },
+      visible: true,
+      fallback: false,
+      children: [],
+    });
+
+    expect(mounted[0]?.externalContext).toEqual({ view: "mobile" });
+    expect(mounted[0]?.inputs).toEqual({ content: "first" });
+    expect(mounted[0]?.instanceId).toBe(
+      "parent:1/cells/child/instances/mobile-preview",
+    );
+  });
+
   it("requires parent cells to bind required child Blueprint inputs", () => {
     const child = createBlueprint({
       ...blueprint("child").payload,

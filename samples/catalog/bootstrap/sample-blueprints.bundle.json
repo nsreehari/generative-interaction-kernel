@@ -686,11 +686,38 @@
                       "ariaLabel": "Blueprint preview"
                     }
                   },
+                  "blueprint-preview-context-form": {
+                    "capability": "primitive:form",
+                    "props": {
+                      "initiallyDirty": false
+                    },
+                    "bindings": {
+                      "fields": {
+                        "expression": "studio.previewContextFormSpec.fields"
+                      },
+                      "value": {
+                        "from": "studio.previewExternalContext"
+                      },
+                      "saveLabel": {
+                        "expression": "studio.previewContextFormSpec.saveLabel ? studio.previewContextFormSpec.saveLabel : 'Apply context'"
+                      },
+                      "discardLabel": {
+                        "expression": "studio.previewContextFormSpec.discardLabel ? studio.previewContextFormSpec.discardLabel : 'Discard'"
+                      }
+                    },
+                    "visibility": "studio.previewContextFormSpec != null"
+                  },
                   "blueprint-preview-content": {
                     "capability": "gik:blueprint",
                     "bindings": {
                       "blueprint": {
                         "expression": "studio.selected.artifact"
+                      },
+                      "externalContext": {
+                        "from": "studio.previewExternalContext"
+                      },
+                      "instanceKey": {
+                        "expression": "$string(studio.previewExternalContext)"
                       }
                     },
                     "visibility": "studio.activeTab = 'preview'"
@@ -744,10 +771,16 @@
                       "order": 2
                     },
                     {
-                      "cell": "blueprint-preview-content",
+                      "cell": "blueprint-preview-context-form",
                       "parent": "blueprint-preview-pane",
                       "slot": "children",
                       "order": 0
+                    },
+                    {
+                      "cell": "blueprint-preview-content",
+                      "parent": "blueprint-preview-pane",
+                      "slot": "children",
+                      "order": 1
                     }
                   ]
                 }
@@ -891,7 +924,9 @@
               "blueprints": [],
               "blueprintOptions": [],
               "selected": null,
-              "overviewMarkdown": ""
+              "overviewMarkdown": "",
+              "previewContextFormSpec": null,
+              "previewExternalContext": {}
             }
           }
         },
@@ -1015,6 +1050,22 @@
                 "dependencies": [
                   "sources.individual-blueprint.source"
                 ]
+              },
+              {
+                "id": "selected-blueprint-context-form",
+                "expression": "sources.`individual-blueprint.source`.contextFormSpec",
+                "assign": "studio.previewContextFormSpec",
+                "dependencies": [
+                  "sources.individual-blueprint.source"
+                ]
+              },
+              {
+                "id": "selected-blueprint-initial-context",
+                "expression": "sources.`individual-blueprint.source`.initialExternalContext",
+                "assign": "studio.previewExternalContext",
+                "dependencies": [
+                  "sources.individual-blueprint.source"
+                ]
               }
             ]
           },
@@ -1064,6 +1115,37 @@
           "blueprint-preview-content": {
             "id": "blueprint-preview-content",
             "kind": "blueprint-preview-content"
+          },
+          "blueprint-preview-context-form": {
+            "id": "blueprint-preview-context-form",
+            "kind": "blueprint-preview-context-form",
+            "inputs": [
+              {
+                "token": "selectedBlueprintId",
+                "as": "selectedBlueprintId",
+                "required": true
+              }
+            ],
+            "behavior": {
+              "on": {
+                "save": [
+                  {
+                    "do": "assign",
+                    "target": "studio.previewExternalContext",
+                    "args": {
+                      "from": "$event.values"
+                    }
+                  }
+                ]
+              }
+            },
+            "events": {
+              "save": {
+                "payloadSchema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         }
       }
@@ -12220,7 +12302,9 @@
                   }
                 }
               }
-            }
+            },
+            "contextFormSpec": null,
+            "initialExternalContext": {}
           }
         },
         {
@@ -12416,11 +12500,38 @@
                               "ariaLabel": "Blueprint preview"
                             }
                           },
+                          "blueprint-preview-context-form": {
+                            "capability": "primitive:form",
+                            "props": {
+                              "initiallyDirty": false
+                            },
+                            "bindings": {
+                              "fields": {
+                                "expression": "studio.previewContextFormSpec.fields"
+                              },
+                              "value": {
+                                "from": "studio.previewExternalContext"
+                              },
+                              "saveLabel": {
+                                "expression": "studio.previewContextFormSpec.saveLabel ? studio.previewContextFormSpec.saveLabel : 'Apply context'"
+                              },
+                              "discardLabel": {
+                                "expression": "studio.previewContextFormSpec.discardLabel ? studio.previewContextFormSpec.discardLabel : 'Discard'"
+                              }
+                            },
+                            "visibility": "studio.previewContextFormSpec != null"
+                          },
                           "blueprint-preview-content": {
                             "capability": "gik:blueprint",
                             "bindings": {
                               "blueprint": {
                                 "expression": "studio.selected.artifact"
+                              },
+                              "externalContext": {
+                                "from": "studio.previewExternalContext"
+                              },
+                              "instanceKey": {
+                                "expression": "$string(studio.previewExternalContext)"
                               }
                             },
                             "visibility": "studio.activeTab = 'preview'"
@@ -12474,10 +12585,16 @@
                               "order": 2
                             },
                             {
-                              "cell": "blueprint-preview-content",
+                              "cell": "blueprint-preview-context-form",
                               "parent": "blueprint-preview-pane",
                               "slot": "children",
                               "order": 0
+                            },
+                            {
+                              "cell": "blueprint-preview-content",
+                              "parent": "blueprint-preview-pane",
+                              "slot": "children",
+                              "order": 1
                             }
                           ]
                         }
@@ -12621,7 +12738,9 @@
                       "blueprints": [],
                       "blueprintOptions": [],
                       "selected": null,
-                      "overviewMarkdown": ""
+                      "overviewMarkdown": "",
+                      "previewContextFormSpec": null,
+                      "previewExternalContext": {}
                     }
                   }
                 },
@@ -12745,6 +12864,22 @@
                         "dependencies": [
                           "sources.individual-blueprint.source"
                         ]
+                      },
+                      {
+                        "id": "selected-blueprint-context-form",
+                        "expression": "sources.`individual-blueprint.source`.contextFormSpec",
+                        "assign": "studio.previewContextFormSpec",
+                        "dependencies": [
+                          "sources.individual-blueprint.source"
+                        ]
+                      },
+                      {
+                        "id": "selected-blueprint-initial-context",
+                        "expression": "sources.`individual-blueprint.source`.initialExternalContext",
+                        "assign": "studio.previewExternalContext",
+                        "dependencies": [
+                          "sources.individual-blueprint.source"
+                        ]
                       }
                     ]
                   },
@@ -12794,10 +12929,43 @@
                   "blueprint-preview-content": {
                     "id": "blueprint-preview-content",
                     "kind": "blueprint-preview-content"
+                  },
+                  "blueprint-preview-context-form": {
+                    "id": "blueprint-preview-context-form",
+                    "kind": "blueprint-preview-context-form",
+                    "inputs": [
+                      {
+                        "token": "selectedBlueprintId",
+                        "as": "selectedBlueprintId",
+                        "required": true
+                      }
+                    ],
+                    "behavior": {
+                      "on": {
+                        "save": [
+                          {
+                            "do": "assign",
+                            "target": "studio.previewExternalContext",
+                            "args": {
+                              "from": "$event.values"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "events": {
+                      "save": {
+                        "payloadSchema": {
+                          "type": "object"
+                        }
+                      }
+                    }
                   }
                 }
               }
-            }
+            },
+            "contextFormSpec": null,
+            "initialExternalContext": {}
           }
         },
         {
@@ -13114,7 +13282,9 @@
                   "executionMedium": "headless"
                 }
               }
-            }
+            },
+            "contextFormSpec": null,
+            "initialExternalContext": {}
           }
         },
         {
@@ -13496,7 +13666,9 @@
                   "executionMedium": "headless"
                 }
               }
-            }
+            },
+            "contextFormSpec": null,
+            "initialExternalContext": {}
           }
         },
         {
@@ -14556,7 +14728,9 @@
                   "compositionPattern": "external-model-selected-analysis-with-nested-report"
                 }
               }
-            }
+            },
+            "contextFormSpec": null,
+            "initialExternalContext": {}
           }
         },
         {
@@ -14670,7 +14844,9 @@
                   }
                 }
               }
-            }
+            },
+            "contextFormSpec": null,
+            "initialExternalContext": {}
           }
         },
         {
@@ -17431,12 +17607,68 @@
                   }
                 }
               }
+            },
+            "contextFormSpec": {
+              "fields": {
+                "properties": {
+                  "intelligence-model": {
+                    "type": "string",
+                    "title": "Intelligence model",
+                    "enum": [
+                      "simple",
+                      "mock",
+                      "semantic"
+                    ],
+                    "enumNames": [
+                      "Simple",
+                      "Mock",
+                      "Semantic"
+                    ]
+                  },
+                  "market-prices": {
+                    "type": "string",
+                    "title": "Market prices",
+                    "enum": [
+                      "mock",
+                      "live"
+                    ],
+                    "enumNames": [
+                      "Mock",
+                      "Live"
+                    ]
+                  },
+                  "view": {
+                    "type": "string",
+                    "title": "View",
+                    "enum": [
+                      "desktop",
+                      "mobile"
+                    ],
+                    "enumNames": [
+                      "Desktop",
+                      "Mobile"
+                    ]
+                  }
+                },
+                "required": [
+                  "intelligence-model",
+                  "market-prices",
+                  "view"
+                ]
+              },
+              "saveLabel": "Apply context",
+              "discardLabel": "Discard"
+            },
+            "initialExternalContext": {
+              "intelligence-model": "simple",
+              "market-prices": "mock",
+              "view": "desktop"
             }
           }
         }
       ]
     }
   },
-  "bundleVersion": "75ccd8082c2368fc",
-  "digest": "sha256:75ccd8082c2368fc17344f53e17f5cdbfbbddb474d27fab21f6409a998a0734f"
+  "bundleVersion": "95b045e3ca24afab",
+  "digest": "sha256:95b045e3ca24afabdb617b35608a442f5485b018dcda517a8819c56b5a84f281"
 }

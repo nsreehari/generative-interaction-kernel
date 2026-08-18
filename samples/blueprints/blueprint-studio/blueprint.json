@@ -170,11 +170,38 @@
                   "ariaLabel": "Blueprint preview"
                 }
               },
+              "blueprint-preview-context-form": {
+                "capability": "primitive:form",
+                "props": {
+                  "initiallyDirty": false
+                },
+                "bindings": {
+                  "fields": {
+                    "expression": "studio.previewContextFormSpec.fields"
+                  },
+                  "value": {
+                    "from": "studio.previewExternalContext"
+                  },
+                  "saveLabel": {
+                    "expression": "studio.previewContextFormSpec.saveLabel ? studio.previewContextFormSpec.saveLabel : 'Apply context'"
+                  },
+                  "discardLabel": {
+                    "expression": "studio.previewContextFormSpec.discardLabel ? studio.previewContextFormSpec.discardLabel : 'Discard'"
+                  }
+                },
+                "visibility": "studio.previewContextFormSpec != null"
+              },
               "blueprint-preview-content": {
                 "capability": "gik:blueprint",
                 "bindings": {
                   "blueprint": {
                     "expression": "studio.selected.artifact"
+                  },
+                  "externalContext": {
+                    "from": "studio.previewExternalContext"
+                  },
+                  "instanceKey": {
+                    "expression": "$string(studio.previewExternalContext)"
                   }
                 },
                 "visibility": "studio.activeTab = 'preview'"
@@ -226,10 +253,16 @@
                   "order": 2
                 },
                 {
-                  "cell": "blueprint-preview-content",
+                  "cell": "blueprint-preview-context-form",
                   "parent": "blueprint-preview-pane",
                   "slot": "children",
                   "order": 0
+                },
+                {
+                  "cell": "blueprint-preview-content",
+                  "parent": "blueprint-preview-pane",
+                  "slot": "children",
+                  "order": 1
                 }
               ]
             }
@@ -352,7 +385,9 @@
           "blueprints": [],
           "blueprintOptions": [],
           "selected": null,
-          "overviewMarkdown": ""
+          "overviewMarkdown": "",
+          "previewContextFormSpec": null,
+          "previewExternalContext": {}
         }
       }
     },
@@ -466,6 +501,18 @@
             "expression": "($bp := sources.`individual-blueprint.source`; $bp ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Tiers:** ' & $join($bp.artifact.payload.tiers.id, ', ') & '\\n- **Recipes:** ' & $string($count($bp.artifact.payload.recipes)) : '')",
             "assign": "studio.overviewMarkdown",
             "dependencies": ["sources.individual-blueprint.source"]
+          },
+          {
+            "id": "selected-blueprint-context-form",
+            "expression": "sources.`individual-blueprint.source`.contextFormSpec",
+            "assign": "studio.previewContextFormSpec",
+            "dependencies": ["sources.individual-blueprint.source"]
+          },
+          {
+            "id": "selected-blueprint-initial-context",
+            "expression": "sources.`individual-blueprint.source`.initialExternalContext",
+            "assign": "studio.previewExternalContext",
+            "dependencies": ["sources.individual-blueprint.source"]
           }
         ]
       },
@@ -515,6 +562,37 @@
       "blueprint-preview-content": {
         "id": "blueprint-preview-content",
         "kind": "blueprint-preview-content"
+      },
+      "blueprint-preview-context-form": {
+        "id": "blueprint-preview-context-form",
+        "kind": "blueprint-preview-context-form",
+        "inputs": [
+          {
+            "token": "selectedBlueprintId",
+            "as": "selectedBlueprintId",
+            "required": true
+          }
+        ],
+        "behavior": {
+          "on": {
+            "save": [
+              {
+                "do": "assign",
+                "target": "studio.previewExternalContext",
+                "args": {
+                  "from": "$event.values"
+                }
+              }
+            ]
+          }
+        },
+        "events": {
+          "save": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
       }
     }
   }
