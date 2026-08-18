@@ -13,6 +13,17 @@
     "discardLabel": { "type": "string" }
   },
   "definitions": {
+    "formSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields"],
+      "properties": {
+        "fields": { "$ref": "#/definitions/formSchema" },
+        "initialValue": { "type": "object" },
+        "saveLabel": { "type": "string" },
+        "discardLabel": { "type": "string" }
+      }
+    },
     "formSchema": {
       "type": "object",
       "additionalProperties": true,
@@ -28,7 +39,10 @@
           "items": { "type": "string", "minLength": 1 },
           "uniqueItems": true
         },
-        "validators": {}
+        "validators": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/validator" }
+        }
       }
     },
     "field": {
@@ -67,8 +81,112 @@
         "maximum": { "type": "number" },
         "minLength": { "type": "number", "minimum": 0 },
         "maxLength": { "type": "number", "minimum": 0 },
-        "pattern": { "type": "string" }
+        "pattern": { "type": "string" },
+        "default": {},
+        "secret": { "type": "boolean" },
+        "span": { "type": "number", "minimum": 1, "maximum": 12 }
       }
+    },
+    "validator": {
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": [{ "type": "string", "minLength": 1 }, { "type": "string" }]
+        },
+        {
+          "type": "object",
+          "required": ["expr"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "jsonata" },
+            "expr": { "type": "string", "minLength": 1 },
+            "message": { "type": "string" },
+            "level": { "enum": ["error", "warning"] },
+            "code": { "type": "string" },
+            "node": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "schema"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "ajv-schema" },
+            "schema": { "type": "object" },
+            "refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["schema"],
+                "additionalProperties": false,
+                "properties": {
+                  "schema": { "type": "object" },
+                  "key": { "type": "string" }
+                }
+              }
+            },
+            "message": { "type": "string" },
+            "level": { "enum": ["error", "warning"] },
+            "code": { "type": "string" },
+            "node": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "jsonata-expression" },
+            "mode": { "enum": ["full", "safe"] },
+            "message": { "type": "string" },
+            "level": { "enum": ["error", "warning"] },
+            "code": { "type": "string" },
+            "node": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "type"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "typedef" },
+            "type": {
+              "oneOf": [
+                { "$ref": "#/definitions/declarativeType" },
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "$ref": "#/definitions/declarativeType" }
+                }
+              ]
+            },
+            "message": { "type": "string" },
+            "level": { "enum": ["error", "warning"] },
+            "code": { "type": "string" },
+            "node": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": ["blueprint-cell", "blueprint-tier", "blueprint-lowering-recipe", "blueprint"]
+            },
+            "message": { "type": "string" },
+            "level": { "enum": ["error", "warning"] },
+            "code": { "type": "string" },
+            "node": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "declarativeType": {
+      "enum": ["json", "object", "array", "string", "number", "integer", "boolean", "null"]
     }
   }
 }

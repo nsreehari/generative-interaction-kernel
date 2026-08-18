@@ -145,6 +145,9 @@
           "additionalProperties": { "type": "object" }
         },
         "context": { "type": "object" },
+        "contextFormSpec": {
+          "$ref": "https://gik.dev/schemas/ui-form.schema.json#/definitions/formSpec"
+        },
         "resources": {
           "type": "object",
           "additionalProperties": {

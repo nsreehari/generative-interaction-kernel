@@ -194,6 +194,8 @@ describe("Blueprint Studio read shell", () => {
           "intelligence-model": "semantic",
           "market-prices": "live",
           view: "mobile",
+          ai: "foundry",
+          semantic: "simple-markdown",
         });
       });
     } finally {

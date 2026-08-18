@@ -6,6 +6,7 @@ import {
   type BlueprintHostRegistry,
   type ExternalContext,
 } from "@gik/blueprint";
+import { resolveDeclarativeFormInitialValue } from "@gik/evaluators";
 import { openBlueprint, type BlueprintRuntime } from "@gik/controlface/blueprint";
 import { createIndexedDbRecordLibrary } from "@gik/durable-runtime/storage/indexed-db";
 import type { DemoRunnerDocument } from "@gik/demo-runner-host";
@@ -84,20 +85,8 @@ export function getSampleBlueprintCatalog(): BlueprintCatalogSnapshot {
 }
 
 export function resolveSampleLaunchExternalContext(id: string): ExternalContext | undefined {
-  if (id === "incident-analysis-new-shell") {
-    return { model: "semantic", "source-report": "password-spray-mailbox" };
-  }
-
-  if (id === "portfolio-tracker-new") {
-    return {
-      ai: "foundry",
-      "intelligence-model": "simple",
-      "market-prices": "mock",
-      semantic: "simple-markdown",
-      view: "desktop",
-    };
-  }
-  return undefined;
+  const spec = getSampleBlueprintCatalog().entries[id]?.payload.contextFormSpec;
+  return spec ? resolveDeclarativeFormInitialValue(spec) : undefined;
 }
 
 export function resolveSampleBlueprintBootstrapAssets(
@@ -501,7 +490,7 @@ function demoScenarioRecord(
   return Object.fromEntries(Object.entries(value).map(([id, document]) => {
     if (!entries[id]) throw new Error(`Demo scenarios reference unknown Blueprint '${id}'.`);
     if (!isRecord(document)
-      || !isRecord(document.contextFormSpec)
+      || (document.contextFormSpec !== undefined && !isRecord(document.contextFormSpec))
       || !isRecord(document.namedPresetContexts)
       || !Array.isArray(document.scenarios)) {
       throw new Error(`Demo scenarios for Blueprint '${id}' are invalid.`);

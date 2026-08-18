@@ -40,6 +40,34 @@
         "kind": "runtime-blueprint",
         "version": "1.0",
         "structureMode": "fixed",
+        "contextFormSpec": {
+          "fields": {
+            "type": "object",
+            "properties": {
+              "ai": {
+                "type": "string",
+                "title": "AI provider",
+                "enum": [
+                  "foundry",
+                  "copilot"
+                ],
+                "enumNames": [
+                  "Foundry",
+                  "Copilot"
+                ]
+              }
+            },
+            "required": [
+              "ai"
+            ],
+            "additionalProperties": true
+          },
+          "initialValue": {
+            "ai": "foundry"
+          },
+          "saveLabel": "Apply context",
+          "discardLabel": "Discard"
+        },
         "recipes": [
           {
             "id": "ai-agent-to-runtime",
@@ -1053,7 +1081,7 @@
               },
               {
                 "id": "selected-blueprint-context-form",
-                "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $explicit := $bp.contextFormSpec; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? {'fields':{'properties':$merge($names.($name := $; {$name:{'type':'string','title':$name,'enum':$distinct($matches[name=$name].value)}})),'required':$names},'saveLabel':'Apply context','discardLabel':'Discard'} : null; $explicit ? $explicit : $derived)",
+                "expression": "sources.`individual-blueprint.source`.artifact.payload.contextFormSpec",
                 "assign": "studio.previewContextFormSpec",
                 "dependencies": [
                   "sources.individual-blueprint.source"
@@ -1061,7 +1089,7 @@
               },
               {
                 "id": "selected-blueprint-initial-context",
-                "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $spec := $bp.contextFormSpec; $properties := $spec.fields.properties; $explicit := $properties ? $merge($keys($properties).($name := $; $field := $lookup($properties, $name); {$name:$exists($field.default) ? $field.default : $field.enum[0]})) : null; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? $merge($names.($name := $; {$name:($matches[name=$name].value)[0]})) : {}; $explicit ? $explicit : $derived)",
+                "expression": "($spec := sources.`individual-blueprint.source`.artifact.payload.contextFormSpec; $spec ? $merge([$merge($keys($spec.fields.properties).($name := $; $field := $lookup($spec.fields.properties, $name); $exists($field.default) ? {$name:$field.default} : {})), $spec.initialValue ? $spec.initialValue : {}]) : {})",
                 "assign": "studio.previewExternalContext",
                 "dependencies": [
                   "sources.individual-blueprint.source"
@@ -1835,6 +1863,36 @@
         "kind": "incident-analysis-shell",
         "version": "1.0.0",
         "structureMode": "fixed",
+        "contextFormSpec": {
+          "fields": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string",
+                "title": "Analysis model",
+                "enum": [
+                  "semantic",
+                  "source-faithful",
+                  "refinement"
+                ],
+                "enumNames": [
+                  "Semantic",
+                  "Source faithful",
+                  "Refinement"
+                ]
+              }
+            },
+            "required": [
+              "model"
+            ],
+            "additionalProperties": true
+          },
+          "initialValue": {
+            "model": "semantic"
+          },
+          "saveLabel": "Apply context",
+          "discardLabel": "Discard"
+        },
         "tiers": [
           {
             "id": "incident-analysis",
@@ -2987,6 +3045,92 @@
         "kind": "portfolio-blueprint",
         "version": "1.0.0",
         "structureMode": "fixed",
+        "contextFormSpec": {
+          "fields": {
+            "type": "object",
+            "properties": {
+              "intelligence-model": {
+                "type": "string",
+                "title": "Intelligence model",
+                "enum": [
+                  "simple",
+                  "mock",
+                  "semantic"
+                ],
+                "enumNames": [
+                  "Simple",
+                  "Mock",
+                  "Semantic"
+                ]
+              },
+              "market-prices": {
+                "type": "string",
+                "title": "Market prices",
+                "enum": [
+                  "mock",
+                  "live"
+                ],
+                "enumNames": [
+                  "Mock",
+                  "Live"
+                ]
+              },
+              "view": {
+                "type": "string",
+                "title": "View",
+                "enum": [
+                  "desktop",
+                  "mobile"
+                ],
+                "enumNames": [
+                  "Desktop",
+                  "Mobile"
+                ]
+              },
+              "ai": {
+                "type": "string",
+                "title": "AI provider",
+                "enum": [
+                  "foundry",
+                  "copilot"
+                ],
+                "enumNames": [
+                  "Foundry",
+                  "Copilot"
+                ]
+              },
+              "semantic": {
+                "type": "string",
+                "title": "Semantic presentation",
+                "enum": [
+                  "simple-markdown",
+                  "rich-components"
+                ],
+                "enumNames": [
+                  "Simple markdown",
+                  "Rich components"
+                ]
+              }
+            },
+            "required": [
+              "intelligence-model",
+              "market-prices",
+              "view",
+              "ai",
+              "semantic"
+            ],
+            "additionalProperties": true
+          },
+          "initialValue": {
+            "intelligence-model": "simple",
+            "market-prices": "mock",
+            "view": "desktop",
+            "ai": "foundry",
+            "semantic": "simple-markdown"
+          },
+          "saveLabel": "Apply context",
+          "discardLabel": "Discard"
+        },
         "tiers": [
           {
             "id": "portfolio-logic",
@@ -5732,57 +5876,6 @@
   },
   "demoScenarios": {
     "portfolio-tracker-new": {
-      "contextFormSpec": {
-        "fields": {
-          "properties": {
-            "intelligence-model": {
-              "type": "string",
-              "title": "Intelligence model",
-              "enum": [
-                "simple",
-                "mock",
-                "semantic"
-              ],
-              "enumNames": [
-                "Simple",
-                "Mock",
-                "Semantic"
-              ]
-            },
-            "market-prices": {
-              "type": "string",
-              "title": "Market prices",
-              "enum": [
-                "mock",
-                "live"
-              ],
-              "enumNames": [
-                "Mock",
-                "Live"
-              ]
-            },
-            "view": {
-              "type": "string",
-              "title": "View",
-              "enum": [
-                "desktop",
-                "mobile"
-              ],
-              "enumNames": [
-                "Desktop",
-                "Mobile"
-              ]
-            }
-          },
-          "required": [
-            "intelligence-model",
-            "market-prices",
-            "view"
-          ]
-        },
-        "saveLabel": "Apply context",
-        "discardLabel": "Discard"
-      },
       "namedPresetContexts": {
         "simple-desktop": {
           "label": "Simple intelligence, desktop",
@@ -11841,6 +11934,34 @@
                 "kind": "runtime-blueprint",
                 "version": "1.0",
                 "structureMode": "fixed",
+                "contextFormSpec": {
+                  "fields": {
+                    "type": "object",
+                    "properties": {
+                      "ai": {
+                        "type": "string",
+                        "title": "AI provider",
+                        "enum": [
+                          "foundry",
+                          "copilot"
+                        ],
+                        "enumNames": [
+                          "Foundry",
+                          "Copilot"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "ai"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "initialValue": {
+                    "ai": "foundry"
+                  },
+                  "saveLabel": "Apply context",
+                  "discardLabel": "Discard"
+                },
                 "recipes": [
                   {
                     "id": "ai-agent-to-runtime",
@@ -12865,7 +12986,7 @@
                       },
                       {
                         "id": "selected-blueprint-context-form",
-                        "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $explicit := $bp.contextFormSpec; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? {'fields':{'properties':$merge($names.($name := $; {$name:{'type':'string','title':$name,'enum':$distinct($matches[name=$name].value)}})),'required':$names},'saveLabel':'Apply context','discardLabel':'Discard'} : null; $explicit ? $explicit : $derived)",
+                        "expression": "sources.`individual-blueprint.source`.artifact.payload.contextFormSpec",
                         "assign": "studio.previewContextFormSpec",
                         "dependencies": [
                           "sources.individual-blueprint.source"
@@ -12873,7 +12994,7 @@
                       },
                       {
                         "id": "selected-blueprint-initial-context",
-                        "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $spec := $bp.contextFormSpec; $properties := $spec.fields.properties; $explicit := $properties ? $merge($keys($properties).($name := $; $field := $lookup($properties, $name); {$name:$exists($field.default) ? $field.default : $field.enum[0]})) : null; $matches := $match($string($bp), /externalContext\\.(?:`([^`]+)`|([A-Za-z][A-Za-z0-9-]*))\\s*=\\s*'([^']+)'/).{'name':groups[0] ? groups[0] : groups[1],'value':groups[2]}; $names := $distinct($matches.name); $derived := $count($names) > 0 ? $merge($names.($name := $; {$name:($matches[name=$name].value)[0]})) : {}; $explicit ? $explicit : $derived)",
+                        "expression": "($spec := sources.`individual-blueprint.source`.artifact.payload.contextFormSpec; $spec ? $merge([$merge($keys($spec.fields.properties).($name := $; $field := $lookup($spec.fields.properties, $name); $exists($field.default) ? {$name:$field.default} : {})), $spec.initialValue ? $spec.initialValue : {}]) : {})",
                         "assign": "studio.previewExternalContext",
                         "dependencies": [
                           "sources.individual-blueprint.source"
@@ -13680,6 +13801,36 @@
                 "kind": "incident-analysis-shell",
                 "version": "1.0.0",
                 "structureMode": "fixed",
+                "contextFormSpec": {
+                  "fields": {
+                    "type": "object",
+                    "properties": {
+                      "model": {
+                        "type": "string",
+                        "title": "Analysis model",
+                        "enum": [
+                          "semantic",
+                          "source-faithful",
+                          "refinement"
+                        ],
+                        "enumNames": [
+                          "Semantic",
+                          "Source faithful",
+                          "Refinement"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "model"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "initialValue": {
+                    "model": "semantic"
+                  },
+                  "saveLabel": "Apply context",
+                  "discardLabel": "Discard"
+                },
                 "tiers": [
                   {
                     "id": "incident-analysis",
@@ -14854,6 +15005,92 @@
                 "kind": "portfolio-blueprint",
                 "version": "1.0.0",
                 "structureMode": "fixed",
+                "contextFormSpec": {
+                  "fields": {
+                    "type": "object",
+                    "properties": {
+                      "intelligence-model": {
+                        "type": "string",
+                        "title": "Intelligence model",
+                        "enum": [
+                          "simple",
+                          "mock",
+                          "semantic"
+                        ],
+                        "enumNames": [
+                          "Simple",
+                          "Mock",
+                          "Semantic"
+                        ]
+                      },
+                      "market-prices": {
+                        "type": "string",
+                        "title": "Market prices",
+                        "enum": [
+                          "mock",
+                          "live"
+                        ],
+                        "enumNames": [
+                          "Mock",
+                          "Live"
+                        ]
+                      },
+                      "view": {
+                        "type": "string",
+                        "title": "View",
+                        "enum": [
+                          "desktop",
+                          "mobile"
+                        ],
+                        "enumNames": [
+                          "Desktop",
+                          "Mobile"
+                        ]
+                      },
+                      "ai": {
+                        "type": "string",
+                        "title": "AI provider",
+                        "enum": [
+                          "foundry",
+                          "copilot"
+                        ],
+                        "enumNames": [
+                          "Foundry",
+                          "Copilot"
+                        ]
+                      },
+                      "semantic": {
+                        "type": "string",
+                        "title": "Semantic presentation",
+                        "enum": [
+                          "simple-markdown",
+                          "rich-components"
+                        ],
+                        "enumNames": [
+                          "Simple markdown",
+                          "Rich components"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "intelligence-model",
+                      "market-prices",
+                      "view",
+                      "ai",
+                      "semantic"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "initialValue": {
+                    "intelligence-model": "simple",
+                    "market-prices": "mock",
+                    "view": "desktop",
+                    "ai": "foundry",
+                    "semantic": "simple-markdown"
+                  },
+                  "saveLabel": "Apply context",
+                  "discardLabel": "Discard"
+                },
                 "tiers": [
                   {
                     "id": "portfolio-logic",
@@ -17601,6 +17838,6 @@
       ]
     }
   },
-  "bundleVersion": "ed1a5a7868fea3ac",
-  "digest": "sha256:ed1a5a7868fea3acfebfa48605666acd6c1a60934343c9f139ad13a92e8f49fa"
+  "bundleVersion": "26e2cb7d8fa34ad7",
+  "digest": "sha256:26e2cb7d8fa34ad73c5e360b48bcaafb265e6c096b9e48ea9ee74ba92f90561c"
 }

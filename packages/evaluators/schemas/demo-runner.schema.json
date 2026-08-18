@@ -5,10 +5,10 @@
   "description": "External context controls and event-driven scenarios for the GIK demo runner.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["contextFormSpec", "namedPresetContexts", "scenarios"],
+  "required": ["namedPresetContexts", "scenarios"],
   "properties": {
     "contextFormSpec": {
-      "$ref": "https://gik.dev/schemas/ui-form.schema.json",
+      "$ref": "https://gik.dev/schemas/ui-form.schema.json#/definitions/formSpec",
       "description": "Form specification used by GikControlPanel to edit externalContextState."
     },
     "namedPresetContexts": {

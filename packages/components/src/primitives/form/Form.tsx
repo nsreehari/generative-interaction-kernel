@@ -12,7 +12,11 @@ import {
   tokens,
 } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
-import { runDeclarativeValidators } from "@gik/evaluators";
+import {
+  runDeclarativeValidators,
+  validateDeclarativeFormValues,
+  type DeclarativeFormSchema,
+} from "@gik/evaluators";
 import { readProps, resolveLayoutSlots, type ProjectionView } from "@gik/react";
 
 import {
@@ -23,12 +27,6 @@ import {
   type ComponentValidationReport,
 } from "../../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../../shared/component";
-
-interface FormSchema {
-  properties?: Record<string, Record<string, unknown>>;
-  required?: string[];
-  validators?: unknown;
-}
 
 interface OptionValue {
   value: string;
@@ -129,7 +127,10 @@ function temporalValue(field: Record<string, unknown>, value: unknown): string {
 export const Form: ProjectionView = ({ node, emit }) => {
   const props = readProps(node);
   const styles = useStyles();
-  const schema = props.obj<FormSchema>("fields", props.obj<FormSchema>("schema", {}));
+  const schema = props.obj<DeclarativeFormSchema>(
+    "fields",
+    props.obj<DeclarativeFormSchema>("schema", { properties: {} }),
+  );
   const fields = schema.properties ?? {};
   const required = new Set(schema.required ?? []);
   const incoming = props.obj<Record<string, unknown>>("value", props.obj<Record<string, unknown>>("data", {}));
@@ -183,7 +184,11 @@ export const Form: ProjectionView = ({ node, emit }) => {
     event.preventDefault();
     if (readOnly) return;
     if (Object.values(jsonErrors).some(Boolean)) return;
-    const report = runDeclarativeValidators(schema.validators, values as Json, { bindings: validationContext });
+    const report = validateDeclarativeFormValues(
+      schema,
+      values as Record<string, Json>,
+      { bindings: validationContext },
+    );
     setValidationErrors(report.errors.map((issue) => issue.detail));
     if (!report.ok) return;
     void emit("save", { values });

@@ -6,6 +6,24 @@
     "kind": "runtime-blueprint",
     "version": "1.0",
     "structureMode": "fixed",
+    "contextFormSpec": {
+      "fields": {
+        "type": "object",
+        "properties": {
+          "ai": {
+            "type": "string",
+            "title": "AI provider",
+            "enum": ["foundry", "copilot"],
+            "enumNames": ["Foundry", "Copilot"]
+          }
+        },
+        "required": ["ai"],
+        "additionalProperties": true
+      },
+      "initialValue": { "ai": "foundry" },
+      "saveLabel": "Apply context",
+      "discardLabel": "Discard"
+    },
     "recipes": [
       {
         "id": "ai-agent-to-runtime",
