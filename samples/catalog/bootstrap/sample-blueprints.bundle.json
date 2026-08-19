@@ -560,7 +560,7 @@
                   "studio-root": {
                     "capability": "primitive:container",
                     "props": {
-                      "variant": "column",
+                      "variant": "row",
                       "gap": "l",
                       "align": "start",
                       "fullWidth": true,
@@ -568,16 +568,15 @@
                     }
                   },
                   "blueprint-list-region": {
-                    "capability": "primitive:drawer",
+                    "capability": "primitive:container",
                     "props": {
-                      "variant": "panel-vertical",
-                      "fabPosition": "top-left",
-                      "defaultOpen": false,
-                      "title": "Blueprint catalog",
-                      "openLabel": "Open Blueprint catalog",
-                      "closeLabel": "Close Blueprint catalog",
-                      "panelWidthPercent": 28,
-                      "ariaLabel": "Blueprint catalog"
+                      "variant": "column",
+                      "gap": "s",
+                      "ariaLabel": "Blueprint catalog",
+                      "style": {
+                        "flex": "0 0 22rem",
+                        "width": "22rem"
+                      }
                     }
                   },
                   "blueprint-list": {
@@ -715,20 +714,6 @@
                       "ariaLabel": "Blueprint preview"
                     }
                   },
-                  "blueprint-preview-context-drawer": {
-                    "capability": "primitive:drawer",
-                    "props": {
-                      "variant": "panel-vertical",
-                      "fabPosition": "top-right",
-                      "defaultOpen": false,
-                      "title": "Preview context",
-                      "openLabel": "Open Preview context",
-                      "closeLabel": "Close Preview context",
-                      "panelWidthPercent": 32,
-                      "ariaLabel": "Preview external context"
-                    },
-                    "visibility": "studio.previewContextFormSpec != null"
-                  },
                   "blueprint-preview-context-form": {
                     "capability": "primitive:form",
                     "props": {
@@ -814,14 +799,8 @@
                       "order": 2
                     },
                     {
-                      "cell": "blueprint-preview-context-drawer",
-                      "parent": "blueprint-preview-pane",
-                      "slot": "children",
-                      "order": 0
-                    },
-                    {
                       "cell": "blueprint-preview-context-form",
-                      "parent": "blueprint-preview-context-drawer",
+                      "parent": "blueprint-preview-pane",
                       "slot": "children",
                       "order": 0
                     },
@@ -899,18 +878,6 @@
                 "children"
               ]
             },
-            "primitive:drawer": {
-              "propsSchema": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "slots": [
-                "children"
-              ],
-              "emits": [
-                "openChange"
-              ]
-            },
             "primitive:form": {
               "propsSchema": {
                 "type": "object",
@@ -972,7 +939,6 @@
                 "from": "primitive",
                 "use": [
                   "container",
-                  "drawer",
                   "form",
                   "markdown"
                 ]
@@ -1189,10 +1155,6 @@
           "blueprint-preview-pane": {
             "id": "blueprint-preview-pane",
             "kind": "blueprint-preview"
-          },
-          "blueprint-preview-context-drawer": {
-            "id": "blueprint-preview-context-drawer",
-            "kind": "blueprint-preview-context-drawer"
           },
           "blueprint-preview-content": {
             "id": "blueprint-preview-content",
@@ -12534,7 +12496,7 @@
                           "studio-root": {
                             "capability": "primitive:container",
                             "props": {
-                              "variant": "column",
+                              "variant": "row",
                               "gap": "l",
                               "align": "start",
                               "fullWidth": true,
@@ -12542,16 +12504,15 @@
                             }
                           },
                           "blueprint-list-region": {
-                            "capability": "primitive:drawer",
+                            "capability": "primitive:container",
                             "props": {
-                              "variant": "panel-vertical",
-                              "fabPosition": "top-left",
-                              "defaultOpen": false,
-                              "title": "Blueprint catalog",
-                              "openLabel": "Open Blueprint catalog",
-                              "closeLabel": "Close Blueprint catalog",
-                              "panelWidthPercent": 28,
-                              "ariaLabel": "Blueprint catalog"
+                              "variant": "column",
+                              "gap": "s",
+                              "ariaLabel": "Blueprint catalog",
+                              "style": {
+                                "flex": "0 0 22rem",
+                                "width": "22rem"
+                              }
                             }
                           },
                           "blueprint-list": {
@@ -12689,20 +12650,6 @@
                               "ariaLabel": "Blueprint preview"
                             }
                           },
-                          "blueprint-preview-context-drawer": {
-                            "capability": "primitive:drawer",
-                            "props": {
-                              "variant": "panel-vertical",
-                              "fabPosition": "top-right",
-                              "defaultOpen": false,
-                              "title": "Preview context",
-                              "openLabel": "Open Preview context",
-                              "closeLabel": "Close Preview context",
-                              "panelWidthPercent": 32,
-                              "ariaLabel": "Preview external context"
-                            },
-                            "visibility": "studio.previewContextFormSpec != null"
-                          },
                           "blueprint-preview-context-form": {
                             "capability": "primitive:form",
                             "props": {
@@ -12788,14 +12735,8 @@
                               "order": 2
                             },
                             {
-                              "cell": "blueprint-preview-context-drawer",
-                              "parent": "blueprint-preview-pane",
-                              "slot": "children",
-                              "order": 0
-                            },
-                            {
                               "cell": "blueprint-preview-context-form",
-                              "parent": "blueprint-preview-context-drawer",
+                              "parent": "blueprint-preview-pane",
                               "slot": "children",
                               "order": 0
                             },
@@ -12873,18 +12814,6 @@
                         "children"
                       ]
                     },
-                    "primitive:drawer": {
-                      "propsSchema": {
-                        "type": "object",
-                        "additionalProperties": true
-                      },
-                      "slots": [
-                        "children"
-                      ],
-                      "emits": [
-                        "openChange"
-                      ]
-                    },
                     "primitive:form": {
                       "propsSchema": {
                         "type": "object",
@@ -12946,7 +12875,6 @@
                         "from": "primitive",
                         "use": [
                           "container",
-                          "drawer",
                           "form",
                           "markdown"
                         ]
@@ -13163,10 +13091,6 @@
                   "blueprint-preview-pane": {
                     "id": "blueprint-preview-pane",
                     "kind": "blueprint-preview"
-                  },
-                  "blueprint-preview-context-drawer": {
-                    "id": "blueprint-preview-context-drawer",
-                    "kind": "blueprint-preview-context-drawer"
                   },
                   "blueprint-preview-content": {
                     "id": "blueprint-preview-content",
@@ -17976,6 +17900,6 @@
       ]
     }
   },
-  "bundleVersion": "398038dbe073c111",
-  "digest": "sha256:398038dbe073c1116ef041a87073410c625046d15a17e7c500dbecb9fde0d7fc"
+  "bundleVersion": "4967af240ab8b8e3",
+  "digest": "sha256:4967af240ab8b8e3b0399468cd7c302e685c1b9a58584ce87174ec23ee21874e"
 }
