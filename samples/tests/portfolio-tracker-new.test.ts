@@ -6,7 +6,6 @@ import {
   type BlueprintArtifact,
   type CellDefinition,
 } from "@gik/blueprint";
-import Ajv from "ajv";
 import { openBlueprint } from "@gik/controlface/blueprint";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import {
@@ -300,7 +299,7 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         assert.equal(
           (activeService?.config as Record<string, unknown>)?.agent,
           intelligenceModel === "semantic"
-            ? "Portfolio-Intelligence-3-Agent"
+            ? "Portfolio-Semantic-Intelligence-Agent"
             : "Portfolio-Intelligence-Agent",
         );
       }
@@ -314,6 +313,10 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           /acceptedCapabilities/,
         );
         assert.match(activeSource?.input?.expr ?? "", /promptTemplate/);
+        assert.match(
+          activeSource?.input?.expr ?? "",
+          new RegExp(`'presentationMode':'${semantic}'`),
+        );
         assert.equal(
           (activeSource?.input?.expr ?? "").includes("'fluent:table'"),
           semantic === "rich-components",
@@ -337,7 +340,7 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         const semanticOperation = Array.isArray(activeService?.operations)
           ? undefined
           : activeService?.operations?.[
-            "requestIntelligence2"
+            "generateReport"
           ];
         assert.deepEqual(
           terminal.cells?.["portfolio-intelligence"].view?.bindings?.blueprint,
@@ -355,14 +358,14 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           terminal.cells?.["portfolio-intelligence-as-of"].view?.visibility,
           "portfolio.intelligence.asOf != null",
         );
-        if (ai === "foundry" && semantic === "simple-markdown") {
-          const responseSchema = semanticOperation?.response?.validators?.find(
-            (validator) => validator.code === "provider-structured-output" && "schema" in validator,
-          );
-          assert.equal(responseSchema && "schema" in responseSchema
-            ? (responseSchema.schema as Record<string, unknown>).required?.toString()
-            : undefined, "gik,type,payload");
-        }
+        assert.deepEqual(
+          semanticOperation?.response?.validators?.map(({ code }) => code),
+          [
+            "semantic-report-blueprint",
+            "semantic-report-capability-catalog",
+            "semantic-report-scaffold",
+          ],
+        );
         if (semantic === "rich-components") {
           assert.equal(
             semanticOperation?.response?.validators?.some(
@@ -372,7 +375,7 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           );
           assert.equal(
             semanticOperation?.response?.validators?.some(
-             (validator) => validator.code === "rich-report-scaffold",
+             (validator) => validator.code === "semantic-report-scaffold",
             ),
             true,
           );
@@ -471,11 +474,13 @@ test("portfolio semantic presentation defaults to simple Markdown when omitted",
   }).payload.terminalBlueprint.payload;
   const source = terminal.cells?.["portfolio-intelligence"].sources?.[1];
 
-  assert.equal(source?.service, "portfolio-intelligence-2");
+  assert.equal(source?.service, "portfolio-semantic-intelligence");
+  assert.equal(source?.operation, "generateReport");
+  assert.equal(source?.contract, "portfolio-semantic-intelligence/v1");
   assert.match(source?.input?.expr ?? "", /'acceptedCapabilities':\['primitive:markdown'\]/);
   assert.equal(
-    (terminal.services?.["portfolio-intelligence-2"]?.config as Record<string, unknown>)?.agent,
-    "Portfolio-Intelligence-3-Agent",
+    (terminal.services?.["portfolio-semantic-intelligence"]?.config as Record<string, unknown>)?.agent,
+    "Portfolio-Semantic-Intelligence-Agent",
   );
   assert.equal(terminal.cells?.["portfolio-intelligence"].view?.capability, "gik:blueprint");
 });
@@ -523,15 +528,21 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
     },
   };
   const portfolio = resolveSampleBlueprintSource("portfolio-tracker-new");
-  const operation = portfolio.payload.services?.["portfolio-intelligence-2"]?.operations.requestIntelligence2;
-  for (const code of ["provider-structured-output", "report-blueprint-shape"]) {
-    const validator = operation?.response?.validators?.find(
-      (candidate) => candidate.code === code && "schema" in candidate,
-    );
-    assert.ok(validator && "schema" in validator);
-    const validate = new Ajv({ strict: false }).compile(validator.schema);
-    assert.equal(validate(reportBlueprint), true, `${code}: ${JSON.stringify(validate.errors)}`);
-  }
+  const operation = portfolio.payload.services?.["portfolio-semantic-intelligence"]
+    ?.operations.generateReport;
+  const report = runDeclarativeValidators(
+    operation?.response?.validators ?? [],
+    reportBlueprint,
+    {
+      bindings: {
+        request: {
+          presentationMode: "simple-markdown",
+          acceptedCapabilities: ["primitive:markdown"],
+        },
+      },
+    },
+  );
+  assert.equal(report.ok, true, JSON.stringify(report.errors));
 
   const materialized = materializeBlueprint({ blueprint: reportBlueprint });
   assert.equal(materialized.payload.terminalBlueprint.payload.cells?.report.view?.capability, "primitive:markdown");
@@ -658,12 +669,13 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
     },
   };
   const portfolio = resolveSampleBlueprintSource("portfolio-tracker-new");
-  const validators = portfolio.payload.services?.["portfolio-intelligence-3"]
-    ?.operations.requestIntelligence2.response?.validators ?? [];
+  const validators = portfolio.payload.services?.["portfolio-semantic-intelligence"]
+    ?.operations.generateReport.response?.validators ?? [];
 
   const validatorOptions = {
     bindings: {
       request: {
+        presentationMode: "rich-components",
         acceptedCapabilities: [
           "primitive:container",
           "primitive:chart",
@@ -689,7 +701,7 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   const report = runDeclarativeValidators(validators, forbidden, validatorOptions);
   assert.equal(report.ok, false);
   assert.equal(
-    report.errors.some((error) => error.code === "rich-report-capability-catalog"),
+    report.errors.some((error) => error.code === "semantic-report-capability-catalog"),
     true,
   );
 });
