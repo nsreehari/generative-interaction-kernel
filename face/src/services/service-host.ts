@@ -338,7 +338,14 @@ export class DefaultServiceHost implements ServiceHost {
         })
       : asJson(effect.data);
     if (resolved.operation.request?.validators) {
-      const report = runDeclarativeValidators(resolved.operation.request.validators, input, {});
+      const validatorInput = resolved.operation.request.validatorInput
+        ? await this.evaluate(resolved.operation.request.validatorInput.expr, {
+            state: this.options.state.snapshot(),
+            effect,
+            input,
+          })
+        : input;
+      const report = runDeclarativeValidators(resolved.operation.request.validators, validatorInput, {});
       if (!report.ok) throw new Error(`Service request validation failed: ${report.errors.map((issue) => issue.detail).join("; ")}`);
     }
     return {

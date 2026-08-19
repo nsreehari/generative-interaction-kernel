@@ -499,9 +499,9 @@ export type GuardrailLevel = "error" | "warning";
 
 /** A single declarative guardrail rule authored as data. Mirrors the `@gik/evaluators` declarative
  * validator shape (the same engine already used for authored-input validation) so a Blueprint
- * author uses one vocabulary for both. `jsonata` evaluates a boolean expression against the
- * provider's output; `ajv-schema` checks output shape against a JSON Schema; `typedef` checks the
- * output's basic JS type. */
+ * author uses one vocabulary for both. `jsonata` evaluates a boolean expression, `ajv-schema`
+ * checks shape against a JSON Schema, `typedef` checks the basic JS type, and the Blueprint kinds
+ * apply the evaluator-owned structural and semantic validators. */
 export type GuardrailRule =
   | readonly [string, string?]
   | {
@@ -524,6 +524,13 @@ export type GuardrailRule =
   | {
       kind: "typedef";
       type: string | readonly string[];
+      message?: string;
+      level?: GuardrailLevel;
+      code?: string;
+      node?: string;
+    }
+  | {
+      kind: "blueprint" | "blueprint-cell" | "blueprint-tier" | "blueprint-lowering-recipe";
       message?: string;
       level?: GuardrailLevel;
       code?: string;
@@ -555,6 +562,8 @@ export interface ServiceTransform {
 
 export interface ServiceDataStage {
   transform?: ServiceTransform;
+  /** Selects the value checked by `validators` after `transform`; defaults to the transformed value. */
+  validatorInput?: ServiceTransform;
   validators?: readonly GuardrailRule[];
 }
 

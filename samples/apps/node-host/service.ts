@@ -28,6 +28,10 @@ import { createRuntimeState, openNodeLaunch } from "./runtime";
 import { resolveSampleBlueprintSource } from "../../catalog/blueprint-catalog";
 import { createNodeBlueprintStorageConnectionFactory } from "./blueprint-storage";
 import type { BlueprintStorageConnectionFactory } from "../shared/blueprint-storage";
+import {
+  resolveBlueprintDatabaseArtifact,
+  resolveBlueprintDatabaseRoot,
+} from "../shared/blueprint-database-registry";
 
 export interface NodeHostOptions {
   profile?: string;
@@ -57,8 +61,8 @@ export async function createNodeHost(options: NodeHostOptions = {}): Promise<Nod
   );
   const port = options.port ?? Number(environment.GIK_NODE_PORT || 8788);
   const hostName = options.hostName ?? environment.GIK_NODE_HOST ?? "127.0.0.1";
-  const registry = createNodeBlueprintRegistry(environment);
   const blueprintStorage = createNodeBlueprintStorageConnectionFactory();
+  const registry = createNodeBlueprintRegistry(environment, blueprintStorage);
   const root = await createComposedNodeRuntime(
     profile.blueprint,
     runtime,
@@ -220,15 +224,26 @@ async function createComposedNodeRuntime(
 
 function createNodeBlueprintRegistry(
   environment: Readonly<Record<string, string | undefined>>,
+  blueprintStorage: BlueprintStorageConnectionFactory,
 ): BlueprintHostRegistry {
   const config = createNodeHostConfig(environment);
   const resolve = (id: string): BlueprintArtifact => resolveSampleBlueprintSource(id, config);
+  const blueprintDatabaseRoots = new Set<string>();
   return {
     resolveArtifact(reference) {
       return resolve(reference.id);
     },
-    resolve(reference) {
-      const blueprint = resolve(reference.id);
+    async resolve(reference, context) {
+      const blueprintDatabaseRootInstanceId = resolveBlueprintDatabaseRoot(
+        context,
+        blueprintDatabaseRoots,
+      );
+      const storedBlueprint = await resolveBlueprintDatabaseArtifact(
+        reference,
+        blueprintDatabaseRootInstanceId,
+        blueprintStorage,
+      );
+      const blueprint = storedBlueprint ?? resolve(reference.id);
       if (reference.version !== undefined && blueprint.payload.version !== reference.version) {
         throw new Error(`Blueprint '${reference.id}' version '${reference.version}' is unavailable`);
       }
