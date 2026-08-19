@@ -81,14 +81,11 @@ api_policy:
     required: [nodeJson]
     declaration_type: Json
     canonical_edges: [read, readExpr, gate, write, on, children]
-    generic_layout:
-      path: nodeJson.props.layout.slots
-      assignment: "{ key: string, slot: string }"
+    child_composition:
       behavior:
-        - Child keys are canonical child node ids; component-owned item keys use the same resolver.
-        - Named slots preserve the authored order of matching children or items.
-        - Missing layout metadata leaves every child in its original order in the default children slot.
-        - The explicit children slot is equivalent to default child placement.
+        - Blueprint presentation composition supplies components with ordinary ordered children.
+        - Component projections do not receive or interpret Blueprint semantic slot names.
+        - Component-local layout props may organize component-owned data such as form fields; they do not place child Cells.
   gik_component_runtime_provider_props:
     json_state: [state]
     native_runtime: [effectHandlers, contexts, resolveProvider]
@@ -124,7 +121,7 @@ architecture:
     - Components use Fluent makeStyles and theme tokens for component-owned visual treatment.
     - Every component accepts native root className and style props.
     - Root classes use mergeClasses with the consumer class last so callsite Griffel rules win.
-    - Nested customization uses declared Fluent slot props where a component exposes slots.
+    - Nested customization may use native Fluent component API slot props; these are unrelated to Blueprint presentation composition.
     - The package does not expose a synthetic or Fluent v8-style styles prop.
   does_not_own:
     - A theme or palette.

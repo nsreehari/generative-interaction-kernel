@@ -97,23 +97,48 @@ describe("Blueprint Studio", () => {
     expect(representation?.views?.["blueprint-list-region"]).toEqual(
       expect.objectContaining({ capability: "primitive:container" }),
     );
-    expect(representation?.presentation?.placements).toEqual(expect.arrayContaining([
-      { cell: "blueprint-list-region", parent: "studio-root", slot: "children", order: 0 },
-      { cell: "individual-blueprint", parent: "studio-root", slot: "children", order: 1 },
-      { cell: "blueprint-new-form", parent: "blueprint-list-region", slot: "children", order: 0 },
-      { cell: "blueprint-list", parent: "blueprint-list-region", slot: "children", order: 1 },
-      { cell: "blueprint-actions", parent: "individual-blueprint", slot: "children", order: 0 },
-      { cell: "individual-blueprint-tabs", parent: "individual-blueprint", slot: "children", order: 1 },
-      { cell: "blueprint-overview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 0 },
-      { cell: "blueprint-form-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 1 },
-      { cell: "blueprint-draft-form-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 2 },
-      { cell: "blueprint-preview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 3 },
-      { cell: "blueprint-draft-preview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 4 },
-      { cell: "blueprint-preview-context-form", parent: "blueprint-preview-pane", slot: "children", order: 0 },
-      { cell: "blueprint-preview-content", parent: "blueprint-preview-pane", slot: "children", order: 1 },
-      { cell: "blueprint-draft-preview-context-form", parent: "blueprint-draft-preview-pane", slot: "children", order: 0 },
-      { cell: "blueprint-draft-preview-content", parent: "blueprint-draft-preview-pane", slot: "children", order: 1 },
-    ]));
+    expect(representation?.presentation?.composition).toEqual({
+      "studio-root": {
+        slots: {
+          catalog: ["blueprint-list-region"],
+          workspace: ["individual-blueprint"],
+        },
+      },
+      "blueprint-list-region": {
+        slots: {
+          create: ["blueprint-new-form"],
+          catalog: ["blueprint-list"],
+        },
+      },
+      "individual-blueprint": {
+        slots: {
+          actions: ["blueprint-actions"],
+          content: ["individual-blueprint-tabs"],
+        },
+      },
+      "blueprint-actions": {
+        slots: {
+          children: ["blueprint-edit-action", "blueprint-promote-draft-action", "blueprint-delete-draft-action", "blueprint-delete-action"],
+        },
+      },
+      "individual-blueprint-tabs": {
+        slots: {
+          children: ["blueprint-overview-pane", "blueprint-form-pane", "blueprint-draft-form-pane", "blueprint-preview-pane", "blueprint-draft-preview-pane"],
+        },
+      },
+      "blueprint-preview-pane": {
+        slots: {
+          context: ["blueprint-preview-context-form"],
+          content: ["blueprint-preview-content"],
+        },
+      },
+      "blueprint-draft-preview-pane": {
+        slots: {
+          context: ["blueprint-draft-preview-context-form"],
+          content: ["blueprint-draft-preview-content"],
+        },
+      },
+    });
     expect(representation?.views?.["blueprint-draft-form-pane"]).toMatchObject({
       capability: "primitive:form",
       props: {

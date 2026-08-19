@@ -39,7 +39,7 @@ export interface BlueprintRepresentation {
   views?: Record<string, CellView>;
   decorators?: BlueprintRepresentationDecorator[];
   presentation?: PresentationProjection;
-  presentationAppend?: PresentationProjection["placements"];
+  presentationAppend?: PresentationComposition;
 }
 
 export interface BlueprintRepresentationDecorator {
@@ -177,13 +177,14 @@ export interface ProjectionDefinition {
 
 export interface PresentationProjection {
   roots: readonly string[];
-  placements?: readonly {
-    cell: string;
-    parent?: string;
-    slot?: string;
-    order?: number;
-  }[];
+  composition?: PresentationComposition;
 }
+
+export interface PresentationCompositionEntry {
+  slots: Readonly<Record<string, readonly string[]>>;
+}
+
+export type PresentationComposition = Readonly<Record<string, PresentationCompositionEntry>>;
 
 export type BlueprintStructureMode = "fixed" | "reconfigurable" | "adaptive";
 

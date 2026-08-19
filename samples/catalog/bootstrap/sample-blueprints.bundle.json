@@ -512,20 +512,18 @@
             "roots": [
               "ai-agent-root"
             ],
-            "placements": [
-              {
-                "cell": "agent-query-form",
-                "parent": "ai-agent-root",
-                "slot": "children",
-                "order": 0
-              },
-              {
-                "cell": "agent-response",
-                "parent": "ai-agent-root",
-                "slot": "children",
-                "order": 1
+            "composition": {
+              "ai-agent-root": {
+                "slots": {
+                  "query": [
+                    "agent-query-form"
+                  ],
+                  "response": [
+                    "agent-response"
+                  ]
+                }
               }
-            ]
+            }
           }
         }
       }
@@ -934,122 +932,79 @@
                   "roots": [
                     "studio-root"
                   ],
-                  "placements": [
-                    {
-                      "cell": "blueprint-list-region",
-                      "parent": "studio-root",
-                      "slot": "children",
-                      "order": 0
+                  "composition": {
+                    "studio-root": {
+                      "slots": {
+                        "catalog": [
+                          "blueprint-list-region"
+                        ],
+                        "workspace": [
+                          "individual-blueprint"
+                        ]
+                      }
                     },
-                    {
-                      "cell": "individual-blueprint",
-                      "parent": "studio-root",
-                      "slot": "children",
-                      "order": 1
+                    "blueprint-list-region": {
+                      "slots": {
+                        "create": [
+                          "blueprint-new-form"
+                        ],
+                        "catalog": [
+                          "blueprint-list"
+                        ]
+                      }
                     },
-                    {
-                      "cell": "blueprint-new-form",
-                      "parent": "blueprint-list-region",
-                      "slot": "children",
-                      "order": 0
+                    "individual-blueprint": {
+                      "slots": {
+                        "actions": [
+                          "blueprint-actions"
+                        ],
+                        "content": [
+                          "individual-blueprint-tabs"
+                        ]
+                      }
                     },
-                    {
-                      "cell": "blueprint-list",
-                      "parent": "blueprint-list-region",
-                      "slot": "children",
-                      "order": 1
+                    "blueprint-actions": {
+                      "slots": {
+                        "children": [
+                          "blueprint-edit-action",
+                          "blueprint-promote-draft-action",
+                          "blueprint-delete-draft-action",
+                          "blueprint-delete-action"
+                        ]
+                      }
                     },
-                    {
-                      "cell": "blueprint-actions",
-                      "parent": "individual-blueprint",
-                      "slot": "children",
-                      "order": 0
+                    "individual-blueprint-tabs": {
+                      "slots": {
+                        "children": [
+                          "blueprint-overview-pane",
+                          "blueprint-form-pane",
+                          "blueprint-draft-form-pane",
+                          "blueprint-preview-pane",
+                          "blueprint-draft-preview-pane"
+                        ]
+                      }
                     },
-                    {
-                      "cell": "blueprint-edit-action",
-                      "parent": "blueprint-actions",
-                      "slot": "children",
-                      "order": 0
+                    "blueprint-preview-pane": {
+                      "slots": {
+                        "context": [
+                          "blueprint-preview-context-form"
+                        ],
+                        "content": [
+                          "blueprint-preview-content"
+                        ]
+                      }
                     },
-                    {
-                      "cell": "blueprint-promote-draft-action",
-                      "parent": "blueprint-actions",
-                      "slot": "children",
-                      "order": 1
-                    },
-                    {
-                      "cell": "blueprint-delete-draft-action",
-                      "parent": "blueprint-actions",
-                      "slot": "children",
-                      "order": 2
-                    },
-                    {
-                      "cell": "blueprint-delete-action",
-                      "parent": "blueprint-actions",
-                      "slot": "children",
-                      "order": 3
-                    },
-                    {
-                      "cell": "individual-blueprint-tabs",
-                      "parent": "individual-blueprint",
-                      "slot": "children",
-                      "order": 1
-                    },
-                    {
-                      "cell": "blueprint-overview-pane",
-                      "parent": "individual-blueprint-tabs",
-                      "slot": "panes",
-                      "order": 0
-                    },
-                    {
-                      "cell": "blueprint-form-pane",
-                      "parent": "individual-blueprint-tabs",
-                      "slot": "panes",
-                      "order": 1
-                    },
-                    {
-                      "cell": "blueprint-draft-form-pane",
-                      "parent": "individual-blueprint-tabs",
-                      "slot": "panes",
-                      "order": 2
-                    },
-                    {
-                      "cell": "blueprint-preview-pane",
-                      "parent": "individual-blueprint-tabs",
-                      "slot": "panes",
-                      "order": 3
-                    },
-                    {
-                      "cell": "blueprint-draft-preview-pane",
-                      "parent": "individual-blueprint-tabs",
-                      "slot": "panes",
-                      "order": 4
-                    },
-                    {
-                      "cell": "blueprint-preview-context-form",
-                      "parent": "blueprint-preview-pane",
-                      "slot": "children",
-                      "order": 0
-                    },
-                    {
-                      "cell": "blueprint-preview-content",
-                      "parent": "blueprint-preview-pane",
-                      "slot": "children",
-                      "order": 1
-                    },
-                    {
-                      "cell": "blueprint-draft-preview-context-form",
-                      "parent": "blueprint-draft-preview-pane",
-                      "slot": "children",
-                      "order": 0
-                    },
-                    {
-                      "cell": "blueprint-draft-preview-content",
-                      "parent": "blueprint-draft-preview-pane",
-                      "slot": "children",
-                      "order": 1
+                    "blueprint-draft-preview-pane": {
+                      "slots": {
+                        "context": [
+                          "blueprint-draft-preview-context-form"
+                        ],
+                        "content": [
+                          "blueprint-draft-preview-content"
+                        ]
+                      }
                     }
-                  ]
+                  }
                 }
               }
             ],
@@ -1255,9 +1210,6 @@
                 "type": "object",
                 "additionalProperties": true
               },
-              "slots": [
-                "panes"
-              ],
               "emits": [
                 "select"
               ]
@@ -2996,7 +2948,7 @@
                                             "type": "object",
                                             "required": [
                                               "roots",
-                                              "placements"
+                                              "composition"
                                             ],
                                             "properties": {
                                               "roots": {
@@ -3008,13 +2960,9 @@
                                                   "const": "report"
                                                 }
                                               },
-                                              "placements": {
-                                                "type": "array",
-                                                "maxItems": 0,
-                                                "items": {
-                                                  "type": "object",
-                                                  "additionalProperties": false
-                                                }
+                                              "composition": {
+                                                "type": "object",
+                                                "maxProperties": 0
                                               }
                                             },
                                             "additionalProperties": false
@@ -3696,7 +3644,7 @@
               "report-analysis",
               "report-resolution"
             ],
-            "placements": []
+            "composition": {}
           }
         },
         "metadata": {
@@ -3927,38 +3875,27 @@
                   "roots": [
                     "board"
                   ],
-                  "placements": [
-                    {
-                      "cell": "portfolio-holdings",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 0
-                    },
-                    {
-                      "cell": "market-prices",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 1
-                    },
-                    {
-                      "cell": "portfolio-value-cell",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 2
-                    },
-                    {
-                      "cell": "portfolio-intelligence-as-of",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 3
-                    },
-                    {
-                      "cell": "portfolio-intelligence",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 4
+                  "composition": {
+                    "board": {
+                      "slots": {
+                        "holdings": [
+                          "portfolio-holdings"
+                        ],
+                        "market": [
+                          "market-prices"
+                        ],
+                        "valuation": [
+                          "portfolio-value-cell"
+                        ],
+                        "status": [
+                          "portfolio-intelligence-as-of"
+                        ],
+                        "intelligence": [
+                          "portfolio-intelligence"
+                        ]
+                      }
                     }
-                  ]
+                  }
                 }
               }
             ],
@@ -4181,32 +4118,24 @@
                   "roots": [
                     "board"
                   ],
-                  "placements": [
-                    {
-                      "cell": "portfolio-holdings",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 0
-                    },
-                    {
-                      "cell": "market-prices",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 1
-                    },
-                    {
-                      "cell": "portfolio-value-cell",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 2
-                    },
-                    {
-                      "cell": "portfolio-intelligence",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 3
+                  "composition": {
+                    "board": {
+                      "slots": {
+                        "holdings": [
+                          "portfolio-holdings"
+                        ],
+                        "market": [
+                          "market-prices"
+                        ],
+                        "valuation": [
+                          "portfolio-value-cell"
+                        ],
+                        "intelligence": [
+                          "portfolio-intelligence"
+                        ]
+                      }
                     }
-                  ]
+                  }
                 }
               },
               {
@@ -4316,38 +4245,27 @@
                   "roots": [
                     "board"
                   ],
-                  "placements": [
-                    {
-                      "cell": "portfolio-holdings",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 0
-                    },
-                    {
-                      "cell": "market-prices",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 1
-                    },
-                    {
-                      "cell": "portfolio-value-cell",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 2
-                    },
-                    {
-                      "cell": "portfolio-intelligence-as-of",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 3
-                    },
-                    {
-                      "cell": "portfolio-intelligence",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 4
+                  "composition": {
+                    "board": {
+                      "slots": {
+                        "holdings": [
+                          "portfolio-holdings"
+                        ],
+                        "market": [
+                          "market-prices"
+                        ],
+                        "valuation": [
+                          "portfolio-value-cell"
+                        ],
+                        "status": [
+                          "portfolio-intelligence-as-of"
+                        ],
+                        "intelligence": [
+                          "portfolio-intelligence"
+                        ]
+                      }
                     }
-                  ]
+                  }
                 }
               },
               {
@@ -4411,38 +4329,27 @@
                   "roots": [
                     "board"
                   ],
-                  "placements": [
-                    {
-                      "cell": "portfolio-holdings",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 0
-                    },
-                    {
-                      "cell": "market-prices",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 1
-                    },
-                    {
-                      "cell": "portfolio-value-cell",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 2
-                    },
-                    {
-                      "cell": "portfolio-intelligence-as-of",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 3
-                    },
-                    {
-                      "cell": "portfolio-intelligence",
-                      "parent": "board",
-                      "slot": "children",
-                      "order": 4
+                  "composition": {
+                    "board": {
+                      "slots": {
+                        "holdings": [
+                          "portfolio-holdings"
+                        ],
+                        "market": [
+                          "market-prices"
+                        ],
+                        "valuation": [
+                          "portfolio-value-cell"
+                        ],
+                        "status": [
+                          "portfolio-intelligence-as-of"
+                        ],
+                        "intelligence": [
+                          "portfolio-intelligence"
+                        ]
+                      }
                     }
-                  ]
+                  }
                 }
               }
             ],
@@ -4613,7 +4520,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'placements':[]}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'summary','parent':'report-root','slot':'children','order':1},{'cell':'allocation','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
+                            "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'composition':{'report-root':{'slots':{'children':['headline','summary','allocation','positions','facts','judgments','risks','uncertainties']}}}}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
                           }
                         },
                         "response": {
@@ -4768,7 +4675,7 @@
                                                     "type": "object",
                                                     "required": [
                                                       "roots",
-                                                      "placements"
+                                                      "composition"
                                                     ],
                                                     "properties": {
                                                       "roots": {
@@ -4778,32 +4685,27 @@
                                                           "type": "string"
                                                         }
                                                       },
-                                                      "placements": {
-                                                        "type": "array",
-                                                        "items": {
+                                                      "composition": {
+                                                        "type": "object",
+                                                        "additionalProperties": {
                                                           "type": "object",
                                                           "required": [
-                                                            "cell",
-                                                            "parent",
-                                                            "slot",
-                                                            "order"
+                                                            "slots"
                                                           ],
+                                                          "additionalProperties": false,
                                                           "properties": {
-                                                            "cell": {
-                                                              "type": "string"
-                                                            },
-                                                            "parent": {
-                                                              "type": "string"
-                                                            },
-                                                            "slot": {
-                                                              "type": "string",
-                                                              "const": "children"
-                                                            },
-                                                            "order": {
-                                                              "type": "number"
+                                                            "slots": {
+                                                              "type": "object",
+                                                              "minProperties": 1,
+                                                              "additionalProperties": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                  "type": "string"
+                                                                },
+                                                                "uniqueItems": true
+                                                              }
                                                             }
-                                                          },
-                                                          "additionalProperties": false
+                                                          }
                                                         }
                                                       }
                                                     },
@@ -4960,7 +4862,7 @@
                             },
                             {
                               "kind": "jsonata",
-                              "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
+                              "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count($keys(data.payload.recipes[0].representations[0].presentation.composition)) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.composition.`report-root`.slots.children) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
                               "message": "Semantic portfolio report must match the selected presentation mode and authorized scaffold",
                               "code": "semantic-report-scaffold"
                             }
@@ -5078,7 +4980,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'placements':[]}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'summary','parent':'report-root','slot':'children','order':1},{'cell':'allocation','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
+                            "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'composition':{'report-root':{'slots':{'children':['headline','summary','allocation','positions','facts','judgments','risks','uncertainties']}}}}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
                           }
                         },
                         "response": {
@@ -5233,7 +5135,7 @@
                                                     "type": "object",
                                                     "required": [
                                                       "roots",
-                                                      "placements"
+                                                      "composition"
                                                     ],
                                                     "properties": {
                                                       "roots": {
@@ -5243,32 +5145,27 @@
                                                           "type": "string"
                                                         }
                                                       },
-                                                      "placements": {
-                                                        "type": "array",
-                                                        "items": {
+                                                      "composition": {
+                                                        "type": "object",
+                                                        "additionalProperties": {
                                                           "type": "object",
                                                           "required": [
-                                                            "cell",
-                                                            "parent",
-                                                            "slot",
-                                                            "order"
+                                                            "slots"
                                                           ],
+                                                          "additionalProperties": false,
                                                           "properties": {
-                                                            "cell": {
-                                                              "type": "string"
-                                                            },
-                                                            "parent": {
-                                                              "type": "string"
-                                                            },
-                                                            "slot": {
-                                                              "type": "string",
-                                                              "const": "children"
-                                                            },
-                                                            "order": {
-                                                              "type": "number"
+                                                            "slots": {
+                                                              "type": "object",
+                                                              "minProperties": 1,
+                                                              "additionalProperties": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                  "type": "string"
+                                                                },
+                                                                "uniqueItems": true
+                                                              }
                                                             }
-                                                          },
-                                                          "additionalProperties": false
+                                                          }
                                                         }
                                                       }
                                                     },
@@ -5425,7 +5322,7 @@
                             },
                             {
                               "kind": "jsonata",
-                              "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
+                              "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count($keys(data.payload.recipes[0].representations[0].presentation.composition)) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.composition.`report-root`.slots.children) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
                               "message": "Semantic portfolio report must match the selected presentation mode and authorized scaffold",
                               "code": "semantic-report-scaffold"
                             }
@@ -5598,7 +5495,7 @@
                 "request": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'placements':[]}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'summary','parent':'report-root','slot':'children','order':1},{'cell':'allocation','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
+                    "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'composition':{'report-root':{'slots':{'children':['headline','summary','allocation','positions','facts','judgments','risks','uncertainties']}}}}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
                   }
                 },
                 "response": {
@@ -5753,7 +5650,7 @@
                                             "type": "object",
                                             "required": [
                                               "roots",
-                                              "placements"
+                                              "composition"
                                             ],
                                             "properties": {
                                               "roots": {
@@ -5763,32 +5660,27 @@
                                                   "type": "string"
                                                 }
                                               },
-                                              "placements": {
-                                                "type": "array",
-                                                "items": {
+                                              "composition": {
+                                                "type": "object",
+                                                "additionalProperties": {
                                                   "type": "object",
                                                   "required": [
-                                                    "cell",
-                                                    "parent",
-                                                    "slot",
-                                                    "order"
+                                                    "slots"
                                                   ],
+                                                  "additionalProperties": false,
                                                   "properties": {
-                                                    "cell": {
-                                                      "type": "string"
-                                                    },
-                                                    "parent": {
-                                                      "type": "string"
-                                                    },
-                                                    "slot": {
-                                                      "type": "string",
-                                                      "const": "children"
-                                                    },
-                                                    "order": {
-                                                      "type": "number"
+                                                    "slots": {
+                                                      "type": "object",
+                                                      "minProperties": 1,
+                                                      "additionalProperties": {
+                                                        "type": "array",
+                                                        "items": {
+                                                          "type": "string"
+                                                        },
+                                                        "uniqueItems": true
+                                                      }
                                                     }
-                                                  },
-                                                  "additionalProperties": false
+                                                  }
                                                 }
                                               }
                                             },
@@ -5945,7 +5837,7 @@
                     },
                     {
                       "kind": "jsonata",
-                      "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
+                      "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count($keys(data.payload.recipes[0].representations[0].presentation.composition)) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.composition.`report-root`.slots.children) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
                       "message": "Semantic portfolio report must match the selected presentation mode and authorized scaffold",
                       "code": "semantic-report-scaffold"
                     }
@@ -6431,7 +6323,7 @@
                           "roots": [
                             "report"
                           ],
-                          "placements": []
+                          "composition": {}
                         }
                       }
                     ],
@@ -12784,20 +12676,18 @@
                     "roots": [
                       "ai-agent-root"
                     ],
-                    "placements": [
-                      {
-                        "cell": "agent-query-form",
-                        "parent": "ai-agent-root",
-                        "slot": "children",
-                        "order": 0
-                      },
-                      {
-                        "cell": "agent-response",
-                        "parent": "ai-agent-root",
-                        "slot": "children",
-                        "order": 1
+                    "composition": {
+                      "ai-agent-root": {
+                        "slots": {
+                          "query": [
+                            "agent-query-form"
+                          ],
+                          "response": [
+                            "agent-response"
+                          ]
+                        }
                       }
-                    ]
+                    }
                   }
                 }
               }
@@ -13219,122 +13109,79 @@
                           "roots": [
                             "studio-root"
                           ],
-                          "placements": [
-                            {
-                              "cell": "blueprint-list-region",
-                              "parent": "studio-root",
-                              "slot": "children",
-                              "order": 0
+                          "composition": {
+                            "studio-root": {
+                              "slots": {
+                                "catalog": [
+                                  "blueprint-list-region"
+                                ],
+                                "workspace": [
+                                  "individual-blueprint"
+                                ]
+                              }
                             },
-                            {
-                              "cell": "individual-blueprint",
-                              "parent": "studio-root",
-                              "slot": "children",
-                              "order": 1
+                            "blueprint-list-region": {
+                              "slots": {
+                                "create": [
+                                  "blueprint-new-form"
+                                ],
+                                "catalog": [
+                                  "blueprint-list"
+                                ]
+                              }
                             },
-                            {
-                              "cell": "blueprint-new-form",
-                              "parent": "blueprint-list-region",
-                              "slot": "children",
-                              "order": 0
+                            "individual-blueprint": {
+                              "slots": {
+                                "actions": [
+                                  "blueprint-actions"
+                                ],
+                                "content": [
+                                  "individual-blueprint-tabs"
+                                ]
+                              }
                             },
-                            {
-                              "cell": "blueprint-list",
-                              "parent": "blueprint-list-region",
-                              "slot": "children",
-                              "order": 1
+                            "blueprint-actions": {
+                              "slots": {
+                                "children": [
+                                  "blueprint-edit-action",
+                                  "blueprint-promote-draft-action",
+                                  "blueprint-delete-draft-action",
+                                  "blueprint-delete-action"
+                                ]
+                              }
                             },
-                            {
-                              "cell": "blueprint-actions",
-                              "parent": "individual-blueprint",
-                              "slot": "children",
-                              "order": 0
+                            "individual-blueprint-tabs": {
+                              "slots": {
+                                "children": [
+                                  "blueprint-overview-pane",
+                                  "blueprint-form-pane",
+                                  "blueprint-draft-form-pane",
+                                  "blueprint-preview-pane",
+                                  "blueprint-draft-preview-pane"
+                                ]
+                              }
                             },
-                            {
-                              "cell": "blueprint-edit-action",
-                              "parent": "blueprint-actions",
-                              "slot": "children",
-                              "order": 0
+                            "blueprint-preview-pane": {
+                              "slots": {
+                                "context": [
+                                  "blueprint-preview-context-form"
+                                ],
+                                "content": [
+                                  "blueprint-preview-content"
+                                ]
+                              }
                             },
-                            {
-                              "cell": "blueprint-promote-draft-action",
-                              "parent": "blueprint-actions",
-                              "slot": "children",
-                              "order": 1
-                            },
-                            {
-                              "cell": "blueprint-delete-draft-action",
-                              "parent": "blueprint-actions",
-                              "slot": "children",
-                              "order": 2
-                            },
-                            {
-                              "cell": "blueprint-delete-action",
-                              "parent": "blueprint-actions",
-                              "slot": "children",
-                              "order": 3
-                            },
-                            {
-                              "cell": "individual-blueprint-tabs",
-                              "parent": "individual-blueprint",
-                              "slot": "children",
-                              "order": 1
-                            },
-                            {
-                              "cell": "blueprint-overview-pane",
-                              "parent": "individual-blueprint-tabs",
-                              "slot": "panes",
-                              "order": 0
-                            },
-                            {
-                              "cell": "blueprint-form-pane",
-                              "parent": "individual-blueprint-tabs",
-                              "slot": "panes",
-                              "order": 1
-                            },
-                            {
-                              "cell": "blueprint-draft-form-pane",
-                              "parent": "individual-blueprint-tabs",
-                              "slot": "panes",
-                              "order": 2
-                            },
-                            {
-                              "cell": "blueprint-preview-pane",
-                              "parent": "individual-blueprint-tabs",
-                              "slot": "panes",
-                              "order": 3
-                            },
-                            {
-                              "cell": "blueprint-draft-preview-pane",
-                              "parent": "individual-blueprint-tabs",
-                              "slot": "panes",
-                              "order": 4
-                            },
-                            {
-                              "cell": "blueprint-preview-context-form",
-                              "parent": "blueprint-preview-pane",
-                              "slot": "children",
-                              "order": 0
-                            },
-                            {
-                              "cell": "blueprint-preview-content",
-                              "parent": "blueprint-preview-pane",
-                              "slot": "children",
-                              "order": 1
-                            },
-                            {
-                              "cell": "blueprint-draft-preview-context-form",
-                              "parent": "blueprint-draft-preview-pane",
-                              "slot": "children",
-                              "order": 0
-                            },
-                            {
-                              "cell": "blueprint-draft-preview-content",
-                              "parent": "blueprint-draft-preview-pane",
-                              "slot": "children",
-                              "order": 1
+                            "blueprint-draft-preview-pane": {
+                              "slots": {
+                                "context": [
+                                  "blueprint-draft-preview-context-form"
+                                ],
+                                "content": [
+                                  "blueprint-draft-preview-content"
+                                ]
+                              }
                             }
-                          ]
+                          }
                         }
                       }
                     ],
@@ -13540,9 +13387,6 @@
                         "type": "object",
                         "additionalProperties": true
                       },
-                      "slots": [
-                        "panes"
-                      ],
                       "emits": [
                         "select"
                       ]
@@ -15320,7 +15164,7 @@
                                                     "type": "object",
                                                     "required": [
                                                       "roots",
-                                                      "placements"
+                                                      "composition"
                                                     ],
                                                     "properties": {
                                                       "roots": {
@@ -15332,13 +15176,9 @@
                                                           "const": "report"
                                                         }
                                                       },
-                                                      "placements": {
-                                                        "type": "array",
-                                                        "maxItems": 0,
-                                                        "items": {
-                                                          "type": "object",
-                                                          "additionalProperties": false
-                                                        }
+                                                      "composition": {
+                                                        "type": "object",
+                                                        "maxProperties": 0
                                                       }
                                                     },
                                                     "additionalProperties": false
@@ -16020,7 +15860,7 @@
                       "report-analysis",
                       "report-resolution"
                     ],
-                    "placements": []
+                    "composition": {}
                   }
                 },
                 "metadata": {
@@ -16277,38 +16117,27 @@
                           "roots": [
                             "board"
                           ],
-                          "placements": [
-                            {
-                              "cell": "portfolio-holdings",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 0
-                            },
-                            {
-                              "cell": "market-prices",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 1
-                            },
-                            {
-                              "cell": "portfolio-value-cell",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 2
-                            },
-                            {
-                              "cell": "portfolio-intelligence-as-of",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 3
-                            },
-                            {
-                              "cell": "portfolio-intelligence",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 4
+                          "composition": {
+                            "board": {
+                              "slots": {
+                                "holdings": [
+                                  "portfolio-holdings"
+                                ],
+                                "market": [
+                                  "market-prices"
+                                ],
+                                "valuation": [
+                                  "portfolio-value-cell"
+                                ],
+                                "status": [
+                                  "portfolio-intelligence-as-of"
+                                ],
+                                "intelligence": [
+                                  "portfolio-intelligence"
+                                ]
+                              }
                             }
-                          ]
+                          }
                         }
                       }
                     ],
@@ -16531,32 +16360,24 @@
                           "roots": [
                             "board"
                           ],
-                          "placements": [
-                            {
-                              "cell": "portfolio-holdings",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 0
-                            },
-                            {
-                              "cell": "market-prices",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 1
-                            },
-                            {
-                              "cell": "portfolio-value-cell",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 2
-                            },
-                            {
-                              "cell": "portfolio-intelligence",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 3
+                          "composition": {
+                            "board": {
+                              "slots": {
+                                "holdings": [
+                                  "portfolio-holdings"
+                                ],
+                                "market": [
+                                  "market-prices"
+                                ],
+                                "valuation": [
+                                  "portfolio-value-cell"
+                                ],
+                                "intelligence": [
+                                  "portfolio-intelligence"
+                                ]
+                              }
                             }
-                          ]
+                          }
                         }
                       },
                       {
@@ -16666,38 +16487,27 @@
                           "roots": [
                             "board"
                           ],
-                          "placements": [
-                            {
-                              "cell": "portfolio-holdings",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 0
-                            },
-                            {
-                              "cell": "market-prices",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 1
-                            },
-                            {
-                              "cell": "portfolio-value-cell",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 2
-                            },
-                            {
-                              "cell": "portfolio-intelligence-as-of",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 3
-                            },
-                            {
-                              "cell": "portfolio-intelligence",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 4
+                          "composition": {
+                            "board": {
+                              "slots": {
+                                "holdings": [
+                                  "portfolio-holdings"
+                                ],
+                                "market": [
+                                  "market-prices"
+                                ],
+                                "valuation": [
+                                  "portfolio-value-cell"
+                                ],
+                                "status": [
+                                  "portfolio-intelligence-as-of"
+                                ],
+                                "intelligence": [
+                                  "portfolio-intelligence"
+                                ]
+                              }
                             }
-                          ]
+                          }
                         }
                       },
                       {
@@ -16761,38 +16571,27 @@
                           "roots": [
                             "board"
                           ],
-                          "placements": [
-                            {
-                              "cell": "portfolio-holdings",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 0
-                            },
-                            {
-                              "cell": "market-prices",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 1
-                            },
-                            {
-                              "cell": "portfolio-value-cell",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 2
-                            },
-                            {
-                              "cell": "portfolio-intelligence-as-of",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 3
-                            },
-                            {
-                              "cell": "portfolio-intelligence",
-                              "parent": "board",
-                              "slot": "children",
-                              "order": 4
+                          "composition": {
+                            "board": {
+                              "slots": {
+                                "holdings": [
+                                  "portfolio-holdings"
+                                ],
+                                "market": [
+                                  "market-prices"
+                                ],
+                                "valuation": [
+                                  "portfolio-value-cell"
+                                ],
+                                "status": [
+                                  "portfolio-intelligence-as-of"
+                                ],
+                                "intelligence": [
+                                  "portfolio-intelligence"
+                                ]
+                              }
                             }
-                          ]
+                          }
                         }
                       }
                     ],
@@ -16963,7 +16762,7 @@
                                 "request": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'placements':[]}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'summary','parent':'report-root','slot':'children','order':1},{'cell':'allocation','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
+                                    "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'composition':{'report-root':{'slots':{'children':['headline','summary','allocation','positions','facts','judgments','risks','uncertainties']}}}}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
                                   }
                                 },
                                 "response": {
@@ -17118,7 +16917,7 @@
                                                             "type": "object",
                                                             "required": [
                                                               "roots",
-                                                              "placements"
+                                                              "composition"
                                                             ],
                                                             "properties": {
                                                               "roots": {
@@ -17128,32 +16927,27 @@
                                                                   "type": "string"
                                                                 }
                                                               },
-                                                              "placements": {
-                                                                "type": "array",
-                                                                "items": {
+                                                              "composition": {
+                                                                "type": "object",
+                                                                "additionalProperties": {
                                                                   "type": "object",
                                                                   "required": [
-                                                                    "cell",
-                                                                    "parent",
-                                                                    "slot",
-                                                                    "order"
+                                                                    "slots"
                                                                   ],
+                                                                  "additionalProperties": false,
                                                                   "properties": {
-                                                                    "cell": {
-                                                                      "type": "string"
-                                                                    },
-                                                                    "parent": {
-                                                                      "type": "string"
-                                                                    },
-                                                                    "slot": {
-                                                                      "type": "string",
-                                                                      "const": "children"
-                                                                    },
-                                                                    "order": {
-                                                                      "type": "number"
+                                                                    "slots": {
+                                                                      "type": "object",
+                                                                      "minProperties": 1,
+                                                                      "additionalProperties": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "uniqueItems": true
+                                                                      }
                                                                     }
-                                                                  },
-                                                                  "additionalProperties": false
+                                                                  }
                                                                 }
                                                               }
                                                             },
@@ -17310,7 +17104,7 @@
                                     },
                                     {
                                       "kind": "jsonata",
-                                      "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
+                                      "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count($keys(data.payload.recipes[0].representations[0].presentation.composition)) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.composition.`report-root`.slots.children) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
                                       "message": "Semantic portfolio report must match the selected presentation mode and authorized scaffold",
                                       "code": "semantic-report-scaffold"
                                     }
@@ -17428,7 +17222,7 @@
                                 "request": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'placements':[]}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'summary','parent':'report-root','slot':'children','order':1},{'cell':'allocation','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
+                                    "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'composition':{'report-root':{'slots':{'children':['headline','summary','allocation','positions','facts','judgments','risks','uncertainties']}}}}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
                                   }
                                 },
                                 "response": {
@@ -17583,7 +17377,7 @@
                                                             "type": "object",
                                                             "required": [
                                                               "roots",
-                                                              "placements"
+                                                              "composition"
                                                             ],
                                                             "properties": {
                                                               "roots": {
@@ -17593,32 +17387,27 @@
                                                                   "type": "string"
                                                                 }
                                                               },
-                                                              "placements": {
-                                                                "type": "array",
-                                                                "items": {
+                                                              "composition": {
+                                                                "type": "object",
+                                                                "additionalProperties": {
                                                                   "type": "object",
                                                                   "required": [
-                                                                    "cell",
-                                                                    "parent",
-                                                                    "slot",
-                                                                    "order"
+                                                                    "slots"
                                                                   ],
+                                                                  "additionalProperties": false,
                                                                   "properties": {
-                                                                    "cell": {
-                                                                      "type": "string"
-                                                                    },
-                                                                    "parent": {
-                                                                      "type": "string"
-                                                                    },
-                                                                    "slot": {
-                                                                      "type": "string",
-                                                                      "const": "children"
-                                                                    },
-                                                                    "order": {
-                                                                      "type": "number"
+                                                                    "slots": {
+                                                                      "type": "object",
+                                                                      "minProperties": 1,
+                                                                      "additionalProperties": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "uniqueItems": true
+                                                                      }
                                                                     }
-                                                                  },
-                                                                  "additionalProperties": false
+                                                                  }
                                                                 }
                                                               }
                                                             },
@@ -17775,7 +17564,7 @@
                                     },
                                     {
                                       "kind": "jsonata",
-                                      "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
+                                      "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count($keys(data.payload.recipes[0].representations[0].presentation.composition)) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.composition.`report-root`.slots.children) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
                                       "message": "Semantic portfolio report must match the selected presentation mode and authorized scaffold",
                                       "code": "semantic-report-scaffold"
                                     }
@@ -17948,7 +17737,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'placements':[]}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'placements':[{'cell':'headline','parent':'report-root','slot':'children','order':0},{'cell':'summary','parent':'report-root','slot':'children','order':1},{'cell':'allocation','parent':'report-root','slot':'children','order':2},{'cell':'positions','parent':'report-root','slot':'children','order':3},{'cell':'facts','parent':'report-root','slot':'children','order':4},{'cell':'judgments','parent':'report-root','slot':'children','order':5},{'cell':'risks','parent':'report-root','slot':'children','order':6},{'cell':'uncertainties','parent':'report-root','slot':'children','order':7}]}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
+                            "expr": "($simpleScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'headline':'','summary':'','sections':[],'markdown':''}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}}; $richScaffold := {'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'rich-report','views':{'report-root':{'capability':'primitive:container','props':{'variant':'column','gap':'m'}},'headline':{'capability':'fluent:text','props':{'as':'h1','variant':'title','block':true},'bindings':{'value':{'from':'report.headline'}}},'summary':{'capability':'fluent:text','props':{'block':true},'bindings':{'value':{'from':'report.summary'}}},'allocation':{'capability':'primitive:chart','props':{'variant':'standard','spec':{'kind':'bar','title':'Position market values','description':'Market value by supplied position','fields':{'label':'ticker','value':'value'}}},'bindings':{'points':{'from':'report.allocation'}}},'positions':{'capability':'fluent:table','props':{'columns':[{'id':'ticker','label':'Ticker'},{'id':'quantity','label':'Quantity'},{'id':'price','label':'Price'},{'id':'value','label':'Value'},{'id':'gainLoss','label':'Gain/loss'}]},'bindings':{'rows':{'from':'report.positions'}}},'facts':{'capability':'fluent:list','bindings':{'items':{'from':'report.facts'}}},'judgments':{'capability':'fluent:list','bindings':{'items':{'from':'report.judgments'}}},'risks':{'capability':'fluent:list','bindings':{'items':{'from':'report.risks'}}},'uncertainties':{'capability':'fluent:list','bindings':{'items':{'from':'report.uncertainties'}}}},'presentation':{'roots':['report-root'],'composition':{'report-root':{'slots':{'children':['headline','summary','allocation','positions','facts','judgments','risks','uncertainties']}}}}}],'fallback':'rich-report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:container':{'propsSchema':{'type':'object','additionalProperties':true},'slots':['children']},'primitive:chart':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'points'},'fluent:text':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'value'},'fluent:list':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'items'},'fluent:table':{'propsSchema':{'type':'object','additionalProperties':true},'dataProp':'rows'}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['container','chart']},'fluent':{'from':'fluent','use':['text','list','table']}}},'state':{'report':{'headline':'','summary':'','allocation':[],'positions':[],'facts':[],'judgments':[],'risks':[],'uncertainties':[]}}},'cells':{'report-root':{'id':'report-root','kind':'semantic-report'},'headline':{'id':'headline','kind':'semantic-report'},'summary':{'id':'summary','kind':'semantic-report'},'allocation':{'id':'allocation','kind':'semantic-report'},'positions':{'id':'positions','kind':'semantic-report'},'facts':{'id':'facts','kind':'semantic-report'},'judgments':{'id':'judgments','kind':'semantic-report'},'risks':{'id':'risks','kind':'semantic-report'},'uncertainties':{'id':'uncertainties','kind':'semantic-report'}}}}; $scaffold := input.presentationMode = 'rich-components' ? $richScaffold : $simpleScaffold; {'message':input.promptTemplate & ' Fill only payload.runtime.state.report in this exact scaffold using the supplied portfolio data. Preserve every other scaffold field byte-for-byte in meaning. Positions JSON: ' & $string(input.positions) & ' Portfolio summary JSON: ' & $string(input.summary) & ' Investor profile JSON: ' & $string(input.investorProfile) & ' Accepted capabilities: ' & $string(input.acceptedCapabilities) & ' Scaffold JSON: ' & $string($scaffold),'instructions':input.presentationMode = 'rich-components' ? 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each allocation point is {ticker:string,value:number}; each list item is {value:string,label:string}; each table row is {id:string,cells:object}. Do not alter structure or add behavior.' : 'Return only the completed Blueprint JSON artifact. Call describe with kind capability for every accepted capability before filling the scaffold. Use only acceptedCapabilities and supplied portfolio facts; distinguish facts, judgments, risks, and uncertainty; do not imply external research. Each section is {heading:string,body:string,kind:fact|judgment|risk|uncertainty}. Do not alter structure or add behavior.','acceptedCapabilities':input.acceptedCapabilities,'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 4000})"
                           }
                         },
                         "response": {
@@ -18103,7 +17892,7 @@
                                                     "type": "object",
                                                     "required": [
                                                       "roots",
-                                                      "placements"
+                                                      "composition"
                                                     ],
                                                     "properties": {
                                                       "roots": {
@@ -18113,32 +17902,27 @@
                                                           "type": "string"
                                                         }
                                                       },
-                                                      "placements": {
-                                                        "type": "array",
-                                                        "items": {
+                                                      "composition": {
+                                                        "type": "object",
+                                                        "additionalProperties": {
                                                           "type": "object",
                                                           "required": [
-                                                            "cell",
-                                                            "parent",
-                                                            "slot",
-                                                            "order"
+                                                            "slots"
                                                           ],
+                                                          "additionalProperties": false,
                                                           "properties": {
-                                                            "cell": {
-                                                              "type": "string"
-                                                            },
-                                                            "parent": {
-                                                              "type": "string"
-                                                            },
-                                                            "slot": {
-                                                              "type": "string",
-                                                              "const": "children"
-                                                            },
-                                                            "order": {
-                                                              "type": "number"
+                                                            "slots": {
+                                                              "type": "object",
+                                                              "minProperties": 1,
+                                                              "additionalProperties": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                  "type": "string"
+                                                                },
+                                                                "uniqueItems": true
+                                                              }
                                                             }
-                                                          },
-                                                          "additionalProperties": false
+                                                          }
                                                         }
                                                       }
                                                     },
@@ -18295,7 +18079,7 @@
                             },
                             {
                               "kind": "jsonata",
-                              "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.placements) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
+                              "expr": "($mode := $request.presentationMode; $accepted := $request.acceptedCapabilities; $views := data.payload.recipes[0].representations[0].views; $state := data.payload.runtime.state.report; data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document' and data.payload.recipes[0].id = 'semantic-report-to-runtime' and data.payload.recipes[0].fallback = data.payload.recipes[0].representations[0].id and (($mode = 'simple-markdown' and $count($accepted) = 1 and 'primitive:markdown' in $accepted and data.payload.recipes[0].representations[0].id = 'report' and $count($keys($views)) = 1 and $views.report.capability = 'primitive:markdown' and $views.report.bindings.value.from = 'report.markdown' and $count(data.payload.recipes[0].representations[0].presentation.roots) = 1 and data.payload.recipes[0].representations[0].presentation.roots[0] = 'report' and $count($keys(data.payload.recipes[0].representations[0].presentation.composition)) = 0 and $count($keys(data.payload.runtime.capabilities)) = 1 and $count($keys(data.payload.cells)) = 1 and $count($keys($state)) = 4 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.sections) = 'array' and $length($state.markdown) > 0) or ($mode = 'rich-components' and $count($accepted) = 5 and 'primitive:container' in $accepted and 'primitive:chart' in $accepted and 'fluent:text' in $accepted and 'fluent:list' in $accepted and 'fluent:table' in $accepted and data.payload.recipes[0].representations[0].id = 'rich-report' and $count($keys($views)) = 9 and $views.`report-root`.capability = 'primitive:container' and $views.headline.capability = 'fluent:text' and $views.summary.capability = 'fluent:text' and $views.allocation.capability = 'primitive:chart' and $views.positions.capability = 'fluent:table' and $views.facts.capability = 'fluent:list' and $views.judgments.capability = 'fluent:list' and $views.risks.capability = 'fluent:list' and $views.uncertainties.capability = 'fluent:list' and $count(data.payload.recipes[0].representations[0].presentation.composition.`report-root`.slots.children) = 8 and $count($keys(data.payload.runtime.capabilities)) = 5 and $count($keys(data.payload.cells)) = 9 and $count($keys($state)) = 8 and $length($state.headline) > 0 and $length($state.summary) > 0 and $type($state.allocation) = 'array' and $type($state.positions) = 'array' and $type($state.facts) = 'array' and $type($state.judgments) = 'array' and $type($state.risks) = 'array' and $type($state.uncertainties) = 'array')))",
                               "message": "Semantic portfolio report must match the selected presentation mode and authorized scaffold",
                               "code": "semantic-report-scaffold"
                             }
@@ -18608,6 +18392,6 @@
       ]
     }
   },
-  "bundleVersion": "09042b38edac36c2",
-  "digest": "sha256:09042b38edac36c26e3c675e91b02fbc989160fb30fdb5f475a2399a278e5b79"
+  "bundleVersion": "ad7eb47c644451b3",
+  "digest": "sha256:ad7eb47c644451b323c1649a3a332ae59bc7490cd93f49e78b0ee8c3fd97eb6b"
 }

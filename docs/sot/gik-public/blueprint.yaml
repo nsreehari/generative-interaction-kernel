@@ -283,14 +283,19 @@ artifact_contracts:
   - name: PresentationProjection
     signature: >-
       interface PresentationProjection { roots: readonly string[];
-      placements?: readonly { cell: string; parent?: string;
-      slot?: string; order?: number }[] }
+      composition?: Readonly<Record<string, {
+      slots: Readonly<Record<string, readonly string[]>> }>> }
     guarantees:
-      - Roots and placements reference Cells in the same Blueprint.
+      - Roots, composition parent keys, and ordered slot members reference Cells in the same Blueprint.
+      - A Cell may appear at most once across roots and composition slot arrays.
+      - Parent and slot map declaration order, followed by child array order, deterministically defines projected child order.
+      - Slot names express caller-authored semantic placement intent and are not component capability insertion points.
+      - Components receive ordinary ordered children and do not interpret Blueprint slot names.
     consumed_by:
       - When present, the reserved `projections.presentation` entry is the layout the current compiler projects.
-      - composeCellProgram requires exactly one root for a presented Blueprint and walks placements
-        into the Kernel projection tree.
+      - composeCellProgram requires at least one root and walks the composition map into the Kernel projection tree.
+      - Representation lowering may replace a presentation or append sparse parent/slot composition;
+        append preserves existing slot order and concatenates ordered children within matching slots.
       - Without `projections.presentation`, composeCellProgram emits a non-projected Kernel program from
         Cell event handlers, computations, and source refresh behavior.
 
@@ -623,7 +628,8 @@ validation:
     - Full recipe connectivity and the one-tier requirement for recipe-free artifacts are enforced by resolveBlueprintExecution, not validateBlueprintArtifact.
     - Cell keys match Cell ids.
     - Cell composition has no error diagnostics.
-    - Presentation roots and placements reference known Cells.
+    - Presentation roots, composition parents, and slot members reference known Cells.
+    - Presentation composition rejects duplicate Cell placement.
     - Relationship participants reference known Cells.
 
 execution_boundary:

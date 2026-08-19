@@ -76,10 +76,7 @@
           "items": { "$ref": "#/definitions/representationDecorator" }
         },
         "presentation": { "$ref": "#/definitions/presentationProjection" },
-        "presentationAppend": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/presentationPlacement" }
-        }
+        "presentationAppend": { "$ref": "#/definitions/presentationComposition" }
       }
     },
     "representationDecorator": {
@@ -130,21 +127,27 @@
           "uniqueItems": true,
           "items": { "type": "string", "minLength": 1 }
         },
-        "placements": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/presentationPlacement" }
-        }
+        "composition": { "$ref": "#/definitions/presentationComposition" }
       }
     },
-    "presentationPlacement": {
+    "presentationComposition": {
       "type": "object",
-      "required": ["cell"],
-      "additionalProperties": false,
-      "properties": {
-        "cell": { "type": "string", "minLength": 1 },
-        "parent": { "type": "string", "minLength": 1 },
-        "slot": { "type": "string", "minLength": 1 },
-        "order": { "type": "number" }
+      "additionalProperties": {
+        "type": "object",
+        "required": ["slots"],
+        "additionalProperties": false,
+        "properties": {
+          "slots": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": { "type": "string", "minLength": 1 },
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            }
+          }
+        }
       }
     },
     "blueprintPatchOperation": {

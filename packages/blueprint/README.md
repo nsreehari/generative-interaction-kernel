@@ -68,6 +68,36 @@ forms use the same host-scoped nested Blueprint renderer; `gik:blueprint` is not
 component-library projection.
 Artifact assembly remains synchronous so cycle detection and interface admission complete before execution.
 
+## Presentation composition
+
+Blueprint presentation is authored independently from Cell definitions. `roots` select the projected
+entry Cells, while `composition` maps each parent Cell to semantic slots containing ordered child Cell
+ids:
+
+```json
+{
+  "projections": {
+    "presentation": {
+      "roots": ["workspace"],
+      "composition": {
+        "workspace": {
+          "slots": {
+            "navigation": ["catalog"],
+            "content": ["detail"]
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Slot names express caller-owned placement intent. They are available to representation tiers and
+lowering recipes, but are not component insertion points. Materialization flattens the selected
+composition deterministically into ordinary ordered children, so Cells and component projections do
+not need to understand the slot names. A representation may replace the complete presentation or
+append sparse parent/slot composition; append concatenates children within an existing slot.
+
 ## Worker hosting
 
 `@gik/blueprint/worker` coordinates one journal/engine/effect cycle per wake. Connector-specific

@@ -413,20 +413,18 @@
         "roots": [
           "ai-agent-root"
         ],
-        "placements": [
-          {
-            "cell": "agent-query-form",
-            "parent": "ai-agent-root",
-            "slot": "children",
-            "order": 0
-          },
-          {
-            "cell": "agent-response",
-            "parent": "ai-agent-root",
-            "slot": "children",
-            "order": 1
+        "composition": {
+          "ai-agent-root": {
+            "slots": {
+              "query": [
+                "agent-query-form"
+              ],
+              "response": [
+                "agent-response"
+              ]
+            }
           }
-        ]
+        }
       }
     }
   }

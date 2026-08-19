@@ -505,7 +505,7 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
         representations: [{
           id: "report",
           views: { report: { capability: "primitive:markdown", bindings: { value: { from: "report.markdown" } } } },
-          presentation: { roots: ["report"], placements: [] },
+          presentation: { roots: ["report"], composition: {} },
         }],
         fallback: "report",
       }],
@@ -611,16 +611,13 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
           },
           presentation: {
             roots: ["report-root"],
-            placements: [
-              { cell: "headline", parent: "report-root", slot: "children", order: 0 },
-              { cell: "summary", parent: "report-root", slot: "children", order: 1 },
-              { cell: "allocation", parent: "report-root", slot: "children", order: 2 },
-              { cell: "positions", parent: "report-root", slot: "children", order: 3 },
-              { cell: "facts", parent: "report-root", slot: "children", order: 4 },
-              { cell: "judgments", parent: "report-root", slot: "children", order: 5 },
-              { cell: "risks", parent: "report-root", slot: "children", order: 6 },
-              { cell: "uncertainties", parent: "report-root", slot: "children", order: 7 },
-            ],
+            composition: {
+              "report-root": {
+                slots: {
+                  children: ["headline", "summary", "allocation", "positions", "facts", "judgments", "risks", "uncertainties"],
+                },
+              },
+            },
           },
         }],
         fallback: "rich-report",

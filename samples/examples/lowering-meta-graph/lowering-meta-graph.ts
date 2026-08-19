@@ -228,14 +228,15 @@ export function compilerBlueprint(): BlueprintArtifact {
         // cells reachable from the presentation root — compute Cells resolve purely through
         // token wiring regardless of tree placement (confirmed by transform-rows/
         // transform-summary above), but a Cell with an event handler (approve) needs an
-        // explicit placement or `face.emit` has no node to resolve it against. Same pattern
+        // explicit composition or `face.emit` has no node to resolve it against. Same pattern
         // as portfolio-tracker's non-visual access-gate Cells (no `view`, placed as children).
-        placements: [
-          { cell: "transform-rows", parent: "agent-tier", slot: "children", order: 0 },
-          { cell: "transform-summary", parent: "agent-tier", slot: "children", order: 1 },
-          { cell: "approve", parent: "agent-tier", slot: "children", order: 2 },
-          { cell: "emit-blueprint", parent: "agent-tier", slot: "children", order: 3 },
-        ],
+        composition: {
+          "agent-tier": {
+            slots: {
+              children: ["transform-rows", "transform-summary", "approve", "emit-blueprint"],
+            },
+          },
+        },
       },
     },
   });

@@ -161,41 +161,373 @@
             "contract": "incident-report-blueprint/v1",
             "request": { "transform": { "kind": "jsonata", "expr": "($mode := input.model; $guidance := $mode = 'refinement' ? 'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.' : ($mode = 'source-faithful' ? 'Preserve only facts, relationships, verdicts, impacts, priorities, actions, ordering, identifiers, evidence, and uncertainty explicitly asserted by the source. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations.' : 'Normalize the supplied incident facts, relationships, evidence, uncertainty, impacts, and actions without inventing content.'); {'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\n\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. ' & $guidance & ' Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000})" } },
             "response": {
-              "validators": [{
-                "kind": "ajv-schema",
-                "code": "provider-structured-output",
-                "message": "Incident report Blueprint is invalid",
-                "schema": {
-                  "type": "object",
-                  "required": ["gik", "type", "payload"],
-                  "properties": {
-                    "gik": { "type": "string", "const": "0.1" },
-                    "type": { "type": "string", "const": "blueprint" },
-                    "payload": {
-                      "type": "object",
-                      "required": ["id", "kind", "version", "structureMode", "tiers", "recipes", "runtime", "cells"],
-                      "properties": {
-                        "id": { "type": "string", "const": "generated-incident-report" },
-                        "kind": { "type": "string", "const": "semantic-report" },
-                        "version": { "type": "string", "const": "1.0.0" },
-                        "structureMode": { "type": "string", "const": "fixed" },
-                        "tiers": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "object", "required": ["id", "kind"], "properties": { "id": { "type": "string" }, "kind": { "type": "string" } }, "additionalProperties": false } },
-                        "recipes": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "object", "required": ["id", "from", "to", "representations", "fallback"], "properties": { "id": { "type": "string", "const": "semantic-report-to-runtime" }, "from": { "type": "string", "const": "report-semantic" }, "to": { "type": "string", "const": "runtime-document" }, "representations": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "object", "required": ["id", "views", "presentation"], "properties": { "id": { "type": "string", "const": "report" }, "views": { "type": "object", "required": ["report"], "properties": { "report": { "type": "object", "required": ["capability", "bindings"], "properties": { "capability": { "type": "string", "const": "primitive:markdown" }, "bindings": { "type": "object", "required": ["value"], "properties": { "value": { "type": "object", "required": ["from"], "properties": { "from": { "type": "string", "const": "report.markdown" } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false }, "presentation": { "type": "object", "required": ["roots", "placements"], "properties": { "roots": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string", "const": "report" } }, "placements": { "type": "array", "maxItems": 0, "items": { "type": "object", "additionalProperties": false } } }, "additionalProperties": false } }, "additionalProperties": false } }, "fallback": { "type": "string", "const": "report" } }, "additionalProperties": false } },
-                        "runtime": { "type": "object", "required": ["expression", "namespaces", "actions", "capabilities", "externals", "state"], "properties": { "expression": { "type": "string", "const": "jsonata" }, "namespaces": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string", "const": "report" } }, "actions": { "type": "array", "maxItems": 0, "items": { "type": "string" } }, "capabilities": { "type": "object", "required": ["primitive:markdown"], "properties": { "primitive:markdown": { "type": "object", "required": ["propsSchema"], "properties": { "propsSchema": { "type": "object", "required": ["type", "additionalProperties"], "properties": { "type": { "type": "string", "const": "object" }, "additionalProperties": { "type": "boolean", "const": true } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false }, "externals": { "type": "object", "required": ["projectionViews"], "properties": { "projectionViews": { "type": "object", "required": ["primitive"], "properties": { "primitive": { "type": "object", "required": ["from", "use"], "properties": { "from": { "type": "string", "const": "primitive" }, "use": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "type": "string", "const": "markdown" } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false }, "state": { "type": "object", "required": ["report"], "properties": { "report": { "type": "object", "required": ["markdown"], "properties": { "markdown": { "type": "string", "minLength": 1 } }, "additionalProperties": false } }, "additionalProperties": false } }, "additionalProperties": false },
-                        "cells": { "type": "object", "required": ["report"], "properties": { "report": { "type": "object", "required": ["id", "kind"], "properties": { "id": { "type": "string", "const": "report" }, "kind": { "type": "string", "const": "semantic-report" } }, "additionalProperties": false } }, "additionalProperties": false }
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Incident report Blueprint is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": [
+                      "gik",
+                      "type",
+                      "payload"
+                    ],
+                    "properties": {
+                      "gik": {
+                        "type": "string",
+                        "const": "0.1"
+                      },
+                      "type": {
+                        "type": "string",
+                        "const": "blueprint"
+                      },
+                      "payload": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "kind",
+                          "version",
+                          "structureMode",
+                          "tiers",
+                          "recipes",
+                          "runtime",
+                          "cells"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "const": "generated-incident-report"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "const": "semantic-report"
+                          },
+                          "version": {
+                            "type": "string",
+                            "const": "1.0.0"
+                          },
+                          "structureMode": {
+                            "type": "string",
+                            "const": "fixed"
+                          },
+                          "tiers": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "kind"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "recipes": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "from",
+                                "to",
+                                "representations",
+                                "fallback"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "const": "semantic-report-to-runtime"
+                                },
+                                "from": {
+                                  "type": "string",
+                                  "const": "report-semantic"
+                                },
+                                "to": {
+                                  "type": "string",
+                                  "const": "runtime-document"
+                                },
+                                "representations": {
+                                  "type": "array",
+                                  "minItems": 1,
+                                  "maxItems": 1,
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "views",
+                                      "presentation"
+                                    ],
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "const": "report"
+                                      },
+                                      "views": {
+                                        "type": "object",
+                                        "required": [
+                                          "report"
+                                        ],
+                                        "properties": {
+                                          "report": {
+                                            "type": "object",
+                                            "required": [
+                                              "capability",
+                                              "bindings"
+                                            ],
+                                            "properties": {
+                                              "capability": {
+                                                "type": "string",
+                                                "const": "primitive:markdown"
+                                              },
+                                              "bindings": {
+                                                "type": "object",
+                                                "required": [
+                                                  "value"
+                                                ],
+                                                "properties": {
+                                                  "value": {
+                                                    "type": "object",
+                                                    "required": [
+                                                      "from"
+                                                    ],
+                                                    "properties": {
+                                                      "from": {
+                                                        "type": "string",
+                                                        "const": "report.markdown"
+                                                      }
+                                                    },
+                                                    "additionalProperties": false
+                                                  }
+                                                },
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      },
+                                      "presentation": {
+                                        "type": "object",
+                                        "required": [
+                                          "roots",
+                                          "composition"
+                                        ],
+                                        "properties": {
+                                          "roots": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "maxItems": 1,
+                                            "items": {
+                                              "type": "string",
+                                              "const": "report"
+                                            }
+                                          },
+                                          "composition": {
+                                            "type": "object",
+                                            "maxProperties": 0
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "fallback": {
+                                  "type": "string",
+                                  "const": "report"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "runtime": {
+                            "type": "object",
+                            "required": [
+                              "expression",
+                              "namespaces",
+                              "actions",
+                              "capabilities",
+                              "externals",
+                              "state"
+                            ],
+                            "properties": {
+                              "expression": {
+                                "type": "string",
+                                "const": "jsonata"
+                              },
+                              "namespaces": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 1,
+                                "items": {
+                                  "type": "string",
+                                  "const": "report"
+                                }
+                              },
+                              "actions": {
+                                "type": "array",
+                                "maxItems": 0,
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "capabilities": {
+                                "type": "object",
+                                "required": [
+                                  "primitive:markdown"
+                                ],
+                                "properties": {
+                                  "primitive:markdown": {
+                                    "type": "object",
+                                    "required": [
+                                      "propsSchema"
+                                    ],
+                                    "properties": {
+                                      "propsSchema": {
+                                        "type": "object",
+                                        "required": [
+                                          "type",
+                                          "additionalProperties"
+                                        ],
+                                        "properties": {
+                                          "type": {
+                                            "type": "string",
+                                            "const": "object"
+                                          },
+                                          "additionalProperties": {
+                                            "type": "boolean",
+                                            "const": true
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "externals": {
+                                "type": "object",
+                                "required": [
+                                  "projectionViews"
+                                ],
+                                "properties": {
+                                  "projectionViews": {
+                                    "type": "object",
+                                    "required": [
+                                      "primitive"
+                                    ],
+                                    "properties": {
+                                      "primitive": {
+                                        "type": "object",
+                                        "required": [
+                                          "from",
+                                          "use"
+                                        ],
+                                        "properties": {
+                                          "from": {
+                                            "type": "string",
+                                            "const": "primitive"
+                                          },
+                                          "use": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "maxItems": 1,
+                                            "items": {
+                                              "type": "string",
+                                              "const": "markdown"
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                "state": {
+                                  "type": "object",
+                                  "required": [
+                                    "report"
+                                  ],
+                                  "properties": {
+                                    "report": {
+                                      "type": "object",
+                                      "required": [
+                                        "markdown"
+                                      ],
+                                      "properties": {
+                                        "markdown": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "cells": {
+                              "type": "object",
+                              "required": [
+                                "report"
+                              ],
+                              "properties": {
+                                "report": {
+                                  "type": "object",
+                                  "required": [
+                                    "id",
+                                    "kind"
+                                  ],
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "const": "report"
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "semantic-report"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "additionalProperties": false
+                        }
                       },
                       "additionalProperties": false
                     }
-                  },
-                  "additionalProperties": false
+                  }
+                },
+                {
+                  "kind": "jsonata",
+                  "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'incident-report-semantic-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
+                  "message": "Incident report Blueprint must contain semantic and runtime-document tiers",
+                  "code": "report-blueprint-tiers"
                 }
-              }
-              }, {
-                "kind": "jsonata",
-                "expr": "data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'incident-report-semantic-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document'",
-                "message": "Incident report Blueprint must contain semantic and runtime-document tiers",
-                "code": "report-blueprint-tiers"
-              }]
+              ]
             },
             "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[]}" } },
             "onViolation": { "action": "fail" }
@@ -469,8 +801,12 @@
     },
     "projections": {
       "presentation": {
-        "roots": ["analysis-selection", "report-analysis", "report-resolution"],
-        "placements": []
+        "roots": [
+          "analysis-selection",
+          "report-analysis",
+          "report-resolution"
+        ],
+        "composition": {}
       }
     },
     "metadata": { "compositionPattern": "external-model-selected-analysis-with-nested-report" }

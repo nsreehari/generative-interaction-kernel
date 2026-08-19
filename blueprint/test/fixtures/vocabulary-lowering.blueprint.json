@@ -92,20 +92,16 @@
               "roots": [
                 "query-input"
               ],
-              "placements": [
-                {
-                  "cell": "results",
-                  "parent": "query-input",
-                  "slot": "children",
-                  "order": 0
-                },
-                {
-                  "cell": "summary",
-                  "parent": "query-input",
-                  "slot": "children",
-                  "order": 1
+              "composition": {
+                "query-input": {
+                  "slots": {
+                    "children": [
+                      "results",
+                      "summary"
+                    ]
+                  }
                 }
-              ]
+              }
             }
           }
         ]

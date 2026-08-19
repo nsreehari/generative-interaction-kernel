@@ -37,14 +37,7 @@ export const componentLayoutPropsSchema = {
 export function withComponentStylePropsSchema<T extends { properties?: Record<string, unknown> }>(schema: T): T {
   return {
     ...schema,
-    properties: { ...schema.properties, ...componentStylePropsSchema, ...componentLayoutPropsSchema },
-  };
-}
-
-export function withComponentLayoutPropsSchema<T extends { properties?: Record<string, unknown> }>(schema: T): T {
-  return {
-    ...schema,
-    properties: { ...schema.properties, ...componentLayoutPropsSchema },
+    properties: { ...schema.properties, ...componentStylePropsSchema },
   };
 }
 

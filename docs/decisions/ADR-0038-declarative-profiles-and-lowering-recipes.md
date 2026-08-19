@@ -203,3 +203,16 @@ from `computed.<assign-path>`; bare assignment paths are not an alternate namesp
 `blueprintRunState` and `cellRunState` namespaces are unavailable to Cell expressions. This keeps
 spinner decoration declarative without making runtime storage layout part of the Cell-authoring
 contract.
+
+## Amendment (2026-08-19): presentation composition owns semantic slots
+
+Presentation placement is Blueprint projection data, not Cell or component metadata. The flat
+`placements` list is replaced by a parent-keyed `composition` map. Each parent contains a `slots` map
+whose values are ordered Cell-id arrays. The map gives an authoring agent stable semantic regions such
+as `navigation`, `actions`, and `content` without coupling those names to a component implementation.
+
+Representation recipes may replace the complete presentation or append sparse composition. Append
+merges by parent and slot and concatenates child arrays; array order is authoritative. Materialization
+then projects the selected composition as ordinary ordered children. Component variants and
+representation lowering remain responsible for physical presentation, including context-dependent
+reordering or deliberate omission.
