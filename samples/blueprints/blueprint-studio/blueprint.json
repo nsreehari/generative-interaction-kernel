@@ -28,7 +28,7 @@
               "studio-root": {
                 "capability": "primitive:container",
                 "props": {
-                  "variant": "row",
+                  "variant": "column",
                   "gap": "l",
                   "align": "start",
                   "fullWidth": true,
@@ -36,15 +36,16 @@
                 }
               },
               "blueprint-list-region": {
-                "capability": "primitive:container",
+                "capability": "primitive:drawer",
                 "props": {
-                  "variant": "column",
-                  "gap": "s",
-                  "ariaLabel": "Blueprint catalog",
-                  "style": {
-                    "flex": "0 0 22rem",
-                    "width": "22rem"
-                  }
+                  "variant": "panel-vertical",
+                  "fabPosition": "top-left",
+                  "defaultOpen": false,
+                  "title": "Blueprint catalog",
+                  "openLabel": "Open Blueprint catalog",
+                  "closeLabel": "Close Blueprint catalog",
+                  "panelWidthPercent": 28,
+                  "ariaLabel": "Blueprint catalog"
                 }
               },
               "blueprint-list": {
@@ -170,6 +171,20 @@
                   "ariaLabel": "Blueprint preview"
                 }
               },
+              "blueprint-preview-context-drawer": {
+                "capability": "primitive:drawer",
+                "props": {
+                  "variant": "panel-vertical",
+                  "fabPosition": "top-right",
+                  "defaultOpen": false,
+                  "title": "Preview context",
+                  "openLabel": "Open Preview context",
+                  "closeLabel": "Close Preview context",
+                  "panelWidthPercent": 32,
+                  "ariaLabel": "Preview external context"
+                },
+                "visibility": "studio.previewContextFormSpec != null"
+              },
               "blueprint-preview-context-form": {
                 "capability": "primitive:form",
                 "props": {
@@ -253,8 +268,14 @@
                   "order": 2
                 },
                 {
-                  "cell": "blueprint-preview-context-form",
+                  "cell": "blueprint-preview-context-drawer",
                   "parent": "blueprint-preview-pane",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "blueprint-preview-context-form",
+                  "parent": "blueprint-preview-context-drawer",
                   "slot": "children",
                   "order": 0
                 },
@@ -326,6 +347,14 @@
           },
           "slots": ["children"]
         },
+        "primitive:drawer": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": ["children"],
+          "emits": ["openChange"]
+        },
         "primitive:form": {
           "propsSchema": {
             "type": "object",
@@ -374,7 +403,7 @@
           },
           "primitive": {
             "from": "primitive",
-            "use": ["container", "form", "markdown"]
+            "use": ["container", "drawer", "form", "markdown"]
           }
         }
       },
@@ -572,6 +601,10 @@
       "blueprint-preview-pane": {
         "id": "blueprint-preview-pane",
         "kind": "blueprint-preview"
+      },
+      "blueprint-preview-context-drawer": {
+        "id": "blueprint-preview-context-drawer",
+        "kind": "blueprint-preview-context-drawer"
       },
       "blueprint-preview-content": {
         "id": "blueprint-preview-content",
