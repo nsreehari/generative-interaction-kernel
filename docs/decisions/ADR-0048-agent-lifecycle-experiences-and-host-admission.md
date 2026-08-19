@@ -167,6 +167,18 @@ author_blueprint_set_in_progress_proposal
 This is a JSON callable surface, not a transport-specific surface. Function tools, RPC, HTTP, a
 local runner, or another carrier adapts the same tool metadata and handler contract.
 
+### Batch component capability description
+
+Component discovery is separate from lifecycle target `describe`, but follows the same
+transport-neutral rule. The common component `describe` tool has exactly two kinds:
+
+- `catalog-capabilities` returns compact selection guidance for the supplied capability IDs;
+- `multiple-capabilities` returns exact authoring contracts for a non-empty array of shortlisted IDs.
+
+There is no singular `capability` kind. Agents shortlist once and retrieve all candidate details in
+one call, avoiding provider-dependent serial tool loops. Hosts merge package and custom component
+catalogs before constructing the tool; authorization and returned-artifact admission remain separate.
+
 ### Model Blueprint authority as cumulative experiences
 
 Use these terms in architecture and documentation:

@@ -41,15 +41,28 @@ test("describe lists compact capability selection guidance", async () => {
 test("describe returns only requested Blueprint authoring contracts", async () => {
   const tool = createCapabilityDescribeTool(catalog);
   assert.deepEqual(await tool.handler({
-    kind: "capability",
-    capabilities: ["semantic:argument"],
+    kind: "multiple-capabilities",
+    capabilities: ["semantic:argument", "primitive:form"],
   }), {
     capabilities: {
       "semantic:argument": catalog.details["semantic:argument"],
+      "primitive:form": catalog.details["primitive:form"],
     },
   });
   await assert.rejects(
-    async () => tool.handler({ kind: "capability", capabilities: ["unknown:thing"] }),
+    async () => tool.handler({ kind: "multiple-capabilities", capabilities: ["unknown:thing"] }),
     /Unknown capabilities: unknown:thing/,
+  );
+  await assert.rejects(
+    async () => tool.handler({ kind: "multiple-capabilities", capabilities: [] }),
+    /requires at least one capability ID/,
+  );
+  await assert.rejects(
+    async () => tool.handler({ kind: "capability", capabilities: ["primitive:form"] }),
+    /Unsupported describe kind 'capability'/,
+  );
+  assert.deepEqual(
+    (tool.inputSchema.properties?.kind as { enum?: unknown }).enum,
+    ["catalog-capabilities", "multiple-capabilities"],
   );
 });

@@ -71,7 +71,7 @@ export function sampleAgentTemplates() {
         'The request supplies the outcome, section map, accepted capabilities, constraints, and local currency.',
         'Sections are semantic obligations, not component assignments. Accepted capabilities are a vocabulary, not a checklist.',
         'Choose and compose the authorized components that make each section most intuitive for the supplied data.',
-        'Call describe with kind catalog-capabilities for concise selection guidance and kind capability for exact Blueprint authoring contracts before using capabilities.',
+        'When selection is unclear, call describe once with {"kind":"catalog-capabilities","capabilities":acceptedCapabilities}. Then call describe once with {"kind":"multiple-capabilities","capabilities":[...shortlistedIds]}. Never issue serial detail calls.',
         'Use only acceptedCapabilities. Declare only used capabilities and matching projectionViews imports.',
         'CLOSED WORLD: analyze only supplied portfolio data. FACTS ≠ JUDGMENTS. HONEST UNKNOWN.',
         'KISS. DRY. FIT > VARIETY. COMPLEMENT > REPEAT. SIGNAL > DENSITY.',
