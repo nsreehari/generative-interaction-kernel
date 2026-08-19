@@ -53,8 +53,8 @@ test("host query selects Blueprints with canonical b and legacy bundle parameter
     { ai: "copilot" },
   );
   assert.deepEqual(
-    readHostQuery("?b=portfolio-tracker-new&intelligence-model=semantic&market-prices=live&view=mobile").externalContext,
-    { "intelligence-model": "semantic", "market-prices": "live", view: "mobile" },
+    readHostQuery("?b=portfolio-tracker-new&intelligence-model=semantic&market-prices=live&semantic=rich-components&view=mobile").externalContext,
+    { "intelligence-model": "semantic", "market-prices": "live", semantic: "rich-components", view: "mobile" },
   );
   assert.deepEqual(
     readHostQuery("?b=incident-analysis-new-shell&model=refinement&source-report=identity-compromise").externalContext,
