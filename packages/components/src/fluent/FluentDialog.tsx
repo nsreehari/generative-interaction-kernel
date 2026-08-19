@@ -18,11 +18,17 @@ type FluentDialogModalType = Extract<DialogProps["modalType"], typeof modalTypes
 
 export const FluentDialog = ({ node, emit, children }: ProjectionViewProps) => {
   const props = readProps(node);
+  const controlled = typeof node.props.open === "boolean";
+  const [localOpen, setLocalOpen] = React.useState(() => props.bool("defaultOpen"));
+  const open = controlled ? props.bool("open") : localOpen;
   return (
     <Dialog
-      open={props.bool("open")}
+      open={open}
       modalType={props.str("modalType", "modal") as FluentDialogModalType}
-      onOpenChange={(_event, data) => void emit("openChange", { open: data.open })}
+      onOpenChange={(_event, data) => {
+        if (!controlled) setLocalOpen(data.open);
+        void emit("openChange", { open: data.open });
+      }}
     >
       <DialogSurface
         {...componentRootProps(node)}
@@ -40,9 +46,10 @@ export const FluentDialog = ({ node, emit, children }: ProjectionViewProps) => {
 const dialogSchema = withComponentStylePropsSchema({
   type: "object",
   additionalProperties: false,
-  required: ["open", "title"],
+  required: ["title"],
   properties: {
     open: { type: "boolean" },
+    defaultOpen: { type: "boolean" },
     title: { type: "string", minLength: 1 },
     ariaLabel: { type: "string", minLength: 1 },
     modalType: { type: "string", enum: modalTypes },
@@ -51,10 +58,10 @@ const dialogSchema = withComponentStylePropsSchema({
 
 const dialogDescription: ComponentDescription = {
   capability: "fluent:dialog",
-  summary: "Renders a controlled Fluent 2 dialog whose native surface owns modality, focus, and dismissal.",
+  summary: "Renders a self-contained Fluent 2 dialog whose native surface owns modality, focus, and dismissal.",
   slots: ["children"],
   events: ["openChange"],
-  eventContracts: { openChange: eventContract("The dialog requests a change to its controlled open state.", { open: { type: "boolean" } }) },
+  eventContracts: { openChange: eventContract("The dialog open state changed; handling this event is optional unless open is controlled.", { open: { type: "boolean" } }) },
   semanticTokens: [],
   defaultVariant: "standard",
   variants: [
@@ -63,7 +70,12 @@ const dialogDescription: ComponentDescription = {
   authoring: {
     useWhen: ["A temporary surface must interrupt or supplement the current workflow"],
     avoidWhen: ["The content belongs in the page flow", "A domain-specific composite already owns the workflow"],
-    rules: ["Bind open to authored state", "Handle openChange outside the component", "Place dialog content in children"],
+    rules: [
+      "Prefer local dialog state and use defaultOpen only to choose its initial state",
+      "Bind open only when application behavior or cross-Cell coordination must control the dialog",
+      "Handle openChange only when the application needs to observe or control dialog state",
+      "Place dialog content in children",
+    ],
   },
 };
 
@@ -71,5 +83,5 @@ export const fluentDialogDefinition = defineFluentComponent(
   dialogDescription,
   dialogSchema,
   FluentDialog,
-  { open: true, title: "Review details" },
+  { defaultOpen: true, title: "Review details" },
 );

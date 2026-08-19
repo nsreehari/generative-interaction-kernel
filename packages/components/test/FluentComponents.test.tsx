@@ -14,7 +14,6 @@ import {
   fluentComponentDefinitions,
   fluentComponentViews,
   fluentDataGridDefinition,
-  FluentDialog,
   fluentDialogDefinition,
   fluentDropdownDefinition,
   fluentListDefinition,
@@ -136,7 +135,7 @@ test("FluentButton renders its icon variant with an accessible name", () => {
   assert.match(markup, /<svg/);
 });
 
-test("FluentDialog exposes controlled native dialog composition", () => {
+test("FluentDialog exposes self-contained native dialog composition", () => {
   const trial = fluentDialogDefinition.materializeTrial();
   trial.props.className = "callsite-override";
   trial.props.style = { maxWidth: "40rem" };
@@ -144,20 +143,24 @@ test("FluentDialog exposes controlled native dialog composition", () => {
   const markup = renderToStaticMarkup(
     <Component node={trial} emit={() => undefined} children={<p>Dialog content</p>} />,
   );
-  const dialog = FluentDialog({
-    node: trial,
-    emit: () => undefined,
-    children: <p>Dialog content</p>,
-  }) as React.ReactElement<{ children: React.ReactElement<{ className?: string; style?: React.CSSProperties }> }>;
-  const surface = dialog.props.children;
-
   assert.match(markup, /hidden/);
-  assert.match(surface.props.className ?? "", /callsite-override/);
-  assert.deepEqual(surface.props.style, { maxWidth: "40rem" });
   assert.deepEqual(fluentDialogDefinition.slots, ["children"]);
   assert.deepEqual(fluentDialogDefinition.events, ["openChange"]);
+  assert.equal(fluentDialogDefinition.validate({ defaultOpen: true, title: "Review details" }).ok, true);
   assert.equal(fluentDialogDefinition.validate({ open: true, title: "Review details" }).ok, true);
   assert.equal(fluentDialogDefinition.validate({ open: "yes", title: "Review details" }).ok, false);
+});
+
+test("FluentDialog controlled open overrides its local default", () => {
+  const trial = fluentDialogDefinition.materializeTrial();
+  trial.props.defaultOpen = true;
+  trial.props.open = false;
+  const Component = fluentDialogDefinition.component;
+  const markup = renderToStaticMarkup(
+    <Component node={trial} emit={() => undefined} children={<p>Controlled dialog content</p>} />,
+  );
+
+  assert.doesNotMatch(markup, /Controlled dialog content/);
 });
 
 test("FluentToolbar exposes native command composition", () => {
@@ -208,6 +211,37 @@ test("FluentTabBar composes ordered panes and renders the active content", () =>
   assert.match(markup, /role="tabpanel".*Form pane/);
   assert.deepEqual(fluentTabBarDefinition.slots, ["panes"]);
   assert.equal(fluentTabBarDefinition.validate(node.props).ok, true);
+});
+
+test("FluentTabBar uses defaultActive without requiring authored state", () => {
+  const trial = fluentTabBarDefinition.materializeTrial();
+  const Component = fluentTabBarDefinition.component;
+  const node = {
+    ...trial,
+    props: {
+      defaultActive: "form",
+      tabs: [
+        { value: "overview", headerLabel: "Overview" },
+        { value: "form", headerLabel: "Form" },
+      ],
+    },
+  };
+  const markup = renderToStaticMarkup(
+    <Component
+      node={node}
+      emit={() => undefined}
+      children={undefined}
+      slots={{
+        panes: [
+          <p key="overview">Overview pane</p>,
+          <p key="form">Form pane</p>,
+        ],
+      }}
+    />,
+  );
+
+  assert.match(markup, /Form pane/);
+  assert.doesNotMatch(markup, /Overview pane/);
 });
 
 test("basic Fluent controls render their public trials", () => {

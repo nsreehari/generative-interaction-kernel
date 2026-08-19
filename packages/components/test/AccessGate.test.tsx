@@ -7,7 +7,7 @@ import { AccessGate, accessGateDefinition } from "../src/primitives";
 
 test("primitive:access-gate exposes a closed access data contract", () => {
   assert.equal(accessGateDefinition.dataProp, "access");
-  assert.deepEqual(accessGateDefinition.events, ["submit", "retry", "reset", "openChange"]);
+  assert.deepEqual(accessGateDefinition.events, ["submit", "retry", "reset", "dismiss"]);
   assert.equal(accessGateDefinition.validate({ access: { triggered: false } }).ok, true);
   assert.equal(accessGateDefinition.validate({ access: { triggered: "yes" } }).ok, false);
 });
@@ -37,4 +37,6 @@ test("primitive:access-gate forwards root overrides to its dialog surface", () =
 
   assert.equal(dialog.props.node.props.className, "callsite-override");
   assert.deepEqual(dialog.props.node.props.style, { maxWidth: "40rem" });
+  assert.equal(dialog.props.node.props.defaultOpen, true);
+  assert.equal(dialog.props.node.props.open, undefined);
 });

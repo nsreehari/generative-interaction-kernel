@@ -40,7 +40,7 @@ export const AccessGate = ({ node, emit, children }: ProjectionViewProps) => {
   const formSpec = asRecord(access.inputFormSpec);
   const actions = asRecord(access.actions);
   const dialogNode = projectionNode(`${node.id}-dialog`, "fluent:dialog", {
-    open: true,
+    defaultOpen: true,
     title,
     ariaLabel: title,
     modalType: "modal",
@@ -65,7 +65,10 @@ export const AccessGate = ({ node, emit, children }: ProjectionViewProps) => {
   return (
     <FluentDialog
       node={dialogNode}
-      emit={(_event, payload) => emit("openChange", payload)}
+      emit={(_event, payload) => {
+        const change = asRecord(payload);
+        if (change.open === false) void emit("dismiss", {});
+      }}
       children={(
         <div className="gx-access-gate-content">
           {access.message ? <p>{access.message}</p> : null}
@@ -130,12 +133,12 @@ const accessGateDescription: ComponentDescription = {
   summary: "Gates protected children behind a controlled access workflow composed from declarative GIK controls.",
   dataProp: "access",
   slots: ["children"],
-  events: ["submit", "retry", "reset", "openChange"],
+  events: ["submit", "retry", "reset", "dismiss"],
   eventContracts: {
     submit: eventContract("The user submits the authored access fields.", { values: { type: "object", additionalProperties: true } }),
     retry: eventContract("The user requests another access check."),
     reset: eventContract("The user requests that access state be reset."),
-    openChange: eventContract("The access dialog requests a change to its controlled open state.", { open: { type: "boolean" } }),
+    dismiss: eventContract("The user dismisses the access prompt without completing the access workflow."),
   },
   semanticTokens: [],
   variants: [],
@@ -146,6 +149,7 @@ const accessGateDescription: ComponentDescription = {
       "Resolve authored conditions into access.triggered at the call site",
       "Describe credential fields through inputFormSpec",
       "Handle emitted events with declarative actions or effects",
+      "Handle dismiss only when the application needs to react to cancellation",
       "Never place credentials in the trigger expression",
     ],
   },

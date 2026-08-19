@@ -126,7 +126,7 @@ export function HostServiceDependencyAccess(): React.ReactElement | null {
     <AccessGate
       node={accessGateNode(requirement)}
       emit={async (event, payload) => {
-        if (event === "openChange" && payload?.open === false) {
+        if (event === "dismiss") {
           requirement.reject(new Error("Credential request was cancelled"));
           return;
         }
