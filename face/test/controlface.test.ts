@@ -121,10 +121,13 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
       projections: {
         presentation: {
           roots: ["root"],
-          placements: [
-            { cell: "source", parent: "root" },
-            { cell: "consumer", parent: "root" },
-          ],
+          composition: {
+            root: {
+              slots: {
+                children: ["source", "consumer"],
+              },
+            },
+          },
         },
       },
     },

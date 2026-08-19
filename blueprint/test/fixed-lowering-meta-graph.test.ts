@@ -122,6 +122,66 @@ test("the lowering-recipe schema rejects a headless representation flag", () => 
   );
 });
 
+test("representation append merges sparse parent and slot composition", () => {
+  const authored = createBlueprint<RepresentationLoweringRecipeDefinition>({
+    id: "composition-append",
+    kind: "test",
+    version: "1",
+    tiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    recipes: [{
+      id: "intent-to-runtime",
+      from: "intent",
+      to: "runtime",
+      representations: [
+        {
+          id: "base",
+          presentation: {
+            roots: ["root"],
+            composition: {
+              root: {
+                slots: {
+                  header: ["heading"],
+                  content: ["primary"],
+                },
+              },
+            },
+          },
+        },
+        {
+          id: "extended",
+          extends: "base",
+          presentationAppend: {
+            root: {
+              slots: {
+                content: ["secondary"],
+                actions: ["save"],
+              },
+            },
+          },
+        },
+      ],
+      fallback: "extended",
+    }],
+    runtime: { namespaces: ["state"], capabilities: {} },
+    cells: Object.fromEntries(["root", "heading", "primary", "secondary", "save"].map((id) => [
+      id,
+      { id, view: { capability: "ui:text" } },
+    ])),
+  });
+
+  const terminal = lowerWithFixedMetaGraph(authored);
+
+  assert.deepEqual(terminal.payload.projections?.presentation?.composition, {
+    root: {
+      slots: {
+        header: ["heading"],
+        content: ["primary", "secondary"],
+        actions: ["save"],
+      },
+    },
+  });
+});
+
 test("a representation decorator uses JSONata to add loading UI around source-backed Cells", () => {
   const authored = createBlueprint<RepresentationLoweringRecipeDefinition>({
     id: "source-backed-decoration",
@@ -141,10 +201,13 @@ test("a representation decorator uses JSONata to add loading UI around source-ba
         },
         presentation: {
           roots: ["board"],
-          placements: [
-            { cell: "remote", parent: "board", slot: "children", order: 0 },
-            { cell: "local", parent: "board", slot: "children", order: 1 },
-          ],
+          composition: {
+            board: {
+              slots: {
+                children: ["remote", "local"],
+              },
+            },
+          },
         },
         decorators: [{
           select: "cells[sources].id",

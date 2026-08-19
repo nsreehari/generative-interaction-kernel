@@ -111,7 +111,7 @@
                       "roots": [
                         "report"
                       ],
-                      "placements": []
+                      "composition": {}
                     }
                   }
                 ],

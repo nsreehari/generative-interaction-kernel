@@ -1,66 +1,38 @@
 import assert from "node:assert/strict";
-import React from "react";
 import { test } from "vitest";
-import type { ResolvedNode } from "@gik/kernel";
 
-import { renderNode } from "../src/render";
-import type { ComponentRegistry, ProjectionView } from "../src/registry";
+import { resolveLayoutSlots } from "../src/layout";
 
-const Leaf: ProjectionView = ({ node }) => <span>{node.id}</span>;
-const Parent: ProjectionView = ({ children, slots }) => (
-  <section data-default={React.Children.toArray(children).map((child) => (child as React.ReactElement).props.node.id).join(",")}
-    data-leading={(slots?.leading ?? []).map((child) => (child as React.ReactElement).props.node.id).join(",")} />
-);
+const items = [
+  { key: "first", content: "First" },
+  { key: "second", content: "Second" },
+  { key: "third", content: "Third" },
+];
 
-const registry: ComponentRegistry = {
-  get: (capability) => capability === "test:parent" ? Parent : Leaf,
-  fallback: Leaf,
-};
+test("resolveLayoutSlots groups component-local items while preserving source order", () => {
+  const resolved = resolveLayoutSlots(items, {
+    slots: [
+      { key: "second", slot: "secondary" },
+      { key: "first", slot: "secondary" },
+    ],
+  });
 
-function child(id: string): ResolvedNode {
-  return { id, capability: "test:leaf", props: {}, visible: true, fallback: false, children: [] };
-}
-
-test("renderNode resolves layout slots by child id while preserving authored order", () => {
-  const rendered = renderNode({
-    id: "parent",
-    capability: "test:parent",
-    props: { layout: { slots: [{ key: "second", slot: "leading" }, { key: "first", slot: "leading" }] } },
-    visible: true,
-    fallback: false,
-    children: [child("first"), child("second"), child("third")],
-  }, registry, () => {}) as React.ReactElement;
-  const projected = Parent(rendered.props) as React.ReactElement;
-
-  assert.equal(projected.props["data-leading"], "first,second");
-  assert.equal(projected.props["data-default"], "third");
+  assert.deepEqual(resolved.children, ["Third"]);
+  assert.deepEqual(resolved.slots, { secondary: ["First", "Second"] });
 });
 
-test("renderNode keeps every child in authored order when layout slots are absent", () => {
-  const rendered = renderNode({
-    id: "parent",
-    capability: "test:parent",
-    props: {},
-    visible: true,
-    fallback: false,
-    children: [child("first"), child("second"), child("third")],
-  }, registry, () => {}) as React.ReactElement;
-  const projected = Parent(rendered.props) as React.ReactElement;
-
-  assert.equal(projected.props["data-default"], "first,second,third");
-  assert.equal(projected.props["data-leading"], "");
+test("resolveLayoutSlots leaves items in the default group without assignments", () => {
+  assert.deepEqual(resolveLayoutSlots(items), {
+    children: ["First", "Second", "Third"],
+    slots: {},
+  });
 });
 
-test("the explicit children slot uses the same ordered default child sequence", () => {
-  const rendered = renderNode({
-    id: "parent",
-    capability: "test:parent",
-    props: { layout: { slots: [{ key: "second", slot: "children" }] } },
-    visible: true,
-    fallback: false,
-    children: [child("first"), child("second"), child("third")],
-  }, registry, () => {}) as React.ReactElement;
-  const projected = Parent(rendered.props) as React.ReactElement;
+test("resolveLayoutSlots treats the explicit children group as the default", () => {
+  const resolved = resolveLayoutSlots(items, {
+    slots: [{ key: "second", slot: "children" }],
+  });
 
-  assert.equal(projected.props["data-default"], "first,second,third");
+  assert.deepEqual(resolved.children, ["First", "Second", "Third"]);
+  assert.deepEqual(resolved.slots, {});
 });

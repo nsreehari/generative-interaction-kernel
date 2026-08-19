@@ -196,20 +196,17 @@ test("FluentTabBar composes ordered panes and renders the active content", () =>
     <Component
       node={node}
       emit={() => undefined}
-      children={undefined}
-      slots={{
-        panes: [
-          <p key="overview">Overview pane</p>,
-          <p key="form">Form pane</p>,
-        ],
-      }}
+      children={[
+        <p key="overview">Overview pane</p>,
+        <p key="form">Form pane</p>,
+      ]}
     />,
   );
 
   assert.match(markup, /Form pane/);
   assert.doesNotMatch(markup, /Overview pane/);
   assert.match(markup, /role="tabpanel".*Form pane/);
-  assert.deepEqual(fluentTabBarDefinition.slots, ["panes"]);
+  assert.equal(fluentTabBarDefinition.slots, undefined);
   assert.equal(fluentTabBarDefinition.validate(node.props).ok, true);
 });
 
@@ -230,13 +227,10 @@ test("FluentTabBar uses defaultActive without requiring authored state", () => {
     <Component
       node={node}
       emit={() => undefined}
-      children={undefined}
-      slots={{
-        panes: [
-          <p key="overview">Overview pane</p>,
-          <p key="form">Form pane</p>,
-        ],
-      }}
+      children={[
+        <p key="overview">Overview pane</p>,
+        <p key="form">Form pane</p>,
+      ]}
     />,
   );
 

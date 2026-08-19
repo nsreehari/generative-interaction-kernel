@@ -1899,9 +1899,6 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
           ]
         }
       },
-      "slots": [
-        "panes"
-      ],
       "emits": {
         "select": {
           "summary": "The active tab changes.",
@@ -1921,7 +1918,7 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
       },
       "constraints": [
         "Provide stable tab values and headerLabel values",
-        "Place one authored child in the panes slot for each tab, in the same order",
+        "Place one authored child for each tab, in the same order",
         "Prefer local tab state and use defaultActive only to choose the initial tab",
         "Bind active only when application behavior, persistence, or cross-Cell coordination controls the active tab",
         "Handle select only when the application needs to observe or control tab selection"
@@ -2287,18 +2284,6 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
                 "readOnly": {
                   "type": "boolean"
                 },
-                "className": {
-                  "type": "string"
-                },
-                "style": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": [
-                      "string",
-                      "number"
-                    ]
-                  }
-                },
                 "layout": {
                   "type": "object",
                   "additionalProperties": false,
@@ -2324,6 +2309,18 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
                         }
                       }
                     }
+                  }
+                },
+                "className": {
+                  "type": "string"
+                },
+                "style": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
                   }
                 }
               }

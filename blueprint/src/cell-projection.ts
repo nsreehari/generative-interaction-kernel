@@ -13,21 +13,18 @@ import {
   PRESENTATION_FRAGMENT_CAPABILITY,
 } from "./hosted-blueprint";
 import type { ExecutableCellTopology } from "./cells";
-import type { CellDefinition, CellViewDecoration } from "./types";
-
-export interface CellPlacement {
-  cell: string;
-  parent?: string;
-  slot?: string;
-  order?: number;
-}
+import type {
+  CellDefinition,
+  CellViewDecoration,
+  PresentationProjection,
+} from "./types";
 
 export interface CellProjectionDefinition {
   cells: Readonly<Record<string, CellDefinition>>;
   projections?: {
     presentation?: {
-    roots: readonly string[];
-    placements?: readonly CellPlacement[];
+      roots: readonly string[];
+      composition?: PresentationProjection["composition"];
     };
   };
 }
@@ -62,25 +59,20 @@ export function composeCellProgram(
   if (rootIds.length === 0) {
     throw new Error(`Blueprint '${topology.id}' requires at least one presentation root`);
   }
-  const byParent = new Map<string, CellPlacement[]>();
-  for (const placement of presentation?.placements ?? []) {
-    if (!placement.parent) continue;
-    const siblings = byParent.get(placement.parent) ?? [];
-    siblings.push(placement);
-    byParent.set(placement.parent, siblings);
-  }
+  const composition = presentation.composition ?? {};
   const presentedCellIds = new Set<string>();
   const compile = (cellId: string, ancestors: readonly string[]): DocNode => {
     if (ancestors.includes(cellId)) {
       throw new Error(`Blueprint '${topology.id}' has a presentation cycle at '${cellId}'`);
     }
+
     const cell = definition.cells[cellId];
     if (!cell) throw new Error(`Blueprint '${topology.id}' references unknown cell '${cellId}'`);
     if (!cell.blueprint && !cell.view?.capability) throw new Error(`Presentation cell '${cellId}' has no view capability`);
     presentedCellIds.add(cellId);
-    const children = (byParent.get(cellId) ?? [])
-      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
-      .map(({ cell: childId }) => compile(childId, [...ancestors, cellId]));
+    const children = Object.values(composition[cellId]?.slots ?? {})
+      .flatMap((childIds) => childIds)
+      .map((childId) => compile(childId, [...ancestors, cellId]));
     return toProgramNode(cell, children);
   };
   const roots = rootIds.map((rootId) => compile(rootId, []));

@@ -531,6 +531,43 @@ describe("@gik/blueprint", () => {
     });
   });
 
+  it("flattens Blueprint semantic slots into ordinary ordered children", () => {
+    const artifact = createBlueprint({
+      ...blueprint("composed").payload,
+      cells: {
+        root: { id: "root", view: { capability: "primitive:container" } },
+        heading: { id: "heading", view: { capability: "fluent:text" } },
+        primary: { id: "primary", view: { capability: "primitive:note" } },
+        secondary: { id: "secondary", view: { capability: "primitive:note" } },
+      },
+      projections: {
+        presentation: {
+          roots: ["root"],
+          composition: {
+            root: {
+              slots: {
+                header: ["heading"],
+                content: ["primary", "secondary"],
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const program = composeCellProgram(
+      { cells: artifact.payload.cells ?? {}, projections: artifact.payload.projections },
+      compileCellTopology("composed", artifact.payload.cells ?? {}),
+    );
+
+    expect(program.root?.edges?.children).toEqual([
+      expect.objectContaining({ id: "heading" }),
+      expect.objectContaining({ id: "primary" }),
+      expect.objectContaining({ id: "secondary" }),
+    ]);
+    expect(program.root?.props).toBeUndefined();
+  });
+
   it.each([
     [{ from: "runtime.analysisBlueprint" }, "{'$ref':runtime.analysisBlueprint}"],
     [{ expression: "externalContext.analysisBlueprint" }, "{'$ref':(externalContext.analysisBlueprint)}"],

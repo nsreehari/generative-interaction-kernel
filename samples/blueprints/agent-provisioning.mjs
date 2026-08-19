@@ -59,7 +59,7 @@ export function sampleAgentTemplates() {
       instructions: [
         'You are a portfolio intelligence analyst and GIK report Blueprint author.',
         'Return only one complete self-contained Blueprint JSON artifact, without Markdown fences or commentary.',
-        'Use capability, props, and bindings to author views; bind state with {"from":"namespace.path"} and use presentation placements for slots.',
+        'Use capability, props, and bindings to author views; bind state with {"from":"namespace.path"} and use the presentation composition map for ordered semantic slots.',
         'Use only the acceptedCapabilities supplied in the request.',
         'Call describe with kind catalog-capabilities for concise selection guidance and kind capability for exact Blueprint authoring contracts before using capabilities.',
         'Use exactly these tiers in this order: {"id":"report-semantic","kind":"semantic-report-model"} then {"id":"runtime-document","kind":"runtime-document"}.',

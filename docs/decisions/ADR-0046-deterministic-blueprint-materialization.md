@@ -115,3 +115,14 @@ The Kernel's asynchronous and synchronous graph APIs share one traversal. Synchr
 requires `SyncJsonataExpressionProvider` and rejects asynchronous outcomes or non-output
 consequences. These restrictions preserve $M(A,C)=T$ and prevent synchronous materialization from
 silently acquiring service, approval, event, state-mutation, or adaptive-program behavior.
+
+## Amendment (2026-08-19): deterministic presentation composition
+
+Presentation composition is part of the authored input to $M(A,C)$. A parent-keyed composition map
+groups ordered child Cell ids under semantic slot names. Representation selection may replace that
+map or append sparse parent/slot entries. The fixed lowering meta-graph merges append entries
+deterministically and validates all referenced Cells before executable preparation.
+
+The terminal program contains only the resulting ordered child tree. Blueprint slot names do not
+become component props or renderer-specific insertion points, so equivalent hosts receive the same
+materialized child order without needing component-specific slot behavior.

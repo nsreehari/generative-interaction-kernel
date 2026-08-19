@@ -219,3 +219,15 @@ Those implementations may apply typed Blueprint patch and representation vocabul
 not walk graph nodes or control scheduling. Synchronous Kernel publication additionally rejects
 operations, effects, events, and program mutations, keeping the mode narrower than ordinary runtime
 execution and preserving the deferred status of agent/human compiler pipelines.
+
+## Amendment (2026-08-19): composition supersedes presentation placements
+
+The Phase 2 reachability constraint remains, but event-bearing Cells are now made reachable through
+`projections.presentation.composition`, not a flat `placements` array. A composition entry maps a
+parent Cell to semantic slot names and ordered child Cell ids. Compiler Blueprints use the same
+contract as application Blueprints; a slot name carries authoring and lowering intent but is removed
+when the terminal Kernel tree is composed.
+
+This supersedes the `placements` wording in finding 2 above. It does not change token-graph
+reachability or event dispatch: Cells outside the presentation remain graph participants, while an
+event-bearing Cell must still be reachable from a presentation root.

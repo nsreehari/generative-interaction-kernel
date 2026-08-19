@@ -26,7 +26,11 @@ import {
   type ComponentDescription,
   type ComponentValidationReport,
 } from "../../shared/definition";
-import { componentRootProps, withComponentStylePropsSchema } from "../../shared/component";
+import {
+  componentLayoutPropsSchema,
+  componentRootProps,
+  withComponentStylePropsSchema,
+} from "../../shared/component";
 
 interface OptionValue {
   value: string;
@@ -270,6 +274,7 @@ const schema = {
   properties: {
     fields: { type: "object" }, schema: { type: "object" }, value: { type: "object" }, data: { type: "object" }, validationContext: { type: "object" },
     saveLabel: { type: "string" }, discardLabel: { type: "string" }, initiallyDirty: { type: "boolean" }, readOnly: { type: "boolean" },
+    ...componentLayoutPropsSchema,
   },
 } as const;
 

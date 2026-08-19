@@ -4,7 +4,6 @@
 
 import { createElement, type ReactNode } from "react";
 import type { ResolvedNode } from "@gik/kernel";
-import { resolveLayoutSlots } from "./layout";
 import type { ComponentRegistry } from "./registry";
 
 export type EmitFn = (
@@ -25,10 +24,7 @@ export function renderNode(
     ?? (node.fallback ? undefined : registry.get(node.capability))
     ?? registry.fallback;
 
-  const layout = resolveLayoutSlots(
-    node.children.map((child) => ({ key: child.id, content: renderNode(child, registry, emit) })),
-    node.props.layout,
-  );
+  const children = node.children.map((child) => renderNode(child, registry, emit));
   const boundEmit = (name: string, payload?: Record<string, unknown>, actorId?: string) =>
     emit(node.id, name, payload, actorId);
 
@@ -36,7 +32,6 @@ export function renderNode(
     key: node.id,
     node,
     emit: boundEmit,
-    children: layout.children,
-    slots: layout.slots,
+    children,
   });
 }

@@ -103,9 +103,21 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
   for (const rootId of blueprint.projections?.presentation?.roots ?? []) {
     if (!cells[rootId]) throw new BlueprintValidationError(`Blueprint presentation references unknown root '${rootId}'`);
   }
-  for (const placement of blueprint.projections?.presentation?.placements ?? []) {
-    if (!cells[placement.cell]) throw new BlueprintValidationError(`Blueprint placement references unknown cell '${placement.cell}'`);
-    if (placement.parent && !cells[placement.parent]) throw new BlueprintValidationError(`Blueprint placement references unknown parent '${placement.parent}'`);
+  const presentation = blueprint.projections?.presentation;
+  const placedCells = new Set(presentation?.roots ?? []);
+  for (const [parentId, entry] of Object.entries(presentation?.composition ?? {})) {
+    if (!cells[parentId]) throw new BlueprintValidationError(`Blueprint composition references unknown parent '${parentId}'`);
+    for (const [slot, childIds] of Object.entries(entry.slots)) {
+      for (const childId of childIds) {
+        if (!cells[childId]) {
+          throw new BlueprintValidationError(`Blueprint composition slot '${parentId}.${slot}' references unknown Cell '${childId}'`);
+        }
+        if (placedCells.has(childId)) {
+          throw new BlueprintValidationError(`Blueprint presentation places Cell '${childId}' more than once`);
+        }
+        placedCells.add(childId);
+      }
+    }
   }
   const composition = analyzeCellComposition(Object.values(cells));
   if (composition.diagnostics.length > 0) {

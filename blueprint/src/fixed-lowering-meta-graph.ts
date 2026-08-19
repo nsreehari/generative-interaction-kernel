@@ -18,6 +18,9 @@ import type {
   BlueprintRepresentation,
   BlueprintRepresentationDecorator,
   CellDefinition,
+  PresentationComposition,
+  PresentationCompositionEntry,
+  PresentationProjection,
   RepresentationLoweringRecipeDefinition,
   VocabularyLoweringRecipeDefinition,
 } from "./types";
@@ -77,10 +80,13 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
   projections: {
     presentation: {
       roots: ["resolve-stage"],
-      placements: [
-        { cell: "apply-vocabulary-patch", parent: "resolve-stage", slot: "children", order: 0 },
-        { cell: "emit-blueprint", parent: "resolve-stage", slot: "children", order: 1 },
-      ],
+      composition: {
+        "resolve-stage": {
+          slots: {
+            children: ["apply-vocabulary-patch", "emit-blueprint"],
+          },
+        },
+      },
     },
   },
 });
@@ -280,7 +286,10 @@ function applyRepresentationRecipe(
     if (representation.presentation) presentation = structuredClone(representation.presentation);
     if (representation.presentationAppend) {
       if (!presentation) throw new Error(`Blueprint representation '${representation.id}' cannot append to a missing presentation`);
-      presentation.placements = [...(presentation.placements ?? []), ...structuredClone(representation.presentationAppend)];
+      presentation.composition = mergePresentationComposition(
+        presentation.composition,
+        representation.presentationAppend,
+      );
     }
   }
   for (const representation of chain) {
@@ -292,6 +301,26 @@ function applyRepresentationRecipe(
   artifact.payload.projections = { ...artifact.payload.projections, presentation };
   applyImplementationProgram(artifact, recipe, externalContext);
   return artifact;
+}
+
+function mergePresentationComposition(
+  current: PresentationProjection["composition"],
+  appended: PresentationComposition,
+): PresentationComposition {
+  const merged = structuredClone(current ?? {}) as Record<string, PresentationCompositionEntry>;
+  for (const [parentId, entry] of Object.entries(appended)) {
+    const currentSlots = merged[parentId]?.slots ?? {};
+    merged[parentId] = {
+      slots: Object.fromEntries([
+        ...Object.entries(currentSlots),
+        ...Object.entries(entry.slots).map(([slot, childIds]) => [
+          slot,
+          [...(currentSlots[slot] ?? []), ...structuredClone(childIds)],
+        ]),
+      ]),
+    };
+  }
+  return merged;
 }
 
 function applyRepresentationDecorator(

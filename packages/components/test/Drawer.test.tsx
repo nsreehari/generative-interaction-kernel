@@ -33,7 +33,6 @@ test("drawer exposes panel-vertical under primitive:drawer", () => {
     variant: "panel-vertical",
     fabPosition: "bottom-left",
     defaultOpen: false,
-    layout: { slots: [{ key: "content", slot: "children" }] },
   }).ok, true);
   assert.equal(drawerDefinition.validate({
     variant: "panel-vertical",

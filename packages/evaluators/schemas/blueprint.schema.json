@@ -125,17 +125,23 @@
                   "items": { "type": "string", "minLength": 1 },
                   "uniqueItems": true
                 },
-                "placements": {
-                  "type": "array",
-                  "items": {
+                "composition": {
+                  "type": "object",
+                  "additionalProperties": {
                     "type": "object",
-                    "required": ["cell"],
+                    "required": ["slots"],
                     "additionalProperties": false,
                     "properties": {
-                      "cell": { "type": "string", "minLength": 1 },
-                      "parent": { "type": "string", "minLength": 1 },
-                      "slot": { "type": "string", "minLength": 1 },
-                      "order": { "type": "number" }
+                      "slots": {
+                        "type": "object",
+                        "minProperties": 1,
+                        "propertyNames": { "type": "string", "minLength": 1 },
+                        "additionalProperties": {
+                          "type": "array",
+                          "items": { "type": "string", "minLength": 1 },
+                          "uniqueItems": true
+                        }
+                      }
                     }
                   }
                 }
