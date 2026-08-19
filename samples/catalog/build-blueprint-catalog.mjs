@@ -71,6 +71,8 @@ if (entries["blueprint-studio-crud"]) {
         value: {
           ...descriptor,
           artifact: entries[descriptor.id],
+          ref: `blueprint:${descriptor.id}@${descriptor.version}`,
+          draft: null,
         },
       })),
     ],

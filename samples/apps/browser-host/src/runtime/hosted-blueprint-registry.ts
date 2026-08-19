@@ -6,6 +6,10 @@ import { applyHostConfig } from "../../../../config/host-config";
 import { resolveBlueprintNative } from "./sample-bundles";
 import { getSampleBlueprintCatalog, sampleBlueprints } from "../../../../catalog/blueprint-catalog";
 import type { BlueprintStorageConnectionFactory } from "../../../shared/blueprint-storage";
+import {
+  resolveBlueprintDatabaseArtifact,
+  resolveBlueprintDatabaseRoot,
+} from "../../../shared/blueprint-database-registry";
 
 export interface SampleBlueprintHostRegistryOptions {
   createProposalStore?: (
@@ -18,6 +22,7 @@ export interface SampleBlueprintHostRegistryOptions {
 export function createSampleBlueprintHostRegistry(
   options: SampleBlueprintHostRegistryOptions = {},
 ): ReactBlueprintHostRegistry {
+  const blueprintDatabaseRoots = new Set<string>();
   const resolveArtifact = (reference: Parameters<ReactBlueprintHostRegistry["resolveArtifact"]>[0]) => {
     const repositoryBlueprint = getSampleBlueprintCatalog().seedEntries[reference.id];
     const blueprint = repositoryBlueprint ?? sampleBlueprints[reference.id];
@@ -31,9 +36,18 @@ export function createSampleBlueprintHostRegistry(
   };
   return {
     resolveArtifact,
-    resolve(reference, context) {
+    async resolve(reference, context) {
+      const blueprintDatabaseRootInstanceId = resolveBlueprintDatabaseRoot(
+        context,
+        blueprintDatabaseRoots,
+      );
       const repositoryBlueprint = getSampleBlueprintCatalog().seedEntries[reference.id];
-      const blueprint = resolveArtifact(reference);
+      const storedBlueprint = await resolveBlueprintDatabaseArtifact(
+        reference,
+        blueprintDatabaseRootInstanceId,
+        options.blueprintStorage,
+      );
+      const blueprint = storedBlueprint ? applyHostConfig(storedBlueprint) : resolveArtifact(reference);
 
       const proposalStore = options.createProposalStore?.(reference.id, context);
       return {
@@ -43,7 +57,7 @@ export function createSampleBlueprintHostRegistry(
           version: blueprint.payload.version,
         },
         blueprint,
-        ...(repositoryBlueprint
+        ...(repositoryBlueprint && !storedBlueprint
           ? {
               native: resolveBlueprintNative(reference.id, {
                 proposalStore,

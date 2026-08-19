@@ -82,6 +82,40 @@
                   }
                 }
               },
+              "blueprint-new-form": {
+                "capability": "primitive:form",
+                "props": {
+                  "fields": {
+                    "properties": {
+                      "id": {
+                        "title": "New Blueprint ID",
+                        "type": "string",
+                        "pattern": "^[a-z0-9](?:[a-z0-9._/-]*[a-z0-9])?$",
+                        "span": 12
+                      },
+                      "kind": {
+                        "title": "Kind",
+                        "type": "string",
+                        "span": 12
+                      },
+                      "version": {
+                        "title": "Initial version",
+                        "type": "string",
+                        "span": 12
+                      }
+                    },
+                    "required": ["id", "kind", "version"],
+                    "additionalProperties": false
+                  },
+                  "value": {
+                    "id": "",
+                    "kind": "runtime-blueprint",
+                    "version": "1.0.0"
+                  },
+                  "saveLabel": "Create draft",
+                  "discardLabel": "Reset"
+                }
+              },
               "individual-blueprint": {
                 "capability": "primitive:container",
                 "props": {
@@ -92,14 +126,55 @@
                   "ariaLabel": "Selected Blueprint"
                 }
               },
+              "blueprint-actions": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "row",
+                  "gap": "s",
+                  "align": "center",
+                  "ariaLabel": "Blueprint actions"
+                }
+              },
+              "blueprint-edit-action": {
+                "capability": "fluent:button",
+                "props": {
+                  "label": "Edit as draft",
+                  "appearance": "primary"
+                },
+                "visibility": "studio.selected != null and studio.selected.draft = null"
+              },
+              "blueprint-promote-draft-action": {
+                "capability": "fluent:button",
+                "props": {
+                  "label": "Promote draft",
+                  "appearance": "primary"
+                },
+                "visibility": "studio.selected.draft != null"
+              },
+              "blueprint-delete-draft-action": {
+                "capability": "fluent:button",
+                "props": {
+                  "label": "Delete draft"
+                },
+                "visibility": "studio.selected.draft != null"
+              },
+              "blueprint-delete-action": {
+                "capability": "fluent:button",
+                "props": {
+                  "label": "Delete Blueprint"
+                },
+                "visibility": "studio.selected != null and studio.selected.readonly = false"
+              },
               "individual-blueprint-tabs": {
                 "capability": "fluent:tab-bar",
                 "props": {
                   "ariaLabel": "Blueprint views",
                   "tabs": [
                     { "value": "overview", "headerLabel": "Overview" },
-                    { "value": "form", "headerLabel": "Form" },
-                    { "value": "preview", "headerLabel": "Preview" }
+                    { "value": "form", "headerLabel": "Current" },
+                    { "value": "draft", "headerLabel": "Draft" },
+                    { "value": "preview", "headerLabel": "Preview" },
+                    { "value": "preview-draft", "headerLabel": "Preview Draft" }
                   ]
                 },
                 "bindings": {
@@ -161,6 +236,51 @@
                   }
                 }
               },
+              "blueprint-draft-form-pane": {
+                "capability": "primitive:form",
+                "props": {
+                  "fields": {
+                    "properties": {
+                      "gik": {
+                        "title": "GIK version",
+                        "type": "string",
+                        "readOnly": true,
+                        "span": 6
+                      },
+                      "type": {
+                        "title": "Document type",
+                        "type": "string",
+                        "readOnly": true,
+                        "span": 6
+                      },
+                      "payload": {
+                        "title": "Blueprint payload",
+                        "type": "json",
+                        "format": "json",
+                        "rows": 24,
+                        "span": 12
+                      }
+                    },
+                    "required": ["gik", "type", "payload"],
+                    "additionalProperties": false,
+                    "validators": [
+                      {
+                        "kind": "blueprint",
+                        "code": "blueprint-draft",
+                        "message": "The draft Blueprint is invalid"
+                      }
+                    ]
+                  },
+                  "saveLabel": "Save draft",
+                  "discardLabel": "Discard changes"
+                },
+                "bindings": {
+                  "value": {
+                    "expression": "studio.selected.draft.artifact"
+                  }
+                },
+                "visibility": "studio.selected.draft != null"
+              },
               "blueprint-preview-pane": {
                 "capability": "primitive:container",
                 "props": {
@@ -205,6 +325,51 @@
                   }
                 },
                 "visibility": "studio.activeTab = 'preview'"
+              },
+              "blueprint-draft-preview-pane": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "column",
+                  "gap": "m",
+                  "fullWidth": true,
+                  "ariaLabel": "Draft Blueprint preview"
+                }
+              },
+              "blueprint-draft-preview-context-form": {
+                "capability": "primitive:form",
+                "props": {
+                  "initiallyDirty": false
+                },
+                "bindings": {
+                  "fields": {
+                    "expression": "studio.selected.draft.artifact.payload.contextFormSpec.fields"
+                  },
+                  "value": {
+                    "from": "studio.draftPreviewExternalContext"
+                  },
+                  "saveLabel": {
+                    "expression": "studio.selected.draft.artifact.payload.contextFormSpec.saveLabel ? studio.selected.draft.artifact.payload.contextFormSpec.saveLabel : 'Apply context'"
+                  },
+                  "discardLabel": {
+                    "expression": "studio.selected.draft.artifact.payload.contextFormSpec.discardLabel ? studio.selected.draft.artifact.payload.contextFormSpec.discardLabel : 'Discard'"
+                  }
+                },
+                "visibility": "studio.selected.draft.artifact.payload.contextFormSpec != null"
+              },
+              "blueprint-draft-preview-content": {
+                "capability": "gik:blueprint",
+                "bindings": {
+                  "blueprint": {
+                    "expression": "{'$ref':studio.selected.draft.ref}"
+                  },
+                  "externalContext": {
+                    "from": "studio.draftPreviewExternalContext"
+                  },
+                  "instanceKey": {
+                    "expression": "studio.selected.draft.ref & ':' & studio.selected.draft.revision & ':' & $string(studio.draftPreviewExternalContext)"
+                  }
+                },
+                "visibility": "studio.activeTab = 'preview-draft' and studio.selected.draft != null"
               }
             },
             "presentation": {
@@ -223,16 +388,52 @@
                   "order": 1
                 },
                 {
-                  "cell": "blueprint-list",
+                  "cell": "blueprint-new-form",
                   "parent": "blueprint-list-region",
                   "slot": "children",
                   "order": 0
                 },
                 {
-                  "cell": "individual-blueprint-tabs",
+                  "cell": "blueprint-list",
+                  "parent": "blueprint-list-region",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "blueprint-actions",
                   "parent": "individual-blueprint",
                   "slot": "children",
                   "order": 0
+                },
+                {
+                  "cell": "blueprint-edit-action",
+                  "parent": "blueprint-actions",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "blueprint-promote-draft-action",
+                  "parent": "blueprint-actions",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "blueprint-delete-draft-action",
+                  "parent": "blueprint-actions",
+                  "slot": "children",
+                  "order": 2
+                },
+                {
+                  "cell": "blueprint-delete-action",
+                  "parent": "blueprint-actions",
+                  "slot": "children",
+                  "order": 3
+                },
+                {
+                  "cell": "individual-blueprint-tabs",
+                  "parent": "individual-blueprint",
+                  "slot": "children",
+                  "order": 1
                 },
                 {
                   "cell": "blueprint-overview-pane",
@@ -247,10 +448,22 @@
                   "order": 1
                 },
                 {
-                  "cell": "blueprint-preview-pane",
+                  "cell": "blueprint-draft-form-pane",
                   "parent": "individual-blueprint-tabs",
                   "slot": "panes",
                   "order": 2
+                },
+                {
+                  "cell": "blueprint-preview-pane",
+                  "parent": "individual-blueprint-tabs",
+                  "slot": "panes",
+                  "order": 3
+                },
+                {
+                  "cell": "blueprint-draft-preview-pane",
+                  "parent": "individual-blueprint-tabs",
+                  "slot": "panes",
+                  "order": 4
                 },
                 {
                   "cell": "blueprint-preview-context-form",
@@ -261,6 +474,18 @@
                 {
                   "cell": "blueprint-preview-content",
                   "parent": "blueprint-preview-pane",
+                  "slot": "children",
+                  "order": 1
+                },
+                {
+                  "cell": "blueprint-draft-preview-context-form",
+                  "parent": "blueprint-draft-preview-pane",
+                  "slot": "children",
+                  "order": 0
+                },
+                {
+                  "cell": "blueprint-draft-preview-content",
+                  "parent": "blueprint-draft-preview-pane",
                   "slot": "children",
                   "order": 1
                 }
@@ -303,6 +528,102 @@
                 "expr": "{'ops':[]}"
               }
             }
+          },
+          "createDraft": {
+            "operation": "create-draft",
+            "contract": "blueprint-studio-create-draft/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'id':studio.selectedBlueprintId}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.activeTab','value':'draft'}]} : {'ops':[]}"
+              }
+            }
+          },
+          "createBlueprintDraft": {
+            "operation": "create-blueprint-draft",
+            "contract": "blueprint-studio-create-blueprint-draft/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[],'recipes':[],'runtime':{'expression':'jsonata','namespaces':[],'actions':[],'state':{}},'cells':{}}}})"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.activeTab','value':'draft'}]} : {'ops':[]}"
+              }
+            }
+          },
+          "saveDraft": {
+            "operation": "save-draft",
+            "contract": "blueprint-studio-save-draft/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'id':studio.selectedBlueprintId,'blueprint':input.values}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint}]} : {'ops':[]}"
+              }
+            }
+          },
+          "deleteDraft": {
+            "operation": "delete-draft",
+            "contract": "blueprint-studio-delete-draft/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'id':studio.selectedBlueprintId}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "response.deleted ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':''},{'op':'set','path':'studio.selected','value':null},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.activeTab','value':'overview'}]} : response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.activeTab','value':'form'}]} : {'ops':[]}"
+              }
+            }
+          },
+          "promoteDraft": {
+            "operation": "promote-draft",
+            "contract": "blueprint-studio-promote-draft/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'id':studio.selectedBlueprintId}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.selectedBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.previewBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.activeTab','value':'overview'}]} : {'ops':[]}"
+              }
+            }
+          },
+          "deleteBlueprint": {
+            "operation": "delete-blueprint",
+            "contract": "blueprint-studio-delete/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'id':studio.selectedBlueprintId}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "response.deleted ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':''},{'op':'set','path':'studio.selected','value':null},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.activeTab','value':'overview'}]} : {'ops':[]}"
+              }
+            }
           }
         },
         "scope": "per-blueprint"
@@ -311,7 +632,7 @@
     "runtime": {
       "expression": "jsonata",
       "namespaces": ["studio"],
-      "actions": ["assign"],
+      "actions": ["assign", "invoke"],
       "capabilities": {
         "gik:blueprint": {
           "propsSchema": {
@@ -345,6 +666,13 @@
           },
           "emits": ["select"]
         },
+        "fluent:button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": ["press"]
+        },
         "fluent:spinner": {
           "propsSchema": {
             "type": "object",
@@ -370,7 +698,7 @@
         "projectionViews": {
           "fluent": {
             "from": "fluent",
-            "use": ["list", "spinner", "tab-bar", "text"]
+            "use": ["button", "list", "spinner", "tab-bar", "text"]
           },
           "primitive": {
             "from": "primitive",
@@ -388,7 +716,8 @@
           "overviewMarkdown": "",
           "previewContextFormSpec": null,
           "previewBlueprintRef": "",
-          "previewExternalContext": {}
+          "previewExternalContext": {},
+          "draftPreviewExternalContext": {}
         }
       }
     },
@@ -464,6 +793,27 @@
           }
         }
       },
+      "blueprint-new-form": {
+        "id": "blueprint-new-form",
+        "kind": "blueprint-new-form",
+        "behavior": {
+          "on": {
+            "save": [
+              {
+                "do": "invoke",
+                "control": { "tool": "createBlueprintDraft" }
+              }
+            ]
+          }
+        },
+        "events": {
+          "save": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
+      },
       "individual-blueprint": {
         "id": "individual-blueprint",
         "kind": "individual-blueprint",
@@ -499,7 +849,7 @@
           },
           {
             "id": "selected-blueprint-overview",
-            "expression": "($bp := sources.`individual-blueprint.source`; $bp ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Tiers:** ' & $join($bp.artifact.payload.tiers.id, ', ') & '\\n- **Recipes:** ' & $string($count($bp.artifact.payload.recipes)) : '')",
+            "expression": "($bp := sources.`individual-blueprint.source`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Tiers:** ' & $join($bp.artifact.payload.tiers.id, ', ') & '\\n- **Recipes:** ' & $string($count($bp.artifact.payload.recipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
             "assign": "studio.overviewMarkdown",
             "dependencies": ["sources.individual-blueprint.source"]
           },
@@ -511,7 +861,7 @@
           },
           {
             "id": "selected-blueprint-reference",
-            "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; 'blueprint:' & $bp.id & '@' & $bp.version)",
+            "expression": "($bp := sources.`individual-blueprint.source`.artifact.payload; $bp ? 'blueprint:' & $bp.id & '@' & $bp.version : '')",
             "assign": "studio.selectedBlueprintRef",
             "dependencies": ["sources.individual-blueprint.source"]
           },
@@ -526,9 +876,97 @@
           {
             "token": "selectedBlueprintRef",
             "from": "computed.studio.selectedBlueprintRef",
-            "when": "$exists(computed.studio.selectedBlueprintRef)"
+            "when": "$exists(computed.studio.selectedBlueprintRef) and $length(computed.studio.selectedBlueprintRef) > 0"
           }
         ]
+      },
+      "blueprint-actions": {
+        "id": "blueprint-actions",
+        "kind": "blueprint-actions"
+      },
+      "blueprint-edit-action": {
+        "id": "blueprint-edit-action",
+        "kind": "blueprint-edit-action",
+        "behavior": {
+          "on": {
+            "press": [
+              {
+                "do": "invoke",
+                "control": { "tool": "createDraft" }
+              }
+            ]
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "blueprint-promote-draft-action": {
+        "id": "blueprint-promote-draft-action",
+        "kind": "blueprint-promote-draft-action",
+        "behavior": {
+          "on": {
+            "press": [
+              {
+                "do": "invoke",
+                "control": { "tool": "promoteDraft" }
+              }
+            ]
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "blueprint-delete-draft-action": {
+        "id": "blueprint-delete-draft-action",
+        "kind": "blueprint-delete-draft-action",
+        "behavior": {
+          "on": {
+            "press": [
+              {
+                "do": "invoke",
+                "control": { "tool": "deleteDraft" }
+              }
+            ]
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "blueprint-delete-action": {
+        "id": "blueprint-delete-action",
+        "kind": "blueprint-delete-action",
+        "behavior": {
+          "on": {
+            "press": [
+              {
+                "do": "invoke",
+                "control": { "tool": "deleteBlueprint" }
+              }
+            ]
+          }
+        },
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
       },
       "individual-blueprint-tabs": {
         "id": "individual-blueprint-tabs",
@@ -568,6 +1006,27 @@
       "blueprint-form-pane": {
         "id": "blueprint-form-pane",
         "kind": "blueprint-form"
+      },
+      "blueprint-draft-form-pane": {
+        "id": "blueprint-draft-form-pane",
+        "kind": "blueprint-draft-form",
+        "behavior": {
+          "on": {
+            "save": [
+              {
+                "do": "invoke",
+                "control": { "tool": "saveDraft" }
+              }
+            ]
+          }
+        },
+        "events": {
+          "save": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
       },
       "blueprint-preview-pane": {
         "id": "blueprint-preview-pane",
@@ -621,6 +1080,38 @@
             }
           }
         }
+        },
+        "blueprint-draft-preview-pane": {
+          "id": "blueprint-draft-preview-pane",
+          "kind": "blueprint-draft-preview"
+        },
+        "blueprint-draft-preview-content": {
+          "id": "blueprint-draft-preview-content",
+          "kind": "blueprint-draft-preview-content"
+        },
+        "blueprint-draft-preview-context-form": {
+          "id": "blueprint-draft-preview-context-form",
+          "kind": "blueprint-draft-preview-context-form",
+          "behavior": {
+            "on": {
+              "save": [
+                {
+                  "do": "assign",
+                  "target": "studio.draftPreviewExternalContext",
+                  "args": {
+                    "from": "$event.values"
+                  }
+                }
+              ]
+            }
+          },
+          "events": {
+            "save": {
+              "payloadSchema": {
+                "type": "object"
+              }
+            }
+          }
       }
     }
   }

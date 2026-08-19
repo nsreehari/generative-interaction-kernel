@@ -32,8 +32,8 @@ function findNode(node: ResolvedNode | undefined, id: string): ResolvedNode | un
   return undefined;
 }
 
-describe("Blueprint Studio read shell", () => {
-  it("declares list/read Cell ports and three projection-tier tabs", () => {
+describe("Blueprint Studio", () => {
+  it("declares read and draft authoring Cells with current and draft previews", () => {
     const source = resolveSampleBlueprintSource("blueprint-studio");
     const runtime = openSampleBlueprint("blueprint-studio");
     const list = source.payload.cells?.["blueprint-list"];
@@ -84,8 +84,10 @@ describe("Blueprint Studio read shell", () => {
       props: expect.objectContaining({
         tabs: [
           { value: "overview", headerLabel: "Overview" },
-          { value: "form", headerLabel: "Form" },
+          { value: "form", headerLabel: "Current" },
+          { value: "draft", headerLabel: "Draft" },
           { value: "preview", headerLabel: "Preview" },
+          { value: "preview-draft", headerLabel: "Preview Draft" },
         ],
       }),
     }));
@@ -98,14 +100,34 @@ describe("Blueprint Studio read shell", () => {
     expect(representation?.presentation?.placements).toEqual(expect.arrayContaining([
       { cell: "blueprint-list-region", parent: "studio-root", slot: "children", order: 0 },
       { cell: "individual-blueprint", parent: "studio-root", slot: "children", order: 1 },
-      { cell: "blueprint-list", parent: "blueprint-list-region", slot: "children", order: 0 },
-      { cell: "individual-blueprint-tabs", parent: "individual-blueprint", slot: "children", order: 0 },
+      { cell: "blueprint-new-form", parent: "blueprint-list-region", slot: "children", order: 0 },
+      { cell: "blueprint-list", parent: "blueprint-list-region", slot: "children", order: 1 },
+      { cell: "blueprint-actions", parent: "individual-blueprint", slot: "children", order: 0 },
+      { cell: "individual-blueprint-tabs", parent: "individual-blueprint", slot: "children", order: 1 },
       { cell: "blueprint-overview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 0 },
       { cell: "blueprint-form-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 1 },
-      { cell: "blueprint-preview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 2 },
+      { cell: "blueprint-draft-form-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 2 },
+      { cell: "blueprint-preview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 3 },
+      { cell: "blueprint-draft-preview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 4 },
       { cell: "blueprint-preview-context-form", parent: "blueprint-preview-pane", slot: "children", order: 0 },
       { cell: "blueprint-preview-content", parent: "blueprint-preview-pane", slot: "children", order: 1 },
+      { cell: "blueprint-draft-preview-context-form", parent: "blueprint-draft-preview-pane", slot: "children", order: 0 },
+      { cell: "blueprint-draft-preview-content", parent: "blueprint-draft-preview-pane", slot: "children", order: 1 },
     ]));
+    expect(representation?.views?.["blueprint-draft-form-pane"]).toMatchObject({
+      capability: "primitive:form",
+      props: {
+        fields: {
+          validators: [
+            expect.objectContaining({ kind: "blueprint" }),
+          ],
+        },
+      },
+    });
+    expect(source.payload.cells?.["blueprint-edit-action"]?.behavior?.on?.press)
+      .toEqual([expect.objectContaining({ do: "invoke", control: { tool: "createDraft" } })]);
+    expect(source.payload.cells?.["blueprint-draft-form-pane"]?.behavior?.on?.save)
+      .toEqual([expect.objectContaining({ do: "invoke", control: { tool: "saveDraft" } })]);
     expect(runtime.definition.payload.runtime?.externals?.effectHandlers ?? []).toEqual([]);
   });
 
@@ -214,6 +236,46 @@ describe("Blueprint Studio read shell", () => {
         expect(Object.keys(
           (children[0]?.getState().portfolio as { stockQuotes: Record<string, unknown> }).stockQuotes,
         ).sort()).toEqual(["AAPL", "MSFT"]);
+      });
+
+      await host.controlface.emit({
+        node: "blueprint-edit-action",
+        name: "press",
+        payload: {},
+      });
+      await host.controlface.whenIdle();
+      await eventually(() => {
+        expect(host.controlface.getState().studio).toMatchObject({
+          selectedBlueprintId: "portfolio-tracker-new",
+          selected: {
+            id: "portfolio-tracker-new",
+            draft: {
+              id: "portfolio-tracker-new.draft",
+              ref: "blueprint:portfolio-tracker-new.draft@1.0.0",
+              artifact: {
+                payload: { id: "portfolio-tracker-new.draft" },
+              },
+            },
+          },
+          activeTab: "draft",
+        });
+      });
+
+      await host.controlface.emit({
+        node: "individual-blueprint-tabs",
+        name: "select",
+        payload: { value: "preview-draft" },
+      });
+      await host.controlface.whenIdle();
+      await eventually(() => {
+        const children = [...host.hostedControlFaces().values()];
+        expect(children).toHaveLength(1);
+        expect(children[0]?.getBlueprint()?.payload.id).toBe("portfolio-tracker-new.draft");
+        expect(children[0]?.getState().externalContext).toMatchObject({
+          "market-prices": "mock",
+          view: "desktop",
+          "intelligence-model": "simple",
+        });
       });
     } finally {
       await host.stop();
