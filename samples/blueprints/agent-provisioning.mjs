@@ -52,8 +52,8 @@ export function sampleAgentTemplates() {
       },
     },
     {
-      id: 'Portfolio-Intelligence-3-Agent',
-      description: 'Portfolio intelligence report Blueprint author.',
+      id: 'Portfolio-Semantic-Intelligence-Agent',
+      description: 'Capability-constrained semantic portfolio report Blueprint author.',
       executionAuthority: 'host',
       reasoning: { effort: 'none' },
       instructions: [

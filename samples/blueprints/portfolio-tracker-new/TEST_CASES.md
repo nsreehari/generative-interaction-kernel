@@ -20,8 +20,9 @@ or external-context transport behavior.
 | `portfolio-holdings` | none | `holdings` |
 | `market-prices` | `holdings` | `stock-quotes` |
 | `portfolio-value-cell` | `holdings`, `stock-quotes` | `portfolio-value` |
-| `portfolio-intelligence` | `portfolio-value` | `portfolio-intelligence` |
-| `board` | `holdings`, `stock-quotes`, `portfolio-value`, `portfolio-intelligence` | none |
+| `portfolio-intelligence` | `portfolio-value` | none |
+| `portfolio-intelligence-as-of` | none | none |
+| `board` | none | none |
 
 ## Behavioral cases
 
@@ -36,14 +37,13 @@ or external-context transport behavior.
    `Portfolio-Intelligence-Agent` configuration.
 7. `intelligence-model: mock` uses the deterministic test-service path to return
    predictable semantic-shaped intelligence for the current portfolio values.
-8. `intelligence-model: semantic` uses the existing Foundry
-   `Portfolio-Intelligence-2-Agent` configuration through the distinct
-   `portfolio-intelligence-2/v1` source contract. Its structured response is
-   settled unchanged and passed to `portfolio:intelligence-projections`; the
-   Blueprint projection recipe selects focused desktop or glanceable mobile
-   sections from the agent-authored candidates.
-   Simple and mock intelligence use recipe-selected `primitive:markdown`
-   presentation; semantic presentation remains unchanged pending design agreement.
+8. `intelligence-model: semantic` uses one logical
+   `portfolio-semantic-intelligence/v1` service contract and the
+   `Portfolio-Semantic-Intelligence-Agent`. Provider lowering replaces that same
+   service declaration with its Foundry or Copilot implementation. The request
+   selects `simple-markdown` or `rich-components` through `presentationMode`;
+   both modes use the same operation and agent-facing capability tools.
+   The host stamps report generation time and renders it above the nested report.
 9. `view: desktop` presents portfolio value as total value, holdings-value pie
    chart, and exact positions table in the desktop board arrangement.
 10. `view: mobile` presents the same portfolio total and holdings-value pie chart

@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { materializeBlueprint } from "@gik/blueprint";
+import { evalSyncJsonata } from "@gik/evaluators";
 import { unwrap } from "@gik/kernel";
 import { seedState } from "@gik/react";
 
-import { openSampleBlueprint } from "../catalog/blueprint-catalog";
+import {
+  openSampleBlueprint,
+  resolveSampleBlueprintSource,
+} from "../catalog/blueprint-catalog";
 import { createBlueprintServiceHost } from "../apps/browser-host/src/runtime/service-host";
 
 const runtime = openSampleBlueprint("portfolio-tracker-new", {
@@ -23,9 +28,80 @@ describe("portfolio intelligence service declarations", () => {
     expect(services["portfolio-intelligence"]?.kind).toBe("foundry-agent");
     expect(Object.values(services["portfolio-intelligence"]?.operations ?? {})
       .map(({ operation }) => operation)).toEqual(["chat"]);
-    expect(services["portfolio-intelligence-2"]?.kind).toBe("foundry-agent");
-    expect(Object.values(services["portfolio-intelligence-2"]?.operations ?? {})
+    expect(services["portfolio-semantic-intelligence"]?.kind).toBe("foundry-agent");
+    expect(Object.keys(services["portfolio-semantic-intelligence"]?.operations ?? {}))
+      .toEqual(["generateReport"]);
+    expect(Object.values(services["portfolio-semantic-intelligence"]?.operations ?? {})
       .map(({ operation }) => operation)).toEqual(["chat"]);
+    expect(Object.keys(services).filter((serviceId) =>
+      serviceId.startsWith("portfolio-intelligence-2")
+      || serviceId.startsWith("portfolio-intelligence-3"))).toEqual([]);
+  });
+
+  it("lowers both semantic modes and providers through the same logical service contract", () => {
+    for (const ai of ["foundry", "copilot"] as const) {
+      for (const semantic of ["simple-markdown", "rich-components"] as const) {
+        const terminal = materializeBlueprint({
+          blueprint: resolveSampleBlueprintSource("portfolio-tracker-new"),
+          externalContext: {
+            ai,
+            "intelligence-model": "semantic",
+            "market-prices": "mock",
+            semantic,
+            view: "desktop",
+          },
+        }).payload.terminalBlueprint.payload;
+        const source = terminal.cells?.["portfolio-intelligence"].sources?.[1];
+        const service = terminal.services?.["portfolio-semantic-intelligence"];
+
+        expect(source).toMatchObject({
+          service: "portfolio-semantic-intelligence",
+          operation: "generateReport",
+          contract: "portfolio-semantic-intelligence/v1",
+        });
+        expect(source?.input?.expr).toContain(`'presentationMode':'${semantic}'`);
+        expect(service?.kind).toBe(`${ai}-agent`);
+        expect((service?.config as Record<string, unknown>)?.agent)
+          .toBe("Portfolio-Semantic-Intelligence-Agent");
+        expect(Object.keys(terminal.services ?? {}).filter((serviceId) =>
+          serviceId.startsWith("portfolio-intelligence-2")
+          || serviceId.startsWith("portfolio-intelligence-3"))).toEqual([]);
+      }
+    }
+  });
+
+  it("selects the mode-specific scaffold inside the shared service request", () => {
+    const service = resolveSampleBlueprintSource("portfolio-tracker-new")
+      .payload.services?.["portfolio-semantic-intelligence"];
+    const expression = service?.operations.generateReport.request?.transform?.expr;
+    expect(expression).toBeTruthy();
+
+    for (const semantic of ["simple-markdown", "rich-components"] as const) {
+      const request = evalSyncJsonata(expression!, {
+        input: {
+          positions: {},
+          summary: { marketValue: 1 },
+          investorProfile: null,
+          presentationMode: semantic,
+          promptTemplate: "Create report.",
+          acceptedCapabilities: semantic === "simple-markdown"
+            ? ["primitive:markdown"]
+            : [
+                "primitive:container",
+                "primitive:chart",
+                "fluent:text",
+                "fluent:list",
+                "fluent:table",
+              ],
+        },
+      }) as Record<string, unknown>;
+      const message = String(request.message);
+
+      expect(request.maxOutputTokens).toBe(semantic === "rich-components" ? 8000 : 4000);
+      expect(message).toContain(`"id":"generated-semantic-report"`);
+      expect(message.includes('"primitive:chart"')).toBe(semantic === "rich-components");
+      expect(message.includes('"primitive:markdown"')).toBe(semantic === "simple-markdown");
+    }
   });
 
   it("rejects a Foundry declaration whose endpoint is invalid", async () => {
