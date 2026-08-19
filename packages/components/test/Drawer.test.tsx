@@ -11,7 +11,6 @@ import {
 
 test("panel-vertical renders every authored child inside its single drawer panel", () => {
   const node = materializeDrawerTrial();
-  node.props.open = true;
   node.props.fabPosition = "top-right";
 
   const markup = renderToStaticMarkup(
@@ -33,10 +32,26 @@ test("drawer exposes panel-vertical under primitive:drawer", () => {
   assert.equal(drawerDefinition.validate({
     variant: "panel-vertical",
     fabPosition: "bottom-left",
+    defaultOpen: false,
     layout: { slots: [{ key: "content", slot: "children" }] },
   }).ok, true);
   assert.equal(drawerDefinition.validate({
     variant: "panel-vertical",
     layout: { slots: [{ key: "content", slot: "children", unknown: true }] },
   }).ok, false);
+});
+
+test("drawer remains optionally controlled", () => {
+  const node = materializeDrawerTrial();
+  node.props.defaultOpen = true;
+  node.props.open = false;
+
+  const markup = renderToStaticMarkup(
+    <Drawer node={node} emit={() => {}}>
+      <span>Controlled content</span>
+    </Drawer>,
+  );
+
+  assert.doesNotMatch(markup, /Controlled content/);
+  assert.match(markup, /aria-expanded="false"/);
 });

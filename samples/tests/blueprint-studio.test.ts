@@ -93,7 +93,24 @@ describe("Blueprint Studio read shell", () => {
       expect.objectContaining({ capability: "primitive:container" }),
     );
     expect(representation?.views?.["blueprint-list-region"]).toEqual(
-      expect.objectContaining({ capability: "primitive:container" }),
+      expect.objectContaining({
+        capability: "primitive:drawer",
+        props: expect.objectContaining({
+          fabPosition: "top-left",
+          panelWidthPercent: 28,
+          defaultOpen: false,
+        }),
+      }),
+    );
+    expect(representation?.views?.["blueprint-preview-context-drawer"]).toEqual(
+      expect.objectContaining({
+        capability: "primitive:drawer",
+        props: expect.objectContaining({
+          fabPosition: "top-right",
+          panelWidthPercent: 32,
+          defaultOpen: false,
+        }),
+      }),
     );
     expect(representation?.presentation?.placements).toEqual(expect.arrayContaining([
       { cell: "blueprint-list-region", parent: "studio-root", slot: "children", order: 0 },
@@ -103,7 +120,8 @@ describe("Blueprint Studio read shell", () => {
       { cell: "blueprint-overview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 0 },
       { cell: "blueprint-form-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 1 },
       { cell: "blueprint-preview-pane", parent: "individual-blueprint-tabs", slot: "panes", order: 2 },
-      { cell: "blueprint-preview-context-form", parent: "blueprint-preview-pane", slot: "children", order: 0 },
+      { cell: "blueprint-preview-context-drawer", parent: "blueprint-preview-pane", slot: "children", order: 0 },
+      { cell: "blueprint-preview-context-form", parent: "blueprint-preview-context-drawer", slot: "children", order: 0 },
       { cell: "blueprint-preview-content", parent: "blueprint-preview-pane", slot: "children", order: 1 },
     ]));
     expect(runtime.definition.payload.runtime?.externals?.effectHandlers ?? []).toEqual([]);

@@ -3078,6 +3078,9 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         "open": {
           "type": "boolean"
         },
+        "defaultOpen": {
+          "type": "boolean"
+        },
         "fabPosition": {
           "enum": [
             "top-left",
@@ -3122,7 +3125,7 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
       ],
       "emits": {
         "openChange": {
-          "summary": "The user requests that the controlled drawer open state change.",
+          "summary": "The drawer open state changed; handling this event is optional unless open is controlled.",
           "payloadSchema": {
             "type": "object",
             "additionalProperties": false,
@@ -3138,7 +3141,9 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         }
       },
       "constraints": [
-        "Bind open to authored state and handle openChange declaratively",
+        "Prefer local drawer state; use defaultOpen only to choose its initial state",
+        "Bind open only when application behavior or cross-Cell coordination must control the drawer",
+        "Handle openChange only when the application needs to observe or control drawer state",
         "Place all authored children inside the panel",
         "Choose the toggle corner with fabPosition",
         "Provide concise accessible labels"
@@ -3147,7 +3152,7 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         "capability": "primitive:drawer",
         "props": {
           "variant": "panel-vertical",
-          "open": true,
+          "defaultOpen": true,
           "fabPosition": "top-left",
           "title": "Source reports",
           "panelWidthPercent": 80

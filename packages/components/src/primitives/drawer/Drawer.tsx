@@ -77,7 +77,9 @@ export const Drawer: ProjectionView = ({ node, emit, children }) => {
   const position = props.str("fabPosition", "top-left");
   const isRight = position.endsWith("-right");
   const isBottom = position.startsWith("bottom-");
-  const open = props.bool("open");
+  const controlled = typeof node.props.open === "boolean";
+  const [localOpen, setLocalOpen] = React.useState(() => props.bool("defaultOpen"));
+  const open = controlled ? props.bool("open") : localOpen;
   const title = props.str("title", "Panel");
   const openLabel = props.str("openLabel", `Open ${title}`);
   const closeLabel = props.str("closeLabel", `Close ${title}`);
@@ -100,7 +102,11 @@ export const Drawer: ProjectionView = ({ node, emit, children }) => {
         aria-label={open ? closeLabel : openLabel}
         title={open ? closeLabel : openLabel}
         aria-expanded={open}
-        onClick={() => void emit("openChange", { open: !open })}
+        onClick={() => {
+          const nextOpen = !open;
+          if (!controlled) setLocalOpen(nextOpen);
+          void emit("openChange", { open: nextOpen });
+        }}
       />
       {open ? (
         <>
@@ -123,6 +129,7 @@ const schema = withComponentStylePropsSchema({
   properties: {
     variant: { enum: DRAWER_VARIANTS },
     open: { type: "boolean" },
+    defaultOpen: { type: "boolean" },
     fabPosition: { enum: FAB_POSITIONS },
     ariaLabel: { type: "string", minLength: 1 },
     title: { type: "string", minLength: 1 },
@@ -134,11 +141,11 @@ const schema = withComponentStylePropsSchema({
 
 const description: ComponentDescription = {
   capability: "primitive:drawer",
-  summary: "Renders one controlled floating drawer whose vertical panel opens from an authored board corner.",
+  summary: "Renders one self-contained floating drawer whose vertical panel opens from an authored board corner.",
   slots: ["children"],
   events: ["openChange"],
   eventContracts: {
-    openChange: eventContract("The user requests that the controlled drawer open state change.", { open: { type: "boolean" } }),
+    openChange: eventContract("The drawer open state changed; handling this event is optional unless open is controlled.", { open: { type: "boolean" } }),
   },
   semanticTokens: [],
   defaultVariant: "panel-vertical",
@@ -151,7 +158,9 @@ const description: ComponentDescription = {
     useWhen: ["A workspace needs an independently controlled floating side panel"],
     avoidWhen: ["Content should permanently share horizontal space", "A modal decision interrupts the workflow"],
     rules: [
-      "Bind open to authored state and handle openChange declaratively",
+      "Prefer local drawer state; use defaultOpen only to choose its initial state",
+      "Bind open only when application behavior or cross-Cell coordination must control the drawer",
+      "Handle openChange only when the application needs to observe or control drawer state",
       "Place all authored children inside the panel",
       "Choose the toggle corner with fabPosition",
       "Provide concise accessible labels",
@@ -171,7 +180,7 @@ export function validateDrawer(props: unknown): ComponentValidationReport {
 export function materializeDrawerTrial() {
   return trialNode("primitive:drawer", {
     variant: "panel-vertical",
-    open: true,
+    defaultOpen: true,
     fabPosition: "top-left",
     title: "Source reports",
     panelWidthPercent: 80,
