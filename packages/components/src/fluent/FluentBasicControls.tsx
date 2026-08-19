@@ -98,7 +98,14 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
         })
       : legacyOptions;
     const panes = slots?.panes ?? React.Children.toArray(children);
-    const active = props.str("active") || tabs[0]?.value;
+    const controlled = typeof node.props.active === "string";
+    const [localActive, setLocalActive] = React.useState(
+      () => props.str("defaultActive") || tabs[0]?.value,
+    );
+    const requestedActive = controlled ? props.str("active") : localActive;
+    const active = tabs.some((tab) => tab.value === requestedActive)
+      ? requestedActive
+      : tabs[0]?.value;
     const activeIndex = tabs.findIndex((tab) => tab.value === active);
     const activePane = activeIndex >= 0 ? panes[activeIndex] : undefined;
     return (
@@ -108,7 +115,11 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
           size={resolveControlSize(props.str("size"), node.props.variant)}
           aria-label={props.str("ariaLabel") || undefined}
           disabled={props.bool("disabled")}
-          onTabSelect={(_, data) => void emit("select", { value: String(data.value) })}
+          onTabSelect={(_, data) => {
+            const value = String(data.value);
+            if (!controlled) setLocalActive(value);
+            void emit("select", { value });
+          }}
         >
           {tabs.map((tab) => (
             <Tab key={tab.value} value={tab.value} disabled={tab.disabled}>{tab.label}</Tab>
@@ -174,6 +185,7 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
     ],
     properties: {
       active: stringProperty,
+      defaultActive: stringProperty,
       ariaLabel: stringProperty,
       disabled: { type: "boolean" },
       size: { type: "string", enum: FLUENT_CONTROL_SIZES },
@@ -267,8 +279,9 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
       rules: [
         "Provide stable tab values and headerLabel values",
         "Place one authored child in the panes slot for each tab, in the same order",
-        "Bind active to the selected value",
-        "Handle select outside the component",
+        "Prefer local tab state and use defaultActive only to choose the initial tab",
+        "Bind active only when application behavior, persistence, or cross-Cell coordination controls the active tab",
+        "Handle select only when the application needs to observe or control tab selection",
       ],
     },
   };
@@ -302,7 +315,7 @@ import { fluentOptionSchema, readFluentOptions } from "./readFluentOptions";
     value: "credential access",
   });
   export const fluentTabBarDefinition = defineFluentComponent(tabBarDescription, tabBarSchema, FluentTabBar, {
-    active: "all",
+    defaultActive: "all",
     ariaLabel: "Incident views",
     tabs: [{ value: "all", headerLabel: "All" }, { value: "open", headerLabel: "Open" }],
   });

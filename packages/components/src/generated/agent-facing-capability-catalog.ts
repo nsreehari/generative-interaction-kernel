@@ -968,6 +968,9 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         "open": {
           "type": "boolean"
         },
+        "defaultOpen": {
+          "type": "boolean"
+        },
         "title": {
           "type": "string",
           "minLength": 1
@@ -999,7 +1002,7 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
       ],
       "emits": {
         "openChange": {
-          "summary": "The dialog requests a change to its controlled open state.",
+          "summary": "The dialog open state changed; handling this event is optional unless open is controlled.",
           "payloadSchema": {
             "type": "object",
             "additionalProperties": false,
@@ -1015,14 +1018,15 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         }
       },
       "constraints": [
-        "Bind open to authored state",
-        "Handle openChange outside the component",
+        "Prefer local dialog state and use defaultOpen only to choose its initial state",
+        "Bind open only when application behavior or cross-Cell coordination must control the dialog",
+        "Handle openChange only when the application needs to observe or control dialog state",
         "Place dialog content in children"
       ],
       "example": {
         "capability": "fluent:dialog",
         "props": {
-          "open": true,
+          "defaultOpen": true,
           "title": "Review details",
           "variant": "standard"
         }
@@ -1840,6 +1844,9 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         "active": {
           "type": "string"
         },
+        "defaultActive": {
+          "type": "string"
+        },
         "ariaLabel": {
           "type": "string"
         },
@@ -1915,13 +1922,14 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
       "constraints": [
         "Provide stable tab values and headerLabel values",
         "Place one authored child in the panes slot for each tab, in the same order",
-        "Bind active to the selected value",
-        "Handle select outside the component"
+        "Prefer local tab state and use defaultActive only to choose the initial tab",
+        "Bind active only when application behavior, persistence, or cross-Cell coordination controls the active tab",
+        "Handle select only when the application needs to observe or control tab selection"
       ],
       "example": {
         "capability": "fluent:tab-bar",
         "props": {
-          "active": "all",
+          "defaultActive": "all",
           "ariaLabel": "Incident views",
           "variant": "standard"
         },
@@ -2377,19 +2385,12 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
             "properties": {}
           }
         },
-        "openChange": {
-          "summary": "The access dialog requests a change to its controlled open state.",
+        "dismiss": {
+          "summary": "The user dismisses the access prompt without completing the access workflow.",
           "payloadSchema": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "open"
-            ],
-            "properties": {
-              "open": {
-                "type": "boolean"
-              }
-            }
+            "properties": {}
           }
         }
       },
@@ -2397,6 +2398,7 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         "Resolve authored conditions into access.triggered at the call site",
         "Describe credential fields through inputFormSpec",
         "Handle emitted events with declarative actions or effects",
+        "Handle dismiss only when the application needs to react to cancellation",
         "Never place credentials in the trigger expression"
       ],
       "example": {
