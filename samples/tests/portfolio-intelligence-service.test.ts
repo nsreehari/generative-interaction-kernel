@@ -70,7 +70,7 @@ describe("portfolio intelligence service declarations", () => {
     }
   });
 
-  it("selects the mode-specific scaffold inside the shared service request", () => {
+  it("passes the invocation-owned authoring brief through the shared service request", () => {
     const service = resolveSampleBlueprintSource("portfolio-tracker-new")
       .payload.services?.["portfolio-semantic-intelligence"];
     const expression = service?.operations.generateReport.request?.transform?.expr;
@@ -83,10 +83,25 @@ describe("portfolio intelligence service declarations", () => {
           summary: { marketValue: 1 },
           investorProfile: null,
           presentationMode: semantic,
-          promptTemplate: "Create report.",
+          authoringBrief: {
+            objective: "Help the investor understand this portfolio snapshot.",
+            sectionMap: { overview: "Orient the user quickly." },
+            positiveCurrency: ["make material concentration immediately clear"],
+            negativeCurrency: ["infer historical performance from a current snapshot"],
+            constraints: ["one coherent experience"],
+            blueprintProfile: {
+              tiers: [
+                { id: "report-semantic", kind: "semantic-report-model" },
+                { id: "runtime-document", kind: "runtime-document" },
+              ],
+              behavior: "inert",
+            },
+          },
           acceptedCapabilities: semantic === "simple-markdown"
             ? ["primitive:markdown"]
             : [
+                "semantic:narrative",
+                "semantic:measure-set",
                 "primitive:container",
                 "primitive:chart",
                 "fluent:text",
@@ -97,10 +112,16 @@ describe("portfolio intelligence service declarations", () => {
       }) as Record<string, unknown>;
       const message = String(request.message);
 
-      expect(request.maxOutputTokens).toBe(semantic === "rich-components" ? 8000 : 4000);
-      expect(message).toContain(`"id":"generated-semantic-report"`);
+      expect(request.maxOutputTokens).toBe(semantic === "rich-components" ? 12000 : 5000);
+      expect(message).toContain(`"objective":"Help the investor understand this portfolio snapshot."`);
+      expect(message).toContain(`"overview":"Orient the user quickly."`);
       expect(message.includes('"primitive:chart"')).toBe(semantic === "rich-components");
       expect(message.includes('"primitive:markdown"')).toBe(semantic === "simple-markdown");
+      expect(request.instructions).toBeUndefined();
+      expect(request.acceptedCapabilities).toBeUndefined();
+      expect(message).not.toContain(`"id":"generated-semantic-report"`);
+      expect(message).not.toContain("SECTIONS != COMPONENTS");
+      expect(message.length).toBeLessThan(2000);
     }
   });
 

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "vitest";
 
 import {
   BLUEPRINT_USE_SCHEMAS,
+  BLUEPRINT_AUTHORING_GUIDANCE_RESOURCE_URL,
   agentHostLifecycleTools,
   agentLifecycleTools,
   authorBlueprint,
@@ -24,6 +26,20 @@ import {
   type AgentHostLifecycleOps,
   type AgentLifecycleOps,
 } from "../src/index";
+
+test("exports package-owned Blueprint authoring guidance", () => {
+  const guidance = readFileSync(new URL(BLUEPRINT_AUTHORING_GUIDANCE_RESOURCE_URL), "utf8");
+
+  assert.match(guidance, /^# Blueprint Authoring Playbook/m);
+  assert.match(guidance, /## Blueprint mechanics/);
+  assert.match(guidance, /## Authoring loop/);
+  assert.match(guidance, /"composition"/);
+  assert.match(guidance, /\*\*SECTIONS ≠ COMPONENTS\*\*/);
+  assert.match(guidance, /\*\*VOCABULARY ≠ CHECKLIST\*\*/);
+  assert.match(guidance, /\*\*KISS\*\*/);
+  assert.match(guidance, /\*\*CLOSED WORLD\*\*/);
+  assert.ok(guidance.length < 7_000, `Guidance grew to ${guidance.length} characters`);
+});
 
 const objectSchema = { type: "object", additionalProperties: true } as const;
 

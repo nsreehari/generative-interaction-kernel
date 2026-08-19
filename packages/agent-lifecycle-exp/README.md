@@ -56,5 +56,9 @@ reasoning, function metadata, response schemas, and host execution authority.
 `toFoundryPromptDefinition` lowers it to a Foundry prompt definition, while
 `toCopilotAgentMarkdown` renders the same contract as a GitHub Copilot custom agent.
 
+`BLUEPRINT_AUTHORING_GUIDANCE_RESOURCE_URL` identifies the package-owned Markdown guidance for
+agents that author Blueprint artifacts. Provisioning code may read this resource and append it to
+the relevant provider-neutral templates without maintaining provider- or product-specific copies.
+
 See `docs/sot/gik-public/agent-lifecycle-exp.yaml` and
 `docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md` in the repository.
