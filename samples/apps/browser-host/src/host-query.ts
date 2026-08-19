@@ -23,6 +23,7 @@ export function readHostQuery(search: string, pathname = ""): HostQuery {
   const params = new URLSearchParams(search);
   const intelligenceModel = params.get("intelligence-model");
   const marketPrices = params.get("market-prices");
+  const semantic = params.get("semantic");
   const view = params.get("view");
   const ai = params.get("ai");
   const model = params.get("model");
@@ -30,6 +31,7 @@ export function readHostQuery(search: string, pathname = ""): HostQuery {
   const externalContext = {
     ...(intelligenceModel === null ? {} : { "intelligence-model": intelligenceModel }),
     ...(marketPrices === null ? {} : { "market-prices": marketPrices }),
+    ...(semantic === null ? {} : { semantic }),
     ...(view === null ? {} : { view }),
     ...(ai === null ? {} : { ai }),
     ...(model === null ? {} : { model }),
