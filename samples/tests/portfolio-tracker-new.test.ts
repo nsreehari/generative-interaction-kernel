@@ -312,7 +312,14 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           activeSource?.input?.expr ?? "",
           /acceptedCapabilities/,
         );
-        assert.match(activeSource?.input?.expr ?? "", /promptTemplate/);
+        assert.match(activeSource?.input?.expr ?? "", /authoringBrief/);
+        assert.match(activeSource?.input?.expr ?? "", /sectionMap/);
+        assert.match(activeSource?.input?.expr ?? "", /positiveCurrency/);
+        assert.match(activeSource?.input?.expr ?? "", /negativeCurrency/);
+        assert.equal(
+          (activeSource?.input?.expr ?? "").includes("'portfolioValue'"),
+          false,
+        );
         assert.match(
           activeSource?.input?.expr ?? "",
           new RegExp(`'presentationMode':'${semantic}'`),
@@ -327,6 +334,10 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         );
         assert.equal(
           (activeSource?.input?.expr ?? "").includes("'primitive:chart'"),
+          semantic === "rich-components",
+        );
+        assert.equal(
+          (activeSource?.input?.expr ?? "").includes("'semantic:narrative'"),
           semantic === "rich-components",
         );
         assert.equal(
@@ -363,7 +374,7 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           [
             "semantic-report-blueprint",
             "semantic-report-capability-catalog",
-            "semantic-report-scaffold",
+            "semantic-report-admission",
           ],
         );
         if (semantic === "rich-components") {
@@ -375,7 +386,7 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           );
           assert.equal(
             semanticOperation?.response?.validators?.some(
-             (validator) => validator.code === "semantic-report-scaffold",
+             (validator) => validator.code === "semantic-report-admission",
             ),
             true,
           );
@@ -538,6 +549,15 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
         request: {
           presentationMode: "simple-markdown",
           acceptedCapabilities: ["primitive:markdown"],
+          authoringBrief: {
+            blueprintProfile: {
+              tiers: [
+                { id: "report-semantic", kind: "semantic-report-model" },
+                { id: "runtime-document", kind: "runtime-document" },
+              ],
+              behavior: "inert",
+            },
+          },
         },
       },
     },
@@ -614,7 +634,11 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
             composition: {
               "report-root": {
                 slots: {
-                  children: ["headline", "summary", "allocation", "positions", "facts", "judgments", "risks", "uncertainties"],
+                  overview: ["headline", "summary"],
+                  composition: ["allocation", "positions"],
+                  performance: ["facts"],
+                  risks: ["risks", "uncertainties"],
+                  interpretation: ["judgments"],
                 },
               },
             },
@@ -680,6 +704,19 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
           "fluent:list",
           "fluent:table",
         ],
+        authoringBrief: {
+          blueprintProfile: {
+            tiers: [
+              { id: "report-semantic", kind: "semantic-report-model" },
+              { id: "runtime-document", kind: "runtime-document" },
+            ],
+            presentation: {
+              root: "portfolio-report",
+              sectionSlots: ["overview", "composition", "performance", "risks", "interpretation"],
+            },
+            behavior: "inert",
+          },
+        },
       },
     },
   };
@@ -688,6 +725,35 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
     materializeBlueprint({ blueprint: richBlueprint }).payload.terminalBlueprint
       .payload.cells?.["report-root"].view?.capability,
     "primitive:container",
+  );
+
+  const semanticComposition = structuredClone(richBlueprint);
+  semanticComposition.payload.recipes[0].representations[0].views.facts = {
+    capability: "semantic:narrative",
+    bindings: { sections: { from: "report.facts" } },
+    props: {
+      variant: "briefing",
+      spec: { fields: { id: "id", heading: "heading", body: "body" } },
+    },
+  };
+  semanticComposition.payload.runtime.capabilities["semantic:narrative"] = {
+    propsSchema: { type: "object", additionalProperties: true },
+    dataProp: "sections",
+  };
+  semanticComposition.payload.runtime.externals.projectionViews.semantic = {
+    from: "semantic",
+    use: ["narrative"],
+  };
+  semanticComposition.payload.runtime.state.report.facts = [{
+    id: "market-value",
+    heading: "Market value",
+    body: "Market value is $1,499.29.",
+  }];
+  const semanticOptions = structuredClone(validatorOptions);
+  semanticOptions.bindings.request.acceptedCapabilities.push("semantic:narrative");
+  assert.equal(
+    runDeclarativeValidators(validators, semanticComposition, semanticOptions).ok,
+    true,
   );
 
   const forbidden = structuredClone(richBlueprint);
@@ -699,6 +765,28 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   assert.equal(report.ok, false);
   assert.equal(
     report.errors.some((error) => error.code === "semantic-report-capability-catalog"),
+    true,
+  );
+
+  const unauthorizedButKnown = structuredClone(richBlueprint);
+  unauthorizedButKnown.payload.runtime.capabilities["primitive:markdown"] = {
+    propsSchema: { type: "object", additionalProperties: true },
+  };
+  unauthorizedButKnown.payload.recipes[0].representations[0].views.headline.capability = "primitive:markdown";
+  const authorizationReport = runDeclarativeValidators(validators, unauthorizedButKnown, validatorOptions);
+  assert.equal(authorizationReport.ok, false);
+  assert.equal(
+    authorizationReport.errors.some((error) => error.code === "semantic-report-admission"),
+    true,
+  );
+
+  const missingSection = structuredClone(richBlueprint);
+  delete missingSection.payload.recipes[0].representations[0]
+    .presentation.composition["report-root"].slots.interpretation;
+  const sectionReport = runDeclarativeValidators(validators, missingSection, validatorOptions);
+  assert.equal(sectionReport.ok, false);
+  assert.equal(
+    sectionReport.errors.some((error) => error.code === "semantic-report-admission"),
     true,
   );
 });

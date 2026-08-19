@@ -5,9 +5,18 @@ import {
   createCapabilityDescribeTool,
   createSimpleChatAgentTemplate,
   toAgentFunctionTools,
+  BLUEPRINT_AUTHORING_GUIDANCE_RESOURCE_URL,
 } from '../../packages/agent-lifecycle-exp/dist/index.js';
 
 const blueprintsDirectory = dirname(fileURLToPath(import.meta.url));
+const blueprintAuthoringGuidance = readFileSync(
+  new URL(BLUEPRINT_AUTHORING_GUIDANCE_RESOURCE_URL),
+  'utf8',
+).trim();
+
+function blueprintAuthorInstructions(instructions) {
+  return [...instructions, blueprintAuthoringGuidance];
+}
 
 function readBlueprint(id) {
   return JSON.parse(readFileSync(resolve(blueprintsDirectory, id, 'blueprint.json'), 'utf8'));
@@ -56,18 +65,19 @@ export function sampleAgentTemplates() {
       description: 'Capability-constrained semantic portfolio report Blueprint author.',
       executionAuthority: 'host',
       reasoning: { effort: 'none' },
-      instructions: [
-        'You are a portfolio intelligence analyst and GIK report Blueprint author.',
+      instructions: blueprintAuthorInstructions([
+        'You are a portfolio intelligence analyst and governed experience author.',
         'Return only one complete self-contained Blueprint JSON artifact, without Markdown fences or commentary.',
-        'Use capability, props, and bindings to author views; bind state with {"from":"namespace.path"} and use the presentation composition map for ordered semantic slots.',
-        'Use only the acceptedCapabilities supplied in the request.',
+        'The request supplies the outcome, section map, accepted capabilities, constraints, and local currency.',
+        'Sections are semantic obligations, not component assignments. Accepted capabilities are a vocabulary, not a checklist.',
+        'Choose and compose the authorized components that make each section most intuitive for the supplied data.',
         'Call describe with kind catalog-capabilities for concise selection guidance and kind capability for exact Blueprint authoring contracts before using capabilities.',
-        'Use exactly these tiers in this order: {"id":"report-semantic","kind":"semantic-report-model"} then {"id":"runtime-document","kind":"runtime-document"}.',
-        'Declare only the capabilities used by the report views and include matching projectionViews imports.',
-        'Analyze only supplied portfolio data and do not imply external research. Distinguish supplied facts, judgments, risks, and uncertainty.',
+        'Use only acceptedCapabilities. Declare only used capabilities and matching projectionViews imports.',
+        'CLOSED WORLD: analyze only supplied portfolio data. FACTS ≠ JUDGMENTS. HONEST UNKNOWN.',
+        'KISS. DRY. FIT > VARIETY. COMPLEMENT > REPEAT. SIGNAL > DENSITY.',
         'Do not add services, sources, effects, behavior, events, actions, controls, native code, Blueprint references, or host mutation instructions.',
         'The host renders the returned artifact directly through gik:blueprint.',
-      ],
+      ]),
       tools: [describeTool],
     },
     {
@@ -75,14 +85,14 @@ export function sampleAgentTemplates() {
       description: 'Security incident report Blueprint author.',
       executionAuthority: 'host',
       reasoning: { effort: 'none' },
-      instructions: [
+      instructions: blueprintAuthorInstructions([
         'You are a security incident analyst and GIK report Blueprint author.',
         'Treat the supplied investigation report as the only authoritative source.',
         'Return one complete self-contained Blueprint artifact containing report state, semantic tier, runtime document tier, recipe, Cells, capabilities, and initial state.',
         'Use only supplied semantic component contracts. Do not invent evidence, remediation, native code, services, effects, or unsupported controls.',
         'Preserve attack ordering, source uncertainty, entities, events, techniques, alerts, evidence, indicators, impacts, and response actions.',
         'The host renders the artifact directly through gik:blueprint; do not return host mutation instructions.',
-      ],
+      ]),
       tools: [],
       responseFormat: {
         type: 'json_schema',
@@ -96,14 +106,14 @@ export function sampleAgentTemplates() {
       description: 'Source-preserving security incident report Blueprint author.',
       executionAuthority: 'host',
       reasoning: { effort: 'none' },
-      instructions: [
+      instructions: blueprintAuthorInstructions([
         'You are a security incident report editor and GIK report Blueprint author.',
         'Treat the supplied investigation report as the only authoritative source.',
         'Return one complete self-contained Blueprint artifact containing report state, semantic tier, runtime document tier, recipe, Cells, capabilities, and initial state.',
         'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.',
         'Do not invent evidence, conclusions, remediation, native code, services, effects, or unsupported controls.',
         'The host renders the artifact directly through gik:blueprint; do not return host mutation instructions.',
-      ],
+      ]),
       tools: [],
       responseFormat: {
         type: 'json_schema',
