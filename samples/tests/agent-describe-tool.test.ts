@@ -17,8 +17,8 @@ test("sample describe tool exposes compact generated capability contracts", asyn
   ]);
 
   const detail = await describe?.handler({
-    kind: "capability",
-    capabilities: ["primitive:form"],
+    kind: "multiple-capabilities",
+    capabilities: ["primitive:form", "semantic:argument"],
   }) as { capabilities: Record<string, any> };
   assert.deepEqual(detail.capabilities["primitive:form"].notes, [
     "Editing is draft-based; values are published only through save.",
@@ -26,4 +26,9 @@ test("sample describe tool exposes compact generated capability contracts", asyn
   assert.equal("version" in detail.capabilities["primitive:form"], false);
   assert.equal("semanticTokens" in detail.capabilities["primitive:form"], false);
   assert.equal("propsSchema" in detail.capabilities["primitive:form"], false);
+  assert.ok(detail.capabilities["semantic:argument"]);
+  await assert.rejects(
+    async () => describe?.handler({ kind: "capability", capabilities: ["primitive:form"] }),
+    /Unsupported describe kind 'capability'/,
+  );
 });

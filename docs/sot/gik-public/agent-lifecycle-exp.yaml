@@ -145,6 +145,25 @@ host_lifecycle:
     admit: Determines whether the specific proposal is valid under current policy and target state.
     apply: Performs the authoritative transition.
 
+component_capability_describe:
+  ownership: "@gik/agent-lifecycle-exp"
+  tool: describe
+  kinds:
+    catalog-capabilities:
+      input: A capabilities array; an empty array selects the complete catalog.
+      output: Compact selection guidance keyed by capability ID.
+    multiple-capabilities:
+      input: A non-empty unique capabilities array with at most 32 IDs.
+      output: Exact compact authoring contracts keyed by capability ID.
+  workflow:
+    - Use at most one catalog-capabilities call to shortlist.
+    - Use one multiple-capabilities call for all shortlisted candidates.
+    - Never serialize one detail call per capability.
+  compatibility: No singular capability kind is supported.
+  boundaries:
+    - Discovery does not grant capability authorization.
+    - Returned artifacts are admitted independently against request-authorized capabilities.
+
 policy_authoring_lifecycle:
   requirement: >-
     Declarative policy artifacts are valid lifecycle targets. A policy-authoring agent uses the

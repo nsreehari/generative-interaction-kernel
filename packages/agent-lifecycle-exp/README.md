@@ -51,6 +51,11 @@ and `blueprintUseFunctionTools` derives provisionable UBX definitions from autho
 material. Provider transports carry calls and outputs; the host executes handlers from its local
 request-scoped catalog.
 
+`createCapabilityDescribeTool` exposes two operations through one transport-free `describe` tool:
+`catalog-capabilities` for compact selection guidance and `multiple-capabilities` for one batched
+detail lookup. The latter requires a non-empty, unique `capabilities` array and is the only detail
+operation; no singular compatibility kind exists.
+
 `AgentProvisioningTemplate` is the provider-neutral source for provisioned agent instructions,
 reasoning, function metadata, response schemas, and host execution authority.
 `toFoundryPromptDefinition` lowers it to a Foundry prompt definition, while

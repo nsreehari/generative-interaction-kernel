@@ -178,6 +178,11 @@ schemas and handlers are restricted to the same selected capabilities. Short reg
 `event-series` and full IDs such as `semantic:event-series` are accepted and deduplicated. Omitting the list
 selects the complete registry; an explicit empty list is rejected.
 
+The renderer-free `agentFacingComponentCatalog` is designed for the common transport-free
+`describe` tool. Agents first use `catalog-capabilities` to shortlist, then request every selected
+contract together with `multiple-capabilities`. There is no singular detail operation; hosts should
+merge custom catalogs before constructing the tool.
+
 The package also exports the underlying pure APIs:
 
 - `listSemanticComponents()`

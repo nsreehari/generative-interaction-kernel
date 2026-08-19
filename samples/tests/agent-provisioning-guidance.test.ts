@@ -39,6 +39,16 @@ test("coaches the semantic portfolio agent without assigning sections to compone
   assert.match(instructions, /Sections are semantic obligations, not component assignments/);
   assert.match(instructions, /Accepted capabilities are a vocabulary, not a checklist/);
   assert.match(instructions, /FIT > VARIETY/);
+  assert.match(instructions, /"kind":"multiple-capabilities"/);
+  assert.match(instructions, /Never issue serial detail calls/);
   assert.doesNotMatch(instructions, /Use primitive:chart for/);
+  assert.doesNotMatch(instructions, /kind capability for exact/);
+
+  const describe = template.tools?.find(({ name }) => name === "describe");
+  assert.ok(describe);
+  assert.deepEqual(
+    (describe.parameters.properties?.kind as { enum?: unknown }).enum,
+    ["catalog-capabilities", "multiple-capabilities"],
+  );
   assert.ok(instructions.length < 8_000, `Provisioned instructions grew to ${instructions.length} characters`);
 });

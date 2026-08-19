@@ -17,7 +17,7 @@ lower them; views project them; roots and composition organize them.
 - **HONEST UNKNOWN** — expose missing evidence; never manufacture certainty.
 - **CLOSED WORLD** — supplied context is the factual boundary unless explicitly expanded.
 - **LEAST AUTHORITY** — use only accepted capabilities and authorized behavior.
-- **DESCRIBE, THEN DECIDE** — inspect plausible capabilities; never infer contracts from names.
+- **BATCH DESCRIBE** — shortlist, then inspect every candidate in one `multiple-capabilities` call.
 - **PREFLIGHT** — validate the Blueprint and every selected component contract.
 
 The invocation owns the outcome, required sections, accepted capabilities, constraints, and local
@@ -85,8 +85,8 @@ Declare only capabilities actually used and import matching projection views.
 
 1. **READ** — outcome, sections, context, constraints, currency, authority.
 2. **MODEL** — stable responsibilities, state, ports, and data flow.
-3. **DISCOVER** — shortlist from the accepted capability catalog.
-4. **DESCRIBE** — inspect exact contracts for serious candidates.
+3. **DISCOVER ONCE** — if needed, call `catalog-capabilities` with the accepted capability IDs.
+4. **DESCRIBE ONCE** — call `multiple-capabilities` with all shortlisted IDs; never serialize details.
 5. **COMPOSE** — roots, semantic slots, Cells, and views.
 6. **LOWER** — tiers, recipes, bindings, and permitted implementations.
 7. **PREFLIGHT** — schemas, references, capability subset, cycles, and budgets.

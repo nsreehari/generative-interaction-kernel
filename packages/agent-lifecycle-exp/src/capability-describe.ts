@@ -27,10 +27,12 @@ export const capabilityDescribeInputSchema: JsonSchema = {
   additionalProperties: false,
   required: ["kind", "capabilities"],
   properties: {
-    kind: { type: "string", enum: ["catalog-capabilities", "capability"] },
+    kind: { type: "string", enum: ["catalog-capabilities", "multiple-capabilities"] },
     capabilities: {
       type: "array",
       items: { type: "string", minLength: 1 },
+      maxItems: 32,
+      uniqueItems: true,
     },
   },
 };
@@ -45,7 +47,7 @@ function requestedCapabilityIds(
     throw new Error("describe capabilities must be an array of capability IDs");
   }
   if (requireSelection && value.length === 0) {
-    throw new Error("describe kind 'capability' requires at least one capability ID");
+    throw new Error("describe kind 'multiple-capabilities' requires at least one capability ID");
   }
   const ids = value.length === 0 ? Object.keys(catalog.catalog) : [...new Set(value)];
   const unknown = ids.filter((id) => !catalog.catalog[id] || !catalog.details[id]);
@@ -56,7 +58,7 @@ function requestedCapabilityIds(
 export function createCapabilityDescribeTool(catalog: CapabilityDescribeCatalog): AgentTool {
   return {
     name: "describe",
-    description: "Discover available projection capabilities or retrieve their compact Blueprint authoring contracts.",
+    description: "Discover projection capabilities or retrieve compact contracts for multiple shortlisted capabilities in one call.",
     inputSchema: capabilityDescribeInputSchema,
     lifecycle: "agent",
     handler: (args) => {
@@ -70,7 +72,7 @@ export function createCapabilityDescribeTool(catalog: CapabilityDescribeCatalog)
           capabilities: Object.fromEntries(ids.map((id) => [id, catalog.catalog[id]])),
         };
       }
-      if (input.kind === "capability") {
+      if (input.kind === "multiple-capabilities") {
         const ids = requestedCapabilityIds(catalog, input.capabilities, true);
         return {
           capabilities: Object.fromEntries(ids.map((id) => [id, catalog.details[id]])),
