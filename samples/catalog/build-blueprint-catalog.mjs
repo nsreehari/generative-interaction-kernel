@@ -60,6 +60,7 @@ if (entries["blueprint-studio-crud"]) {
       kind: artifact.payload.kind,
       source: "repo",
       readonly: true,
+      published: true,
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
   bootstrapAssets["blueprint-studio-crud"] = {
@@ -94,6 +95,12 @@ const catalog = {
 const digest = createHash("sha256").update(JSON.stringify(catalog)).digest("hex");
 const bundle = { ...catalog, bundleVersion: digest.slice(0, 16), digest: `sha256:${digest}` };
 const serialized = `${JSON.stringify(bundle, null, 2)}\n`;
+const reparsed = JSON.parse(serialized);
+const { bundleVersion, digest: serializedDigest, ...serializedCatalog } = reparsed;
+const verifiedDigest = createHash("sha256").update(JSON.stringify(serializedCatalog)).digest("hex");
+if (serializedDigest !== `sha256:${verifiedDigest}` || bundleVersion !== verifiedDigest.slice(0, 16)) {
+  throw new Error("Generated Blueprint catalog bundle digest is invalid after serialization.");
+}
 
 await mkdir(dirname(outputPath), { recursive: true });
 await writeFile(outputPath, serialized);

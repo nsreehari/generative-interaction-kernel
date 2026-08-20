@@ -47,17 +47,6 @@
                   }
                 }
               },
-              "blueprint-catalog-header": {
-                "capability": "primitive:container",
-                "props": {
-                  "variant": "row",
-                  "gap": "s",
-                  "align": "center",
-                  "justify": "space-between",
-                  "fullWidth": true,
-                  "ariaLabel": "Blueprint catalog actions"
-                }
-              },
               "blueprint-catalog-title": {
                 "capability": "fluent:text",
                 "props": {
@@ -81,7 +70,7 @@
               "blueprint-list": {
                 "capability": "fluent:list",
                 "props": {
-                  "variant": "selectable",
+                  "variant": "vertical-cards",
                   "selectionMode": "single",
                   "ariaLabel": "Blueprints"
                 },
@@ -109,6 +98,13 @@
                 "props": {
                   "fields": {
                     "properties": {
+                      "cloneFrom": {
+                        "title": "Clone from",
+                        "type": "string",
+                        "enum": [""],
+                        "enumNames": ["Blank Blueprint"],
+                        "span": 12
+                      },
                       "id": {
                         "title": "New Blueprint ID",
                         "type": "string",
@@ -134,12 +130,18 @@
                     "additionalProperties": false
                   },
                   "value": {
+                    "cloneFrom": "",
                     "id": "",
                     "kind": "runtime-blueprint",
                     "version": "1.0.0"
                   },
                   "saveLabel": "Create draft",
                   "discardLabel": "Reset"
+                },
+                "bindings": {
+                  "fields": {
+                    "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], studio.blueprints[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], studio.blueprints[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
+                  }
                 }
               },
               "individual-blueprint": {
@@ -169,6 +171,16 @@
                   }
                 }
               },
+              "blueprint-overview-record": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "column",
+                  "gap": "m",
+                  "fullWidth": true,
+                  "ariaLabel": "Blueprint record"
+                },
+                "visibility": "studio.selected != null"
+              },
               "blueprint-json-pane": {
                 "capability": "primitive:container",
                 "props": {
@@ -177,6 +189,26 @@
                   "fullWidth": true,
                   "ariaLabel": "Blueprint JSON"
                 }
+              },
+              "blueprint-current-definition": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "column",
+                  "gap": "m",
+                  "fullWidth": true,
+                  "ariaLabel": "Current Blueprint definition"
+                },
+                "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected != null"
+              },
+              "blueprint-draft-definition": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "column",
+                  "gap": "m",
+                  "fullWidth": true,
+                  "ariaLabel": "Draft Blueprint definition"
+                },
+                "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
               },
               "blueprint-json-version-switch": {
                 "capability": "fluent:switch",
@@ -216,7 +248,7 @@
                   "label": "Edit as draft",
                   "appearance": "primary"
                 },
-                "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected != null and studio.selected.draft = null"
+                "visibility": "studio.selected.readonly = false and studio.selected.draft = null"
               },
               "blueprint-promote-draft-action": {
                 "capability": "fluent:button",
@@ -224,21 +256,20 @@
                   "label": "Promote draft",
                   "appearance": "primary"
                 },
-                "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected.draft != null"
+                "visibility": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null"
               },
               "blueprint-delete-draft-action": {
                 "capability": "fluent:button",
                 "props": {
                   "label": "Delete draft"
-                },
-                "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
+                }
               },
               "blueprint-delete-action": {
                 "capability": "fluent:button",
                 "props": {
                   "label": "Delete Blueprint"
                 },
-                "visibility": "studio.selected != null and studio.selected.readonly = false"
+                "visibility": "studio.selected.readonly = false"
               },
               "individual-blueprint-tabs": {
                 "capability": "fluent:tab-bar",
@@ -372,6 +403,24 @@
                   "ariaLabel": "Blueprint preview"
                 }
               },
+              "blueprint-preview-context": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "column",
+                  "gap": "m",
+                  "fullWidth": true,
+                  "ariaLabel": "Blueprint preview context"
+                }
+              },
+              "blueprint-preview-blueprint": {
+                "capability": "primitive:container",
+                "props": {
+                  "variant": "column",
+                  "gap": "m",
+                  "fullWidth": true,
+                  "ariaLabel": "Previewed Blueprint"
+                }
+              },
               "blueprint-preview-context-form": {
                 "capability": "primitive:form",
                 "props": {
@@ -462,20 +511,13 @@
                 },
                 "blueprint-list-region": {
                   "slots": {
-                    "header": [
-                      "blueprint-catalog-header"
+                    "heading": [
+                      "blueprint-catalog-title"
                     ],
                     "catalog": [
                       "blueprint-list"
-                    ]
-                  }
-                },
-                "blueprint-catalog-header": {
-                  "slots": {
-                    "title": [
-                      "blueprint-catalog-title"
                     ],
-                    "actions": [
+                    "create": [
                       "blueprint-new-dialog"
                     ]
                   }
@@ -496,10 +538,17 @@
                 },
                 "blueprint-overview-pane": {
                   "slots": {
-                    "content": [
+                    "record": [
+                      "blueprint-overview-record"
+                    ]
+                  }
+                },
+                "blueprint-overview-record": {
+                  "slots": {
+                    "summary": [
                       "blueprint-overview-content"
                     ],
-                    "actions": [
+                    "lifecycle": [
                       "blueprint-delete-action"
                     ]
                   }
@@ -518,13 +567,28 @@
                     "version": [
                       "blueprint-json-version-switch"
                     ],
-                    "current": [
-                      "blueprint-form-pane",
-                      "blueprint-edit-action",
-                      "blueprint-promote-draft-action"
+                    "definition": [
+                      "blueprint-current-definition",
+                      "blueprint-draft-definition"
+                    ]
+                  }
+                },
+                "blueprint-current-definition": {
+                  "slots": {
+                    "document": [
+                      "blueprint-form-pane"
                     ],
-                    "draft": [
-                      "blueprint-draft-form-pane",
+                    "lifecycle": [
+                      "blueprint-edit-action"
+                    ]
+                  }
+                },
+                "blueprint-draft-definition": {
+                  "slots": {
+                    "document": [
+                      "blueprint-draft-form-pane"
+                    ],
+                    "lifecycle": [
                       "blueprint-delete-draft-action"
                     ]
                   }
@@ -535,8 +599,25 @@
                       "blueprint-preview-version-switch"
                     ],
                     "context": [
+                      "blueprint-preview-context"
+                    ],
+                    "blueprint": [
+                      "blueprint-preview-blueprint"
+                    ]
+                  }
+                },
+                "blueprint-preview-context": {
+                  "slots": {
+                    "form": [
                       "blueprint-preview-context-form",
                       "blueprint-draft-preview-context-form"
+                    ]
+                  }
+                },
+                "blueprint-preview-blueprint": {
+                  "slots": {
+                    "lifecycle": [
+                      "blueprint-promote-draft-action"
                     ],
                     "content": [
                       "blueprint-preview-content",
@@ -607,6 +688,22 @@
               "transform": {
                 "kind": "jsonata",
                 "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[{'id':'runtime-document','kind':'runtime-document'}],'recipes':[],'runtime':{'expression':'jsonata','namespaces':[],'actions':[],'state':{}},'cells':{}}}})"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
+              }
+            }
+          },
+          "cloneBlueprintDraft": {
+            "operation": "clone-blueprint-draft",
+            "contract": "blueprint-studio-clone-blueprint-draft/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'sourceId':input.values.cloneFrom,'id':$trim(input.values.id),'kind':input.values.kind,'version':input.values.version}"
               }
             },
             "settlement": {
@@ -800,10 +897,6 @@
         "id": "blueprint-list-region",
         "kind": "blueprint-list-region"
       },
-      "blueprint-catalog-header": {
-        "id": "blueprint-catalog-header",
-        "kind": "blueprint-catalog-header"
-      },
       "blueprint-catalog-title": {
         "id": "blueprint-catalog-title",
         "kind": "blueprint-catalog-title"
@@ -884,8 +977,17 @@
             "save": [
               {
                 "do": "invoke",
+                "guard": "$not($exists($event.values.cloneFrom)) or $event.values.cloneFrom = ''",
                 "control": {
                   "tool": "createBlueprintDraft",
+                  "serviceRef": "blueprint-studio-data"
+                }
+              },
+              {
+                "do": "invoke",
+                "guard": "$exists($event.values.cloneFrom) and $event.values.cloneFrom != ''",
+                "control": {
+                  "tool": "cloneBlueprintDraft",
                   "serviceRef": "blueprint-studio-data"
                 }
               }
@@ -990,9 +1092,21 @@
         "id": "blueprint-overview-content",
         "kind": "blueprint-overview-content"
       },
+      "blueprint-overview-record": {
+        "id": "blueprint-overview-record",
+        "kind": "blueprint-overview-record"
+      },
       "blueprint-json-pane": {
         "id": "blueprint-json-pane",
         "kind": "blueprint-json"
+      },
+      "blueprint-current-definition": {
+        "id": "blueprint-current-definition",
+        "kind": "blueprint-current-definition"
+      },
+      "blueprint-draft-definition": {
+        "id": "blueprint-draft-definition",
+        "kind": "blueprint-draft-definition"
       },
       "blueprint-json-version-switch": {
         "id": "blueprint-json-version-switch",
@@ -1225,6 +1339,14 @@
             "required": true
           }
         ]
+      },
+      "blueprint-preview-context": {
+        "id": "blueprint-preview-context",
+        "kind": "blueprint-preview-context"
+      },
+      "blueprint-preview-blueprint": {
+        "id": "blueprint-preview-blueprint",
+        "kind": "blueprint-preview-blueprint"
       },
       "blueprint-preview-content": {
         "id": "blueprint-preview-content",

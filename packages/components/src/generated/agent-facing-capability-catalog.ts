@@ -1190,6 +1190,12 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
           "useWhen": [
             "Users choose one or more items from the list"
           ]
+        },
+        "vertical-cards": {
+          "summary": "Renders full-width vertically stacked cards with Fluent single selection.",
+          "useWhen": [
+            "Users choose an item from a prominent vertical set of options"
+          ]
         }
       },
       "emits": {
@@ -1214,6 +1220,7 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
       },
       "constraints": [
         "Use stable item values",
+        "Use vertical-cards for a prominent full-width selection surface",
         "Set selectionMode only when selection is required",
         "Handle select outside the component"
       ],

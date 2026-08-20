@@ -15,6 +15,7 @@
         "delete-blueprint",
         "create-draft",
         "create-blueprint-draft",
+        "clone-blueprint-draft",
         "save-draft",
         "delete-draft",
         "promote-draft"
@@ -91,6 +92,12 @@
                 "control": { "tool": "readIndexForCreateDraft" }
               }
             ],
+            "clone-blueprint-draft": [
+              {
+                "do": "invoke",
+                "control": { "tool": "readBlueprintForCloneDraft" }
+              }
+            ],
             "save-draft": [
               {
                 "do": "invoke",
@@ -149,6 +156,7 @@
           "delete-blueprint": { "payloadSchema": { "type": "object" } },
           "create-draft": { "payloadSchema": { "type": "object" } },
           "create-blueprint-draft": { "payloadSchema": { "type": "object" } },
+          "clone-blueprint-draft": { "payloadSchema": { "type": "object" } },
           "save-draft": { "payloadSchema": { "type": "object" } },
           "delete-draft": { "payloadSchema": { "type": "object" } },
           "promote-draft": { "payloadSchema": { "type": "object" } },
@@ -209,7 +217,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($id := $trim(effect.data.id); $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $index := response ? response : []; $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'created':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$append($index, $descriptor),'result':{'created':true,'blueprint':$entry}}}]})"
+                "expr": "($id := $trim(effect.data.id); $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $index := response ? response : []; $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'created':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$append($index, $descriptor),'result':{'created':true,'blueprint':$entry}}}]})"
               }
             }
           },
@@ -225,7 +233,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($id := $trim(effect.data.id); $index := response ? response : []; $current := $index[id = $id][0]; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $not($exists($current)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Blueprint was not found','id':$id}}]} : $current.readonly ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Repository Blueprints are read-only','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$index.($item := $; $item.id = $id ? $descriptor : $item),'result':{'updated':true,'blueprint':$entry}}}]})"
+                "expr": "($id := $trim(effect.data.id); $index := response ? response : []; $current := $index[id = $id][0]; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $not($exists($current)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Blueprint was not found','id':$id}}]} : $current.readonly ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Repository Blueprints are read-only','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$index.($item := $; $item.id = $id ? $descriptor : $item),'result':{'updated':true,'blueprint':$entry}}}]})"
               }
             }
           },
@@ -257,7 +265,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $entry ? $merge([$entry.artifact, {'payload':$merge([$entry.artifact.payload, {'id':$draftId}])}]) : null; $draft := $artifact ? {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact} : null; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint was not found','id':$id}}]} : $entry.draft ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already has a draft','id':$id,'blueprint':$entry}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftCreated':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
+                "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $entry ? $merge([$entry.artifact, {'payload':$merge([$entry.artifact.payload, {'id':$draftId}])}]) : null; $draft := $artifact ? {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact} : null; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Repository Blueprints are read-only; clone the Blueprint to edit it','id':$id}}]} : $entry.draft ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already has a draft','id':$id,'blueprint':$entry}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftCreated':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
               }
             }
           },
@@ -273,7 +281,23 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$draftId}])}]); $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact}; $entry := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'artifact':null,'ref':null,'draft':$draft}; $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $index := response ? response : []; $nextIndex := $append($index,$descriptor); $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$nextIndex,'result':{'draftCreated':true,'blueprint':$entry,'blueprints':$nextIndex}}}]})"
+                "expr": "($id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$draftId}])}]); $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact}; $entry := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':false,'artifact':null,'ref':null,'draft':$draft}; $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':false}; $index := response ? response : []; $nextIndex := $append($index,$descriptor); $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$nextIndex,'result':{'draftCreated':true,'blueprint':$entry,'blueprints':$nextIndex}}}]})"
+              }
+            }
+          },
+          "readBlueprintForCloneDraft": {
+            "operation": "read",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'blueprint:' & effect.data.sourceId}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($source := response; $id := $trim(effect.data.id); $artifact := $source and $source.artifact != null ? $merge([$source.artifact, {'payload':$merge([$source.artifact.payload, {'id':$id,'kind':effect.data.kind,'version':effect.data.version}])}]) : null; $artifact = null ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Clone source Blueprint was not found','id':effect.data.sourceId}}]} : {'events':[{'node':'crud-controller','name':'create-blueprint-draft','payload':{'id':$id,'blueprint':$artifact}}]})"
               }
             }
           },
@@ -300,7 +324,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := effect.data.blueprint; $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':($entry.draft.revision ? $entry.draft.revision + 1 : 1),'artifact':$artifact}; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint was not found','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint has no draft','id':$id}}]} : $artifact.payload.id != $draftId ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Draft Blueprint ID does not match the selected Blueprint','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftSaved':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
+                "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := effect.data.blueprint; $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':($entry.draft.revision ? $entry.draft.revision + 1 : 1),'artifact':$artifact}; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint has no draft','id':$id}}]} : $artifact.payload.id != $draftId ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Draft Blueprint ID does not match the selected Blueprint','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftSaved':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
               }
             }
           },
@@ -316,7 +340,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : $entry.artifact = null ? {'events':[{'node':'crud-controller','name':'read-index-for-delete-draft-entry','payload':{'id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':null}]),'result':{'draftDeleted':true,'blueprint':$merge([$entry,{'draft':null}])}}}]})"
+                "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : $entry.artifact = null ? {'events':[{'node':'crud-controller','name':'read-index-for-delete-draft-entry','payload':{'id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':null}]),'result':{'draftDeleted':true,'blueprint':$merge([$entry,{'draft':null}])}}}]})"
               }
             }
           },
@@ -348,7 +372,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint was not found','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint has no draft','id':$id}}]} : {'events':[{'node':'crud-controller','name':'read-index-for-promote-draft','payload':{'entry':$entry}}]})"
+                "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint has no draft','id':$id}}]} : {'events':[{'node':'crud-controller','name':'read-index-for-promote-draft','payload':{'entry':$entry}}]})"
               }
             }
           },
@@ -364,7 +388,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($entry := effect.data.entry; $id := $entry.id; $artifact := $merge([$entry.draft.artifact, {'payload':$merge([$entry.draft.artifact.payload, {'id':$id}])}]); $updated := $merge([$entry,{'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $descriptor := {'id':$id,'label':$entry.label,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $index := (response ? response : []).($item := $; $item.id = $id ? $descriptor : $item); {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$updated,'index':$index,'result':{'promoted':true,'blueprint':$updated,'blueprints':$index}}}]})"
+                "expr": "($entry := effect.data.entry; $id := $entry.id; $artifact := $merge([$entry.draft.artifact, {'payload':$merge([$entry.draft.artifact.payload, {'id':$id}])}]); $updated := $merge([$entry,{'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true,'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $descriptor := {'id':$id,'label':$entry.label,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true}; $index := (response ? response : []).($item := $; $item.id = $id ? $descriptor : $item); {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$updated,'index':$index,'result':{'promoted':true,'blueprint':$updated,'blueprints':$index}}}]})"
               }
             }
           },

@@ -15,6 +15,8 @@ import {
   TableHeaderCell,
   TableRow,
   createTableColumn,
+  makeStyles,
+  tokens,
 } from "@fluentui/react-components";
 import type { Json } from "@gik/kernel";
 import { readProps, type ProjectionView } from "@gik/react";
@@ -48,7 +50,40 @@ const LIST_VARIANTS = [
     summary: "Enables Fluent single selection unless selectionMode is explicitly authored.",
     useWhen: ["Users choose one or more items from the list"],
   },
+  {
+    value: "vertical-cards",
+    summary: "Renders full-width vertically stacked cards with Fluent single selection.",
+    useWhen: ["Users choose an item from a prominent vertical set of options"],
+  },
 ] as const;
+
+const useListStyles = makeStyles({
+  verticalCards: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalS,
+    width: "100%",
+  },
+  verticalCard: {
+    alignItems: "center",
+    boxSizing: "border-box",
+    width: "100%",
+    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalL}`,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground1,
+    "&:hover": {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
+    '&[aria-selected="true"]': {
+      color: tokens.colorBrandForeground2,
+      backgroundColor: tokens.colorBrandBackground2,
+    },
+    '&[aria-selected="true"]:hover': {
+      backgroundColor: tokens.colorBrandBackground2Hover,
+    },
+  },
+});
 
 function readColumns(value: Json | undefined): FluentDataColumn[] {
   if (!Array.isArray(value)) return [];
@@ -79,23 +114,31 @@ function renderCellValue(value: CellValue | undefined): React.ReactNode {
 }
 
 export const FluentList: ProjectionView = ({ node, emit }) => {
+  const styles = useListStyles();
   const props = readProps(node);
   const items = readFluentOptions(node.props.items);
+  const isVerticalCards = node.props.variant === "vertical-cards";
   const selectionMode = props.str("selectionMode");
   const resolvedSelectionMode = selectionMode === "single" || selectionMode === "multiselect"
     ? selectionMode
-    : node.props.variant === "selectable" ? "single" : undefined;
+    : node.props.variant === "selectable" || isVerticalCards ? "single" : undefined;
   const selectedItems = readStringArray(node.props.selectedValues);
   return (
     <List
-      {...componentRootProps(node)}
+      {...componentRootProps(node, isVerticalCards ? styles.verticalCards : undefined)}
       aria-label={props.str("ariaLabel") || undefined}
       selectionMode={resolvedSelectionMode}
       selectedItems={selectedItems}
       onSelectionChange={(_, data) => void emit("select", { values: [...data.selectedItems].map(String) })}
     >
       {items.map((item) => (
-        <ListItem key={item.value} value={item.value} disabledSelection={item.disabled}>
+        <ListItem
+          key={item.value}
+          value={item.value}
+          disabledSelection={item.disabled}
+          checkmark={isVerticalCards ? null : undefined}
+          className={isVerticalCards ? styles.verticalCard : undefined}
+        >
           {item.label}
         </ListItem>
       ))}
@@ -252,7 +295,7 @@ const listDescription: ComponentDescription = {
   authoring: {
     useWhen: ["A compact sequence of labeled values should be displayed or selected"],
     avoidWhen: ["Values require columns; use table or data-grid"],
-    rules: ["Use stable item values", "Set selectionMode only when selection is required", "Handle select outside the component"],
+    rules: ["Use stable item values", "Use vertical-cards for a prominent full-width selection surface", "Set selectionMode only when selection is required", "Handle select outside the component"],
   },
 };
 const tableDescription: ComponentDescription = {
