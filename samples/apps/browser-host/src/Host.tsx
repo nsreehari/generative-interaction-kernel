@@ -62,7 +62,7 @@ export function Host(): React.ReactElement {
 }
 
 function hostedBlueprintLoading(): React.ReactElement {
-  return <Spinner label="Loading analysis\u00a0\u2026" labelPosition="after" size="small" />;
+  return <Spinner label={"Loading analysis\u00a0\u2026"} labelPosition="after" size="small" />;
 }
 
 function InMemoryHost(props: DemoTargetHostProps): React.ReactElement {
