@@ -1,4 +1,4 @@
-import { ServiceKindRegistry, type ServiceKindFactory } from "@gik/controlface";
+import { ServiceKindRegistry, type ServiceKindFactory } from "@gik/controlface/services";
 
 import { copilotAgentKind } from "./copilot-agent";
 import { createDeterministicAgentKind, type DeterministicServiceHandler } from "./deterministic-agent";

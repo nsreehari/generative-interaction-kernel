@@ -1,5 +1,5 @@
 import type { Json } from "@gik/kernel";
-import { serviceConfig } from "@gik/controlface";
+import { serviceConfig } from "@gik/controlface/services";
 import type { WorkerServiceInvocation } from "../worker-service-kind";
 
 type McpSession = {

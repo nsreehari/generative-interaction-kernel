@@ -1,5 +1,5 @@
 import type { Json } from "@gik/kernel";
-import { UnsatisfiedServiceDependencyError } from "@gik/controlface";
+import { UnsatisfiedServiceDependencyError } from "@gik/controlface/services";
 import type { SampleServiceRegistryOptions } from ".";
 import { executeCopilotAgentInvocation } from "./copilot-agent/runtime";
 import { executeHttpServiceInvocation } from "./http-service/runtime";

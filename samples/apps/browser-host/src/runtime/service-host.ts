@@ -2,7 +2,7 @@ import {
   DefaultServiceHost,
   QueueFace,
   type DefaultServiceHostOptions,
-} from "@gik/controlface";
+} from "@gik/controlface/services";
 import { executeQueuedCellSourceEffect } from "@gik/blueprint/worker";
 import type { BlueprintRuntime } from "@gik/controlface/blueprint";
 import {

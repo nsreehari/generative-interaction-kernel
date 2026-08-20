@@ -1,4 +1,4 @@
-import { DefaultServiceHost, type ServiceHost } from "@gik/controlface";
+import { DefaultServiceHost, type ServiceHost } from "@gik/controlface/services";
 import type { BlueprintRuntime } from "@gik/controlface/blueprint";
 import type { BlueprintHostRegistry } from "@gik/blueprint";
 import { executeQueuedCellSourceEffect } from "@gik/blueprint/worker";
