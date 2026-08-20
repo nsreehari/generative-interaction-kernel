@@ -294,6 +294,70 @@ test("ordinary invoke execution is acknowledged without applying returned state"
   });
 });
 
+test("declarative service invoke settlements re-enter durable Blueprint state", async () => {
+  const blueprint = createBlueprint({
+    id: "service-counter",
+    kind: "runtime-blueprint",
+    version: "1",
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
+    recipes: [],
+    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    cells: {
+      root: {
+        id: "root",
+        view: { capability: "screen" },
+        events: { save: { payloadSchema: { type: "object" } } },
+        behavior: {
+          on: {
+            save: [{
+              do: "invoke",
+              control: { tool: "saveValue", serviceRef: "counter-service" },
+            }],
+          },
+        },
+      },
+    },
+    projections: { presentation: { roots: ["root"] } },
+  });
+  const runtimeRef = ref("service-counter");
+  const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
+  const execution = createInMemoryBlueprintExecution({
+    blueprint,
+    runtimeId: "service-counter/v1",
+    refs,
+  });
+  const runtime = createDurableRuntime({
+    ...execution.runtime,
+    transitionAdapter: createBlueprintDurableTransitionAdapter({ blueprint }),
+  });
+  const processingRuntime = createDurableRuntime({
+    ...execution.runtime,
+    transitionAdapter: createBlueprintDurableTransitionAdapter({ blueprint }),
+    effectHandlers: {
+      "*": (effect, context) => executeQueuedBlueprintEffect(
+        effect as Parameters<typeof executeQueuedBlueprintEffect>[0],
+        { counter: { value: 1 } },
+        context.messageId,
+        () => ({ ops: [{ op: "set", path: "counter.value", value: 7 }] }),
+      ),
+    },
+    effectFailureHandler: () => [],
+  });
+
+  await runtime.initializeRuntime(refs);
+  await runtime.appendJournal({ ...refs, entry: { node: "root", name: "save" } });
+  await processingRuntime.processEngineWake(refs);
+  await processingRuntime.processQueueLaneItem(refs);
+  await processingRuntime.processEngineWake(refs);
+  const snapshot = await runtime.readSnapshot<Record<string, unknown>, object>(refs);
+  assert.deepEqual(snapshot.state, {
+    counter: { value: 7 },
+    blueprintRunState: {
+      cells: { root: { sources: [] } },
+    },
+  });
+});
+
 test("void invokes are acknowledged without appending settlement receipts", async () => {
   const blueprint = createBlueprint({
     id: "void-effect",

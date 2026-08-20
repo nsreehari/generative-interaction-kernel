@@ -49,7 +49,8 @@ test("portfolio-tracker-new declares the canonical Cells and parent report metad
     "market-prices",
     "portfolio-value-cell",
     "portfolio-intelligence",
-    "portfolio-intelligence-as-of",
+    "portfolio-intelligence-context",
+    "portfolio-intelligence-resolution",
     "board",
   ]);
   assert.deepEqual(cells["portfolio-holdings"].inputs ?? [], []);
@@ -73,10 +74,24 @@ test("portfolio-tracker-new declares the canonical Cells and parent report metad
   ]);
   assert.deepEqual(cells["portfolio-intelligence"].inputs, [
     { token: "portfolio-value" },
+    { token: "portfolio-analysis-context", as: "analysisContext", required: true },
+    { token: "saved-portfolio-report-envelope", as: "savedReportEnvelope", required: true },
+    { token: "portfolio.intelligenceRequest", as: "analysisRequest" },
   ]);
-  assert.deepEqual(cells["portfolio-intelligence"].outputs ?? [], []);
-  assert.deepEqual(cells["portfolio-intelligence-as-of"].inputs ?? [], []);
-  assert.deepEqual(cells["portfolio-intelligence-as-of"].outputs ?? [], []);
+  assert.deepEqual(cells["portfolio-intelligence"].outputs, [{
+    token: "generated-portfolio-report-envelope",
+    from: "computed.generatedReport",
+    when: "$exists(sources.`portfolio-semantic-intelligence.source`)",
+  }]);
+  assert.deepEqual(cells["portfolio-intelligence-context"].outputs, [
+    { token: "portfolio-analysis-context", from: "computed.portfolio.analysisContext" },
+    { token: "saved-portfolio-report-envelope", from: "computed.savedReportEnvelope" },
+  ]);
+  assert.deepEqual(cells["portfolio-intelligence-resolution"].inputs, [
+    { token: "portfolio-analysis-context", as: "analysisContext", required: true },
+    { token: "saved-portfolio-report-envelope", as: "savedReportEnvelope", required: true },
+    { token: "generated-portfolio-report-envelope", as: "generatedReport", required: false },
+  ]);
   assert.deepEqual(cells.board.inputs ?? [], []);
   assert.deepEqual(cells.board.outputs ?? [], []);
   assert.ok(blueprint.payload.runtime.capabilities["primitive:datetime"]);
@@ -90,8 +105,102 @@ test("portfolio-tracker-new declares the canonical Cells and parent report metad
     { id: "portfolio-presentation", kind: "runtime-document" },
   ]);
   const composition = analyzeCellComposition(Object.values(cells));
-  assert.deepEqual(composition.externalInputs, []);
+  assert.deepEqual(composition.externalInputs, ["portfolio.intelligenceRequest"]);
   assert.deepEqual(composition.diagnostics, []);
+});
+
+test("portfolio semantic intelligence hydrates saved output and runs only after an explicit request", () => {
+  const blueprint = resolveSampleBlueprintSource("portfolio-tracker-new");
+  const cells = blueprint.payload.cells as Record<string, CellDefinition>;
+  const savedReports = blueprint.payload.services["portfolio-saved-reports"];
+
+  assert.deepEqual(savedReports.blueprint, {
+    $ref: "blueprint:portfolio-intelligence-assets@1.0.0",
+  });
+  assert.equal(savedReports.operations.getSavedReport.operation, "get-report");
+  assert.equal(savedReports.operations.putSavedReport.operation, "put-report");
+  assert.equal(
+    cells["portfolio-intelligence"].behavior?.on?.press?.[0]?.target,
+    "portfolio.intelligenceRequest",
+  );
+  assert.match(
+    cells["portfolio-intelligence-context"].compute?.find(
+      ({ id }) => id === "portfolio-analysis-context",
+    )?.expression ?? "",
+    /\$string\(inputs\.`portfolio-value`\)/,
+  );
+  assert.equal(
+    cells["portfolio-intelligence-resolution"].sources?.[0]?.when,
+    "inputs.generatedReport != null",
+  );
+
+  const implementationPrograms = blueprint.payload.recipes[1].implementationPrograms ?? [];
+  const semanticPrograms = implementationPrograms.filter(({ id }) => id.startsWith("semantic-"));
+  assert.equal(semanticPrograms.length, 4);
+  for (const program of semanticPrograms) {
+    const source = program.cells?.["portfolio-intelligence"].sources?.find(
+      ({ id }) => id === "portfolio-semantic-intelligence.source",
+    );
+    assert.match(source?.when ?? "", /inputs\.analysisRequest\.portfolioKey = inputs\.analysisContext\.portfolioKey/);
+    assert.match(source?.when ?? "", /inputs\.analysisRequest\.analysisKey = inputs\.analysisContext\.analysisKey/);
+    assert.match(source?.input?.expr ?? "", /requestId/);
+
+    const savedSource = program.cells?.["portfolio-intelligence-context"].sources?.[0];
+    assert.equal(savedSource?.operation, "getSavedReport");
+    assert.match(savedSource?.output?.expr ?? "", /'found':response != null/);
+  }
+  assert.match(
+    cells["portfolio-intelligence-resolution"].compute?.[0]?.expression ?? "",
+    /inputs\.savedReportEnvelope/,
+  );
+});
+
+test("portfolio semantic Generate event starts the gated agent source", async () => {
+  const materialized = materializeBlueprint({
+    blueprint: resolveSampleBlueprintSource("portfolio-tracker-new"),
+    externalContext: {
+      ai: "copilot",
+      "intelligence-model": "semantic",
+      "market-prices": "mock",
+      semantic: "simple-markdown",
+      view: "desktop",
+    },
+  });
+  const runtime = openBlueprint(materialized.payload.terminalBlueprint);
+  const ready = await runMaterializedTransition({
+    materializedBlueprint: materialized,
+    state: materialized.payload.initialState,
+    syncExternal: true,
+    events: [],
+    createOrchestrator: (state) => {
+      const host = createNodeBlueprintServiceHost(runtime, state, {});
+      return nodeServiceOrchestrator(runtime, host, state)(emptyOrchestrator, state);
+    },
+  });
+  const requested = await runMaterializedTransition({
+    materializedBlueprint: materialized,
+    state: ready.state,
+    syncExternal: true,
+    events: [{
+      node: "portfolio-intelligence",
+      name: "press",
+      actorId: "portfolio-test",
+      payload: {},
+    }],
+  });
+  const portfolio = requested.state.portfolio as Record<string, any>;
+  const runState = requested.state.blueprintRunState as unknown as BlueprintRunState;
+
+  assert.deepEqual(portfolio.intelligenceRequest, {
+    portfolioKey: JSON.stringify(portfolio.value),
+    analysisKey: "copilot/simple-markdown",
+    requestId: portfolio.intelligenceRequest.requestId,
+    requestedAt: portfolio.intelligenceRequest.requestedAt,
+  });
+  assert.equal(
+    projectCellRunState(runState.cells["portfolio-intelligence"]).numSourcesRunning,
+    1,
+  );
 });
 
 test("portfolio-tracker-new fetches quotes, calculates value, and produces mock intelligence", async () => {
@@ -284,7 +393,9 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
       );
       assert.equal(
         intelligenceSources[1]?.when,
-        intelligenceModel === "semantic" ? "inputs.`portfolio-value`.summary.marketValue > 0" : "false",
+        intelligenceModel === "semantic"
+          ? "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey"
+          : "false",
       );
       const activeSource = intelligenceSources[intelligenceModel === "semantic" ? 1 : 0];
       const activeService = terminal.services?.[activeSource?.service ?? ""];
@@ -305,7 +416,7 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
       }
       assert.equal(
         terminal.cells?.["portfolio-intelligence"].view?.capability,
-        intelligenceModel === "semantic" ? "gik:blueprint" : "primitive:markdown",
+        intelligenceModel === "semantic" ? "fluent:button" : "primitive:markdown",
       );
       if (intelligenceModel === "semantic") {
         assert.match(
@@ -316,6 +427,11 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         assert.match(activeSource?.input?.expr ?? "", /sectionMap/);
         assert.match(activeSource?.input?.expr ?? "", /positiveCurrency/);
         assert.match(activeSource?.input?.expr ?? "", /negativeCurrency/);
+        assert.match(activeSource?.input?.expr ?? "", /artifactScaffold/);
+        assert.match(activeSource?.input?.expr ?? "", /slotPolicy/);
+        if (semantic === "simple-markdown") {
+          assert.match(activeSource?.input?.expr ?? "", /DELIMITER-CHECK/);
+        }
         assert.equal(
           (activeSource?.input?.expr ?? "").includes("'portfolioValue'"),
           false,
@@ -344,30 +460,39 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           (activeSource?.input?.expr ?? "").includes("$now()"),
           false,
         );
-        assert.equal(
-          activeSource?.output?.expr,
-          "{'report':response,'asOf':$now()}",
-        );
+        assert.match(activeSource?.output?.expr ?? "", /'found':true/);
+        assert.match(activeSource?.output?.expr ?? "", /'requestId':inputs\.analysisRequest\.requestId/);
         const semanticOperation = Array.isArray(activeService?.operations)
           ? undefined
           : activeService?.operations?.[
             "generateReport"
           ];
+        assert.match(semanticOperation?.request?.transform?.expr ?? "", /'acceptedCapabilities':input\.acceptedCapabilities/);
+        assert.match(semanticOperation?.request?.transform?.expr ?? "", /'authoringBrief':input\.authoringBrief/);
+        assert.match(semanticOperation?.request?.transform?.expr ?? "", /'presentationMode':input\.presentationMode/);
+        assert.match(
+          semanticOperation?.settlement?.transform?.expr ?? "",
+          /'path':'portfolio\.intelligenceRequest','value':null/,
+        );
         assert.deepEqual(
-          terminal.cells?.["portfolio-intelligence"].view?.bindings?.blueprint,
-          { from: "portfolio.intelligence.report" },
+          terminal.cells?.["portfolio-intelligence-resolution"].view?.bindings?.blueprint,
+          { from: "portfolio.resolvedIntelligenceEnvelope.report" },
         );
         assert.equal(
-          terminal.cells?.["portfolio-intelligence-as-of"].view?.capability,
+          terminal.cells?.["portfolio-intelligence-resolution"].view?.visibility,
+          "portfolio.resolvedIntelligenceEnvelope.report != null",
+        );
+        assert.deepEqual(
+          terminal.cells?.["portfolio-intelligence-resolution"].view?.before?.[0]?.bindings?.value,
+          { from: "portfolio.resolvedIntelligenceEnvelope.asOf" },
+        );
+        assert.equal(
+          terminal.cells?.["portfolio-intelligence-resolution"].view?.before?.[0]?.capability,
           "primitive:datetime",
         );
-        assert.deepEqual(
-          terminal.cells?.["portfolio-intelligence-as-of"].view?.bindings?.value,
-          { from: "portfolio.intelligence.asOf" },
-        );
         assert.equal(
-          terminal.cells?.["portfolio-intelligence-as-of"].view?.visibility,
-          "portfolio.intelligence.asOf != null",
+          terminal.cells?.["portfolio-intelligence-resolution"].view?.before?.[0]?.visibility,
+          "portfolio.resolvedIntelligenceEnvelope.asOf != null",
         );
         assert.deepEqual(
           semanticOperation?.response?.validators?.map(({ code }) => code),
@@ -400,10 +525,14 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           terminal.cells?.["portfolio-intelligence"].view?.bindings?.value,
           { from: "portfolio.intelligence.markdown" },
         );
-        assert.equal(terminal.cells?.["portfolio-intelligence-as-of"].view, undefined);
+        assert.equal(terminal.cells?.["portfolio-intelligence-resolution"].view?.visibility, "false");
       }
       assert.equal(terminal.cells?.board.inputs, undefined);
-      assert.equal(terminal.cells?.["portfolio-intelligence"].outputs, undefined);
+      assert.deepEqual(terminal.cells?.["portfolio-intelligence"].outputs, [{
+        token: "generated-portfolio-report-envelope",
+        from: "computed.generatedReport",
+        when: "$exists(sources.`portfolio-semantic-intelligence.source`)",
+      }]);
       assert.equal(
         terminal.cells?.board.view?.props?.variant,
         view === "desktop" ? "stack" : "column",
@@ -436,8 +565,8 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         '($count(($lookup(blueprintRunState.cells, "market-prices").sources)[lastRequestedToken != null and lastRequestedToken != lastCompletedToken])) > 0',
       );
       if (intelligenceModel === "semantic") {
-        assert.equal(rootChildren[3]?.id, "portfolio-intelligence-as-of");
-        assert.equal(rootChildren[4]?.id, "portfolio-intelligence--decorated");
+        assert.equal(rootChildren[3]?.id, "portfolio-intelligence--decorated");
+        assert.equal(rootChildren[4]?.id, "portfolio-intelligence-resolution--decorated");
       } else {
         assert.equal(rootChildren[3]?.id, "portfolio-intelligence--decorated");
       }
@@ -446,7 +575,8 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         "market-prices",
         "portfolio-value-cell",
         "portfolio-intelligence",
-        "portfolio-intelligence-as-of",
+        "portfolio-intelligence-context",
+        "portfolio-intelligence-resolution",
         "board",
       ]);
         }
@@ -493,7 +623,8 @@ test("portfolio semantic presentation defaults to simple Markdown when omitted",
     (terminal.services?.["portfolio-semantic-intelligence"]?.config as Record<string, unknown>)?.agent,
     "Portfolio-Semantic-Intelligence-Agent",
   );
-  assert.equal(terminal.cells?.["portfolio-intelligence"].view?.capability, "gik:blueprint");
+  assert.equal(terminal.cells?.["portfolio-intelligence"].view?.capability, "fluent:button");
+  assert.equal(terminal.cells?.["portfolio-intelligence-resolution"].view?.capability, "gik:blueprint");
 });
 
 test("portfolio semantic response contract admits a self-contained report Blueprint", () => {

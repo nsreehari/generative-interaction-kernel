@@ -8,6 +8,8 @@ type McpResult = {
   structured?: Json;
 };
 
+const DEFAULT_COPILOT_TIMEOUT_MS = 120_000;
+
 function mcpInvocation(
   request: WorkerServiceInvocation,
   tool: string,
@@ -58,6 +60,18 @@ export async function executeCopilotAgentInvocation(
   if (request.operation === "chat") {
     const instructions = String(input.instructions ?? "").trim();
     const message = String(input.message ?? "").trim();
+    const timeoutMs = typeof config.timeoutMs === "number"
+      ? config.timeoutMs
+      : DEFAULT_COPILOT_TIMEOUT_MS;
+    const additionalMcpConfig = JSON.stringify({
+      mcpServers: {
+        "gik-agent-authoring": {
+          type: "http",
+          url: String(config.server ?? ""),
+          tools: ["describe"],
+        },
+      },
+    });
     const result = await executeMcpServiceInvocation(
       mcpInvocation(request, "copilot.run_agent", {
         message: instructions ? `${message}\n\n${instructions}` : message,
@@ -65,6 +79,8 @@ export async function executeCopilotAgentInvocation(
         cwd,
         model: String(input.model ?? config.model ?? ""),
         runMode: "sync",
+        timeoutMs,
+        additionalMcpConfigs: [additionalMcpConfig],
       }),
       fetchImpl,
     ) as McpResult;

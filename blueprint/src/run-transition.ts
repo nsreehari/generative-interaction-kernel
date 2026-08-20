@@ -275,6 +275,7 @@ export interface MaterializedBlueprintTransitionInput {
   createOrchestrator?: (state: StateModel) => Orchestrator;
   sourceSettlements?: readonly { effect: OrchestratorEffect; result: OrchestratorResult }[];
   requestSettlements?: readonly { effect: OrchestratorEffect; result: OrchestratorResult }[];
+  serviceSettlements?: readonly OrchestratorResult[];
   blueprintPatches?: readonly BlueprintPatch[];
 }
 
@@ -487,6 +488,7 @@ export async function runMaterializedTransition({
   createOrchestrator,
   sourceSettlements = [],
   requestSettlements = [],
+  serviceSettlements = [],
 }: MaterializedBlueprintTransitionInput): Promise<BlueprintTransitionResult> {
   const { vocabulary, program, externalContext } = materializedBlueprint.payload;
   if (contexts?.externalContext) throw new Error("contexts must not override reserved externalContext namespace");
@@ -510,11 +512,23 @@ export async function runMaterializedTransition({
         ...(initialRunState === undefined ? {} : { blueprintRunState: structuredClone(initialRunState) }),
       };
   store.apply(Object.entries(transitionState).map(([path, value]) => ({ op: "set", path, value })));
+  store.apply(serviceSettlements.flatMap((settlement) => settlement.ops ?? []));
   const completedWithinRun: CompletedWithinRun[] = [];
+  const transitionEvents = [
+    ...events,
+    ...serviceSettlements.flatMap((settlement) => settlement.events ?? []),
+  ];
 
   const shouldSyncExternal = syncExternal
-    ?? (events.length === 0 && sourceSettlements.length === 0 && requestSettlements.length === 0);
+    ?? (transitionEvents.length === 0
+      && sourceSettlements.length === 0
+      && requestSettlements.length === 0
+      && serviceSettlements.length === 0);
   if (shouldSyncExternal) {
+    const patch = await kernel.syncExternal();
+    completedWithinRun.push(...(patch.completedWithinRun ?? []));
+  }
+  else if (serviceSettlements.length > 0) {
     const patch = await kernel.syncExternal();
     completedWithinRun.push(...(patch.completedWithinRun ?? []));
   }
@@ -537,7 +551,7 @@ export async function runMaterializedTransition({
     );
     completedWithinRun.push(...(patch.completedWithinRun ?? []));
   }
-  for (const event of events) {
+  for (const event of transitionEvents) {
     const cell = materializedBlueprint.payload.terminalBlueprint.payload.cells?.[event.node];
     const contract = cell?.events?.[event.name];
     if (cell && !contract) {

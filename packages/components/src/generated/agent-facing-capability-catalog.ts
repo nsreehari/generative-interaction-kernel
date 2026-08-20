@@ -225,13 +225,12 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         "Multiple temporal records form a chronology; use semantic:event-series"
       ]
     },
-    "primitive:drawer": {
+    "primitive:pane-with-trigger": {
       "for": [
-        "A workspace needs an independently controlled floating side panel"
+        "Authored children belong in a temporary surface opened by its own trigger"
       ],
       "notFor": [
-        "Content should permanently share horizontal space",
-        "A modal decision interrupts the workflow"
+        "Content should permanently remain in the page flow"
       ]
     },
     "primitive:editable-table": {
@@ -3072,7 +3071,7 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         }
       }
     },
-    "primitive:drawer": {
+    "primitive:pane-with-trigger": {
       "props": {
         "open": {
           "type": "boolean"
@@ -3104,6 +3103,20 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
           "type": "string",
           "minLength": 1
         },
+        "triggerLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "triggerAppearance": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "secondary",
+            "subtle",
+            "transparent",
+            "outline"
+          ]
+        },
         "panelWidthPercent": {
           "type": "number",
           "minimum": 20,
@@ -3111,12 +3124,18 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         }
       },
       "variants": {
-        "panel-vertical": {
+        "drawer": {
           "summary": "Composes a corner-pinned circular toggle with one full-height floating panel.",
           "useWhen": [
             "Secondary tools must overlay a workspace without resizing it"
           ],
           "default": true
+        },
+        "dialog-modal": {
+          "summary": "Composes a labeled trigger with a modal dialog, title, and close action.",
+          "useWhen": [
+            "A focused temporary workflow must interrupt the current surface"
+          ]
         }
       },
       "slots": [
@@ -3140,20 +3159,24 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         }
       },
       "constraints": [
-        "Prefer local drawer state; use defaultOpen only to choose its initial state",
+        "Choose drawer for supplemental workspace content and dialog-modal for a focused modal workflow",
+        "Prefer local pane state; use defaultOpen only to choose its initial state",
         "Bind open only when application behavior or cross-Cell coordination must control the drawer",
-        "Handle openChange only when the application needs to observe or control drawer state",
-        "Place all authored children inside the panel",
-        "Choose the toggle corner with fabPosition",
-        "Provide concise accessible labels"
+        "Handle openChange only when the application needs to observe or control pane state",
+        "Place all authored children inside the pane",
+        "For drawer, choose the toggle corner with fabPosition",
+        "For dialog-modal, provide triggerLabel and closeLabel",
+        "Provide concise accessible labels for both variants"
       ],
       "example": {
-        "capability": "primitive:drawer",
+        "capability": "primitive:pane-with-trigger",
         "props": {
-          "variant": "panel-vertical",
+          "variant": "drawer",
           "defaultOpen": true,
           "fabPosition": "top-left",
           "title": "Source reports",
+          "triggerLabel": "Open source reports",
+          "closeLabel": "Close source reports",
           "panelWidthPercent": 80
         }
       }

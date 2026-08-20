@@ -33,9 +33,9 @@ guidance, validator, and trial materializer.
 
 Component-private interaction mechanics remain inside the component. Blueprint state represents
 application behavior and cross-Cell coordination, not every local visual toggle. Components such
-as drawers therefore own their open/closed state by default and may emit optional observation
-events. Use controlled props only when application behavior genuinely needs to coordinate that
-state across components.
+as `primitive:pane-with-trigger` therefore own their open/closed state by default and may emit
+optional observation events. Use controlled props only when application behavior genuinely needs
+to coordinate that state across components.
 
 ```ts
 import {

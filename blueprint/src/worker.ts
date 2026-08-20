@@ -175,7 +175,8 @@ export async function executeQueuedBlueprintEffect(
 ): Promise<GIKEvent[]> {
   const result = await executeQueuedCellSourceEffect(effect, state, executeEffect);
   const isCellSource = effect.kind === "invoke" && Boolean(effect.control.sourceRequestToken);
-  if (!isCellSource && effect.kind !== "request") return [];
+  const isDeclarativeService = effect.kind === "invoke" && Boolean(effect.control.serviceRef);
+  if (!isCellSource && !isDeclarativeService && effect.kind !== "request") return [];
   if (effect.kind === "request" && !result?.settlement) {
     throw new Error(`Request effect '${effect.effectId ?? messageId}' completed without a settlement`);
   }

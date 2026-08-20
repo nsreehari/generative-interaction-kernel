@@ -81,6 +81,40 @@ Use capability, props, bindings, and decorations according to the described comp
 
 Declare only capabilities actually used and import matching projection views.
 
+### Events + behavior = interaction
+
+A Cell declares stable event ingress under `events`, including the payload schema for each event.
+`behavior.on` supplies the ordered actions for those events. A lowering implementation may replace
+the handler while preserving the event name and payload contract.
+
+The closed action vocabulary is:
+
+- `assign` — write a literal value or an expression result to runtime state;
+- `emit` — re-enter the owning Cell through another declared event;
+- `invoke` — call an authorized external tool or service;
+- `route` — request an authorized destination handoff;
+- `request` — acquire a governed decision, clarification, or data response.
+
+`assign` and `emit` complete while handling the event. `invoke`, `route`, and `request` produce
+external effects: work that the host performs after the Blueprint has finished its synchronous state
+transition. Any action may have a `guard`. Carry effect input explicitly and do not depend on ordering
+between multiple external effects.
+
+Expressions in one handler read the state snapshot from the start of that handler. A later action in
+the same list must not depend on observing an earlier `assign`; emit a follow-up event when another
+step must observe the committed state. Declare every action family the Blueprint uses in
+`runtime.actions`.
+
+Use a Cell source when external data is an input to the Cell's computation or outputs. Use behavior
+actions when an external call is a response to a declared user or system event. When an `invoke`
+depends on the declared settlement of a Blueprint service operation, identify that service with
+`control.serviceRef`; other invokes are fire-and-forget from Blueprint state.
+
+For `invoke`, put the authorized operation in `control`, explicit input in `data`, and any condition
+in `guard`. For `request`, use `control.kind` `decision`, `clarification`, or `data`, define its
+response schema, and carry host context in `data`. Requests return through later declared events, not
+immediate values.
+
 ## Authoring loop
 
 1. **READ** — outcome, sections, context, constraints, currency, authority.

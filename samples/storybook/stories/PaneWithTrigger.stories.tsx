@@ -2,8 +2,8 @@ import React from "react";
 import { Text, makeStyles, tokens } from "@fluentui/react-components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
-  Drawer,
-  drawerDefinition,
+  PaneWithTrigger,
+  paneWithTriggerDefinition,
 } from "@gik/components/primitives";
 import type { ResolvedNode } from "@gik/kernel";
 
@@ -25,14 +25,14 @@ const useStyles = makeStyles({
   },
 });
 
-function drawerNode(open: boolean): ResolvedNode {
+function paneNode(open: boolean): ResolvedNode {
   return {
     id: "drawer-story",
-    capability: "primitive:drawer",
+    capability: "primitive:pane-with-trigger",
     visible: true,
     fallback: false,
     props: {
-      variant: "panel-vertical",
+      variant: "drawer",
       open,
       fabPosition: "top-left",
       title: "Source reports",
@@ -44,13 +44,13 @@ function drawerNode(open: boolean): ResolvedNode {
   };
 }
 
-function DrawerStory() {
+function PaneWithTriggerStory() {
   const styles = useStyles();
   const [open, setOpen] = React.useState(false);
   const preview = (
     <div className={styles.viewport}>
-      <Drawer
-        node={drawerNode(open)}
+      <PaneWithTrigger
+        node={paneNode(open)}
         emit={(_event, payload) => {
           setOpen(payload?.open === true);
         }}
@@ -59,18 +59,18 @@ function DrawerStory() {
           <Text weight="semibold">Source report</Text>
           <Text>Select and inspect a report before running analysis.</Text>
         </div>
-      </Drawer>
+      </PaneWithTrigger>
     </div>
   );
-  return <ComponentStory definition={drawerDefinition} preview={preview} />;
+  return <ComponentStory definition={paneWithTriggerDefinition} preview={preview} />;
 }
 
 const meta = {
-  title: "Primitive Components/Drawer",
+  title: "Primitive Components/Pane With Trigger",
   component: ComponentStory,
   tags: ["autodocs"],
-  args: { definition: drawerDefinition },
-  render: () => <DrawerStory />,
+  args: { definition: paneWithTriggerDefinition },
+  render: () => <PaneWithTriggerStory />,
 } satisfies Meta<typeof ComponentStory>;
 
 export default meta;

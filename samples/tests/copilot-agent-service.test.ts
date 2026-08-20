@@ -83,6 +83,16 @@ test("Copilot chat can return strict JSON for service contracts", async () => {
     cwd: "C:/workspace",
     model: "gpt-5.4",
     runMode: "sync",
+    timeoutMs: 120_000,
+    additionalMcpConfigs: [JSON.stringify({
+      mcpServers: {
+        "gik-agent-authoring": {
+          type: "http",
+          url: "https://mcp.example/portfolio-json",
+          tools: ["describe"],
+        },
+      },
+    })],
   });
 });
 
@@ -112,6 +122,16 @@ test("Copilot chat runs the selected provisioned agent", async () => {
       cwd: "C:/workspace",
       model: "gpt-5.4",
       runMode: "sync",
+      timeoutMs: 120_000,
+      additionalMcpConfigs: [JSON.stringify({
+        mcpServers: {
+          "gik-agent-authoring": {
+            type: "http",
+            url: "https://mcp.example/selected-chat",
+            tools: ["describe"],
+          },
+        },
+      })],
     },
   });
 });

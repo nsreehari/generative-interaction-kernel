@@ -47,12 +47,14 @@ Invocation source metadata, including source ids and transforms, belongs to `inv
 
 All durable external effects leave a Blueprint transition through the existing effects queue. The
 queue runner dispatches by effect kind; queue completion is transport completion, not application
-settlement. Ordinary `invoke` and `route` effects are fire-and-forget from Blueprint state and do not
-manufacture inbox receipts. Cell source effects return a source receipt, and `request` effects return
-an `EffectSettlement` receipt. Those receipts re-enter through the durable inbox and are admitted by
-the owning Kernel path, which validates source identity or request correlation and response schema
-before graph activation or addressed outcome dispatch. Arbitrary queued operations and events are
-not accepted as request settlement.
+settlement. Ordinary `invoke` and `route` effects are fire-and-forget from Blueprint state. An
+`invoke` that explicitly names a declarative service through `control.serviceRef` returns that
+service operation's declared settlement so its operations and events re-enter the Blueprint
+transition. Cell source effects return a source receipt, and `request` effects return an
+`EffectSettlement` receipt. Those receipts re-enter through the durable inbox and are admitted by
+the owning Kernel path, which validates service identity, source identity, or request correlation
+and response schema before state application, graph activation, or addressed outcome dispatch.
+Arbitrary queued operations and events are not accepted as request settlement.
 
 ## Amendments
 
