@@ -578,17 +578,6 @@
                       }
                     }
                   },
-                  "blueprint-catalog-header": {
-                    "capability": "primitive:container",
-                    "props": {
-                      "variant": "row",
-                      "gap": "s",
-                      "align": "center",
-                      "justify": "space-between",
-                      "fullWidth": true,
-                      "ariaLabel": "Blueprint catalog actions"
-                    }
-                  },
                   "blueprint-catalog-title": {
                     "capability": "fluent:text",
                     "props": {
@@ -612,7 +601,7 @@
                   "blueprint-list": {
                     "capability": "fluent:list",
                     "props": {
-                      "variant": "selectable",
+                      "variant": "vertical-cards",
                       "selectionMode": "single",
                       "ariaLabel": "Blueprints"
                     },
@@ -640,6 +629,17 @@
                     "props": {
                       "fields": {
                         "properties": {
+                          "cloneFrom": {
+                            "title": "Clone from",
+                            "type": "string",
+                            "enum": [
+                              ""
+                            ],
+                            "enumNames": [
+                              "Blank Blueprint"
+                            ],
+                            "span": 12
+                          },
                           "id": {
                             "title": "New Blueprint ID",
                             "type": "string",
@@ -665,12 +665,18 @@
                         "additionalProperties": false
                       },
                       "value": {
+                        "cloneFrom": "",
                         "id": "",
                         "kind": "runtime-blueprint",
                         "version": "1.0.0"
                       },
                       "saveLabel": "Create draft",
                       "discardLabel": "Reset"
+                    },
+                    "bindings": {
+                      "fields": {
+                        "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], studio.blueprints[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], studio.blueprints[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
+                      }
                     }
                   },
                   "individual-blueprint": {
@@ -700,6 +706,16 @@
                       }
                     }
                   },
+                  "blueprint-overview-record": {
+                    "capability": "primitive:container",
+                    "props": {
+                      "variant": "column",
+                      "gap": "m",
+                      "fullWidth": true,
+                      "ariaLabel": "Blueprint record"
+                    },
+                    "visibility": "studio.selected != null"
+                  },
                   "blueprint-json-pane": {
                     "capability": "primitive:container",
                     "props": {
@@ -708,6 +724,26 @@
                       "fullWidth": true,
                       "ariaLabel": "Blueprint JSON"
                     }
+                  },
+                  "blueprint-current-definition": {
+                    "capability": "primitive:container",
+                    "props": {
+                      "variant": "column",
+                      "gap": "m",
+                      "fullWidth": true,
+                      "ariaLabel": "Current Blueprint definition"
+                    },
+                    "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected != null"
+                  },
+                  "blueprint-draft-definition": {
+                    "capability": "primitive:container",
+                    "props": {
+                      "variant": "column",
+                      "gap": "m",
+                      "fullWidth": true,
+                      "ariaLabel": "Draft Blueprint definition"
+                    },
+                    "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
                   },
                   "blueprint-json-version-switch": {
                     "capability": "fluent:switch",
@@ -747,7 +783,7 @@
                       "label": "Edit as draft",
                       "appearance": "primary"
                     },
-                    "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected != null and studio.selected.draft = null"
+                    "visibility": "studio.selected.readonly = false and studio.selected.draft = null"
                   },
                   "blueprint-promote-draft-action": {
                     "capability": "fluent:button",
@@ -755,21 +791,20 @@
                       "label": "Promote draft",
                       "appearance": "primary"
                     },
-                    "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected.draft != null"
+                    "visibility": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null"
                   },
                   "blueprint-delete-draft-action": {
                     "capability": "fluent:button",
                     "props": {
                       "label": "Delete draft"
-                    },
-                    "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
+                    }
                   },
                   "blueprint-delete-action": {
                     "capability": "fluent:button",
                     "props": {
                       "label": "Delete Blueprint"
                     },
-                    "visibility": "studio.selected != null and studio.selected.readonly = false"
+                    "visibility": "studio.selected.readonly = false"
                   },
                   "individual-blueprint-tabs": {
                     "capability": "fluent:tab-bar",
@@ -903,6 +938,24 @@
                       "ariaLabel": "Blueprint preview"
                     }
                   },
+                  "blueprint-preview-context": {
+                    "capability": "primitive:container",
+                    "props": {
+                      "variant": "column",
+                      "gap": "m",
+                      "fullWidth": true,
+                      "ariaLabel": "Blueprint preview context"
+                    }
+                  },
+                  "blueprint-preview-blueprint": {
+                    "capability": "primitive:container",
+                    "props": {
+                      "variant": "column",
+                      "gap": "m",
+                      "fullWidth": true,
+                      "ariaLabel": "Previewed Blueprint"
+                    }
+                  },
                   "blueprint-preview-context-form": {
                     "capability": "primitive:form",
                     "props": {
@@ -993,20 +1046,13 @@
                     },
                     "blueprint-list-region": {
                       "slots": {
-                        "header": [
-                          "blueprint-catalog-header"
+                        "heading": [
+                          "blueprint-catalog-title"
                         ],
                         "catalog": [
                           "blueprint-list"
-                        ]
-                      }
-                    },
-                    "blueprint-catalog-header": {
-                      "slots": {
-                        "title": [
-                          "blueprint-catalog-title"
                         ],
-                        "actions": [
+                        "create": [
                           "blueprint-new-dialog"
                         ]
                       }
@@ -1027,10 +1073,17 @@
                     },
                     "blueprint-overview-pane": {
                       "slots": {
-                        "content": [
+                        "record": [
+                          "blueprint-overview-record"
+                        ]
+                      }
+                    },
+                    "blueprint-overview-record": {
+                      "slots": {
+                        "summary": [
                           "blueprint-overview-content"
                         ],
-                        "actions": [
+                        "lifecycle": [
                           "blueprint-delete-action"
                         ]
                       }
@@ -1049,13 +1102,28 @@
                         "version": [
                           "blueprint-json-version-switch"
                         ],
-                        "current": [
-                          "blueprint-form-pane",
-                          "blueprint-edit-action",
-                          "blueprint-promote-draft-action"
+                        "definition": [
+                          "blueprint-current-definition",
+                          "blueprint-draft-definition"
+                        ]
+                      }
+                    },
+                    "blueprint-current-definition": {
+                      "slots": {
+                        "document": [
+                          "blueprint-form-pane"
                         ],
-                        "draft": [
-                          "blueprint-draft-form-pane",
+                        "lifecycle": [
+                          "blueprint-edit-action"
+                        ]
+                      }
+                    },
+                    "blueprint-draft-definition": {
+                      "slots": {
+                        "document": [
+                          "blueprint-draft-form-pane"
+                        ],
+                        "lifecycle": [
                           "blueprint-delete-draft-action"
                         ]
                       }
@@ -1066,8 +1134,25 @@
                           "blueprint-preview-version-switch"
                         ],
                         "context": [
+                          "blueprint-preview-context"
+                        ],
+                        "blueprint": [
+                          "blueprint-preview-blueprint"
+                        ]
+                      }
+                    },
+                    "blueprint-preview-context": {
+                      "slots": {
+                        "form": [
                           "blueprint-preview-context-form",
                           "blueprint-draft-preview-context-form"
+                        ]
+                      }
+                    },
+                    "blueprint-preview-blueprint": {
+                      "slots": {
+                        "lifecycle": [
+                          "blueprint-promote-draft-action"
                         ],
                         "content": [
                           "blueprint-preview-content",
@@ -1138,6 +1223,22 @@
                   "transform": {
                     "kind": "jsonata",
                     "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[{'id':'runtime-document','kind':'runtime-document'}],'recipes':[],'runtime':{'expression':'jsonata','namespaces':[],'actions':[],'state':{}},'cells':{}}}})"
+                  }
+                },
+                "settlement": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
+                  }
+                }
+              },
+              "cloneBlueprintDraft": {
+                "operation": "clone-blueprint-draft",
+                "contract": "blueprint-studio-clone-blueprint-draft/v1",
+                "request": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'sourceId':input.values.cloneFrom,'id':$trim(input.values.id),'kind':input.values.kind,'version':input.values.version}"
                   }
                 },
                 "settlement": {
@@ -1362,10 +1463,6 @@
             "id": "blueprint-list-region",
             "kind": "blueprint-list-region"
           },
-          "blueprint-catalog-header": {
-            "id": "blueprint-catalog-header",
-            "kind": "blueprint-catalog-header"
-          },
           "blueprint-catalog-title": {
             "id": "blueprint-catalog-title",
             "kind": "blueprint-catalog-title"
@@ -1452,8 +1549,17 @@
                 "save": [
                   {
                     "do": "invoke",
+                    "guard": "$not($exists($event.values.cloneFrom)) or $event.values.cloneFrom = ''",
                     "control": {
                       "tool": "createBlueprintDraft",
+                      "serviceRef": "blueprint-studio-data"
+                    }
+                  },
+                  {
+                    "do": "invoke",
+                    "guard": "$exists($event.values.cloneFrom) and $event.values.cloneFrom != ''",
+                    "control": {
+                      "tool": "cloneBlueprintDraft",
                       "serviceRef": "blueprint-studio-data"
                     }
                   }
@@ -1572,9 +1678,21 @@
             "id": "blueprint-overview-content",
             "kind": "blueprint-overview-content"
           },
+          "blueprint-overview-record": {
+            "id": "blueprint-overview-record",
+            "kind": "blueprint-overview-record"
+          },
           "blueprint-json-pane": {
             "id": "blueprint-json-pane",
             "kind": "blueprint-json"
+          },
+          "blueprint-current-definition": {
+            "id": "blueprint-current-definition",
+            "kind": "blueprint-current-definition"
+          },
+          "blueprint-draft-definition": {
+            "id": "blueprint-draft-definition",
+            "kind": "blueprint-draft-definition"
           },
           "blueprint-json-version-switch": {
             "id": "blueprint-json-version-switch",
@@ -1808,6 +1926,14 @@
               }
             ]
           },
+          "blueprint-preview-context": {
+            "id": "blueprint-preview-context",
+            "kind": "blueprint-preview-context"
+          },
+          "blueprint-preview-blueprint": {
+            "id": "blueprint-preview-blueprint",
+            "kind": "blueprint-preview-blueprint"
+          },
           "blueprint-preview-content": {
             "id": "blueprint-preview-content",
             "kind": "blueprint-preview-content",
@@ -1929,6 +2055,7 @@
             "delete-blueprint",
             "create-draft",
             "create-blueprint-draft",
+            "clone-blueprint-draft",
             "save-draft",
             "delete-draft",
             "promote-draft"
@@ -2020,6 +2147,14 @@
                     "do": "invoke",
                     "control": {
                       "tool": "readIndexForCreateDraft"
+                    }
+                  }
+                ],
+                "clone-blueprint-draft": [
+                  {
+                    "do": "invoke",
+                    "control": {
+                      "tool": "readBlueprintForCloneDraft"
                     }
                   }
                 ],
@@ -2125,6 +2260,11 @@
                   "type": "object"
                 }
               },
+              "clone-blueprint-draft": {
+                "payloadSchema": {
+                  "type": "object"
+                }
+              },
               "save-draft": {
                 "payloadSchema": {
                   "type": "object"
@@ -2217,7 +2357,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($id := $trim(effect.data.id); $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $index := response ? response : []; $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'created':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$append($index, $descriptor),'result':{'created':true,'blueprint':$entry}}}]})"
+                    "expr": "($id := $trim(effect.data.id); $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $index := response ? response : []; $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'created':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$append($index, $descriptor),'result':{'created':true,'blueprint':$entry}}}]})"
                   }
                 }
               },
@@ -2233,7 +2373,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($id := $trim(effect.data.id); $index := response ? response : []; $current := $index[id = $id][0]; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $not($exists($current)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Blueprint was not found','id':$id}}]} : $current.readonly ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Repository Blueprints are read-only','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$index.($item := $; $item.id = $id ? $descriptor : $item),'result':{'updated':true,'blueprint':$entry}}}]})"
+                    "expr": "($id := $trim(effect.data.id); $index := response ? response : []; $current := $index[id = $id][0]; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $not($exists($current)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Blueprint was not found','id':$id}}]} : $current.readonly ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Repository Blueprints are read-only','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$index.($item := $; $item.id = $id ? $descriptor : $item),'result':{'updated':true,'blueprint':$entry}}}]})"
                   }
                 }
               },
@@ -2265,7 +2405,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $entry ? $merge([$entry.artifact, {'payload':$merge([$entry.artifact.payload, {'id':$draftId}])}]) : null; $draft := $artifact ? {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact} : null; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint was not found','id':$id}}]} : $entry.draft ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already has a draft','id':$id,'blueprint':$entry}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftCreated':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
+                    "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $entry ? $merge([$entry.artifact, {'payload':$merge([$entry.artifact.payload, {'id':$draftId}])}]) : null; $draft := $artifact ? {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact} : null; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Repository Blueprints are read-only; clone the Blueprint to edit it','id':$id}}]} : $entry.draft ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already has a draft','id':$id,'blueprint':$entry}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftCreated':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
                   }
                 }
               },
@@ -2281,7 +2421,23 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$draftId}])}]); $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact}; $entry := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'artifact':null,'ref':null,'draft':$draft}; $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $index := response ? response : []; $nextIndex := $append($index,$descriptor); $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$nextIndex,'result':{'draftCreated':true,'blueprint':$entry,'blueprints':$nextIndex}}}]})"
+                    "expr": "($id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$draftId}])}]); $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact}; $entry := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':false,'artifact':null,'ref':null,'draft':$draft}; $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':false}; $index := response ? response : []; $nextIndex := $append($index,$descriptor); $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$nextIndex,'result':{'draftCreated':true,'blueprint':$entry,'blueprints':$nextIndex}}}]})"
+                  }
+                }
+              },
+              "readBlueprintForCloneDraft": {
+                "operation": "read",
+                "contract": "storage-kv/v1",
+                "request": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'key':'blueprint:' & effect.data.sourceId}"
+                  }
+                },
+                "settlement": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "($source := response; $id := $trim(effect.data.id); $artifact := $source and $source.artifact != null ? $merge([$source.artifact, {'payload':$merge([$source.artifact.payload, {'id':$id,'kind':effect.data.kind,'version':effect.data.version}])}]) : null; $artifact = null ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Clone source Blueprint was not found','id':effect.data.sourceId}}]} : {'events':[{'node':'crud-controller','name':'create-blueprint-draft','payload':{'id':$id,'blueprint':$artifact}}]})"
                   }
                 }
               },
@@ -2308,7 +2464,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := effect.data.blueprint; $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':($entry.draft.revision ? $entry.draft.revision + 1 : 1),'artifact':$artifact}; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint was not found','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint has no draft','id':$id}}]} : $artifact.payload.id != $draftId ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Draft Blueprint ID does not match the selected Blueprint','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftSaved':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
+                    "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := effect.data.blueprint; $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':($entry.draft.revision ? $entry.draft.revision + 1 : 1),'artifact':$artifact}; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint has no draft','id':$id}}]} : $artifact.payload.id != $draftId ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Draft Blueprint ID does not match the selected Blueprint','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftSaved':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
                   }
                 }
               },
@@ -2324,7 +2480,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : $entry.artifact = null ? {'events':[{'node':'crud-controller','name':'read-index-for-delete-draft-entry','payload':{'id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':null}]),'result':{'draftDeleted':true,'blueprint':$merge([$entry,{'draft':null}])}}}]})"
+                    "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : $entry.artifact = null ? {'events':[{'node':'crud-controller','name':'read-index-for-delete-draft-entry','payload':{'id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':null}]),'result':{'draftDeleted':true,'blueprint':$merge([$entry,{'draft':null}])}}}]})"
                   }
                 }
               },
@@ -2356,7 +2512,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint was not found','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint has no draft','id':$id}}]} : {'events':[{'node':'crud-controller','name':'read-index-for-promote-draft','payload':{'entry':$entry}}]})"
+                    "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint has no draft','id':$id}}]} : {'events':[{'node':'crud-controller','name':'read-index-for-promote-draft','payload':{'entry':$entry}}]})"
                   }
                 }
               },
@@ -2372,7 +2528,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($entry := effect.data.entry; $id := $entry.id; $artifact := $merge([$entry.draft.artifact, {'payload':$merge([$entry.draft.artifact.payload, {'id':$id}])}]); $updated := $merge([$entry,{'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $descriptor := {'id':$id,'label':$entry.label,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $index := (response ? response : []).($item := $; $item.id = $id ? $descriptor : $item); {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$updated,'index':$index,'result':{'promoted':true,'blueprint':$updated,'blueprints':$index}}}]})"
+                    "expr": "($entry := effect.data.entry; $id := $entry.id; $artifact := $merge([$entry.draft.artifact, {'payload':$merge([$entry.draft.artifact.payload, {'id':$id}])}]); $updated := $merge([$entry,{'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true,'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $descriptor := {'id':$id,'label':$entry.label,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true}; $index := (response ? response : []).($item := $; $item.id = $id ? $descriptor : $item); {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$updated,'index':$index,'result':{'promoted':true,'blueprint':$updated,'blueprints':$index}}}]})"
                   }
                 }
               },
@@ -4882,14 +5038,14 @@
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
                         "contract": "portfolio-semantic-intelligence/v1",
-                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
-                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':inputs.analysisRequest.requestId}"
+                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
                         }
                       }
                     ],
@@ -4969,14 +5125,14 @@
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
                         "contract": "portfolio-semantic-intelligence/v1",
-                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
-                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':inputs.analysisRequest.requestId}"
+                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
                         }
                       }
                     ],
@@ -5373,7 +5529,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                            "expr": "{'ops':[],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                           }
                         },
                         "onViolation": {
@@ -5455,14 +5611,14 @@
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
                         "contract": "portfolio-semantic-intelligence/v1",
-                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
-                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':inputs.analysisRequest.requestId}"
+                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':$string(inputs.refreshGeneration)}"
                         }
                       }
                     ],
@@ -5542,14 +5698,14 @@
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
                         "contract": "portfolio-semantic-intelligence/v1",
-                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
-                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':inputs.analysisRequest.requestId}"
+                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':$string(inputs.refreshGeneration)}"
                         }
                       }
                     ],
@@ -5946,7 +6102,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                            "expr": "{'ops':[],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                           }
                         },
                         "onViolation": {
@@ -6480,7 +6636,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                    "expr": "{'ops':[],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                   }
                 },
                 "onViolation": {
@@ -6653,7 +6809,7 @@
                 }
               },
               "intelligence": null,
-              "intelligenceRequest": null,
+              "intelligenceRefreshGeneration": 0,
               "analysisContext": null,
               "resolvedIntelligenceEnvelope": null
             }
@@ -6783,8 +6939,8 @@
                 "required": true
               },
               {
-                "token": "portfolio.intelligenceRequest",
-                "as": "analysisRequest"
+                "token": "portfolio.intelligenceRefreshGeneration",
+                "as": "refreshGeneration"
               }
             ],
             "systemInputs": [
@@ -6845,9 +7001,9 @@
                 "press": [
                   {
                     "do": "assign",
-                    "target": "portfolio.intelligenceRequest",
+                    "target": "portfolio.intelligenceRefreshGeneration",
                     "args": {
-                      "from": "{'portfolioKey':portfolio.analysisContext.portfolioKey,'analysisKey':portfolio.analysisContext.analysisKey,'requestId':$now(),'requestedAt':$now()}"
+                      "from": "$number(portfolio.intelligenceRefreshGeneration) + 1"
                     }
                   }
                 ]
@@ -12970,7 +13126,8 @@
               "version": "1.0",
               "kind": "runtime-blueprint",
               "source": "repo",
-              "readonly": true
+              "readonly": true,
+              "published": true
             },
             {
               "id": "blueprint-studio",
@@ -12978,7 +13135,8 @@
               "version": "1.0.0",
               "kind": "blueprint-studio",
               "source": "repo",
-              "readonly": true
+              "readonly": true,
+              "published": true
             },
             {
               "id": "blueprint-studio-crud",
@@ -12986,7 +13144,8 @@
               "version": "1.0.0",
               "kind": "runtime-blueprint",
               "source": "repo",
-              "readonly": true
+              "readonly": true,
+              "published": true
             },
             {
               "id": "incident-analysis-assets",
@@ -12994,7 +13153,8 @@
               "version": "1.0.0",
               "kind": "runtime-blueprint",
               "source": "repo",
-              "readonly": true
+              "readonly": true,
+              "published": true
             },
             {
               "id": "incident-analysis-new-shell",
@@ -13002,7 +13162,8 @@
               "version": "1.0.0",
               "kind": "incident-analysis-shell",
               "source": "repo",
-              "readonly": true
+              "readonly": true,
+              "published": true
             },
             {
               "id": "portfolio-intelligence-assets",
@@ -13010,7 +13171,8 @@
               "version": "1.0.0",
               "kind": "runtime-blueprint",
               "source": "repo",
-              "readonly": true
+              "readonly": true,
+              "published": true
             },
             {
               "id": "portfolio-tracker-mock",
@@ -13018,7 +13180,8 @@
               "version": "1.0.0",
               "kind": "runtime-blueprint",
               "source": "repo",
-              "readonly": true
+              "readonly": true,
+              "published": true
             },
             {
               "id": "portfolio-tracker-new",
@@ -13026,7 +13189,8 @@
               "version": "1.0.0",
               "kind": "portfolio-blueprint",
               "source": "repo",
-              "readonly": true
+              "readonly": true,
+              "published": true
             }
           ]
         },
@@ -13039,6 +13203,7 @@
             "kind": "runtime-blueprint",
             "source": "repo",
             "readonly": true,
+            "published": true,
             "artifact": {
               "gik": "0.1",
               "type": "blueprint",
@@ -13548,6 +13713,7 @@
             "kind": "blueprint-studio",
             "source": "repo",
             "readonly": true,
+            "published": true,
             "artifact": {
               "gik": "0.1",
               "type": "blueprint",
@@ -13597,17 +13763,6 @@
                               }
                             }
                           },
-                          "blueprint-catalog-header": {
-                            "capability": "primitive:container",
-                            "props": {
-                              "variant": "row",
-                              "gap": "s",
-                              "align": "center",
-                              "justify": "space-between",
-                              "fullWidth": true,
-                              "ariaLabel": "Blueprint catalog actions"
-                            }
-                          },
                           "blueprint-catalog-title": {
                             "capability": "fluent:text",
                             "props": {
@@ -13631,7 +13786,7 @@
                           "blueprint-list": {
                             "capability": "fluent:list",
                             "props": {
-                              "variant": "selectable",
+                              "variant": "vertical-cards",
                               "selectionMode": "single",
                               "ariaLabel": "Blueprints"
                             },
@@ -13659,6 +13814,17 @@
                             "props": {
                               "fields": {
                                 "properties": {
+                                  "cloneFrom": {
+                                    "title": "Clone from",
+                                    "type": "string",
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "enumNames": [
+                                      "Blank Blueprint"
+                                    ],
+                                    "span": 12
+                                  },
                                   "id": {
                                     "title": "New Blueprint ID",
                                     "type": "string",
@@ -13684,12 +13850,18 @@
                                 "additionalProperties": false
                               },
                               "value": {
+                                "cloneFrom": "",
                                 "id": "",
                                 "kind": "runtime-blueprint",
                                 "version": "1.0.0"
                               },
                               "saveLabel": "Create draft",
                               "discardLabel": "Reset"
+                            },
+                            "bindings": {
+                              "fields": {
+                                "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], studio.blueprints[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], studio.blueprints[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
+                              }
                             }
                           },
                           "individual-blueprint": {
@@ -13719,6 +13891,16 @@
                               }
                             }
                           },
+                          "blueprint-overview-record": {
+                            "capability": "primitive:container",
+                            "props": {
+                              "variant": "column",
+                              "gap": "m",
+                              "fullWidth": true,
+                              "ariaLabel": "Blueprint record"
+                            },
+                            "visibility": "studio.selected != null"
+                          },
                           "blueprint-json-pane": {
                             "capability": "primitive:container",
                             "props": {
@@ -13727,6 +13909,26 @@
                               "fullWidth": true,
                               "ariaLabel": "Blueprint JSON"
                             }
+                          },
+                          "blueprint-current-definition": {
+                            "capability": "primitive:container",
+                            "props": {
+                              "variant": "column",
+                              "gap": "m",
+                              "fullWidth": true,
+                              "ariaLabel": "Current Blueprint definition"
+                            },
+                            "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected != null"
+                          },
+                          "blueprint-draft-definition": {
+                            "capability": "primitive:container",
+                            "props": {
+                              "variant": "column",
+                              "gap": "m",
+                              "fullWidth": true,
+                              "ariaLabel": "Draft Blueprint definition"
+                            },
+                            "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
                           },
                           "blueprint-json-version-switch": {
                             "capability": "fluent:switch",
@@ -13766,7 +13968,7 @@
                               "label": "Edit as draft",
                               "appearance": "primary"
                             },
-                            "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected != null and studio.selected.draft = null"
+                            "visibility": "studio.selected.readonly = false and studio.selected.draft = null"
                           },
                           "blueprint-promote-draft-action": {
                             "capability": "fluent:button",
@@ -13774,21 +13976,20 @@
                               "label": "Promote draft",
                               "appearance": "primary"
                             },
-                            "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected.draft != null"
+                            "visibility": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null"
                           },
                           "blueprint-delete-draft-action": {
                             "capability": "fluent:button",
                             "props": {
                               "label": "Delete draft"
-                            },
-                            "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
+                            }
                           },
                           "blueprint-delete-action": {
                             "capability": "fluent:button",
                             "props": {
                               "label": "Delete Blueprint"
                             },
-                            "visibility": "studio.selected != null and studio.selected.readonly = false"
+                            "visibility": "studio.selected.readonly = false"
                           },
                           "individual-blueprint-tabs": {
                             "capability": "fluent:tab-bar",
@@ -13922,6 +14123,24 @@
                               "ariaLabel": "Blueprint preview"
                             }
                           },
+                          "blueprint-preview-context": {
+                            "capability": "primitive:container",
+                            "props": {
+                              "variant": "column",
+                              "gap": "m",
+                              "fullWidth": true,
+                              "ariaLabel": "Blueprint preview context"
+                            }
+                          },
+                          "blueprint-preview-blueprint": {
+                            "capability": "primitive:container",
+                            "props": {
+                              "variant": "column",
+                              "gap": "m",
+                              "fullWidth": true,
+                              "ariaLabel": "Previewed Blueprint"
+                            }
+                          },
                           "blueprint-preview-context-form": {
                             "capability": "primitive:form",
                             "props": {
@@ -14012,20 +14231,13 @@
                             },
                             "blueprint-list-region": {
                               "slots": {
-                                "header": [
-                                  "blueprint-catalog-header"
+                                "heading": [
+                                  "blueprint-catalog-title"
                                 ],
                                 "catalog": [
                                   "blueprint-list"
-                                ]
-                              }
-                            },
-                            "blueprint-catalog-header": {
-                              "slots": {
-                                "title": [
-                                  "blueprint-catalog-title"
                                 ],
-                                "actions": [
+                                "create": [
                                   "blueprint-new-dialog"
                                 ]
                               }
@@ -14046,10 +14258,17 @@
                             },
                             "blueprint-overview-pane": {
                               "slots": {
-                                "content": [
+                                "record": [
+                                  "blueprint-overview-record"
+                                ]
+                              }
+                            },
+                            "blueprint-overview-record": {
+                              "slots": {
+                                "summary": [
                                   "blueprint-overview-content"
                                 ],
-                                "actions": [
+                                "lifecycle": [
                                   "blueprint-delete-action"
                                 ]
                               }
@@ -14068,13 +14287,28 @@
                                 "version": [
                                   "blueprint-json-version-switch"
                                 ],
-                                "current": [
-                                  "blueprint-form-pane",
-                                  "blueprint-edit-action",
-                                  "blueprint-promote-draft-action"
+                                "definition": [
+                                  "blueprint-current-definition",
+                                  "blueprint-draft-definition"
+                                ]
+                              }
+                            },
+                            "blueprint-current-definition": {
+                              "slots": {
+                                "document": [
+                                  "blueprint-form-pane"
                                 ],
-                                "draft": [
-                                  "blueprint-draft-form-pane",
+                                "lifecycle": [
+                                  "blueprint-edit-action"
+                                ]
+                              }
+                            },
+                            "blueprint-draft-definition": {
+                              "slots": {
+                                "document": [
+                                  "blueprint-draft-form-pane"
+                                ],
+                                "lifecycle": [
                                   "blueprint-delete-draft-action"
                                 ]
                               }
@@ -14085,8 +14319,25 @@
                                   "blueprint-preview-version-switch"
                                 ],
                                 "context": [
+                                  "blueprint-preview-context"
+                                ],
+                                "blueprint": [
+                                  "blueprint-preview-blueprint"
+                                ]
+                              }
+                            },
+                            "blueprint-preview-context": {
+                              "slots": {
+                                "form": [
                                   "blueprint-preview-context-form",
                                   "blueprint-draft-preview-context-form"
+                                ]
+                              }
+                            },
+                            "blueprint-preview-blueprint": {
+                              "slots": {
+                                "lifecycle": [
+                                  "blueprint-promote-draft-action"
                                 ],
                                 "content": [
                                   "blueprint-preview-content",
@@ -14157,6 +14408,22 @@
                           "transform": {
                             "kind": "jsonata",
                             "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[{'id':'runtime-document','kind':'runtime-document'}],'recipes':[],'runtime':{'expression':'jsonata','namespaces':[],'actions':[],'state':{}},'cells':{}}}})"
+                          }
+                        },
+                        "settlement": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
+                          }
+                        }
+                      },
+                      "cloneBlueprintDraft": {
+                        "operation": "clone-blueprint-draft",
+                        "contract": "blueprint-studio-clone-blueprint-draft/v1",
+                        "request": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'sourceId':input.values.cloneFrom,'id':$trim(input.values.id),'kind':input.values.kind,'version':input.values.version}"
                           }
                         },
                         "settlement": {
@@ -14381,10 +14648,6 @@
                     "id": "blueprint-list-region",
                     "kind": "blueprint-list-region"
                   },
-                  "blueprint-catalog-header": {
-                    "id": "blueprint-catalog-header",
-                    "kind": "blueprint-catalog-header"
-                  },
                   "blueprint-catalog-title": {
                     "id": "blueprint-catalog-title",
                     "kind": "blueprint-catalog-title"
@@ -14471,8 +14734,17 @@
                         "save": [
                           {
                             "do": "invoke",
+                            "guard": "$not($exists($event.values.cloneFrom)) or $event.values.cloneFrom = ''",
                             "control": {
                               "tool": "createBlueprintDraft",
+                              "serviceRef": "blueprint-studio-data"
+                            }
+                          },
+                          {
+                            "do": "invoke",
+                            "guard": "$exists($event.values.cloneFrom) and $event.values.cloneFrom != ''",
+                            "control": {
+                              "tool": "cloneBlueprintDraft",
                               "serviceRef": "blueprint-studio-data"
                             }
                           }
@@ -14591,9 +14863,21 @@
                     "id": "blueprint-overview-content",
                     "kind": "blueprint-overview-content"
                   },
+                  "blueprint-overview-record": {
+                    "id": "blueprint-overview-record",
+                    "kind": "blueprint-overview-record"
+                  },
                   "blueprint-json-pane": {
                     "id": "blueprint-json-pane",
                     "kind": "blueprint-json"
+                  },
+                  "blueprint-current-definition": {
+                    "id": "blueprint-current-definition",
+                    "kind": "blueprint-current-definition"
+                  },
+                  "blueprint-draft-definition": {
+                    "id": "blueprint-draft-definition",
+                    "kind": "blueprint-draft-definition"
                   },
                   "blueprint-json-version-switch": {
                     "id": "blueprint-json-version-switch",
@@ -14827,6 +15111,14 @@
                       }
                     ]
                   },
+                  "blueprint-preview-context": {
+                    "id": "blueprint-preview-context",
+                    "kind": "blueprint-preview-context"
+                  },
+                  "blueprint-preview-blueprint": {
+                    "id": "blueprint-preview-blueprint",
+                    "kind": "blueprint-preview-blueprint"
+                  },
                   "blueprint-preview-content": {
                     "id": "blueprint-preview-content",
                     "kind": "blueprint-preview-content",
@@ -14944,6 +15236,7 @@
             "kind": "runtime-blueprint",
             "source": "repo",
             "readonly": true,
+            "published": true,
             "artifact": {
               "gik": "0.1",
               "type": "blueprint",
@@ -14961,6 +15254,7 @@
                     "delete-blueprint",
                     "create-draft",
                     "create-blueprint-draft",
+                    "clone-blueprint-draft",
                     "save-draft",
                     "delete-draft",
                     "promote-draft"
@@ -15052,6 +15346,14 @@
                             "do": "invoke",
                             "control": {
                               "tool": "readIndexForCreateDraft"
+                            }
+                          }
+                        ],
+                        "clone-blueprint-draft": [
+                          {
+                            "do": "invoke",
+                            "control": {
+                              "tool": "readBlueprintForCloneDraft"
                             }
                           }
                         ],
@@ -15157,6 +15459,11 @@
                           "type": "object"
                         }
                       },
+                      "clone-blueprint-draft": {
+                        "payloadSchema": {
+                          "type": "object"
+                        }
+                      },
                       "save-draft": {
                         "payloadSchema": {
                           "type": "object"
@@ -15249,7 +15556,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($id := $trim(effect.data.id); $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $index := response ? response : []; $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'created':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$append($index, $descriptor),'result':{'created':true,'blueprint':$entry}}}]})"
+                            "expr": "($id := $trim(effect.data.id); $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $index := response ? response : []; $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'created':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$append($index, $descriptor),'result':{'created':true,'blueprint':$entry}}}]})"
                           }
                         }
                       },
@@ -15265,7 +15572,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($id := $trim(effect.data.id); $index := response ? response : []; $current := $index[id = $id][0]; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $not($exists($current)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Blueprint was not found','id':$id}}]} : $current.readonly ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Repository Blueprints are read-only','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$index.($item := $; $item.id = $id ? $descriptor : $item),'result':{'updated':true,'blueprint':$entry}}}]})"
+                            "expr": "($id := $trim(effect.data.id); $index := response ? response : []; $current := $index[id = $id][0]; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$id}])}]); $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true}; $entry := $merge([$descriptor, {'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $not($exists($current)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Blueprint was not found','id':$id}}]} : $current.readonly ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'updated':false,'error':'Repository Blueprints are read-only','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$index.($item := $; $item.id = $id ? $descriptor : $item),'result':{'updated':true,'blueprint':$entry}}}]})"
                           }
                         }
                       },
@@ -15297,7 +15604,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $entry ? $merge([$entry.artifact, {'payload':$merge([$entry.artifact.payload, {'id':$draftId}])}]) : null; $draft := $artifact ? {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact} : null; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint was not found','id':$id}}]} : $entry.draft ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already has a draft','id':$id,'blueprint':$entry}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftCreated':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
+                            "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $entry ? $merge([$entry.artifact, {'payload':$merge([$entry.artifact.payload, {'id':$draftId}])}]) : null; $draft := $artifact ? {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact} : null; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Repository Blueprints are read-only; clone the Blueprint to edit it','id':$id}}]} : $entry.draft ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already has a draft','id':$id,'blueprint':$entry}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftCreated':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
                           }
                         }
                       },
@@ -15313,7 +15620,23 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$draftId}])}]); $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact}; $entry := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'artifact':null,'ref':null,'draft':$draft}; $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $index := response ? response : []; $nextIndex := $append($index,$descriptor); $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$nextIndex,'result':{'draftCreated':true,'blueprint':$entry,'blueprints':$nextIndex}}}]})"
+                            "expr": "($id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := $merge([effect.data.blueprint, {'payload':$merge([effect.data.blueprint.payload, {'id':$draftId}])}]); $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':1,'artifact':$artifact}; $entry := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':false,'artifact':null,'ref':null,'draft':$draft}; $descriptor := {'id':$id,'label':$id,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':false}; $index := response ? response : []; $nextIndex := $append($index,$descriptor); $count($index[id = $id]) > 0 ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Blueprint already exists','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$entry,'index':$nextIndex,'result':{'draftCreated':true,'blueprint':$entry,'blueprints':$nextIndex}}}]})"
+                          }
+                        }
+                      },
+                      "readBlueprintForCloneDraft": {
+                        "operation": "read",
+                        "contract": "storage-kv/v1",
+                        "request": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'key':'blueprint:' & effect.data.sourceId}"
+                          }
+                        },
+                        "settlement": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "($source := response; $id := $trim(effect.data.id); $artifact := $source and $source.artifact != null ? $merge([$source.artifact, {'payload':$merge([$source.artifact.payload, {'id':$id,'kind':effect.data.kind,'version':effect.data.version}])}]) : null; $artifact = null ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftCreated':false,'error':'Clone source Blueprint was not found','id':effect.data.sourceId}}]} : {'events':[{'node':'crud-controller','name':'create-blueprint-draft','payload':{'id':$id,'blueprint':$artifact}}]})"
                           }
                         }
                       },
@@ -15340,7 +15663,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := effect.data.blueprint; $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':($entry.draft.revision ? $entry.draft.revision + 1 : 1),'artifact':$artifact}; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint was not found','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint has no draft','id':$id}}]} : $artifact.payload.id != $draftId ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Draft Blueprint ID does not match the selected Blueprint','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftSaved':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
+                            "expr": "($entry := response; $id := $trim(effect.data.id); $draftId := $id & '.draft'; $artifact := effect.data.blueprint; $draft := {'id':$draftId,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'ref':'blueprint:' & $draftId & '@' & $artifact.payload.version,'revision':($entry.draft.revision ? $entry.draft.revision + 1 : 1),'artifact':$artifact}; $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Blueprint has no draft','id':$id}}]} : $artifact.payload.id != $draftId ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftSaved':false,'error':'Draft Blueprint ID does not match the selected Blueprint','id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':$draft}]),'result':{'draftSaved':true,'blueprint':$merge([$entry,{'draft':$draft}])}}}]})"
                           }
                         }
                       },
@@ -15356,7 +15679,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : $entry.artifact = null ? {'events':[{'node':'crud-controller','name':'read-index-for-delete-draft-entry','payload':{'id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':null}]),'result':{'draftDeleted':true,'blueprint':$merge([$entry,{'draft':null}])}}}]})"
+                            "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : $entry.artifact = null ? {'events':[{'node':'crud-controller','name':'read-index-for-delete-draft-entry','payload':{'id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':null}]),'result':{'draftDeleted':true,'blueprint':$merge([$entry,{'draft':null}])}}}]})"
                           }
                         }
                       },
@@ -15388,7 +15711,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint was not found','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint has no draft','id':$id}}]} : {'events':[{'node':'crud-controller','name':'read-index-for-promote-draft','payload':{'entry':$entry}}]})"
+                            "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'promoted':false,'error':'Blueprint has no draft','id':$id}}]} : {'events':[{'node':'crud-controller','name':'read-index-for-promote-draft','payload':{'entry':$entry}}]})"
                           }
                         }
                       },
@@ -15404,7 +15727,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($entry := effect.data.entry; $id := $entry.id; $artifact := $merge([$entry.draft.artifact, {'payload':$merge([$entry.draft.artifact.payload, {'id':$id}])}]); $updated := $merge([$entry,{'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $descriptor := {'id':$id,'label':$entry.label,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false}; $index := (response ? response : []).($item := $; $item.id = $id ? $descriptor : $item); {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$updated,'index':$index,'result':{'promoted':true,'blueprint':$updated,'blueprints':$index}}}]})"
+                            "expr": "($entry := effect.data.entry; $id := $entry.id; $artifact := $merge([$entry.draft.artifact, {'payload':$merge([$entry.draft.artifact.payload, {'id':$id}])}]); $updated := $merge([$entry,{'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true,'artifact':$artifact,'ref':'blueprint:' & $id & '@' & $artifact.payload.version,'draft':null}]); $descriptor := {'id':$id,'label':$entry.label,'version':$artifact.payload.version,'kind':$artifact.payload.kind,'source':'user','readonly':false,'published':true}; $index := (response ? response : []).($item := $; $item.id = $id ? $descriptor : $item); {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$updated,'index':$index,'result':{'promoted':true,'blueprint':$updated,'blueprints':$index}}}]})"
                           }
                         }
                       },
@@ -15482,6 +15805,7 @@
             "kind": "runtime-blueprint",
             "source": "repo",
             "readonly": true,
+            "published": true,
             "artifact": {
               "gik": "0.1",
               "type": "blueprint",
@@ -15866,6 +16190,7 @@
             "kind": "incident-analysis-shell",
             "source": "repo",
             "readonly": true,
+            "published": true,
             "artifact": {
               "gik": "0.1",
               "type": "blueprint",
@@ -16954,6 +17279,7 @@
             "kind": "runtime-blueprint",
             "source": "repo",
             "readonly": true,
+            "published": true,
             "artifact": {
               "gik": "0.1",
               "type": "blueprint",
@@ -17092,6 +17418,7 @@
             "kind": "runtime-blueprint",
             "source": "repo",
             "readonly": true,
+            "published": true,
             "artifact": {
               "gik": "0.1",
               "type": "blueprint",
@@ -17208,6 +17535,7 @@
             "kind": "portfolio-blueprint",
             "source": "repo",
             "readonly": true,
+            "published": true,
             "artifact": {
               "gik": "0.1",
               "type": "blueprint",
@@ -17979,14 +18307,14 @@
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
                                 "contract": "portfolio-semantic-intelligence/v1",
-                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
-                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':inputs.analysisRequest.requestId}"
+                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
                                 }
                               }
                             ],
@@ -18066,14 +18394,14 @@
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
                                 "contract": "portfolio-semantic-intelligence/v1",
-                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
-                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':inputs.analysisRequest.requestId}"
+                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
                                 }
                               }
                             ],
@@ -18470,7 +18798,7 @@
                                 "settlement": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                                    "expr": "{'ops':[],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                                   }
                                 },
                                 "onViolation": {
@@ -18552,14 +18880,14 @@
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
                                 "contract": "portfolio-semantic-intelligence/v1",
-                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
-                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':inputs.analysisRequest.requestId}"
+                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':$string(inputs.refreshGeneration)}"
                                 }
                               }
                             ],
@@ -18639,14 +18967,14 @@
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
                                 "contract": "portfolio-semantic-intelligence/v1",
-                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
-                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':inputs.analysisRequest.requestId}"
+                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':$string(inputs.refreshGeneration)}"
                                 }
                               }
                             ],
@@ -19043,7 +19371,7 @@
                                 "settlement": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                                    "expr": "{'ops':[],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                                   }
                                 },
                                 "onViolation": {
@@ -19577,7 +19905,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                            "expr": "{'ops':[],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                           }
                         },
                         "onViolation": {
@@ -19750,7 +20078,7 @@
                         }
                       },
                       "intelligence": null,
-                      "intelligenceRequest": null,
+                      "intelligenceRefreshGeneration": 0,
                       "analysisContext": null,
                       "resolvedIntelligenceEnvelope": null
                     }
@@ -19880,8 +20208,8 @@
                         "required": true
                       },
                       {
-                        "token": "portfolio.intelligenceRequest",
-                        "as": "analysisRequest"
+                        "token": "portfolio.intelligenceRefreshGeneration",
+                        "as": "refreshGeneration"
                       }
                     ],
                     "systemInputs": [
@@ -19942,9 +20270,9 @@
                         "press": [
                           {
                             "do": "assign",
-                            "target": "portfolio.intelligenceRequest",
+                            "target": "portfolio.intelligenceRefreshGeneration",
                             "args": {
-                              "from": "{'portfolioKey':portfolio.analysisContext.portfolioKey,'analysisKey':portfolio.analysisContext.analysisKey,'requestId':$now(),'requestedAt':$now()}"
+                              "from": "$number(portfolio.intelligenceRefreshGeneration) + 1"
                             }
                           }
                         ]
@@ -20082,6 +20410,6 @@
       ]
     }
   },
-  "bundleVersion": "f49acf75f9b9d90a",
-  "digest": "sha256:f49acf75f9b9d90acb5daf9e4075a2a6a64a8f15fcfd2b3d2ebb09a4251f1c2f"
+  "bundleVersion": "c2458d92b69f2f87",
+  "digest": "sha256:c2458d92b69f2f8751b7d8b62dde6397f162d017eee685824e2e858951a61a92"
 }

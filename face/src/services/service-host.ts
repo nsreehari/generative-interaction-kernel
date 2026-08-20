@@ -227,7 +227,13 @@ export class DefaultServiceHost implements ServiceHost {
       if (resolved.operation.failureSettlement) {
         return this.settleFailure(resolved.operation, completed, effect);
       }
-      throw new Error(completed.error ?? `Service request '${completed.request.id}' ${completed.status}`);
+      throw new Error(
+        typeof completed.error === "string"
+          ? `Service '${resolved.serviceId}.${resolved.invoke}' request '${completed.request.id}' failed: ${completed.error}`
+          : completed.error
+            ? JSON.stringify(completed.error)
+            : `Service request '${completed.request.id}' ${completed.status}`,
+      );
     }
     if (effect.kind === "invoke" && effect.control.sourceId) {
       return { sourceOutput: asJson(completed.result.output ?? null) };

@@ -17,6 +17,7 @@ export interface SampleBlueprintHostRegistryOptions {
     context: HostedBlueprintResolutionContext,
   ) => BlueprintProposalStore<UseProposal>;
   blueprintStorage?: BlueprintStorageConnectionFactory;
+  blueprintStorageRootInstanceId?: string;
 }
 
 export function createSampleBlueprintHostRegistry(
@@ -37,10 +38,13 @@ export function createSampleBlueprintHostRegistry(
   return {
     resolveArtifact,
     async resolve(reference, context) {
-      const blueprintDatabaseRootInstanceId = resolveBlueprintDatabaseRoot(
+      const resolvedDatabaseRootInstanceId = resolveBlueprintDatabaseRoot(
         context,
         blueprintDatabaseRoots,
       );
+      const blueprintDatabaseRootInstanceId = resolvedDatabaseRootInstanceId
+        ? options.blueprintStorageRootInstanceId ?? resolvedDatabaseRootInstanceId
+        : undefined;
       const repositoryBlueprint = getSampleBlueprintCatalog().seedEntries[reference.id];
       const storedBlueprint = await resolveBlueprintDatabaseArtifact(
         reference,
@@ -57,7 +61,7 @@ export function createSampleBlueprintHostRegistry(
           version: blueprint.payload.version,
         },
         blueprint,
-        ...(repositoryBlueprint && !storedBlueprint
+        ...(repositoryBlueprint
           ? {
               native: resolveBlueprintNative(reference.id, {
                 proposalStore,

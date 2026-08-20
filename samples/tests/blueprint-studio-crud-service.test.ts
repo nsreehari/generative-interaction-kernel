@@ -32,6 +32,7 @@ const operations = {
   delete: "delete-blueprint",
   createDraft: "create-draft",
   createBlueprintDraft: "create-blueprint-draft",
+  cloneBlueprintDraft: "clone-blueprint-draft",
   saveDraft: "save-draft",
   deleteDraft: "delete-draft",
   promoteDraft: "promote-draft",
@@ -161,102 +162,141 @@ describe("Blueprint Studio CRUD service", () => {
     expect(await invoke(host, "fetch", { id: artifact.payload.id })).toBeNull();
   });
 
-  it("keeps one independently persisted draft alongside each Blueprint entry", async () => {
+  it("clones a repository Blueprint into a new user draft without mutating the source", async () => {
     const host = createHost();
 
-    expect(await invoke(host, "createDraft", { id: "portfolio-tracker-new" })).toMatchObject({
+    expect(await invoke(host, "cloneBlueprintDraft", {
+      sourceId: "portfolio-tracker-new",
+      id: "portfolio-clone",
+      kind: "portfolio-blueprint",
+      version: "2.0.0",
+    })).toMatchObject({
       draftCreated: true,
       blueprint: {
-        id: "portfolio-tracker-new",
-        artifact: { payload: { id: "portfolio-tracker-new" } },
+        id: "portfolio-clone",
+        artifact: null,
         draft: {
-          id: "portfolio-tracker-new.draft",
-          ref: "blueprint:portfolio-tracker-new.draft@1.0.0",
-          revision: 1,
-          artifact: { payload: { id: "portfolio-tracker-new.draft" } },
+          id: "portfolio-clone.draft",
+          artifact: {
+            payload: {
+              id: "portfolio-clone.draft",
+              kind: "portfolio-blueprint",
+              version: "2.0.0",
+              contextFormSpec: expect.any(Object),
+              recipes: expect.any(Array),
+            },
+          },
         },
       },
     });
-    expect(await invoke(host, "createDraft", { id: "incident-analysis-new-shell" })).toMatchObject({
-      draftCreated: true,
-      blueprint: {
-        id: "incident-analysis-new-shell",
-        draft: { id: "incident-analysis-new-shell.draft" },
-      },
+    expect(await invoke(host, "fetch", { id: "portfolio-tracker-new" })).toMatchObject({
+      readonly: true,
+      draft: null,
+      artifact: { payload: { id: "portfolio-tracker-new", version: "1.0.0" } },
+    });
+    expect(await invoke(host, "createDraft", { id: "portfolio-tracker-new" })).toMatchObject({
+      draftCreated: false,
+      error: "Repository Blueprints are read-only; clone the Blueprint to edit it",
+    });
+  });
+
+  it("keeps one independently persisted draft alongside each Blueprint entry", async () => {
+    const host = createHost();
+    await invoke(host, "cloneBlueprintDraft", {
+      sourceId: "portfolio-tracker-new",
+      id: "portfolio-draftable",
+      kind: "portfolio-blueprint",
+      version: "1.0.0",
+    });
+    await invoke(host, "cloneBlueprintDraft", {
+      sourceId: "incident-analysis-new-shell",
+      id: "incident-draftable",
+      kind: "incident-analysis-blueprint",
+      version: "1.0.0",
     });
 
-    const portfolio = await invoke(host, "fetch", { id: "portfolio-tracker-new" }) as {
+    const portfolio = await invoke(host, "fetch", { id: "portfolio-draftable" }) as {
       draft: { artifact: { payload: { version: string } } };
     };
     const edited = structuredClone(portfolio.draft.artifact);
     edited.payload.version = "1.1.0";
     expect(await invoke(host, "saveDraft", {
-      id: "portfolio-tracker-new",
+      id: "portfolio-draftable",
       blueprint: edited as unknown as Json,
     })).toMatchObject({
       draftSaved: true,
       blueprint: {
-        id: "portfolio-tracker-new",
+        id: "portfolio-draftable",
         draft: {
           version: "1.1.0",
-          ref: "blueprint:portfolio-tracker-new.draft@1.1.0",
+          ref: "blueprint:portfolio-draftable.draft@1.1.0",
           revision: 2,
         },
       },
     });
 
-    expect(await invoke(host, "promoteDraft", { id: "portfolio-tracker-new" })).toMatchObject({
+    expect(await invoke(host, "promoteDraft", { id: "portfolio-draftable" })).toMatchObject({
       promoted: true,
       blueprint: {
-        id: "portfolio-tracker-new",
+        id: "portfolio-draftable",
         version: "1.1.0",
         source: "user",
         readonly: false,
-        ref: "blueprint:portfolio-tracker-new@1.1.0",
+        ref: "blueprint:portfolio-draftable@1.1.0",
         draft: null,
-        artifact: { payload: { id: "portfolio-tracker-new", version: "1.1.0" } },
+        artifact: { payload: { id: "portfolio-draftable", version: "1.1.0" } },
       },
     });
-    expect(await invoke(host, "fetch", { id: "incident-analysis-new-shell" })).toMatchObject({
-      draft: { id: "incident-analysis-new-shell.draft" },
+    expect(await invoke(host, "fetch", { id: "incident-draftable" })).toMatchObject({
+      draft: { id: "incident-draftable.draft" },
     });
   });
 
   it("does not allow an edited draft ID to target another Blueprint entry", async () => {
     const host = createHost();
-    await invoke(host, "createDraft", { id: "portfolio-tracker-new" });
-    await invoke(host, "createDraft", { id: "incident-analysis-new-shell" });
-    const portfolio = await invoke(host, "fetch", { id: "portfolio-tracker-new" }) as {
+    await invoke(host, "cloneBlueprintDraft", {
+      sourceId: "portfolio-tracker-new",
+      id: "portfolio-draftable",
+      kind: "portfolio-blueprint",
+      version: "1.0.0",
+    });
+    await invoke(host, "cloneBlueprintDraft", {
+      sourceId: "incident-analysis-new-shell",
+      id: "incident-draftable",
+      kind: "incident-analysis-blueprint",
+      version: "1.0.0",
+    });
+    const portfolio = await invoke(host, "fetch", { id: "portfolio-draftable" }) as {
       draft: { artifact: { payload: { id: string } } };
     };
     const edited = structuredClone(portfolio.draft.artifact);
-    edited.payload.id = "incident-analysis-new-shell.draft";
+    edited.payload.id = "incident-draftable.draft";
 
     expect(await invoke(host, "saveDraft", {
-      id: "portfolio-tracker-new",
+      id: "portfolio-draftable",
       blueprint: edited as unknown as Json,
     })).toMatchObject({
       draftSaved: false,
       error: "Draft Blueprint ID does not match the selected Blueprint",
-      id: "portfolio-tracker-new",
+      id: "portfolio-draftable",
     });
-    expect(await invoke(host, "fetch", { id: "incident-analysis-new-shell" })).toMatchObject({
+    expect(await invoke(host, "fetch", { id: "incident-draftable" })).toMatchObject({
       draft: {
         revision: 1,
-        artifact: { payload: { id: "incident-analysis-new-shell.draft" } },
+        artifact: { payload: { id: "incident-draftable.draft" } },
       },
     });
 
     await expect(invoke(host, "saveDraft", {
-      id: "portfolio-tracker-new",
+      id: "portfolio-draftable",
       blueprint: {
-        payload: { id: "portfolio-tracker-new.draft" },
+        payload: { id: "portfolio-draftable.draft" },
       },
     })).rejects.toThrow(/Service request validation failed.*draft Blueprint is invalid/i);
-    expect(await invoke(host, "fetch", { id: "portfolio-tracker-new" })).toMatchObject({
+    expect(await invoke(host, "fetch", { id: "portfolio-draftable" })).toMatchObject({
       draft: {
         revision: 1,
-        artifact: { payload: { id: "portfolio-tracker-new.draft" } },
+        artifact: { payload: { id: "portfolio-draftable.draft" } },
       },
     });
   });

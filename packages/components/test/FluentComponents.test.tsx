@@ -278,6 +278,34 @@ test("Fluent data controls render explicit public data contracts", () => {
   assert.equal(fluentDataGridDefinition.validate({ columns: [], rows: [], editable: true }).ok, false);
 });
 
+test("FluentList vertical-cards is a full selection variant with controlled selected state", () => {
+  const trial = fluentListDefinition.materializeTrial();
+  trial.props.variant = "vertical-cards";
+  trial.props.selectedValues = ["open"];
+  trial.props.className = "callsite-list";
+  const Component = fluentListDefinition.component;
+  const markup = renderToStaticMarkup(
+    <Component node={trial} emit={() => undefined} children={undefined} />,
+  );
+  const description = fluentListDefinition.describe();
+
+  assert.deepEqual(description.variants?.map((variant) => variant.value), [
+    "standard",
+    "selectable",
+    "vertical-cards",
+  ]);
+  assert.match(markup, /class="[^"]*callsite-list/);
+  assert.match(markup, /role="listbox"/);
+  assert.match(markup, /aria-selected="true"[^>]*>.*Open/);
+  assert.doesNotMatch(markup, /type="checkbox"/);
+  assert.deepEqual(description.eventContracts?.select.payloadSchema, {
+    type: "object",
+    additionalProperties: false,
+    required: ["values"],
+    properties: { values: { type: "array", items: { type: "string" } } },
+  });
+});
+
 test("Fluent display controls render their native public contracts", () => {
   const definitions = [
     [fluentBadgeDefinition, /Active/],

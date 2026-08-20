@@ -230,6 +230,7 @@ not change domain meaning, semantic status mapping, event contracts, or host the
 - Graph diagram: `diagram`, `canvas`
 - Chart: `standard`, `compact`
 - Collection board: `standard`, `compact`
+- Fluent list: `standard`, `selectable`, `vertical-cards`
 - Date time: `date`, `time`, `timestamp`
 - Gantt: `standard`, `compact`
 - Semantic graph: `network`, `relations`

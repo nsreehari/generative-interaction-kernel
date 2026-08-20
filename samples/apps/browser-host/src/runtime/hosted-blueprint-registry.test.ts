@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { beforeEach, test } from "vitest";
 import { createBlueprint } from "@gik/blueprint";
-import { installUserBlueprints } from "../../../../catalog/blueprint-catalog";
+import {
+  getSampleBlueprintCatalog,
+  installUserBlueprints,
+} from "../../../../catalog/blueprint-catalog";
 import { createSampleBlueprintHostRegistry } from "./hosted-blueprint-registry";
 
 const context = {
@@ -66,8 +69,12 @@ test("repository registrations are authoritative and receive child lifecycle ide
 
 test("resolves a stored draft reference through the normal hosted Blueprint registry", async () => {
   const draft = localBlueprint("portfolio-tracker-new.draft", "1.1.0");
+  const storageIdentities: Array<{ blueprintId: string; instanceId: string }> = [];
   const registry = createSampleBlueprintHostRegistry({
-    blueprintStorage: () => ({
+    blueprintStorageRootInstanceId: "blueprint-studio:default",
+    blueprintStorage: (identity) => {
+      storageIdentities.push(identity);
+      return {
       ref: "memory:studio",
       api: {
         async dispatch(request) {
@@ -86,7 +93,8 @@ test("resolves a stored draft reference through the normal hosted Blueprint regi
           };
         },
       },
-    }),
+      };
+    },
   });
 
   const resolved = await registry.resolve(
@@ -101,6 +109,10 @@ test("resolves a stored draft reference through the normal hosted Blueprint regi
   assert.equal(resolved.blueprint.payload.id, "portfolio-tracker-new.draft");
   assert.equal(resolved.reference.version, "1.1.0");
   assert.equal(resolved.native, undefined);
+  assert.deepEqual(storageIdentities[0], {
+    blueprintId: "blueprint-studio-crud",
+    instanceId: "blueprint-studio:default/services/blueprint-studio@1.0.0/services/blueprint-studio-crud@1.0.0",
+  });
 
   const unversioned = await registry.resolve(
     { scheme: "blueprint", id: "portfolio-tracker-new.draft" },
@@ -112,6 +124,33 @@ test("resolves a stored draft reference through the normal hosted Blueprint regi
   );
   assert.equal(unversioned.blueprint.payload.id, "portfolio-tracker-new.draft");
   assert.equal(unversioned.reference.version, "1.1.0");
+});
+
+test("retains repository runtime assembly when resolving its bootstrapped storage artifact", async () => {
+  const repository = getSampleBlueprintCatalog().seedEntries["portfolio-tracker-new"];
+  const registry = createSampleBlueprintHostRegistry({
+    blueprintStorage: () => ({
+      ref: "memory:studio",
+      api: {
+        async dispatch() {
+          return {
+            id: repository.payload.id,
+            ref: `blueprint:${repository.payload.id}@${repository.payload.version}`,
+            artifact: repository,
+            draft: null,
+          };
+        },
+      },
+    }),
+  });
+
+  const resolved = await registry.resolve(
+    { scheme: "blueprint", id: repository.payload.id },
+    context,
+  );
+
+  assert.ok(resolved.native);
+  assert.ok(resolved.native.wrapOrchestrator);
 });
 
 test("keeps stored Blueprint resolution isolated by Studio instance ancestry", async () => {
