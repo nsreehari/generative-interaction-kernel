@@ -5,7 +5,7 @@ import {
   type ServiceAdapter,
   type ServiceKindFactory,
   type ServiceKindManifest,
-} from "@gik/controlface";
+} from "@gik/controlface/services";
 
 import manifestJson from "./manifest.json";
 

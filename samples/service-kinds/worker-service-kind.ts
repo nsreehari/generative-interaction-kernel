@@ -3,7 +3,7 @@ import type {
   ServiceAdapter,
   ServiceKindFactory,
   ServiceKindManifest,
-} from "@gik/controlface";
+} from "@gik/controlface/services";
 
 export interface WorkerServiceInvocation {
   kind: string;

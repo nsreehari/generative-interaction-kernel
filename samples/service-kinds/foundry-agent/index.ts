@@ -7,7 +7,7 @@ import {
 	type ServiceRequest,
 	type ServiceKindFactory,
 	type ServiceKindManifest,
-} from "@gik/controlface";
+} from "@gik/controlface/services";
 import { executeAgentFunctionCall } from "@gik/agent-lifecycle-exp";
 import { createFoundryProxy, FoundryProxyError, type FoundryChatResponseSchema } from "./foundry-proxy";
 import manifestJson from "./manifest.json";

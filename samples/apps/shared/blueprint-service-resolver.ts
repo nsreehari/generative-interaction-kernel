@@ -7,14 +7,16 @@ import {
 } from "@gik/blueprint";
 import {
   ControlFace,
-  DefaultServiceHost,
   openBlueprint,
   type BlueprintRuntime,
+} from "@gik/controlface/blueprint";
+import {
+  DefaultServiceHost,
   type BlueprintServiceIdentity,
   type BlueprintServiceResolver,
   type ServiceAdapter,
   type ServiceKindRegistry,
-} from "@gik/controlface";
+} from "@gik/controlface/services";
 import {
   InMemoryStateModel,
   JsonataExpressionProvider,

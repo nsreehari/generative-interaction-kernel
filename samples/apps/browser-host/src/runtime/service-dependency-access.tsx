@@ -3,7 +3,7 @@ import { AccessGate } from "@gik/components/primitives";
 import {
   UnsatisfiedServiceDependencyError,
   type ServiceDependency,
-} from "@gik/controlface";
+} from "@gik/controlface/services";
 import type { Json, ResolvedNode } from "@gik/kernel";
 
 import { writeBrowserCredential } from "./browser-credentials";
