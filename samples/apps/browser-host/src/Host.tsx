@@ -3,7 +3,12 @@
 
 import React from "react";
 import { Spinner } from "@fluentui/react-components";
-import { materializeBlueprint, parseBlueprintReference, prepareBlueprintProgram } from "@gik/blueprint";
+import {
+  materializeBlueprint,
+  parseBlueprintReference,
+  prepareBlueprintProgram,
+  type ExternalContext,
+} from "@gik/blueprint";
 import { BlueprintHost as InMemoryBlueprintHost } from "@gik/react";
 import { BlueprintHost as DurableBlueprintHost, createNativeBlueprintWorker } from "@gik/react/durable";
 import { createIndexedDbProvider } from "@gik/durable-runtime/storage/indexed-db";
@@ -174,11 +179,12 @@ function HostView({
 }: {
   targetId: string;
   durableEnabled: boolean;
-  externalContext?: Record<string, string>;
+  externalContext?: ExternalContext;
   HostComponent: React.ComponentType<DemoTargetHostProps>;
   resolveLeavesProvider: (from: string) => ReturnType<typeof resolveProjectionViews>;
 }): React.ReactElement {
   const id = targetId;
+  const blueprintStorageRootInstanceId = `${id}:default`;
   const blueprintStorage = React.useMemo(
     () => createBrowserBlueprintStorageConnectionFactory(durableEnabled),
     [durableEnabled],
@@ -195,17 +201,18 @@ function HostView({
         instanceId: `${childContext.parentInstanceId}/cells/${childContext.cellId}`,
       }),
       blueprintStorage,
+      blueprintStorageRootInstanceId,
     }),
-    [blueprintStorage, durableEnabled],
+    [blueprintStorage, blueprintStorageRootInstanceId, durableEnabled],
   );
   const { blueprint, native } = React.useMemo(() => ({
     blueprint: resolveSampleBlueprintSource(id),
     native: resolveBlueprintNative(id, {
       proposalStore,
       blueprintStorage,
-      instanceId: `${id}:default`,
+      instanceId: blueprintStorageRootInstanceId,
     }),
-  }), [blueprintStorage, id, proposalStore]);
+  }), [blueprintStorage, blueprintStorageRootInstanceId, id, proposalStore]);
   const context = React.useMemo(
     () => resolveBlueprintInitialContext(id, externalContext),
     [externalContext, id],
@@ -224,7 +231,7 @@ function HostView({
           resolveBlueprintNativeFromMaterialized(id, materializedBlueprint, {
             proposalStore,
             blueprintStorage,
-            instanceId: `${id}:default`,
+            instanceId: blueprintStorageRootInstanceId,
           })}
         scenariosJson={demoRunnerDocument}
         resolveLeavesProvider={resolveLeavesProvider}

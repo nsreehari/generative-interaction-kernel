@@ -3,6 +3,7 @@ import {
   QueueFace,
   type DefaultServiceHostOptions,
 } from "@gik/controlface";
+import { executeQueuedCellSourceEffect } from "@gik/blueprint/worker";
 import type { BlueprintRuntime } from "@gik/controlface/blueprint";
 import {
   JsonataExpressionProvider,
@@ -148,7 +149,11 @@ export function declarativeServiceOrchestrator(
     const serviceInvokes = new Set(Object.values(declarations).flatMap((declaration) => Object.keys(declaration.operations)));
     return {
       invoke: (effect, control) => effect.kind === "invoke" && serviceInvokes.has(effect.control.tool)
-        ? runWithBrowserServiceDependencies(() => host.invoke(effect))
+        ? executeQueuedCellSourceEffect(
+            effect,
+            state.snapshot(),
+            (executingEffect) => runWithBrowserServiceDependencies(() => host.invoke(executingEffect)),
+          )
         : fallback?.invoke?.(effect, control) ?? Promise.resolve(),
       request: fallback?.request?.bind(fallback),
       route: fallback?.route?.bind(fallback),

@@ -204,7 +204,10 @@ export class ControlFace implements TransportBroker {
     });
     this.broker = new KernelTransportHost(vocabulary, program, this.kernel);
     this.serviceHost = options.serviceHost;
-    this.unsubscribeOutputPatches = this.kernel.subscribePatches(() => this.notifyOutputListeners());
+    this.unsubscribeOutputPatches = this.kernel.subscribePatches(() => {
+      void this.notifyOutputListeners();
+      void this.notifyTreeListeners();
+    });
   }
 
   /**

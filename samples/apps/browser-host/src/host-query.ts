@@ -1,9 +1,11 @@
+import type { Json } from "@gik/kernel";
+
 const DEFAULT_PRESENTATION_CONTEXT = "full-substrate";
 
 export interface HostQuery {
   targetId: string | null;
   durableEnabled: boolean;
-  externalContext?: Record<string, string>;
+  externalContext?: Record<string, Json>;
 }
 
 function isNonZeroEnabled(params: URLSearchParams, name: string): boolean {
@@ -19,28 +21,27 @@ function cachedBlueprintFromPath(pathname: string): string | null {
   return match ? `cached-${decodeURIComponent(match[1])}` : null;
 }
 
+function parseExternalContext(value: string | null): Record<string, Json> | undefined {
+  if (value === null) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch (error) {
+    throw new Error("Host context must be a URL-encoded JSON object.", { cause: error });
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Host context must be a URL-encoded JSON object.");
+  }
+  return Object.keys(parsed).length === 0 ? undefined : parsed as Record<string, Json>;
+}
+
 export function readHostQuery(search: string, pathname = ""): HostQuery {
   const params = new URLSearchParams(search);
-  const intelligenceModel = params.get("intelligence-model");
-  const marketPrices = params.get("market-prices");
-  const semantic = params.get("semantic");
-  const view = params.get("view");
-  const ai = params.get("ai");
-  const model = params.get("model");
-  const sourceReport = params.get("source-report");
-  const externalContext = {
-    ...(intelligenceModel === null ? {} : { "intelligence-model": intelligenceModel }),
-    ...(marketPrices === null ? {} : { "market-prices": marketPrices }),
-    ...(semantic === null ? {} : { semantic }),
-    ...(view === null ? {} : { view }),
-    ...(ai === null ? {} : { ai }),
-    ...(model === null ? {} : { model }),
-    ...(sourceReport === null ? {} : { "source-report": sourceReport }),
-  };
+  const externalContext = parseExternalContext(params.get("context"));
   return {
     targetId: params.get("b") ?? params.get("bundle") ?? cachedBlueprintFromPath(pathname),
     durableEnabled: isNonZeroEnabled(params, "durable"),
-    ...(Object.keys(externalContext).length === 0 ? {} : { externalContext }),
+    ...(externalContext ? { externalContext } : {}),
   };
 }
 
@@ -60,7 +61,6 @@ export function canonicalizeHostUrl(href: string): string {
   params.delete("harness");
   params.delete("plane");
   params.delete("bundle");
-  params.delete("context");
   params.delete("presentationContext");
   if (params.get("presentation") === DEFAULT_PRESENTATION_CONTEXT) params.delete("presentation");
 

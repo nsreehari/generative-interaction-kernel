@@ -11,6 +11,7 @@ import {
 import { executeAgentFunctionCall } from "@gik/agent-lifecycle-exp";
 import { createFoundryProxy, FoundryProxyError, type FoundryChatResponseSchema } from "./foundry-proxy";
 import manifestJson from "./manifest.json";
+import { parseAgentJsonReply } from "../agent-json-response";
 
 const manifest = manifestJson as ServiceKindManifest;
 
@@ -51,11 +52,7 @@ function declaredResponseSchema(
 }
 
 export function parseFoundryJsonReply(reply: string): Json {
-	try {
-		return JSON.parse(reply) as Json;
-	} catch {
-		throw new Error("Foundry agent returned invalid JSON");
-	}
+	return parseAgentJsonReply("Foundry agent", reply);
 }
 
 export function createFoundryAgentKind(fetch?: typeof globalThis.fetch): ServiceKindFactory {

@@ -786,6 +786,38 @@ test("controlface exposes full time-travel ops: checkpoint, restore, effectsSinc
   face.stop();
 });
 
+test("controlface notifies tree subscribers after asynchronous effect settlement", async () => {
+  let releaseEffect!: () => void;
+  const effectGate = new Promise<void>((resolve) => {
+    releaseEffect = resolve;
+  });
+  const orchestrator: Orchestrator = {
+    async invoke(effect) {
+      if (effect.kind !== "invoke" || effect.control.tool !== "charge") return;
+      await effectGate;
+      return { ops: [{ op: "set", path: "payments.receipt", value: "ch_async" }] };
+    },
+  };
+  const face = new ControlFace(rollbackManifest as any, rollbackDocument as any, {
+    state: new InMemoryStateModel(rollbackManifest.namespaces),
+    orchestrator,
+  });
+  let treeNotifications = 0;
+  face.subscribeTree(() => {
+    treeNotifications += 1;
+  });
+
+  await face.emit({ node: "btn-charge", name: "tap" });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const notificationsBeforeSettlement = treeNotifications;
+
+  releaseEffect();
+  await waitFor(() => (face.getState().payments as { receipt?: string }).receipt === "ch_async");
+  await waitFor(() => treeNotifications > notificationsBeforeSettlement);
+
+  face.stop();
+});
+
 test("/mcp-control serves restore and compensate as JSON time-travel tools", async () => {
   const orchestrator: Orchestrator = {
     async invoke(effect) {
