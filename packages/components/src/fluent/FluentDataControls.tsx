@@ -92,7 +92,7 @@ export const FluentList: ProjectionView = ({ node, emit }) => {
       aria-label={props.str("ariaLabel") || undefined}
       selectionMode={resolvedSelectionMode}
       selectedItems={selectedItems}
-      onSelectionChange={(_, data) => void emit("select", { values: data.selectedItems.map(String) })}
+      onSelectionChange={(_, data) => void emit("select", { values: [...data.selectedItems].map(String) })}
     >
       {items.map((item) => (
         <ListItem key={item.value} value={item.value} disabledSelection={item.disabled}>

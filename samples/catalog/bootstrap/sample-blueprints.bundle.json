@@ -8,6 +8,7 @@
     "blueprint-studio-crud",
     "incident-analysis-assets",
     "incident-analysis-new-shell",
+    "portfolio-intelligence-assets",
     "portfolio-tracker-mock",
     "portfolio-tracker-new"
   ],
@@ -577,6 +578,37 @@
                       }
                     }
                   },
+                  "blueprint-catalog-header": {
+                    "capability": "primitive:container",
+                    "props": {
+                      "variant": "row",
+                      "gap": "s",
+                      "align": "center",
+                      "justify": "space-between",
+                      "fullWidth": true,
+                      "ariaLabel": "Blueprint catalog actions"
+                    }
+                  },
+                  "blueprint-catalog-title": {
+                    "capability": "fluent:text",
+                    "props": {
+                      "value": "Blueprints",
+                      "as": "h2",
+                      "variant": "subtitle",
+                      "block": true
+                    }
+                  },
+                  "blueprint-new-dialog": {
+                    "capability": "primitive:pane-with-trigger",
+                    "props": {
+                      "variant": "dialog-modal",
+                      "title": "Create a Blueprint draft",
+                      "ariaLabel": "Create a Blueprint draft",
+                      "triggerLabel": "New Blueprint",
+                      "triggerAppearance": "primary",
+                      "closeLabel": "Close new Blueprint form"
+                    }
+                  },
                   "blueprint-list": {
                     "capability": "fluent:list",
                     "props": {
@@ -585,15 +617,6 @@
                       "ariaLabel": "Blueprints"
                     },
                     "before": [
-                      {
-                        "capability": "fluent:text",
-                        "props": {
-                          "value": "Blueprints",
-                          "as": "h2",
-                          "variant": "subtitle",
-                          "block": true
-                        }
-                      },
                       {
                         "capability": "fluent:spinner",
                         "props": {
@@ -620,7 +643,7 @@
                           "id": {
                             "title": "New Blueprint ID",
                             "type": "string",
-                            "pattern": "^[a-z0-9](?:[a-z0-9._/-]*[a-z0-9])?$",
+                            "pattern": "^[a-z0-9](?:[a-z0-9._\\/\\-]*[a-z0-9])?$",
                             "span": 12
                           },
                           "kind": {
@@ -660,14 +683,63 @@
                       "ariaLabel": "Selected Blueprint"
                     }
                   },
-                  "blueprint-actions": {
+                  "blueprint-overview-pane": {
                     "capability": "primitive:container",
                     "props": {
-                      "variant": "row",
-                      "gap": "s",
-                      "align": "center",
-                      "ariaLabel": "Blueprint actions"
+                      "variant": "column",
+                      "gap": "m",
+                      "fullWidth": true,
+                      "ariaLabel": "Blueprint overview"
                     }
+                  },
+                  "blueprint-overview-content": {
+                    "capability": "primitive:markdown",
+                    "bindings": {
+                      "value": {
+                        "from": "studio.overviewMarkdown"
+                      }
+                    }
+                  },
+                  "blueprint-json-pane": {
+                    "capability": "primitive:container",
+                    "props": {
+                      "variant": "column",
+                      "gap": "m",
+                      "fullWidth": true,
+                      "ariaLabel": "Blueprint JSON"
+                    }
+                  },
+                  "blueprint-json-version-switch": {
+                    "capability": "fluent:switch",
+                    "props": {
+                      "offLabel": "Current",
+                      "onLabel": "Draft",
+                      "offValue": "current",
+                      "onValue": "draft",
+                      "ariaLabel": "Show current or draft Blueprint JSON"
+                    },
+                    "bindings": {
+                      "value": {
+                        "from": "studio.blueprintJsonVersion"
+                      }
+                    },
+                    "visibility": "studio.selected.artifact != null and studio.selected.draft != null"
+                  },
+                  "blueprint-preview-version-switch": {
+                    "capability": "fluent:switch",
+                    "props": {
+                      "offLabel": "Current",
+                      "onLabel": "Draft",
+                      "offValue": "current",
+                      "onValue": "draft",
+                      "ariaLabel": "Show current or draft Blueprint preview"
+                    },
+                    "bindings": {
+                      "value": {
+                        "from": "studio.blueprintPreviewVersion"
+                      }
+                    },
+                    "visibility": "studio.selected.artifact != null and studio.selected.draft != null"
                   },
                   "blueprint-edit-action": {
                     "capability": "fluent:button",
@@ -675,7 +747,7 @@
                       "label": "Edit as draft",
                       "appearance": "primary"
                     },
-                    "visibility": "studio.selected != null and studio.selected.draft = null"
+                    "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected != null and studio.selected.draft = null"
                   },
                   "blueprint-promote-draft-action": {
                     "capability": "fluent:button",
@@ -683,14 +755,14 @@
                       "label": "Promote draft",
                       "appearance": "primary"
                     },
-                    "visibility": "studio.selected.draft != null"
+                    "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected.draft != null"
                   },
                   "blueprint-delete-draft-action": {
                     "capability": "fluent:button",
                     "props": {
                       "label": "Delete draft"
                     },
-                    "visibility": "studio.selected.draft != null"
+                    "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
                   },
                   "blueprint-delete-action": {
                     "capability": "fluent:button",
@@ -709,20 +781,12 @@
                           "headerLabel": "Overview"
                         },
                         {
-                          "value": "form",
-                          "headerLabel": "Current"
-                        },
-                        {
-                          "value": "draft",
-                          "headerLabel": "Draft"
+                          "value": "blueprint-json",
+                          "headerLabel": "Blueprint JSON"
                         },
                         {
                           "value": "preview",
                           "headerLabel": "Preview"
-                        },
-                        {
-                          "value": "preview-draft",
-                          "headerLabel": "Preview Draft"
                         }
                       ]
                     },
@@ -746,14 +810,6 @@
                         }
                       }
                     ]
-                  },
-                  "blueprint-overview-pane": {
-                    "capability": "primitive:markdown",
-                    "bindings": {
-                      "value": {
-                        "from": "studio.overviewMarkdown"
-                      }
-                    }
                   },
                   "blueprint-form-pane": {
                     "capability": "primitive:form",
@@ -786,7 +842,8 @@
                       "readOnly": {
                         "expression": "true"
                       }
-                    }
+                    },
+                    "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected.artifact != null"
                   },
                   "blueprint-draft-form-pane": {
                     "capability": "primitive:form",
@@ -835,7 +892,7 @@
                         "expression": "studio.selected.draft.artifact"
                       }
                     },
-                    "visibility": "studio.selected.draft != null"
+                    "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
                   },
                   "blueprint-preview-pane": {
                     "capability": "primitive:container",
@@ -865,7 +922,7 @@
                         "expression": "studio.previewContextFormSpec.discardLabel ? studio.previewContextFormSpec.discardLabel : 'Discard'"
                       }
                     },
-                    "visibility": "studio.previewContextFormSpec != null"
+                    "visibility": "studio.activeTab = 'preview' and studio.blueprintPreviewVersion = 'current' and studio.previewContextFormSpec != null"
                   },
                   "blueprint-preview-content": {
                     "capability": "gik:blueprint",
@@ -880,16 +937,7 @@
                         "expression": "studio.previewBlueprintRef & ':' & $string(studio.previewExternalContext)"
                       }
                     },
-                    "visibility": "studio.activeTab = 'preview'"
-                  },
-                  "blueprint-draft-preview-pane": {
-                    "capability": "primitive:container",
-                    "props": {
-                      "variant": "column",
-                      "gap": "m",
-                      "fullWidth": true,
-                      "ariaLabel": "Draft Blueprint preview"
-                    }
+                    "visibility": "studio.activeTab = 'preview' and studio.blueprintPreviewVersion = 'current' and studio.selected.artifact != null"
                   },
                   "blueprint-draft-preview-context-form": {
                     "capability": "primitive:form",
@@ -910,7 +958,7 @@
                         "expression": "studio.selected.draft.artifact.payload.contextFormSpec.discardLabel ? studio.selected.draft.artifact.payload.contextFormSpec.discardLabel : 'Discard'"
                       }
                     },
-                    "visibility": "studio.selected.draft.artifact.payload.contextFormSpec != null"
+                    "visibility": "studio.activeTab = 'preview' and studio.blueprintPreviewVersion = 'draft' and studio.selected.draft.artifact.payload.contextFormSpec != null"
                   },
                   "blueprint-draft-preview-content": {
                     "capability": "gik:blueprint",
@@ -925,7 +973,7 @@
                         "expression": "studio.selected.draft.ref & ':' & studio.selected.draft.revision & ':' & $string(studio.draftPreviewExternalContext)"
                       }
                     },
-                    "visibility": "studio.activeTab = 'preview-draft' and studio.selected.draft != null"
+                    "visibility": "studio.activeTab = 'preview' and studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null"
                   }
                 },
                 "presentation": {
@@ -945,30 +993,44 @@
                     },
                     "blueprint-list-region": {
                       "slots": {
-                        "create": [
-                          "blueprint-new-form"
+                        "header": [
+                          "blueprint-catalog-header"
                         ],
                         "catalog": [
                           "blueprint-list"
                         ]
                       }
                     },
+                    "blueprint-catalog-header": {
+                      "slots": {
+                        "title": [
+                          "blueprint-catalog-title"
+                        ],
+                        "actions": [
+                          "blueprint-new-dialog"
+                        ]
+                      }
+                    },
+                    "blueprint-new-dialog": {
+                      "slots": {
+                        "content": [
+                          "blueprint-new-form"
+                        ]
+                      }
+                    },
                     "individual-blueprint": {
                       "slots": {
-                        "actions": [
-                          "blueprint-actions"
-                        ],
                         "content": [
                           "individual-blueprint-tabs"
                         ]
                       }
                     },
-                    "blueprint-actions": {
+                    "blueprint-overview-pane": {
                       "slots": {
-                        "children": [
-                          "blueprint-edit-action",
-                          "blueprint-promote-draft-action",
-                          "blueprint-delete-draft-action",
+                        "content": [
+                          "blueprint-overview-content"
+                        ],
+                        "actions": [
                           "blueprint-delete-action"
                         ]
                       }
@@ -977,29 +1039,38 @@
                       "slots": {
                         "children": [
                           "blueprint-overview-pane",
+                          "blueprint-json-pane",
+                          "blueprint-preview-pane"
+                        ]
+                      }
+                    },
+                    "blueprint-json-pane": {
+                      "slots": {
+                        "version": [
+                          "blueprint-json-version-switch"
+                        ],
+                        "current": [
                           "blueprint-form-pane",
+                          "blueprint-edit-action",
+                          "blueprint-promote-draft-action"
+                        ],
+                        "draft": [
                           "blueprint-draft-form-pane",
-                          "blueprint-preview-pane",
-                          "blueprint-draft-preview-pane"
+                          "blueprint-delete-draft-action"
                         ]
                       }
                     },
                     "blueprint-preview-pane": {
                       "slots": {
-                        "context": [
-                          "blueprint-preview-context-form"
+                        "version": [
+                          "blueprint-preview-version-switch"
                         ],
-                        "content": [
-                          "blueprint-preview-content"
-                        ]
-                      }
-                    },
-                    "blueprint-draft-preview-pane": {
-                      "slots": {
                         "context": [
+                          "blueprint-preview-context-form",
                           "blueprint-draft-preview-context-form"
                         ],
                         "content": [
+                          "blueprint-preview-content",
                           "blueprint-draft-preview-content"
                         ]
                       }
@@ -1056,7 +1127,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.activeTab','value':'draft'}]} : {'ops':[]}"
+                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
                   }
                 }
               },
@@ -1066,13 +1137,13 @@
                 "request": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[],'recipes':[],'runtime':{'expression':'jsonata','namespaces':[],'actions':[],'state':{}},'cells':{}}}})"
+                    "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[{'id':'runtime-document','kind':'runtime-document'}],'recipes':[],'runtime':{'expression':'jsonata','namespaces':[],'actions':[],'state':{}},'cells':{}}}})"
                   }
                 },
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.activeTab','value':'draft'}]} : {'ops':[]}"
+                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
                   }
                 }
               },
@@ -1104,7 +1175,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "response.deleted ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':''},{'op':'set','path':'studio.selected','value':null},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.activeTab','value':'overview'}]} : response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.activeTab','value':'form'}]} : {'ops':[]}"
+                    "expr": "response.deleted ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':''},{'op':'set','path':'studio.selected','value':null},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.blueprintJsonVersion','value':'current'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'current'},{'op':'set','path':'studio.activeTab','value':'overview'}]} : response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintJsonVersion','value':'current'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'current'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
                   }
                 }
               },
@@ -1120,7 +1191,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.selectedBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.previewBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.activeTab','value':'overview'}]} : {'ops':[]}"
+                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.selectedBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.previewBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.blueprintJsonVersion','value':'current'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'current'},{'op':'set','path':'studio.activeTab','value':'overview'}]} : {'ops':[]}"
                   }
                 }
               },
@@ -1181,6 +1252,18 @@
                 "additionalProperties": true
               }
             },
+            "primitive:pane-with-trigger": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "slots": [
+                "children"
+              ],
+              "emits": [
+                "openChange"
+              ]
+            },
             "fluent:list": {
               "propsSchema": {
                 "type": "object",
@@ -1204,6 +1287,15 @@
                 "type": "object",
                 "additionalProperties": true
               }
+            },
+            "fluent:switch": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "emits": [
+                "toggle"
+              ]
             },
             "fluent:tab-bar": {
               "propsSchema": {
@@ -1229,6 +1321,7 @@
                   "button",
                   "list",
                   "spinner",
+                  "switch",
                   "tab-bar",
                   "text"
                 ]
@@ -1238,7 +1331,8 @@
                 "use": [
                   "container",
                   "form",
-                  "markdown"
+                  "markdown",
+                  "pane-with-trigger"
                 ]
               }
             }
@@ -1247,6 +1341,8 @@
             "studio": {
               "selectedBlueprintId": "",
               "activeTab": "overview",
+              "blueprintJsonVersion": "current",
+              "blueprintPreviewVersion": "current",
               "blueprints": [],
               "blueprintOptions": [],
               "selected": null,
@@ -1265,6 +1361,18 @@
           "blueprint-list-region": {
             "id": "blueprint-list-region",
             "kind": "blueprint-list-region"
+          },
+          "blueprint-catalog-header": {
+            "id": "blueprint-catalog-header",
+            "kind": "blueprint-catalog-header"
+          },
+          "blueprint-catalog-title": {
+            "id": "blueprint-catalog-title",
+            "kind": "blueprint-catalog-title"
+          },
+          "blueprint-new-dialog": {
+            "id": "blueprint-new-dialog",
+            "kind": "blueprint-new-dialog"
           },
           "blueprint-list": {
             "id": "blueprint-list",
@@ -1345,7 +1453,8 @@
                   {
                     "do": "invoke",
                     "control": {
-                      "tool": "createBlueprintDraft"
+                      "tool": "createBlueprintDraft",
+                      "serviceRef": "blueprint-studio-data"
                     }
                   }
                 ]
@@ -1395,6 +1504,22 @@
                 ]
               },
               {
+                "id": "selected-blueprint-json-version",
+                "expression": "sources.`individual-blueprint.source`.draft != null ? 'draft' : 'current'",
+                "assign": "studio.blueprintJsonVersion",
+                "dependencies": [
+                  "sources.individual-blueprint.source"
+                ]
+              },
+              {
+                "id": "selected-blueprint-preview-version",
+                "expression": "sources.`individual-blueprint.source`.draft != null ? 'draft' : 'current'",
+                "assign": "studio.blueprintPreviewVersion",
+                "dependencies": [
+                  "sources.individual-blueprint.source"
+                ]
+              },
+              {
                 "id": "selected-blueprint-overview",
                 "expression": "($bp := sources.`individual-blueprint.source`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Tiers:** ' & $join($bp.artifact.payload.tiers.id, ', ') & '\\n- **Recipes:** ' & $string($count($bp.artifact.payload.recipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
                 "assign": "studio.overviewMarkdown",
@@ -1432,12 +1557,72 @@
                 "token": "selectedBlueprintRef",
                 "from": "computed.studio.selectedBlueprintRef",
                 "when": "$exists(computed.studio.selectedBlueprintRef) and $length(computed.studio.selectedBlueprintRef) > 0"
+              },
+              {
+                "token": "blueprintJsonVersion",
+                "from": "studio.blueprintJsonVersion"
+              },
+              {
+                "token": "blueprintPreviewVersion",
+                "from": "studio.blueprintPreviewVersion"
               }
             ]
           },
-          "blueprint-actions": {
-            "id": "blueprint-actions",
-            "kind": "blueprint-actions"
+          "blueprint-overview-content": {
+            "id": "blueprint-overview-content",
+            "kind": "blueprint-overview-content"
+          },
+          "blueprint-json-pane": {
+            "id": "blueprint-json-pane",
+            "kind": "blueprint-json"
+          },
+          "blueprint-json-version-switch": {
+            "id": "blueprint-json-version-switch",
+            "kind": "blueprint-version-switch",
+            "behavior": {
+              "on": {
+                "toggle": [
+                  {
+                    "do": "assign",
+                    "target": "studio.blueprintJsonVersion",
+                    "args": {
+                      "from": "$event.value"
+                    }
+                  }
+                ]
+              }
+            },
+            "events": {
+              "toggle": {
+                "payloadSchema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "blueprint-preview-version-switch": {
+            "id": "blueprint-preview-version-switch",
+            "kind": "blueprint-version-switch",
+            "behavior": {
+              "on": {
+                "toggle": [
+                  {
+                    "do": "assign",
+                    "target": "studio.blueprintPreviewVersion",
+                    "args": {
+                      "from": "$event.value"
+                    }
+                  }
+                ]
+              }
+            },
+            "events": {
+              "toggle": {
+                "payloadSchema": {
+                  "type": "object"
+                }
+              }
+            }
           },
           "blueprint-edit-action": {
             "id": "blueprint-edit-action",
@@ -1448,7 +1633,8 @@
                   {
                     "do": "invoke",
                     "control": {
-                      "tool": "createDraft"
+                      "tool": "createDraft",
+                      "serviceRef": "blueprint-studio-data"
                     }
                   }
                 ]
@@ -1471,7 +1657,8 @@
                   {
                     "do": "invoke",
                     "control": {
-                      "tool": "promoteDraft"
+                      "tool": "promoteDraft",
+                      "serviceRef": "blueprint-studio-data"
                     }
                   }
                 ]
@@ -1494,7 +1681,8 @@
                   {
                     "do": "invoke",
                     "control": {
-                      "tool": "deleteDraft"
+                      "tool": "deleteDraft",
+                      "serviceRef": "blueprint-studio-data"
                     }
                   }
                 ]
@@ -1517,7 +1705,8 @@
                   {
                     "do": "invoke",
                     "control": {
-                      "tool": "deleteBlueprint"
+                      "tool": "deleteBlueprint",
+                      "serviceRef": "blueprint-studio-data"
                     }
                   }
                 ]
@@ -1568,18 +1757,33 @@
           },
           "blueprint-form-pane": {
             "id": "blueprint-form-pane",
-            "kind": "blueprint-form"
+            "kind": "blueprint-form",
+            "inputs": [
+              {
+                "token": "blueprintJsonVersion",
+                "as": "version",
+                "required": true
+              }
+            ]
           },
           "blueprint-draft-form-pane": {
             "id": "blueprint-draft-form-pane",
             "kind": "blueprint-draft-form",
+            "inputs": [
+              {
+                "token": "blueprintJsonVersion",
+                "as": "version",
+                "required": true
+              }
+            ],
             "behavior": {
               "on": {
                 "save": [
                   {
                     "do": "invoke",
                     "control": {
-                      "tool": "saveDraft"
+                      "tool": "saveDraft",
+                      "serviceRef": "blueprint-studio-data"
                     }
                   }
                 ]
@@ -1595,7 +1799,14 @@
           },
           "blueprint-preview-pane": {
             "id": "blueprint-preview-pane",
-            "kind": "blueprint-preview"
+            "kind": "blueprint-preview",
+            "inputs": [
+              {
+                "token": "blueprintPreviewVersion",
+                "as": "version",
+                "required": true
+              }
+            ]
           },
           "blueprint-preview-content": {
             "id": "blueprint-preview-content",
@@ -1604,6 +1815,11 @@
               {
                 "token": "selectedBlueprintRef",
                 "as": "blueprintRef",
+                "required": true
+              },
+              {
+                "token": "blueprintPreviewVersion",
+                "as": "version",
                 "required": true
               }
             ],
@@ -1622,6 +1838,11 @@
               {
                 "token": "selectedBlueprintId",
                 "as": "selectedBlueprintId",
+                "required": true
+              },
+              {
+                "token": "blueprintPreviewVersion",
+                "as": "version",
                 "required": true
               }
             ],
@@ -1646,17 +1867,27 @@
               }
             }
           },
-          "blueprint-draft-preview-pane": {
-            "id": "blueprint-draft-preview-pane",
-            "kind": "blueprint-draft-preview"
-          },
           "blueprint-draft-preview-content": {
             "id": "blueprint-draft-preview-content",
-            "kind": "blueprint-draft-preview-content"
+            "kind": "blueprint-draft-preview-content",
+            "inputs": [
+              {
+                "token": "blueprintPreviewVersion",
+                "as": "version",
+                "required": true
+              }
+            ]
           },
           "blueprint-draft-preview-context-form": {
             "id": "blueprint-draft-preview-context-form",
             "kind": "blueprint-draft-preview-context-form",
+            "inputs": [
+              {
+                "token": "blueprintPreviewVersion",
+                "as": "version",
+                "required": true
+              }
+            ],
             "behavior": {
               "on": {
                 "save": [
@@ -3652,6 +3883,131 @@
         }
       }
     },
+    "portfolio-intelligence-assets": {
+      "gik": "0.1",
+      "type": "blueprint",
+      "payload": {
+        "id": "portfolio-intelligence-assets",
+        "kind": "runtime-blueprint",
+        "version": "1.0.0",
+        "structureMode": "fixed",
+        "interface": {
+          "events": [
+            "get-report",
+            "put-report"
+          ],
+          "outputs": {
+            "result": {
+              "from": "portfolioAssets.result",
+              "description": "Result of the most recently completed portfolio report operation."
+            }
+          }
+        },
+        "tiers": [
+          {
+            "id": "runtime-document",
+            "kind": "runtime-document"
+          }
+        ],
+        "recipes": [],
+        "runtime": {
+          "expression": "jsonata",
+          "namespaces": [
+            "portfolioAssets"
+          ],
+          "actions": [
+            "invoke"
+          ],
+          "state": {
+            "portfolioAssets": {
+              "result": null
+            }
+          }
+        },
+        "cells": {
+          "asset-controller": {
+            "id": "asset-controller",
+            "kind": "portfolio-intelligence-asset-backend",
+            "behavior": {
+              "on": {
+                "get-report": [
+                  {
+                    "do": "invoke",
+                    "control": {
+                      "tool": "readSavedReport"
+                    }
+                  }
+                ],
+                "put-report": [
+                  {
+                    "do": "invoke",
+                    "control": {
+                      "tool": "writeSavedReport"
+                    }
+                  }
+                ]
+              }
+            },
+            "events": {
+              "get-report": {
+                "payloadSchema": {
+                  "type": "object"
+                }
+              },
+              "put-report": {
+                "payloadSchema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "services": {
+          "storage": {
+            "kind": "durable-storage",
+            "version": "1",
+            "operations": {
+              "readSavedReport": {
+                "operation": "read",
+                "contract": "storage-kv/v1",
+                "request": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'key':'portfolio-report:' & effect.data.portfolio_key & '/' & effect.data.analysis_key}"
+                  }
+                },
+                "settlement": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'ops':[{'op':'set','path':'portfolioAssets.result','value':response}]}"
+                  }
+                }
+              },
+              "writeSavedReport": {
+                "operation": "write",
+                "contract": "storage-kv/v1",
+                "request": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'key':'portfolio-report:' & effect.data.portfolio_key & '/' & effect.data.analysis_key,'value':effect.data.saved_report_envelope}"
+                  }
+                },
+                "settlement": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'ops':[{'op':'set','path':'portfolioAssets.result','value':effect.data.saved_report_envelope}]}"
+                  }
+                }
+              }
+            },
+            "config": {
+              "connection": "blueprint-state"
+            },
+            "scope": "per-blueprint"
+          }
+        }
+      }
+    },
     "portfolio-tracker-mock": {
       "gik": "0.1",
       "type": "blueprint",
@@ -3887,9 +4243,6 @@
                         "valuation": [
                           "portfolio-value-cell"
                         ],
-                        "status": [
-                          "portfolio-intelligence-as-of"
-                        ],
                         "intelligence": [
                           "portfolio-intelligence"
                         ]
@@ -4100,6 +4453,14 @@
                         "from": "portfolio.value.summary.marketValue"
                       }
                     }
+                  },
+                  "portfolio-intelligence-context": {
+                    "capability": "primitive:container",
+                    "visibility": "false"
+                  },
+                  "portfolio-intelligence-resolution": {
+                    "capability": "primitive:container",
+                    "visibility": "false"
                   }
                 },
                 "decorators": [
@@ -4196,6 +4557,14 @@
                         "from": "portfolio.intelligence.markdown"
                       }
                     }
+                  },
+                  "portfolio-intelligence-context": {
+                    "capability": "primitive:container",
+                    "visibility": "false"
+                  },
+                  "portfolio-intelligence-resolution": {
+                    "capability": "primitive:container",
+                    "visibility": "false"
                   }
                 }
               },
@@ -4219,26 +4588,36 @@
                 "when": "externalContext.view = 'desktop' and externalContext.`intelligence-model` = 'semantic'",
                 "extends": "desktop-base",
                 "views": {
-                  "portfolio-intelligence-as-of": {
-                    "capability": "primitive:datetime",
-                    "props": {
-                      "variant": "timestamp",
-                      "label": "Report generated"
-                    },
-                    "bindings": {
-                      "value": {
-                        "from": "portfolio.intelligence.asOf"
-                      }
-                    },
-                    "visibility": "portfolio.intelligence.asOf != null"
-                  },
                   "portfolio-intelligence": {
+                    "capability": "fluent:button",
+                    "props": {
+                      "label": "Generate / refresh intelligence report",
+                      "appearance": "primary"
+                    }
+                  },
+                  "portfolio-intelligence-resolution": {
                     "capability": "gik:blueprint",
                     "bindings": {
                       "blueprint": {
-                        "from": "portfolio.intelligence.report"
+                        "from": "portfolio.resolvedIntelligenceEnvelope.report"
                       }
-                    }
+                    },
+                    "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
+                    "before": [
+                      {
+                        "capability": "primitive:datetime",
+                        "props": {
+                          "variant": "timestamp",
+                          "label": "Report generated"
+                        },
+                        "bindings": {
+                          "value": {
+                            "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                          }
+                        },
+                        "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
+                      }
+                    ]
                   }
                 },
                 "presentation": {
@@ -4258,10 +4637,10 @@
                           "portfolio-value-cell"
                         ],
                         "status": [
-                          "portfolio-intelligence-as-of"
+                          "portfolio-intelligence"
                         ],
                         "intelligence": [
-                          "portfolio-intelligence"
+                          "portfolio-intelligence-resolution"
                         ]
                       }
                     }
@@ -4303,26 +4682,36 @@
                 "when": "externalContext.view = 'mobile' and externalContext.`intelligence-model` = 'semantic'",
                 "extends": "mobile-base",
                 "views": {
-                  "portfolio-intelligence-as-of": {
-                    "capability": "primitive:datetime",
-                    "props": {
-                      "variant": "timestamp",
-                      "label": "Report generated"
-                    },
-                    "bindings": {
-                      "value": {
-                        "from": "portfolio.intelligence.asOf"
-                      }
-                    },
-                    "visibility": "portfolio.intelligence.asOf != null"
-                  },
                   "portfolio-intelligence": {
+                    "capability": "fluent:button",
+                    "props": {
+                      "label": "Generate / refresh intelligence report",
+                      "appearance": "primary"
+                    }
+                  },
+                  "portfolio-intelligence-resolution": {
                     "capability": "gik:blueprint",
                     "bindings": {
                       "blueprint": {
-                        "from": "portfolio.intelligence.report"
+                        "from": "portfolio.resolvedIntelligenceEnvelope.report"
                       }
-                    }
+                    },
+                    "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
+                    "before": [
+                      {
+                        "capability": "primitive:datetime",
+                        "props": {
+                          "variant": "timestamp",
+                          "label": "Report generated"
+                        },
+                        "bindings": {
+                          "value": {
+                            "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                          }
+                        },
+                        "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
+                      }
+                    ]
                   }
                 },
                 "presentation": {
@@ -4342,10 +4731,10 @@
                           "portfolio-value-cell"
                         ],
                         "status": [
-                          "portfolio-intelligence-as-of"
+                          "portfolio-intelligence"
                         ],
                         "intelligence": [
-                          "portfolio-intelligence"
+                          "portfolio-intelligence-resolution"
                         ]
                       }
                     }
@@ -4434,6 +4823,43 @@
                 "id": "semantic-simple-markdown-foundry",
                 "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
                 "cells": {
+                  "portfolio-intelligence-context": {
+                    "sources": [
+                      {
+                        "id": "portfolio-intelligence-context.saved-report",
+                        "service": "portfolio-saved-reports",
+                        "operation": "getSavedReport",
+                        "contract": "saved-portfolio-report-envelope/v1",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                        "input": {
+                          "kind": "jsonata",
+                          "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/simple-markdown'}"
+                        },
+                        "output": {
+                          "kind": "jsonata",
+                          "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}"
+                        }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "portfolio-analysis-context",
+                        "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}",
+                        "assign": "portfolio.analysisContext",
+                        "dependencies": [
+                          "inputs.portfolio-value"
+                        ]
+                      },
+                      {
+                        "id": "saved-portfolio-report-envelope",
+                        "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                        "assign": "savedReportEnvelope",
+                        "dependencies": [
+                          "sources.portfolio-intelligence-context.saved-report"
+                        ]
+                      }
+                    ]
+                  },
                   "portfolio-intelligence": {
                     "sources": [
                       {
@@ -4456,15 +4882,25 @@
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
                         "contract": "portfolio-semantic-intelligence/v1",
-                        "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'behavior':'inert'}}}"
+                          "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
-                          "expr": "{'report':response,'asOf':$now()}"
+                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':inputs.analysisRequest.requestId}"
                         }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "generated-portfolio-report",
+                        "expression": "sources.`portfolio-semantic-intelligence.source`",
+                        "assign": "generatedReport",
+                        "dependencies": [
+                          "sources.portfolio-semantic-intelligence.source"
+                        ]
                       }
                     ]
                   }
@@ -4474,6 +4910,43 @@
                 "id": "semantic-simple-markdown-copilot",
                 "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and externalContext.ai = 'copilot'",
                 "cells": {
+                  "portfolio-intelligence-context": {
+                    "sources": [
+                      {
+                        "id": "portfolio-intelligence-context.saved-report",
+                        "service": "portfolio-saved-reports",
+                        "operation": "getSavedReport",
+                        "contract": "saved-portfolio-report-envelope/v1",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                        "input": {
+                          "kind": "jsonata",
+                          "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/simple-markdown'}"
+                        },
+                        "output": {
+                          "kind": "jsonata",
+                          "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}"
+                        }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "portfolio-analysis-context",
+                        "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}",
+                        "assign": "portfolio.analysisContext",
+                        "dependencies": [
+                          "inputs.portfolio-value"
+                        ]
+                      },
+                      {
+                        "id": "saved-portfolio-report-envelope",
+                        "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                        "assign": "savedReportEnvelope",
+                        "dependencies": [
+                          "sources.portfolio-intelligence-context.saved-report"
+                        ]
+                      }
+                    ]
+                  },
                   "portfolio-intelligence": {
                     "sources": [
                       {
@@ -4496,15 +4969,25 @@
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
                         "contract": "portfolio-semantic-intelligence/v1",
-                        "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'behavior':'inert'}}}"
+                          "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
-                          "expr": "{'report':response,'asOf':$now()}"
+                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':inputs.analysisRequest.requestId}"
                         }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "generated-portfolio-report",
+                        "expression": "sources.`portfolio-semantic-intelligence.source`",
+                        "assign": "generatedReport",
+                        "dependencies": [
+                          "sources.portfolio-semantic-intelligence.source"
+                        ]
                       }
                     ]
                   }
@@ -4520,7 +5003,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000})"
+                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                           }
                         },
                         "response": {
@@ -4890,7 +5373,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                            "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                           }
                         },
                         "onViolation": {
@@ -4913,6 +5396,43 @@
                 "id": "semantic-rich-components-foundry",
                 "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
                 "cells": {
+                  "portfolio-intelligence-context": {
+                    "sources": [
+                      {
+                        "id": "portfolio-intelligence-context.saved-report",
+                        "service": "portfolio-saved-reports",
+                        "operation": "getSavedReport",
+                        "contract": "saved-portfolio-report-envelope/v1",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                        "input": {
+                          "kind": "jsonata",
+                          "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/rich-components'}"
+                        },
+                        "output": {
+                          "kind": "jsonata",
+                          "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}"
+                        }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "portfolio-analysis-context",
+                        "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}",
+                        "assign": "portfolio.analysisContext",
+                        "dependencies": [
+                          "inputs.portfolio-value"
+                        ]
+                      },
+                      {
+                        "id": "saved-portfolio-report-envelope",
+                        "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                        "assign": "savedReportEnvelope",
+                        "dependencies": [
+                          "sources.portfolio-intelligence-context.saved-report"
+                        ]
+                      }
+                    ]
+                  },
                   "portfolio-intelligence": {
                     "sources": [
                       {
@@ -4935,15 +5455,25 @@
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
                         "contract": "portfolio-semantic-intelligence/v1",
-                        "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                          "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
-                          "expr": "{'report':response,'asOf':$now()}"
+                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':inputs.analysisRequest.requestId}"
                         }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "generated-portfolio-report",
+                        "expression": "sources.`portfolio-semantic-intelligence.source`",
+                        "assign": "generatedReport",
+                        "dependencies": [
+                          "sources.portfolio-semantic-intelligence.source"
+                        ]
                       }
                     ]
                   }
@@ -4953,6 +5483,43 @@
                 "id": "semantic-rich-components-copilot",
                 "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and externalContext.ai = 'copilot'",
                 "cells": {
+                  "portfolio-intelligence-context": {
+                    "sources": [
+                      {
+                        "id": "portfolio-intelligence-context.saved-report",
+                        "service": "portfolio-saved-reports",
+                        "operation": "getSavedReport",
+                        "contract": "saved-portfolio-report-envelope/v1",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                        "input": {
+                          "kind": "jsonata",
+                          "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/rich-components'}"
+                        },
+                        "output": {
+                          "kind": "jsonata",
+                          "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}"
+                        }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "portfolio-analysis-context",
+                        "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}",
+                        "assign": "portfolio.analysisContext",
+                        "dependencies": [
+                          "inputs.portfolio-value"
+                        ]
+                      },
+                      {
+                        "id": "saved-portfolio-report-envelope",
+                        "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                        "assign": "savedReportEnvelope",
+                        "dependencies": [
+                          "sources.portfolio-intelligence-context.saved-report"
+                        ]
+                      }
+                    ]
+                  },
                   "portfolio-intelligence": {
                     "sources": [
                       {
@@ -4975,15 +5542,25 @@
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
                         "contract": "portfolio-semantic-intelligence/v1",
-                        "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                        "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                          "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
-                          "expr": "{'report':response,'asOf':$now()}"
+                          "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':inputs.analysisRequest.requestId}"
                         }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "generated-portfolio-report",
+                        "expression": "sources.`portfolio-semantic-intelligence.source`",
+                        "assign": "generatedReport",
+                        "dependencies": [
+                          "sources.portfolio-semantic-intelligence.source"
+                        ]
                       }
                     ]
                   }
@@ -4999,7 +5576,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000})"
+                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                           }
                         },
                         "response": {
@@ -5369,7 +5946,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                            "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                           }
                         },
                         "onViolation": {
@@ -5533,7 +6110,7 @@
                 "request": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000})"
+                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                   }
                 },
                 "response": {
@@ -5903,7 +6480,7 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                    "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                   }
                 },
                 "onViolation": {
@@ -5916,6 +6493,47 @@
               "agent": "Portfolio-Semantic-Intelligence-Agent",
               "credentialRef": "foundry-agent/access-key",
               "responseMode": "json"
+            },
+            "scope": "per-blueprint"
+          },
+          "portfolio-saved-reports": {
+            "blueprint": {
+              "$ref": "blueprint:portfolio-intelligence-assets@1.0.0"
+            },
+            "version": "1",
+            "operations": {
+              "getSavedReport": {
+                "operation": "get-report",
+                "contract": "saved-portfolio-report-envelope/v1",
+                "request": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'portfolio_key':input.portfolio_key,'analysis_key':input.analysis_key}"
+                  }
+                },
+                "settlement": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'ops':[]}"
+                  }
+                }
+              },
+              "putSavedReport": {
+                "operation": "put-report",
+                "contract": "saved-portfolio-report-envelope/v1",
+                "request": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'portfolio_key':input.portfolio_key,'analysis_key':input.analysis_key,'saved_report_envelope':{'asOf':input.report.asOf,'report':input.report.report}}"
+                  }
+                },
+                "settlement": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'ops':[]}"
+                  }
+                }
+              }
             },
             "scope": "per-blueprint"
           }
@@ -5973,6 +6591,15 @@
                 "additionalProperties": true
               }
             },
+            "fluent:button": {
+              "propsSchema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "emits": [
+                "press"
+              ]
+            },
             "fluent:table": {
               "propsSchema": {
                 "type": "object",
@@ -5986,6 +6613,7 @@
               "fluent": {
                 "from": "fluent",
                 "use": [
+                  "button",
                   "table"
                 ]
               },
@@ -6024,7 +6652,10 @@
                   "gainLoss": 0
                 }
               },
-              "intelligence": null
+              "intelligence": null,
+              "intelligenceRequest": null,
+              "analysisContext": null,
+              "resolvedIntelligenceEnvelope": null
             }
           }
         },
@@ -6140,6 +6771,20 @@
             "inputs": [
               {
                 "token": "portfolio-value"
+              },
+              {
+                "token": "portfolio-analysis-context",
+                "as": "analysisContext",
+                "required": true
+              },
+              {
+                "token": "saved-portfolio-report-envelope",
+                "as": "savedReportEnvelope",
+                "required": true
+              },
+              {
+                "token": "portfolio.intelligenceRequest",
+                "as": "analysisRequest"
               }
             ],
             "systemInputs": [
@@ -6187,11 +6832,144 @@
                   "sources.portfolio-semantic-intelligence.source"
                 ]
               }
+            ],
+            "outputs": [
+              {
+                "token": "generated-portfolio-report-envelope",
+                "from": "computed.generatedReport",
+                "when": "$exists(sources.`portfolio-semantic-intelligence.source`)"
+              }
+            ],
+            "behavior": {
+              "on": {
+                "press": [
+                  {
+                    "do": "assign",
+                    "target": "portfolio.intelligenceRequest",
+                    "args": {
+                      "from": "{'portfolioKey':portfolio.analysisContext.portfolioKey,'analysisKey':portfolio.analysisContext.analysisKey,'requestId':$now(),'requestedAt':$now()}"
+                    }
+                  }
+                ]
+              }
+            },
+            "events": {
+              "press": {
+                "payloadSchema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "portfolio-intelligence-context": {
+            "id": "portfolio-intelligence-context",
+            "kind": "portfolio-intelligence-context",
+            "inputs": [
+              {
+                "token": "portfolio-value"
+              }
+            ],
+            "systemInputs": [
+              "numSourcesRunning"
+            ],
+            "sources": [
+              {
+                "id": "portfolio-intelligence-context.saved-report",
+                "service": "portfolio-saved-reports",
+                "operation": "getSavedReport",
+                "contract": "saved-portfolio-report-envelope/v1",
+                "when": "false",
+                "input": {
+                  "kind": "jsonata",
+                  "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'none'}"
+                },
+                "output": {
+                  "kind": "jsonata",
+                  "expr": "{'found':false,'report':null,'asOf':null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'none'}"
+                }
+              }
+            ],
+            "compute": [
+              {
+                "id": "portfolio-analysis-context",
+                "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':sources.`portfolio-intelligence-context.saved-report`.analysisKey}",
+                "assign": "portfolio.analysisContext",
+                "dependencies": [
+                  "inputs.portfolio-value"
+                ]
+              },
+              {
+                "id": "saved-portfolio-report-envelope",
+                "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                "assign": "savedReportEnvelope",
+                "dependencies": [
+                  "sources.portfolio-intelligence-context.saved-report"
+                ]
+              }
+            ],
+            "outputs": [
+              {
+                "token": "portfolio-analysis-context",
+                "from": "computed.portfolio.analysisContext"
+              },
+              {
+                "token": "saved-portfolio-report-envelope",
+                "from": "computed.savedReportEnvelope"
+              }
             ]
           },
-          "portfolio-intelligence-as-of": {
-            "id": "portfolio-intelligence-as-of",
-            "kind": "report-metadata-cell"
+          "portfolio-intelligence-resolution": {
+            "id": "portfolio-intelligence-resolution",
+            "kind": "portfolio-intelligence-resolution",
+            "inputs": [
+              {
+                "token": "portfolio-analysis-context",
+                "as": "analysisContext",
+                "required": true
+              },
+              {
+                "token": "saved-portfolio-report-envelope",
+                "as": "savedReportEnvelope",
+                "required": true
+              },
+              {
+                "token": "generated-portfolio-report-envelope",
+                "as": "generatedReport",
+                "required": false
+              }
+            ],
+            "systemInputs": [
+              "numSourcesRunning"
+            ],
+            "sources": [
+              {
+                "id": "portfolio-intelligence-resolution.save-report",
+                "service": "portfolio-saved-reports",
+                "operation": "putSavedReport",
+                "contract": "saved-portfolio-report-envelope/v1",
+                "when": "inputs.generatedReport != null",
+                "input": {
+                  "kind": "jsonata",
+                  "expr": "{'portfolio_key':inputs.analysisContext.portfolioKey,'analysis_key':inputs.analysisContext.analysisKey,'report':inputs.generatedReport}"
+                },
+                "output": {
+                  "kind": "jsonata",
+                  "expr": "response"
+                }
+              }
+            ],
+            "compute": [
+              {
+                "id": "resolved-portfolio-report-envelope",
+                "expression": "$exists(sources.`portfolio-intelligence-resolution.save-report`) and sources.`portfolio-intelligence-resolution.save-report` != null ? sources.`portfolio-intelligence-resolution.save-report` : (inputs.generatedReport != null ? inputs.generatedReport : (inputs.savedReportEnvelope.found ? inputs.savedReportEnvelope : null))",
+                "assign": "portfolio.resolvedIntelligenceEnvelope",
+                "dependencies": [
+                  "inputs.savedReportEnvelope",
+                  "inputs.generatedReport",
+                  "sources.portfolio-intelligence-resolution.save-report"
+                ]
+              }
+            ]
           },
           "board": {
             "id": "board",
@@ -12227,6 +13005,14 @@
               "readonly": true
             },
             {
+              "id": "portfolio-intelligence-assets",
+              "label": "portfolio-intelligence-assets",
+              "version": "1.0.0",
+              "kind": "runtime-blueprint",
+              "source": "repo",
+              "readonly": true
+            },
+            {
               "id": "portfolio-tracker-mock",
               "label": "portfolio-tracker-mock",
               "version": "1.0.0",
@@ -12811,6 +13597,37 @@
                               }
                             }
                           },
+                          "blueprint-catalog-header": {
+                            "capability": "primitive:container",
+                            "props": {
+                              "variant": "row",
+                              "gap": "s",
+                              "align": "center",
+                              "justify": "space-between",
+                              "fullWidth": true,
+                              "ariaLabel": "Blueprint catalog actions"
+                            }
+                          },
+                          "blueprint-catalog-title": {
+                            "capability": "fluent:text",
+                            "props": {
+                              "value": "Blueprints",
+                              "as": "h2",
+                              "variant": "subtitle",
+                              "block": true
+                            }
+                          },
+                          "blueprint-new-dialog": {
+                            "capability": "primitive:pane-with-trigger",
+                            "props": {
+                              "variant": "dialog-modal",
+                              "title": "Create a Blueprint draft",
+                              "ariaLabel": "Create a Blueprint draft",
+                              "triggerLabel": "New Blueprint",
+                              "triggerAppearance": "primary",
+                              "closeLabel": "Close new Blueprint form"
+                            }
+                          },
                           "blueprint-list": {
                             "capability": "fluent:list",
                             "props": {
@@ -12819,15 +13636,6 @@
                               "ariaLabel": "Blueprints"
                             },
                             "before": [
-                              {
-                                "capability": "fluent:text",
-                                "props": {
-                                  "value": "Blueprints",
-                                  "as": "h2",
-                                  "variant": "subtitle",
-                                  "block": true
-                                }
-                              },
                               {
                                 "capability": "fluent:spinner",
                                 "props": {
@@ -12854,7 +13662,7 @@
                                   "id": {
                                     "title": "New Blueprint ID",
                                     "type": "string",
-                                    "pattern": "^[a-z0-9](?:[a-z0-9._/-]*[a-z0-9])?$",
+                                    "pattern": "^[a-z0-9](?:[a-z0-9._\\/\\-]*[a-z0-9])?$",
                                     "span": 12
                                   },
                                   "kind": {
@@ -12894,14 +13702,63 @@
                               "ariaLabel": "Selected Blueprint"
                             }
                           },
-                          "blueprint-actions": {
+                          "blueprint-overview-pane": {
                             "capability": "primitive:container",
                             "props": {
-                              "variant": "row",
-                              "gap": "s",
-                              "align": "center",
-                              "ariaLabel": "Blueprint actions"
+                              "variant": "column",
+                              "gap": "m",
+                              "fullWidth": true,
+                              "ariaLabel": "Blueprint overview"
                             }
+                          },
+                          "blueprint-overview-content": {
+                            "capability": "primitive:markdown",
+                            "bindings": {
+                              "value": {
+                                "from": "studio.overviewMarkdown"
+                              }
+                            }
+                          },
+                          "blueprint-json-pane": {
+                            "capability": "primitive:container",
+                            "props": {
+                              "variant": "column",
+                              "gap": "m",
+                              "fullWidth": true,
+                              "ariaLabel": "Blueprint JSON"
+                            }
+                          },
+                          "blueprint-json-version-switch": {
+                            "capability": "fluent:switch",
+                            "props": {
+                              "offLabel": "Current",
+                              "onLabel": "Draft",
+                              "offValue": "current",
+                              "onValue": "draft",
+                              "ariaLabel": "Show current or draft Blueprint JSON"
+                            },
+                            "bindings": {
+                              "value": {
+                                "from": "studio.blueprintJsonVersion"
+                              }
+                            },
+                            "visibility": "studio.selected.artifact != null and studio.selected.draft != null"
+                          },
+                          "blueprint-preview-version-switch": {
+                            "capability": "fluent:switch",
+                            "props": {
+                              "offLabel": "Current",
+                              "onLabel": "Draft",
+                              "offValue": "current",
+                              "onValue": "draft",
+                              "ariaLabel": "Show current or draft Blueprint preview"
+                            },
+                            "bindings": {
+                              "value": {
+                                "from": "studio.blueprintPreviewVersion"
+                              }
+                            },
+                            "visibility": "studio.selected.artifact != null and studio.selected.draft != null"
                           },
                           "blueprint-edit-action": {
                             "capability": "fluent:button",
@@ -12909,7 +13766,7 @@
                               "label": "Edit as draft",
                               "appearance": "primary"
                             },
-                            "visibility": "studio.selected != null and studio.selected.draft = null"
+                            "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected != null and studio.selected.draft = null"
                           },
                           "blueprint-promote-draft-action": {
                             "capability": "fluent:button",
@@ -12917,14 +13774,14 @@
                               "label": "Promote draft",
                               "appearance": "primary"
                             },
-                            "visibility": "studio.selected.draft != null"
+                            "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected.draft != null"
                           },
                           "blueprint-delete-draft-action": {
                             "capability": "fluent:button",
                             "props": {
                               "label": "Delete draft"
                             },
-                            "visibility": "studio.selected.draft != null"
+                            "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
                           },
                           "blueprint-delete-action": {
                             "capability": "fluent:button",
@@ -12943,20 +13800,12 @@
                                   "headerLabel": "Overview"
                                 },
                                 {
-                                  "value": "form",
-                                  "headerLabel": "Current"
-                                },
-                                {
-                                  "value": "draft",
-                                  "headerLabel": "Draft"
+                                  "value": "blueprint-json",
+                                  "headerLabel": "Blueprint JSON"
                                 },
                                 {
                                   "value": "preview",
                                   "headerLabel": "Preview"
-                                },
-                                {
-                                  "value": "preview-draft",
-                                  "headerLabel": "Preview Draft"
                                 }
                               ]
                             },
@@ -12980,14 +13829,6 @@
                                 }
                               }
                             ]
-                          },
-                          "blueprint-overview-pane": {
-                            "capability": "primitive:markdown",
-                            "bindings": {
-                              "value": {
-                                "from": "studio.overviewMarkdown"
-                              }
-                            }
                           },
                           "blueprint-form-pane": {
                             "capability": "primitive:form",
@@ -13020,7 +13861,8 @@
                               "readOnly": {
                                 "expression": "true"
                               }
-                            }
+                            },
+                            "visibility": "studio.blueprintJsonVersion = 'current' and studio.selected.artifact != null"
                           },
                           "blueprint-draft-form-pane": {
                             "capability": "primitive:form",
@@ -13069,7 +13911,7 @@
                                 "expression": "studio.selected.draft.artifact"
                               }
                             },
-                            "visibility": "studio.selected.draft != null"
+                            "visibility": "studio.blueprintJsonVersion = 'draft' and studio.selected.draft != null"
                           },
                           "blueprint-preview-pane": {
                             "capability": "primitive:container",
@@ -13099,7 +13941,7 @@
                                 "expression": "studio.previewContextFormSpec.discardLabel ? studio.previewContextFormSpec.discardLabel : 'Discard'"
                               }
                             },
-                            "visibility": "studio.previewContextFormSpec != null"
+                            "visibility": "studio.activeTab = 'preview' and studio.blueprintPreviewVersion = 'current' and studio.previewContextFormSpec != null"
                           },
                           "blueprint-preview-content": {
                             "capability": "gik:blueprint",
@@ -13114,16 +13956,7 @@
                                 "expression": "studio.previewBlueprintRef & ':' & $string(studio.previewExternalContext)"
                               }
                             },
-                            "visibility": "studio.activeTab = 'preview'"
-                          },
-                          "blueprint-draft-preview-pane": {
-                            "capability": "primitive:container",
-                            "props": {
-                              "variant": "column",
-                              "gap": "m",
-                              "fullWidth": true,
-                              "ariaLabel": "Draft Blueprint preview"
-                            }
+                            "visibility": "studio.activeTab = 'preview' and studio.blueprintPreviewVersion = 'current' and studio.selected.artifact != null"
                           },
                           "blueprint-draft-preview-context-form": {
                             "capability": "primitive:form",
@@ -13144,7 +13977,7 @@
                                 "expression": "studio.selected.draft.artifact.payload.contextFormSpec.discardLabel ? studio.selected.draft.artifact.payload.contextFormSpec.discardLabel : 'Discard'"
                               }
                             },
-                            "visibility": "studio.selected.draft.artifact.payload.contextFormSpec != null"
+                            "visibility": "studio.activeTab = 'preview' and studio.blueprintPreviewVersion = 'draft' and studio.selected.draft.artifact.payload.contextFormSpec != null"
                           },
                           "blueprint-draft-preview-content": {
                             "capability": "gik:blueprint",
@@ -13159,7 +13992,7 @@
                                 "expression": "studio.selected.draft.ref & ':' & studio.selected.draft.revision & ':' & $string(studio.draftPreviewExternalContext)"
                               }
                             },
-                            "visibility": "studio.activeTab = 'preview-draft' and studio.selected.draft != null"
+                            "visibility": "studio.activeTab = 'preview' and studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null"
                           }
                         },
                         "presentation": {
@@ -13179,30 +14012,44 @@
                             },
                             "blueprint-list-region": {
                               "slots": {
-                                "create": [
-                                  "blueprint-new-form"
+                                "header": [
+                                  "blueprint-catalog-header"
                                 ],
                                 "catalog": [
                                   "blueprint-list"
                                 ]
                               }
                             },
+                            "blueprint-catalog-header": {
+                              "slots": {
+                                "title": [
+                                  "blueprint-catalog-title"
+                                ],
+                                "actions": [
+                                  "blueprint-new-dialog"
+                                ]
+                              }
+                            },
+                            "blueprint-new-dialog": {
+                              "slots": {
+                                "content": [
+                                  "blueprint-new-form"
+                                ]
+                              }
+                            },
                             "individual-blueprint": {
                               "slots": {
-                                "actions": [
-                                  "blueprint-actions"
-                                ],
                                 "content": [
                                   "individual-blueprint-tabs"
                                 ]
                               }
                             },
-                            "blueprint-actions": {
+                            "blueprint-overview-pane": {
                               "slots": {
-                                "children": [
-                                  "blueprint-edit-action",
-                                  "blueprint-promote-draft-action",
-                                  "blueprint-delete-draft-action",
+                                "content": [
+                                  "blueprint-overview-content"
+                                ],
+                                "actions": [
                                   "blueprint-delete-action"
                                 ]
                               }
@@ -13211,29 +14058,38 @@
                               "slots": {
                                 "children": [
                                   "blueprint-overview-pane",
+                                  "blueprint-json-pane",
+                                  "blueprint-preview-pane"
+                                ]
+                              }
+                            },
+                            "blueprint-json-pane": {
+                              "slots": {
+                                "version": [
+                                  "blueprint-json-version-switch"
+                                ],
+                                "current": [
                                   "blueprint-form-pane",
+                                  "blueprint-edit-action",
+                                  "blueprint-promote-draft-action"
+                                ],
+                                "draft": [
                                   "blueprint-draft-form-pane",
-                                  "blueprint-preview-pane",
-                                  "blueprint-draft-preview-pane"
+                                  "blueprint-delete-draft-action"
                                 ]
                               }
                             },
                             "blueprint-preview-pane": {
                               "slots": {
-                                "context": [
-                                  "blueprint-preview-context-form"
+                                "version": [
+                                  "blueprint-preview-version-switch"
                                 ],
-                                "content": [
-                                  "blueprint-preview-content"
-                                ]
-                              }
-                            },
-                            "blueprint-draft-preview-pane": {
-                              "slots": {
                                 "context": [
+                                  "blueprint-preview-context-form",
                                   "blueprint-draft-preview-context-form"
                                 ],
                                 "content": [
+                                  "blueprint-preview-content",
                                   "blueprint-draft-preview-content"
                                 ]
                               }
@@ -13290,7 +14146,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.activeTab','value':'draft'}]} : {'ops':[]}"
+                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
                           }
                         }
                       },
@@ -13300,13 +14156,13 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[],'recipes':[],'runtime':{'expression':'jsonata','namespaces':[],'actions':[],'state':{}},'cells':{}}}})"
+                            "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[{'id':'runtime-document','kind':'runtime-document'}],'recipes':[],'runtime':{'expression':'jsonata','namespaces':[],'actions':[],'state':{}},'cells':{}}}})"
                           }
                         },
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.activeTab','value':'draft'}]} : {'ops':[]}"
+                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
                           }
                         }
                       },
@@ -13338,7 +14194,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "response.deleted ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':''},{'op':'set','path':'studio.selected','value':null},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.activeTab','value':'overview'}]} : response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.activeTab','value':'form'}]} : {'ops':[]}"
+                            "expr": "response.deleted ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':''},{'op':'set','path':'studio.selected','value':null},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.blueprintJsonVersion','value':'current'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'current'},{'op':'set','path':'studio.activeTab','value':'overview'}]} : response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintJsonVersion','value':'current'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'current'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
                           }
                         }
                       },
@@ -13354,7 +14210,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.selectedBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.previewBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.activeTab','value':'overview'}]} : {'ops':[]}"
+                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprints','value':response.blueprints},{'op':'set','path':'studio.blueprintOptions','value':response.blueprints.{'value':id,'label':label & ' · ' & version}},{'op':'set','path':'studio.selectedBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.previewBlueprintRef','value':response.blueprint.ref},{'op':'set','path':'studio.blueprintJsonVersion','value':'current'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'current'},{'op':'set','path':'studio.activeTab','value':'overview'}]} : {'ops':[]}"
                           }
                         }
                       },
@@ -13415,6 +14271,18 @@
                         "additionalProperties": true
                       }
                     },
+                    "primitive:pane-with-trigger": {
+                      "propsSchema": {
+                        "type": "object",
+                        "additionalProperties": true
+                      },
+                      "slots": [
+                        "children"
+                      ],
+                      "emits": [
+                        "openChange"
+                      ]
+                    },
                     "fluent:list": {
                       "propsSchema": {
                         "type": "object",
@@ -13438,6 +14306,15 @@
                         "type": "object",
                         "additionalProperties": true
                       }
+                    },
+                    "fluent:switch": {
+                      "propsSchema": {
+                        "type": "object",
+                        "additionalProperties": true
+                      },
+                      "emits": [
+                        "toggle"
+                      ]
                     },
                     "fluent:tab-bar": {
                       "propsSchema": {
@@ -13463,6 +14340,7 @@
                           "button",
                           "list",
                           "spinner",
+                          "switch",
                           "tab-bar",
                           "text"
                         ]
@@ -13472,7 +14350,8 @@
                         "use": [
                           "container",
                           "form",
-                          "markdown"
+                          "markdown",
+                          "pane-with-trigger"
                         ]
                       }
                     }
@@ -13481,6 +14360,8 @@
                     "studio": {
                       "selectedBlueprintId": "",
                       "activeTab": "overview",
+                      "blueprintJsonVersion": "current",
+                      "blueprintPreviewVersion": "current",
                       "blueprints": [],
                       "blueprintOptions": [],
                       "selected": null,
@@ -13499,6 +14380,18 @@
                   "blueprint-list-region": {
                     "id": "blueprint-list-region",
                     "kind": "blueprint-list-region"
+                  },
+                  "blueprint-catalog-header": {
+                    "id": "blueprint-catalog-header",
+                    "kind": "blueprint-catalog-header"
+                  },
+                  "blueprint-catalog-title": {
+                    "id": "blueprint-catalog-title",
+                    "kind": "blueprint-catalog-title"
+                  },
+                  "blueprint-new-dialog": {
+                    "id": "blueprint-new-dialog",
+                    "kind": "blueprint-new-dialog"
                   },
                   "blueprint-list": {
                     "id": "blueprint-list",
@@ -13579,7 +14472,8 @@
                           {
                             "do": "invoke",
                             "control": {
-                              "tool": "createBlueprintDraft"
+                              "tool": "createBlueprintDraft",
+                              "serviceRef": "blueprint-studio-data"
                             }
                           }
                         ]
@@ -13629,6 +14523,22 @@
                         ]
                       },
                       {
+                        "id": "selected-blueprint-json-version",
+                        "expression": "sources.`individual-blueprint.source`.draft != null ? 'draft' : 'current'",
+                        "assign": "studio.blueprintJsonVersion",
+                        "dependencies": [
+                          "sources.individual-blueprint.source"
+                        ]
+                      },
+                      {
+                        "id": "selected-blueprint-preview-version",
+                        "expression": "sources.`individual-blueprint.source`.draft != null ? 'draft' : 'current'",
+                        "assign": "studio.blueprintPreviewVersion",
+                        "dependencies": [
+                          "sources.individual-blueprint.source"
+                        ]
+                      },
+                      {
                         "id": "selected-blueprint-overview",
                         "expression": "($bp := sources.`individual-blueprint.source`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Tiers:** ' & $join($bp.artifact.payload.tiers.id, ', ') & '\\n- **Recipes:** ' & $string($count($bp.artifact.payload.recipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
                         "assign": "studio.overviewMarkdown",
@@ -13666,12 +14576,72 @@
                         "token": "selectedBlueprintRef",
                         "from": "computed.studio.selectedBlueprintRef",
                         "when": "$exists(computed.studio.selectedBlueprintRef) and $length(computed.studio.selectedBlueprintRef) > 0"
+                      },
+                      {
+                        "token": "blueprintJsonVersion",
+                        "from": "studio.blueprintJsonVersion"
+                      },
+                      {
+                        "token": "blueprintPreviewVersion",
+                        "from": "studio.blueprintPreviewVersion"
                       }
                     ]
                   },
-                  "blueprint-actions": {
-                    "id": "blueprint-actions",
-                    "kind": "blueprint-actions"
+                  "blueprint-overview-content": {
+                    "id": "blueprint-overview-content",
+                    "kind": "blueprint-overview-content"
+                  },
+                  "blueprint-json-pane": {
+                    "id": "blueprint-json-pane",
+                    "kind": "blueprint-json"
+                  },
+                  "blueprint-json-version-switch": {
+                    "id": "blueprint-json-version-switch",
+                    "kind": "blueprint-version-switch",
+                    "behavior": {
+                      "on": {
+                        "toggle": [
+                          {
+                            "do": "assign",
+                            "target": "studio.blueprintJsonVersion",
+                            "args": {
+                              "from": "$event.value"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "events": {
+                      "toggle": {
+                        "payloadSchema": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  },
+                  "blueprint-preview-version-switch": {
+                    "id": "blueprint-preview-version-switch",
+                    "kind": "blueprint-version-switch",
+                    "behavior": {
+                      "on": {
+                        "toggle": [
+                          {
+                            "do": "assign",
+                            "target": "studio.blueprintPreviewVersion",
+                            "args": {
+                              "from": "$event.value"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "events": {
+                      "toggle": {
+                        "payloadSchema": {
+                          "type": "object"
+                        }
+                      }
+                    }
                   },
                   "blueprint-edit-action": {
                     "id": "blueprint-edit-action",
@@ -13682,7 +14652,8 @@
                           {
                             "do": "invoke",
                             "control": {
-                              "tool": "createDraft"
+                              "tool": "createDraft",
+                              "serviceRef": "blueprint-studio-data"
                             }
                           }
                         ]
@@ -13705,7 +14676,8 @@
                           {
                             "do": "invoke",
                             "control": {
-                              "tool": "promoteDraft"
+                              "tool": "promoteDraft",
+                              "serviceRef": "blueprint-studio-data"
                             }
                           }
                         ]
@@ -13728,7 +14700,8 @@
                           {
                             "do": "invoke",
                             "control": {
-                              "tool": "deleteDraft"
+                              "tool": "deleteDraft",
+                              "serviceRef": "blueprint-studio-data"
                             }
                           }
                         ]
@@ -13751,7 +14724,8 @@
                           {
                             "do": "invoke",
                             "control": {
-                              "tool": "deleteBlueprint"
+                              "tool": "deleteBlueprint",
+                              "serviceRef": "blueprint-studio-data"
                             }
                           }
                         ]
@@ -13802,18 +14776,33 @@
                   },
                   "blueprint-form-pane": {
                     "id": "blueprint-form-pane",
-                    "kind": "blueprint-form"
+                    "kind": "blueprint-form",
+                    "inputs": [
+                      {
+                        "token": "blueprintJsonVersion",
+                        "as": "version",
+                        "required": true
+                      }
+                    ]
                   },
                   "blueprint-draft-form-pane": {
                     "id": "blueprint-draft-form-pane",
                     "kind": "blueprint-draft-form",
+                    "inputs": [
+                      {
+                        "token": "blueprintJsonVersion",
+                        "as": "version",
+                        "required": true
+                      }
+                    ],
                     "behavior": {
                       "on": {
                         "save": [
                           {
                             "do": "invoke",
                             "control": {
-                              "tool": "saveDraft"
+                              "tool": "saveDraft",
+                              "serviceRef": "blueprint-studio-data"
                             }
                           }
                         ]
@@ -13829,7 +14818,14 @@
                   },
                   "blueprint-preview-pane": {
                     "id": "blueprint-preview-pane",
-                    "kind": "blueprint-preview"
+                    "kind": "blueprint-preview",
+                    "inputs": [
+                      {
+                        "token": "blueprintPreviewVersion",
+                        "as": "version",
+                        "required": true
+                      }
+                    ]
                   },
                   "blueprint-preview-content": {
                     "id": "blueprint-preview-content",
@@ -13838,6 +14834,11 @@
                       {
                         "token": "selectedBlueprintRef",
                         "as": "blueprintRef",
+                        "required": true
+                      },
+                      {
+                        "token": "blueprintPreviewVersion",
+                        "as": "version",
                         "required": true
                       }
                     ],
@@ -13856,6 +14857,11 @@
                       {
                         "token": "selectedBlueprintId",
                         "as": "selectedBlueprintId",
+                        "required": true
+                      },
+                      {
+                        "token": "blueprintPreviewVersion",
+                        "as": "version",
                         "required": true
                       }
                     ],
@@ -13880,17 +14886,27 @@
                       }
                     }
                   },
-                  "blueprint-draft-preview-pane": {
-                    "id": "blueprint-draft-preview-pane",
-                    "kind": "blueprint-draft-preview"
-                  },
                   "blueprint-draft-preview-content": {
                     "id": "blueprint-draft-preview-content",
-                    "kind": "blueprint-draft-preview-content"
+                    "kind": "blueprint-draft-preview-content",
+                    "inputs": [
+                      {
+                        "token": "blueprintPreviewVersion",
+                        "as": "version",
+                        "required": true
+                      }
+                    ]
                   },
                   "blueprint-draft-preview-context-form": {
                     "id": "blueprint-draft-preview-context-form",
                     "kind": "blueprint-draft-preview-context-form",
+                    "inputs": [
+                      {
+                        "token": "blueprintPreviewVersion",
+                        "as": "version",
+                        "required": true
+                      }
+                    ],
                     "behavior": {
                       "on": {
                         "save": [
@@ -15930,6 +16946,144 @@
           }
         },
         {
+          "key": "blueprint:portfolio-intelligence-assets",
+          "value": {
+            "id": "portfolio-intelligence-assets",
+            "label": "portfolio-intelligence-assets",
+            "version": "1.0.0",
+            "kind": "runtime-blueprint",
+            "source": "repo",
+            "readonly": true,
+            "artifact": {
+              "gik": "0.1",
+              "type": "blueprint",
+              "payload": {
+                "id": "portfolio-intelligence-assets",
+                "kind": "runtime-blueprint",
+                "version": "1.0.0",
+                "structureMode": "fixed",
+                "interface": {
+                  "events": [
+                    "get-report",
+                    "put-report"
+                  ],
+                  "outputs": {
+                    "result": {
+                      "from": "portfolioAssets.result",
+                      "description": "Result of the most recently completed portfolio report operation."
+                    }
+                  }
+                },
+                "tiers": [
+                  {
+                    "id": "runtime-document",
+                    "kind": "runtime-document"
+                  }
+                ],
+                "recipes": [],
+                "runtime": {
+                  "expression": "jsonata",
+                  "namespaces": [
+                    "portfolioAssets"
+                  ],
+                  "actions": [
+                    "invoke"
+                  ],
+                  "state": {
+                    "portfolioAssets": {
+                      "result": null
+                    }
+                  }
+                },
+                "cells": {
+                  "asset-controller": {
+                    "id": "asset-controller",
+                    "kind": "portfolio-intelligence-asset-backend",
+                    "behavior": {
+                      "on": {
+                        "get-report": [
+                          {
+                            "do": "invoke",
+                            "control": {
+                              "tool": "readSavedReport"
+                            }
+                          }
+                        ],
+                        "put-report": [
+                          {
+                            "do": "invoke",
+                            "control": {
+                              "tool": "writeSavedReport"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "events": {
+                      "get-report": {
+                        "payloadSchema": {
+                          "type": "object"
+                        }
+                      },
+                      "put-report": {
+                        "payloadSchema": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                },
+                "services": {
+                  "storage": {
+                    "kind": "durable-storage",
+                    "version": "1",
+                    "operations": {
+                      "readSavedReport": {
+                        "operation": "read",
+                        "contract": "storage-kv/v1",
+                        "request": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'key':'portfolio-report:' & effect.data.portfolio_key & '/' & effect.data.analysis_key}"
+                          }
+                        },
+                        "settlement": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'ops':[{'op':'set','path':'portfolioAssets.result','value':response}]}"
+                          }
+                        }
+                      },
+                      "writeSavedReport": {
+                        "operation": "write",
+                        "contract": "storage-kv/v1",
+                        "request": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'key':'portfolio-report:' & effect.data.portfolio_key & '/' & effect.data.analysis_key,'value':effect.data.saved_report_envelope}"
+                          }
+                        },
+                        "settlement": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'ops':[{'op':'set','path':'portfolioAssets.result','value':effect.data.saved_report_envelope}]}"
+                          }
+                        }
+                      }
+                    },
+                    "config": {
+                      "connection": "blueprint-state"
+                    },
+                    "scope": "per-blueprint"
+                  }
+                }
+              }
+            },
+            "ref": "blueprint:portfolio-intelligence-assets@1.0.0",
+            "draft": null
+          }
+        },
+        {
           "key": "blueprint:portfolio-tracker-mock",
           "value": {
             "id": "portfolio-tracker-mock",
@@ -16186,9 +17340,6 @@
                                 "valuation": [
                                   "portfolio-value-cell"
                                 ],
-                                "status": [
-                                  "portfolio-intelligence-as-of"
-                                ],
                                 "intelligence": [
                                   "portfolio-intelligence"
                                 ]
@@ -16399,6 +17550,14 @@
                                 "from": "portfolio.value.summary.marketValue"
                               }
                             }
+                          },
+                          "portfolio-intelligence-context": {
+                            "capability": "primitive:container",
+                            "visibility": "false"
+                          },
+                          "portfolio-intelligence-resolution": {
+                            "capability": "primitive:container",
+                            "visibility": "false"
                           }
                         },
                         "decorators": [
@@ -16495,6 +17654,14 @@
                                 "from": "portfolio.intelligence.markdown"
                               }
                             }
+                          },
+                          "portfolio-intelligence-context": {
+                            "capability": "primitive:container",
+                            "visibility": "false"
+                          },
+                          "portfolio-intelligence-resolution": {
+                            "capability": "primitive:container",
+                            "visibility": "false"
                           }
                         }
                       },
@@ -16518,26 +17685,36 @@
                         "when": "externalContext.view = 'desktop' and externalContext.`intelligence-model` = 'semantic'",
                         "extends": "desktop-base",
                         "views": {
-                          "portfolio-intelligence-as-of": {
-                            "capability": "primitive:datetime",
-                            "props": {
-                              "variant": "timestamp",
-                              "label": "Report generated"
-                            },
-                            "bindings": {
-                              "value": {
-                                "from": "portfolio.intelligence.asOf"
-                              }
-                            },
-                            "visibility": "portfolio.intelligence.asOf != null"
-                          },
                           "portfolio-intelligence": {
+                            "capability": "fluent:button",
+                            "props": {
+                              "label": "Generate / refresh intelligence report",
+                              "appearance": "primary"
+                            }
+                          },
+                          "portfolio-intelligence-resolution": {
                             "capability": "gik:blueprint",
                             "bindings": {
                               "blueprint": {
-                                "from": "portfolio.intelligence.report"
+                                "from": "portfolio.resolvedIntelligenceEnvelope.report"
                               }
-                            }
+                            },
+                            "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
+                            "before": [
+                              {
+                                "capability": "primitive:datetime",
+                                "props": {
+                                  "variant": "timestamp",
+                                  "label": "Report generated"
+                                },
+                                "bindings": {
+                                  "value": {
+                                    "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                                  }
+                                },
+                                "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
+                              }
+                            ]
                           }
                         },
                         "presentation": {
@@ -16557,10 +17734,10 @@
                                   "portfolio-value-cell"
                                 ],
                                 "status": [
-                                  "portfolio-intelligence-as-of"
+                                  "portfolio-intelligence"
                                 ],
                                 "intelligence": [
-                                  "portfolio-intelligence"
+                                  "portfolio-intelligence-resolution"
                                 ]
                               }
                             }
@@ -16602,26 +17779,36 @@
                         "when": "externalContext.view = 'mobile' and externalContext.`intelligence-model` = 'semantic'",
                         "extends": "mobile-base",
                         "views": {
-                          "portfolio-intelligence-as-of": {
-                            "capability": "primitive:datetime",
-                            "props": {
-                              "variant": "timestamp",
-                              "label": "Report generated"
-                            },
-                            "bindings": {
-                              "value": {
-                                "from": "portfolio.intelligence.asOf"
-                              }
-                            },
-                            "visibility": "portfolio.intelligence.asOf != null"
-                          },
                           "portfolio-intelligence": {
+                            "capability": "fluent:button",
+                            "props": {
+                              "label": "Generate / refresh intelligence report",
+                              "appearance": "primary"
+                            }
+                          },
+                          "portfolio-intelligence-resolution": {
                             "capability": "gik:blueprint",
                             "bindings": {
                               "blueprint": {
-                                "from": "portfolio.intelligence.report"
+                                "from": "portfolio.resolvedIntelligenceEnvelope.report"
                               }
-                            }
+                            },
+                            "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
+                            "before": [
+                              {
+                                "capability": "primitive:datetime",
+                                "props": {
+                                  "variant": "timestamp",
+                                  "label": "Report generated"
+                                },
+                                "bindings": {
+                                  "value": {
+                                    "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                                  }
+                                },
+                                "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
+                              }
+                            ]
                           }
                         },
                         "presentation": {
@@ -16641,10 +17828,10 @@
                                   "portfolio-value-cell"
                                 ],
                                 "status": [
-                                  "portfolio-intelligence-as-of"
+                                  "portfolio-intelligence"
                                 ],
                                 "intelligence": [
-                                  "portfolio-intelligence"
+                                  "portfolio-intelligence-resolution"
                                 ]
                               }
                             }
@@ -16733,6 +17920,43 @@
                         "id": "semantic-simple-markdown-foundry",
                         "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
                         "cells": {
+                          "portfolio-intelligence-context": {
+                            "sources": [
+                              {
+                                "id": "portfolio-intelligence-context.saved-report",
+                                "service": "portfolio-saved-reports",
+                                "operation": "getSavedReport",
+                                "contract": "saved-portfolio-report-envelope/v1",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                                "input": {
+                                  "kind": "jsonata",
+                                  "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/simple-markdown'}"
+                                },
+                                "output": {
+                                  "kind": "jsonata",
+                                  "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}"
+                                }
+                              }
+                            ],
+                            "compute": [
+                              {
+                                "id": "portfolio-analysis-context",
+                                "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}",
+                                "assign": "portfolio.analysisContext",
+                                "dependencies": [
+                                  "inputs.portfolio-value"
+                                ]
+                              },
+                              {
+                                "id": "saved-portfolio-report-envelope",
+                                "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                                "assign": "savedReportEnvelope",
+                                "dependencies": [
+                                  "sources.portfolio-intelligence-context.saved-report"
+                                ]
+                              }
+                            ]
+                          },
                           "portfolio-intelligence": {
                             "sources": [
                               {
@@ -16755,15 +17979,25 @@
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
                                 "contract": "portfolio-semantic-intelligence/v1",
-                                "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'behavior':'inert'}}}"
+                                  "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
-                                  "expr": "{'report':response,'asOf':$now()}"
+                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':inputs.analysisRequest.requestId}"
                                 }
+                              }
+                            ],
+                            "compute": [
+                              {
+                                "id": "generated-portfolio-report",
+                                "expression": "sources.`portfolio-semantic-intelligence.source`",
+                                "assign": "generatedReport",
+                                "dependencies": [
+                                  "sources.portfolio-semantic-intelligence.source"
+                                ]
                               }
                             ]
                           }
@@ -16773,6 +18007,43 @@
                         "id": "semantic-simple-markdown-copilot",
                         "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and externalContext.ai = 'copilot'",
                         "cells": {
+                          "portfolio-intelligence-context": {
+                            "sources": [
+                              {
+                                "id": "portfolio-intelligence-context.saved-report",
+                                "service": "portfolio-saved-reports",
+                                "operation": "getSavedReport",
+                                "contract": "saved-portfolio-report-envelope/v1",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                                "input": {
+                                  "kind": "jsonata",
+                                  "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/simple-markdown'}"
+                                },
+                                "output": {
+                                  "kind": "jsonata",
+                                  "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}"
+                                }
+                              }
+                            ],
+                            "compute": [
+                              {
+                                "id": "portfolio-analysis-context",
+                                "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}",
+                                "assign": "portfolio.analysisContext",
+                                "dependencies": [
+                                  "inputs.portfolio-value"
+                                ]
+                              },
+                              {
+                                "id": "saved-portfolio-report-envelope",
+                                "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                                "assign": "savedReportEnvelope",
+                                "dependencies": [
+                                  "sources.portfolio-intelligence-context.saved-report"
+                                ]
+                              }
+                            ]
+                          },
                           "portfolio-intelligence": {
                             "sources": [
                               {
@@ -16795,15 +18066,25 @@
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
                                 "contract": "portfolio-semantic-intelligence/v1",
-                                "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'behavior':'inert'}}}"
+                                  "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
-                                  "expr": "{'report':response,'asOf':$now()}"
+                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':inputs.analysisRequest.requestId}"
                                 }
+                              }
+                            ],
+                            "compute": [
+                              {
+                                "id": "generated-portfolio-report",
+                                "expression": "sources.`portfolio-semantic-intelligence.source`",
+                                "assign": "generatedReport",
+                                "dependencies": [
+                                  "sources.portfolio-semantic-intelligence.source"
+                                ]
                               }
                             ]
                           }
@@ -16819,7 +18100,7 @@
                                 "request": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000})"
+                                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                                   }
                                 },
                                 "response": {
@@ -17189,7 +18470,7 @@
                                 "settlement": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                                    "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                                   }
                                 },
                                 "onViolation": {
@@ -17212,6 +18493,43 @@
                         "id": "semantic-rich-components-foundry",
                         "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
                         "cells": {
+                          "portfolio-intelligence-context": {
+                            "sources": [
+                              {
+                                "id": "portfolio-intelligence-context.saved-report",
+                                "service": "portfolio-saved-reports",
+                                "operation": "getSavedReport",
+                                "contract": "saved-portfolio-report-envelope/v1",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                                "input": {
+                                  "kind": "jsonata",
+                                  "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/rich-components'}"
+                                },
+                                "output": {
+                                  "kind": "jsonata",
+                                  "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}"
+                                }
+                              }
+                            ],
+                            "compute": [
+                              {
+                                "id": "portfolio-analysis-context",
+                                "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}",
+                                "assign": "portfolio.analysisContext",
+                                "dependencies": [
+                                  "inputs.portfolio-value"
+                                ]
+                              },
+                              {
+                                "id": "saved-portfolio-report-envelope",
+                                "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                                "assign": "savedReportEnvelope",
+                                "dependencies": [
+                                  "sources.portfolio-intelligence-context.saved-report"
+                                ]
+                              }
+                            ]
+                          },
                           "portfolio-intelligence": {
                             "sources": [
                               {
@@ -17234,15 +18552,25 @@
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
                                 "contract": "portfolio-semantic-intelligence/v1",
-                                "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                                  "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
-                                  "expr": "{'report':response,'asOf':$now()}"
+                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':inputs.analysisRequest.requestId}"
                                 }
+                              }
+                            ],
+                            "compute": [
+                              {
+                                "id": "generated-portfolio-report",
+                                "expression": "sources.`portfolio-semantic-intelligence.source`",
+                                "assign": "generatedReport",
+                                "dependencies": [
+                                  "sources.portfolio-semantic-intelligence.source"
+                                ]
                               }
                             ]
                           }
@@ -17252,6 +18580,43 @@
                         "id": "semantic-rich-components-copilot",
                         "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and externalContext.ai = 'copilot'",
                         "cells": {
+                          "portfolio-intelligence-context": {
+                            "sources": [
+                              {
+                                "id": "portfolio-intelligence-context.saved-report",
+                                "service": "portfolio-saved-reports",
+                                "operation": "getSavedReport",
+                                "contract": "saved-portfolio-report-envelope/v1",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                                "input": {
+                                  "kind": "jsonata",
+                                  "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/rich-components'}"
+                                },
+                                "output": {
+                                  "kind": "jsonata",
+                                  "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}"
+                                }
+                              }
+                            ],
+                            "compute": [
+                              {
+                                "id": "portfolio-analysis-context",
+                                "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}",
+                                "assign": "portfolio.analysisContext",
+                                "dependencies": [
+                                  "inputs.portfolio-value"
+                                ]
+                              },
+                              {
+                                "id": "saved-portfolio-report-envelope",
+                                "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                                "assign": "savedReportEnvelope",
+                                "dependencies": [
+                                  "sources.portfolio-intelligence-context.saved-report"
+                                ]
+                              }
+                            ]
+                          },
                           "portfolio-intelligence": {
                             "sources": [
                               {
@@ -17274,15 +18639,25 @@
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
                                 "contract": "portfolio-semantic-intelligence/v1",
-                                "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                                "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                                  "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
-                                  "expr": "{'report':response,'asOf':$now()}"
+                                  "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':inputs.analysisRequest.requestId}"
                                 }
+                              }
+                            ],
+                            "compute": [
+                              {
+                                "id": "generated-portfolio-report",
+                                "expression": "sources.`portfolio-semantic-intelligence.source`",
+                                "assign": "generatedReport",
+                                "dependencies": [
+                                  "sources.portfolio-semantic-intelligence.source"
+                                ]
                               }
                             ]
                           }
@@ -17298,7 +18673,7 @@
                                 "request": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000})"
+                                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                                   }
                                 },
                                 "response": {
@@ -17668,7 +19043,7 @@
                                 "settlement": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                                    "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                                   }
                                 },
                                 "onViolation": {
@@ -17832,7 +19207,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000})"
+                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                           }
                         },
                         "response": {
@@ -18202,7 +19577,7 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                            "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                           }
                         },
                         "onViolation": {
@@ -18215,6 +19590,47 @@
                       "agent": "Portfolio-Semantic-Intelligence-Agent",
                       "credentialRef": "foundry-agent/access-key",
                       "responseMode": "json"
+                    },
+                    "scope": "per-blueprint"
+                  },
+                  "portfolio-saved-reports": {
+                    "blueprint": {
+                      "$ref": "blueprint:portfolio-intelligence-assets@1.0.0"
+                    },
+                    "version": "1",
+                    "operations": {
+                      "getSavedReport": {
+                        "operation": "get-report",
+                        "contract": "saved-portfolio-report-envelope/v1",
+                        "request": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'portfolio_key':input.portfolio_key,'analysis_key':input.analysis_key}"
+                          }
+                        },
+                        "settlement": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'ops':[]}"
+                          }
+                        }
+                      },
+                      "putSavedReport": {
+                        "operation": "put-report",
+                        "contract": "saved-portfolio-report-envelope/v1",
+                        "request": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'portfolio_key':input.portfolio_key,'analysis_key':input.analysis_key,'saved_report_envelope':{'asOf':input.report.asOf,'report':input.report.report}}"
+                          }
+                        },
+                        "settlement": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'ops':[]}"
+                          }
+                        }
+                      }
                     },
                     "scope": "per-blueprint"
                   }
@@ -18272,6 +19688,15 @@
                         "additionalProperties": true
                       }
                     },
+                    "fluent:button": {
+                      "propsSchema": {
+                        "type": "object",
+                        "additionalProperties": true
+                      },
+                      "emits": [
+                        "press"
+                      ]
+                    },
                     "fluent:table": {
                       "propsSchema": {
                         "type": "object",
@@ -18285,6 +19710,7 @@
                       "fluent": {
                         "from": "fluent",
                         "use": [
+                          "button",
                           "table"
                         ]
                       },
@@ -18323,7 +19749,10 @@
                           "gainLoss": 0
                         }
                       },
-                      "intelligence": null
+                      "intelligence": null,
+                      "intelligenceRequest": null,
+                      "analysisContext": null,
+                      "resolvedIntelligenceEnvelope": null
                     }
                   }
                 },
@@ -18439,6 +19868,20 @@
                     "inputs": [
                       {
                         "token": "portfolio-value"
+                      },
+                      {
+                        "token": "portfolio-analysis-context",
+                        "as": "analysisContext",
+                        "required": true
+                      },
+                      {
+                        "token": "saved-portfolio-report-envelope",
+                        "as": "savedReportEnvelope",
+                        "required": true
+                      },
+                      {
+                        "token": "portfolio.intelligenceRequest",
+                        "as": "analysisRequest"
                       }
                     ],
                     "systemInputs": [
@@ -18486,11 +19929,144 @@
                           "sources.portfolio-semantic-intelligence.source"
                         ]
                       }
+                    ],
+                    "outputs": [
+                      {
+                        "token": "generated-portfolio-report-envelope",
+                        "from": "computed.generatedReport",
+                        "when": "$exists(sources.`portfolio-semantic-intelligence.source`)"
+                      }
+                    ],
+                    "behavior": {
+                      "on": {
+                        "press": [
+                          {
+                            "do": "assign",
+                            "target": "portfolio.intelligenceRequest",
+                            "args": {
+                              "from": "{'portfolioKey':portfolio.analysisContext.portfolioKey,'analysisKey':portfolio.analysisContext.analysisKey,'requestId':$now(),'requestedAt':$now()}"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "events": {
+                      "press": {
+                        "payloadSchema": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  },
+                  "portfolio-intelligence-context": {
+                    "id": "portfolio-intelligence-context",
+                    "kind": "portfolio-intelligence-context",
+                    "inputs": [
+                      {
+                        "token": "portfolio-value"
+                      }
+                    ],
+                    "systemInputs": [
+                      "numSourcesRunning"
+                    ],
+                    "sources": [
+                      {
+                        "id": "portfolio-intelligence-context.saved-report",
+                        "service": "portfolio-saved-reports",
+                        "operation": "getSavedReport",
+                        "contract": "saved-portfolio-report-envelope/v1",
+                        "when": "false",
+                        "input": {
+                          "kind": "jsonata",
+                          "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'none'}"
+                        },
+                        "output": {
+                          "kind": "jsonata",
+                          "expr": "{'found':false,'report':null,'asOf':null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'none'}"
+                        }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "portfolio-analysis-context",
+                        "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':sources.`portfolio-intelligence-context.saved-report`.analysisKey}",
+                        "assign": "portfolio.analysisContext",
+                        "dependencies": [
+                          "inputs.portfolio-value"
+                        ]
+                      },
+                      {
+                        "id": "saved-portfolio-report-envelope",
+                        "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                        "assign": "savedReportEnvelope",
+                        "dependencies": [
+                          "sources.portfolio-intelligence-context.saved-report"
+                        ]
+                      }
+                    ],
+                    "outputs": [
+                      {
+                        "token": "portfolio-analysis-context",
+                        "from": "computed.portfolio.analysisContext"
+                      },
+                      {
+                        "token": "saved-portfolio-report-envelope",
+                        "from": "computed.savedReportEnvelope"
+                      }
                     ]
                   },
-                  "portfolio-intelligence-as-of": {
-                    "id": "portfolio-intelligence-as-of",
-                    "kind": "report-metadata-cell"
+                  "portfolio-intelligence-resolution": {
+                    "id": "portfolio-intelligence-resolution",
+                    "kind": "portfolio-intelligence-resolution",
+                    "inputs": [
+                      {
+                        "token": "portfolio-analysis-context",
+                        "as": "analysisContext",
+                        "required": true
+                      },
+                      {
+                        "token": "saved-portfolio-report-envelope",
+                        "as": "savedReportEnvelope",
+                        "required": true
+                      },
+                      {
+                        "token": "generated-portfolio-report-envelope",
+                        "as": "generatedReport",
+                        "required": false
+                      }
+                    ],
+                    "systemInputs": [
+                      "numSourcesRunning"
+                    ],
+                    "sources": [
+                      {
+                        "id": "portfolio-intelligence-resolution.save-report",
+                        "service": "portfolio-saved-reports",
+                        "operation": "putSavedReport",
+                        "contract": "saved-portfolio-report-envelope/v1",
+                        "when": "inputs.generatedReport != null",
+                        "input": {
+                          "kind": "jsonata",
+                          "expr": "{'portfolio_key':inputs.analysisContext.portfolioKey,'analysis_key':inputs.analysisContext.analysisKey,'report':inputs.generatedReport}"
+                        },
+                        "output": {
+                          "kind": "jsonata",
+                          "expr": "response"
+                        }
+                      }
+                    ],
+                    "compute": [
+                      {
+                        "id": "resolved-portfolio-report-envelope",
+                        "expression": "$exists(sources.`portfolio-intelligence-resolution.save-report`) and sources.`portfolio-intelligence-resolution.save-report` != null ? sources.`portfolio-intelligence-resolution.save-report` : (inputs.generatedReport != null ? inputs.generatedReport : (inputs.savedReportEnvelope.found ? inputs.savedReportEnvelope : null))",
+                        "assign": "portfolio.resolvedIntelligenceEnvelope",
+                        "dependencies": [
+                          "inputs.savedReportEnvelope",
+                          "inputs.generatedReport",
+                          "sources.portfolio-intelligence-resolution.save-report"
+                        ]
+                      }
+                    ]
                   },
                   "board": {
                     "id": "board",
@@ -18506,6 +20082,6 @@
       ]
     }
   },
-  "bundleVersion": "7187d6a14f88157a",
-  "digest": "sha256:7187d6a14f88157adac8124bee5e3f14086a16c9545d41b1d80b77d95a8a81b7"
+  "bundleVersion": "f49acf75f9b9d90a",
+  "digest": "sha256:f49acf75f9b9d90acb5daf9e4075a2a6a64a8f15fcfd2b3d2ebb09a4251f1c2f"
 }

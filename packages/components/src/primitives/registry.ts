@@ -7,7 +7,7 @@ import { Chart, chartDefinition } from "./chart";
 import { CollectionBoard, collectionBoardDefinition } from "./collection-board";
 import { ContainerPrimitive, containerDefinition } from "./container";
 import { DateTime, dateTimeDefinition } from "./datetime";
-import { Drawer, drawerDefinition } from "./drawer";
+import { PaneWithTrigger, paneWithTriggerDefinition } from "./pane-with-trigger";
 import { EditableTable, editableTableDefinition } from "./editable-table";
 import { FileDownload, fileDownloadDefinition } from "./file-download";
 import { FileInput, fileInputDefinition } from "./file-input";
@@ -33,7 +33,7 @@ export const primitiveComponentViews: Record<string, ProjectionView> = {
   "collection-board": CollectionBoard,
   container: ContainerPrimitive,
   datetime: DateTime,
-  drawer: Drawer,
+  "pane-with-trigger": PaneWithTrigger,
   "editable-table": EditableTable,
   "file-download": FileDownload,
   "file-input": FileInput,
@@ -60,7 +60,7 @@ export const primitiveComponentDefinitions = {
   "collection-board": collectionBoardDefinition,
   container: containerDefinition,
   datetime: dateTimeDefinition,
-  drawer: drawerDefinition,
+  "pane-with-trigger": paneWithTriggerDefinition,
   "editable-table": editableTableDefinition,
   "file-download": fileDownloadDefinition,
   "file-input": fileInputDefinition,

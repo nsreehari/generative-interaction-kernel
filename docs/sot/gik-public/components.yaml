@@ -100,7 +100,7 @@ architecture:
       current: [button, dropdown, icon-button, switch, toggle]
     primitives:
       definition: Domain-neutral rendering and interaction mechanics without business meaning.
-      current: [chart, drawer, editable-table, form, growing-container, timer-button]
+      current: [chart, pane-with-trigger, editable-table, form, growing-container, timer-button]
       candidates: [badge, list, card]
     semantic:
       definition: Domain-neutral information structures whose meaning is supplied by bundle data and configuration.
@@ -169,6 +169,7 @@ agent_authoring:
 
 primitive_components:
   - chart
+  - pane-with-trigger
   - editable-table
   - form
   - growing-container

@@ -66,28 +66,37 @@ describe("Blueprint Studio", () => {
         operation: "fetchBlueprint",
       }),
     ]);
-    expect(individual?.outputs).toEqual([
+    expect(individual?.outputs).toEqual(expect.arrayContaining([
       expect.objectContaining({
         token: "selectedBlueprintRef",
         from: "computed.studio.selectedBlueprintRef",
       }),
-    ]);
+      { token: "blueprintJsonVersion", from: "studio.blueprintJsonVersion" },
+      { token: "blueprintPreviewVersion", from: "studio.blueprintPreviewVersion" },
+    ]));
     expect(runtime.definition.payload.cells?.["blueprint-preview-content"]?.inputs).toEqual([
       {
         token: "selectedBlueprintRef",
         as: "blueprintRef",
         required: true,
       },
+      {
+        token: "blueprintPreviewVersion",
+        as: "version",
+        required: true,
+      },
     ]);
+    expect(source.payload.cells?.["individual-blueprint"]?.outputs).toEqual(expect.arrayContaining([
+      { token: "blueprintJsonVersion", from: "studio.blueprintJsonVersion" },
+      { token: "blueprintPreviewVersion", from: "studio.blueprintPreviewVersion" },
+    ]));
     expect(tabView).toEqual(expect.objectContaining({
       capability: "fluent:tab-bar",
       props: expect.objectContaining({
         tabs: [
           { value: "overview", headerLabel: "Overview" },
-          { value: "form", headerLabel: "Current" },
-          { value: "draft", headerLabel: "Draft" },
+          { value: "blueprint-json", headerLabel: "Blueprint JSON" },
           { value: "preview", headerLabel: "Preview" },
-          { value: "preview-draft", headerLabel: "Preview Draft" },
         ],
       }),
     }));
@@ -97,6 +106,16 @@ describe("Blueprint Studio", () => {
     expect(representation?.views?.["blueprint-list-region"]).toEqual(
       expect.objectContaining({ capability: "primitive:container" }),
     );
+    expect(representation?.views?.["blueprint-new-dialog"]).toMatchObject({
+      capability: "primitive:pane-with-trigger",
+      props: {
+        variant: "dialog-modal",
+        title: "Create a Blueprint draft",
+        triggerLabel: "New Blueprint",
+        triggerAppearance: "primary",
+        closeLabel: "Close new Blueprint form",
+      },
+    });
     expect(representation?.presentation?.composition).toEqual({
       "studio-root": {
         slots: {
@@ -106,36 +125,49 @@ describe("Blueprint Studio", () => {
       },
       "blueprint-list-region": {
         slots: {
-          create: ["blueprint-new-form"],
+          header: ["blueprint-catalog-header"],
           catalog: ["blueprint-list"],
+        },
+      },
+      "blueprint-catalog-header": {
+        slots: {
+          title: ["blueprint-catalog-title"],
+          actions: ["blueprint-new-dialog"],
+        },
+      },
+      "blueprint-new-dialog": {
+        slots: {
+          content: ["blueprint-new-form"],
         },
       },
       "individual-blueprint": {
         slots: {
-          actions: ["blueprint-actions"],
           content: ["individual-blueprint-tabs"],
         },
       },
-      "blueprint-actions": {
+      "blueprint-overview-pane": {
         slots: {
-          children: ["blueprint-edit-action", "blueprint-promote-draft-action", "blueprint-delete-draft-action", "blueprint-delete-action"],
+          content: ["blueprint-overview-content"],
+          actions: ["blueprint-delete-action"],
         },
       },
       "individual-blueprint-tabs": {
         slots: {
-          children: ["blueprint-overview-pane", "blueprint-form-pane", "blueprint-draft-form-pane", "blueprint-preview-pane", "blueprint-draft-preview-pane"],
+          children: ["blueprint-overview-pane", "blueprint-json-pane", "blueprint-preview-pane"],
+        },
+      },
+      "blueprint-json-pane": {
+        slots: {
+          version: ["blueprint-json-version-switch"],
+          current: ["blueprint-form-pane", "blueprint-edit-action", "blueprint-promote-draft-action"],
+          draft: ["blueprint-draft-form-pane", "blueprint-delete-draft-action"],
         },
       },
       "blueprint-preview-pane": {
         slots: {
-          context: ["blueprint-preview-context-form"],
-          content: ["blueprint-preview-content"],
-        },
-      },
-      "blueprint-draft-preview-pane": {
-        slots: {
-          context: ["blueprint-draft-preview-context-form"],
-          content: ["blueprint-draft-preview-content"],
+          version: ["blueprint-preview-version-switch"],
+          context: ["blueprint-preview-context-form", "blueprint-draft-preview-context-form"],
+          content: ["blueprint-preview-content", "blueprint-draft-preview-content"],
         },
       },
     });
@@ -150,9 +182,15 @@ describe("Blueprint Studio", () => {
       },
     });
     expect(source.payload.cells?.["blueprint-edit-action"]?.behavior?.on?.press)
-      .toEqual([expect.objectContaining({ do: "invoke", control: { tool: "createDraft" } })]);
+      .toEqual([expect.objectContaining({
+        do: "invoke",
+        control: expect.objectContaining({ tool: "createDraft", serviceRef: "blueprint-studio-data" }),
+      })]);
     expect(source.payload.cells?.["blueprint-draft-form-pane"]?.behavior?.on?.save)
-      .toEqual([expect.objectContaining({ do: "invoke", control: { tool: "saveDraft" } })]);
+      .toEqual([expect.objectContaining({
+        do: "invoke",
+        control: expect.objectContaining({ tool: "saveDraft", serviceRef: "blueprint-studio-data" }),
+      })]);
     expect(runtime.definition.payload.runtime?.externals?.effectHandlers ?? []).toEqual([]);
   });
 
@@ -282,14 +320,16 @@ describe("Blueprint Studio", () => {
               },
             },
           },
-          activeTab: "draft",
+          activeTab: "blueprint-json",
+          blueprintJsonVersion: "draft",
+          blueprintPreviewVersion: "draft",
         });
       });
 
       await host.controlface.emit({
         node: "individual-blueprint-tabs",
         name: "select",
-        payload: { value: "preview-draft" },
+        payload: { value: "preview" },
       });
       await host.controlface.whenIdle();
       await eventually(() => {
@@ -301,6 +341,165 @@ describe("Blueprint Studio", () => {
           view: "desktop",
           "intelligence-model": "simple",
         });
+      });
+    } finally {
+      await host.stop();
+    }
+  });
+
+  it("runs create, edit, promote, discard-draft, and delete through the Studio Cells", async () => {
+    const host = await createNodeHost({
+      profile: "blueprint-studio",
+      environment: {},
+      port: 0,
+    });
+    try {
+      await host.controlface.whenIdle();
+      await host.controlface.emit({
+        node: "blueprint-new-form",
+        name: "save",
+        payload: {
+          values: {
+            id: "studio-workflow-test",
+            kind: "runtime-blueprint",
+            version: "1.0.0",
+          },
+        },
+      });
+      await host.controlface.whenIdle();
+      await eventually(() => {
+        expect(host.controlface.getState().studio).toMatchObject({
+          selectedBlueprintId: "studio-workflow-test",
+          selected: {
+            id: "studio-workflow-test",
+            artifact: null,
+            draft: {
+              id: "studio-workflow-test.draft",
+              artifact: {
+                payload: {
+                  id: "studio-workflow-test.draft",
+                  kind: "runtime-blueprint",
+                  version: "1.0.0",
+                },
+              },
+            },
+          },
+          activeTab: "blueprint-json",
+          blueprintJsonVersion: "draft",
+          blueprintPreviewVersion: "draft",
+        });
+      });
+
+      const createdDraft = structuredClone(
+        (host.controlface.getState().studio as {
+          selected: { draft: { artifact: Record<string, unknown> } };
+        }).selected.draft.artifact,
+      );
+      (createdDraft.payload as Record<string, unknown>).version = "1.1.0";
+      await host.controlface.emit({
+        node: "blueprint-draft-form-pane",
+        name: "save",
+        payload: { values: createdDraft },
+      });
+      await host.controlface.whenIdle();
+      await eventually(() => {
+        expect(host.controlface.getState().studio).toMatchObject({
+          selected: {
+            draft: {
+              version: "1.1.0",
+              revision: 2,
+            },
+          },
+        });
+      });
+
+      await host.controlface.emit({
+        node: "blueprint-json-version-switch",
+        name: "toggle",
+        payload: { checked: false, value: "current" },
+      });
+      expect(host.controlface.getState().studio).toMatchObject({
+        blueprintJsonVersion: "current",
+      });
+
+      await host.controlface.emit({
+        node: "blueprint-promote-draft-action",
+        name: "press",
+        payload: {},
+      });
+      await host.controlface.whenIdle();
+      await eventually(() => {
+        expect(host.controlface.getState().studio).toMatchObject({
+          selectedBlueprintId: "studio-workflow-test",
+          selected: {
+            id: "studio-workflow-test",
+            version: "1.1.0",
+            source: "user",
+            readonly: false,
+            draft: null,
+          },
+          activeTab: "overview",
+        });
+      });
+
+      await host.controlface.emit({
+        node: "blueprint-edit-action",
+        name: "press",
+        payload: {},
+      });
+      await host.controlface.whenIdle();
+      await eventually(() => {
+        expect(host.controlface.getState().studio).toMatchObject({
+          selected: {
+            id: "studio-workflow-test",
+            draft: {
+              id: "studio-workflow-test.draft",
+              artifact: {
+                payload: {
+                  id: "studio-workflow-test.draft",
+                  version: "1.1.0",
+                },
+              },
+            },
+          },
+          activeTab: "blueprint-json",
+          blueprintJsonVersion: "draft",
+          blueprintPreviewVersion: "draft",
+        });
+      });
+
+      await host.controlface.emit({
+        node: "blueprint-delete-draft-action",
+        name: "press",
+        payload: {},
+      });
+      await host.controlface.whenIdle();
+      await eventually(() => {
+        expect(host.controlface.getState().studio).toMatchObject({
+          selected: {
+            id: "studio-workflow-test",
+            draft: null,
+          },
+          activeTab: "blueprint-json",
+          blueprintJsonVersion: "current",
+          blueprintPreviewVersion: "current",
+        });
+      });
+
+      await host.controlface.emit({
+        node: "blueprint-delete-action",
+        name: "press",
+        payload: {},
+      });
+      await host.controlface.whenIdle();
+      await eventually(() => {
+        expect(host.controlface.getState().studio).toMatchObject({
+          selectedBlueprintId: "",
+          selected: null,
+          activeTab: "overview",
+        });
+        expect((host.controlface.getState().studio as { blueprints: Array<{ id: string }> })
+          .blueprints.map(({ id }) => id)).not.toContain("studio-workflow-test");
       });
     } finally {
       await host.stop();

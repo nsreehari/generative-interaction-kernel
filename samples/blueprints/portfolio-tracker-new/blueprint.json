@@ -83,9 +83,6 @@
                     "valuation": [
                       "portfolio-value-cell"
                     ],
-                    "status": [
-                      "portfolio-intelligence-as-of"
-                    ],
                     "intelligence": [
                       "portfolio-intelligence"
                     ]
@@ -296,6 +293,14 @@
                     "from": "portfolio.value.summary.marketValue"
                   }
                 }
+              },
+              "portfolio-intelligence-context": {
+                "capability": "primitive:container",
+                "visibility": "false"
+              },
+              "portfolio-intelligence-resolution": {
+                "capability": "primitive:container",
+                "visibility": "false"
               }
             },
             "decorators": [
@@ -392,6 +397,14 @@
                     "from": "portfolio.intelligence.markdown"
                   }
                 }
+              },
+              "portfolio-intelligence-context": {
+                "capability": "primitive:container",
+                "visibility": "false"
+              },
+              "portfolio-intelligence-resolution": {
+                "capability": "primitive:container",
+                "visibility": "false"
               }
             }
           },
@@ -415,26 +428,34 @@
             "when": "externalContext.view = 'desktop' and externalContext.`intelligence-model` = 'semantic'",
             "extends": "desktop-base",
             "views": {
-              "portfolio-intelligence-as-of": {
-                "capability": "primitive:datetime",
-                "props": {
-                  "variant": "timestamp",
-                  "label": "Report generated"
-                },
-                "bindings": {
-                  "value": {
-                    "from": "portfolio.intelligence.asOf"
-                  }
-                },
-                "visibility": "portfolio.intelligence.asOf != null"
-              },
               "portfolio-intelligence": {
+                "capability": "fluent:button",
+                "props": {
+                  "label": "Generate / refresh intelligence report",
+                  "appearance": "primary"
+                }
+              },
+              "portfolio-intelligence-resolution": {
                 "capability": "gik:blueprint",
                 "bindings": {
                   "blueprint": {
-                    "from": "portfolio.intelligence.report"
+                    "from": "portfolio.resolvedIntelligenceEnvelope.report"
                   }
-                }
+                },
+                "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
+                "before": [{
+                  "capability": "primitive:datetime",
+                  "props": {
+                    "variant": "timestamp",
+                    "label": "Report generated"
+                  },
+                  "bindings": {
+                    "value": {
+                      "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                    }
+                  },
+                  "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
+                }]
               }
             },
             "presentation": {
@@ -454,10 +475,10 @@
                       "portfolio-value-cell"
                     ],
                     "status": [
-                      "portfolio-intelligence-as-of"
+                      "portfolio-intelligence"
                     ],
                     "intelligence": [
-                      "portfolio-intelligence"
+                      "portfolio-intelligence-resolution"
                     ]
                   }
                 }
@@ -499,26 +520,34 @@
             "when": "externalContext.view = 'mobile' and externalContext.`intelligence-model` = 'semantic'",
             "extends": "mobile-base",
             "views": {
-              "portfolio-intelligence-as-of": {
-                "capability": "primitive:datetime",
-                "props": {
-                  "variant": "timestamp",
-                  "label": "Report generated"
-                },
-                "bindings": {
-                  "value": {
-                    "from": "portfolio.intelligence.asOf"
-                  }
-                },
-                "visibility": "portfolio.intelligence.asOf != null"
-              },
               "portfolio-intelligence": {
+                "capability": "fluent:button",
+                "props": {
+                  "label": "Generate / refresh intelligence report",
+                  "appearance": "primary"
+                }
+              },
+              "portfolio-intelligence-resolution": {
                 "capability": "gik:blueprint",
                 "bindings": {
                   "blueprint": {
-                    "from": "portfolio.intelligence.report"
+                    "from": "portfolio.resolvedIntelligenceEnvelope.report"
                   }
-                }
+                },
+                "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
+                "before": [{
+                  "capability": "primitive:datetime",
+                  "props": {
+                    "variant": "timestamp",
+                    "label": "Report generated"
+                  },
+                  "bindings": {
+                    "value": {
+                      "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                    }
+                  },
+                  "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
+                }]
               }
             },
             "presentation": {
@@ -538,10 +567,10 @@
                       "portfolio-value-cell"
                     ],
                     "status": [
-                      "portfolio-intelligence-as-of"
+                      "portfolio-intelligence"
                     ],
                     "intelligence": [
-                      "portfolio-intelligence"
+                      "portfolio-intelligence-resolution"
                     ]
                   }
                 }
@@ -630,6 +659,31 @@
             "id": "semantic-simple-markdown-foundry",
             "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
             "cells": {
+              "portfolio-intelligence-context": {
+                "sources": [{
+                  "id": "portfolio-intelligence-context.saved-report",
+                  "service": "portfolio-saved-reports",
+                  "operation": "getSavedReport",
+                  "contract": "saved-portfolio-report-envelope/v1",
+                  "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                  "input": { "kind": "jsonata", "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/simple-markdown'}" },
+                  "output": { "kind": "jsonata", "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}" }
+                }],
+                "compute": [
+                  {
+                    "id": "portfolio-analysis-context",
+                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}",
+                    "assign": "portfolio.analysisContext",
+                    "dependencies": ["inputs.portfolio-value"]
+                  },
+                  {
+                    "id": "saved-portfolio-report-envelope",
+                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                    "assign": "savedReportEnvelope",
+                    "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+                  }
+                ]
+              },
               "portfolio-intelligence": {
                 "sources": [
                   {
@@ -652,17 +706,23 @@
                     "service": "portfolio-semantic-intelligence",
                     "operation": "generateReport",
                     "contract": "portfolio-semantic-intelligence/v1",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                     "input": {
                       "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'behavior':'inert'}}}"
+                      "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                     },
                     "output": {
                       "kind": "jsonata",
-                      "expr": "{'report':response,'asOf':$now()}"
+                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':inputs.analysisRequest.requestId}"
                     }
                   }
-                ]
+                ],
+                "compute": [{
+                  "id": "generated-portfolio-report",
+                  "expression": "sources.`portfolio-semantic-intelligence.source`",
+                  "assign": "generatedReport",
+                  "dependencies": ["sources.portfolio-semantic-intelligence.source"]
+                }]
               }
             }
           },
@@ -670,6 +730,31 @@
             "id": "semantic-simple-markdown-copilot",
             "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and externalContext.ai = 'copilot'",
             "cells": {
+              "portfolio-intelligence-context": {
+                "sources": [{
+                  "id": "portfolio-intelligence-context.saved-report",
+                  "service": "portfolio-saved-reports",
+                  "operation": "getSavedReport",
+                  "contract": "saved-portfolio-report-envelope/v1",
+                  "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                  "input": { "kind": "jsonata", "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/simple-markdown'}" },
+                  "output": { "kind": "jsonata", "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}" }
+                }],
+                "compute": [
+                  {
+                    "id": "portfolio-analysis-context",
+                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}",
+                    "assign": "portfolio.analysisContext",
+                    "dependencies": ["inputs.portfolio-value"]
+                  },
+                  {
+                    "id": "saved-portfolio-report-envelope",
+                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                    "assign": "savedReportEnvelope",
+                    "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+                  }
+                ]
+              },
               "portfolio-intelligence": {
                 "sources": [
                   {
@@ -692,17 +777,23 @@
                     "service": "portfolio-semantic-intelligence",
                     "operation": "generateReport",
                     "contract": "portfolio-semantic-intelligence/v1",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                     "input": {
                       "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'behavior':'inert'}}}"
+                      "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'roots':['report'],'composition':{}}}],'fallback':'report'}],'runtime':{'expression':'jsonata','namespaces':['report'],'actions':[],'capabilities':{'primitive:markdown':{'propsSchema':{'type':'object','additionalProperties':true}}},'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                     },
                     "output": {
                       "kind": "jsonata",
-                      "expr": "{'report':response,'asOf':$now()}"
+                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':inputs.analysisRequest.requestId}"
                     }
                   }
-                ]
+                ],
+                "compute": [{
+                  "id": "generated-portfolio-report",
+                  "expression": "sources.`portfolio-semantic-intelligence.source`",
+                  "assign": "generatedReport",
+                  "dependencies": ["sources.portfolio-semantic-intelligence.source"]
+                }]
               }
             },
             "services": {
@@ -716,7 +807,7 @@
                     "request": {
                       "transform": {
                         "kind": "jsonata",
-                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000})"
+                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                       }
                     },
                     "response": {
@@ -1086,7 +1177,7 @@
                     "settlement": {
                       "transform": {
                         "kind": "jsonata",
-                        "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                        "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                       }
                     },
                     "onViolation": {
@@ -1109,6 +1200,31 @@
             "id": "semantic-rich-components-foundry",
             "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
             "cells": {
+              "portfolio-intelligence-context": {
+                "sources": [{
+                  "id": "portfolio-intelligence-context.saved-report",
+                  "service": "portfolio-saved-reports",
+                  "operation": "getSavedReport",
+                  "contract": "saved-portfolio-report-envelope/v1",
+                  "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                  "input": { "kind": "jsonata", "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/rich-components'}" },
+                  "output": { "kind": "jsonata", "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}" }
+                }],
+                "compute": [
+                  {
+                    "id": "portfolio-analysis-context",
+                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}",
+                    "assign": "portfolio.analysisContext",
+                    "dependencies": ["inputs.portfolio-value"]
+                  },
+                  {
+                    "id": "saved-portfolio-report-envelope",
+                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                    "assign": "savedReportEnvelope",
+                    "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+                  }
+                ]
+              },
               "portfolio-intelligence": {
                 "sources": [
                   {
@@ -1131,17 +1247,23 @@
                     "service": "portfolio-semantic-intelligence",
                     "operation": "generateReport",
                     "contract": "portfolio-semantic-intelligence/v1",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                     "input": {
                       "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                      "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                     },
                     "output": {
                       "kind": "jsonata",
-                      "expr": "{'report':response,'asOf':$now()}"
+                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':inputs.analysisRequest.requestId}"
                     }
                   }
-                ]
+                ],
+                "compute": [{
+                  "id": "generated-portfolio-report",
+                  "expression": "sources.`portfolio-semantic-intelligence.source`",
+                  "assign": "generatedReport",
+                  "dependencies": ["sources.portfolio-semantic-intelligence.source"]
+                }]
               }
             }
           },
@@ -1149,6 +1271,31 @@
             "id": "semantic-rich-components-copilot",
             "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and externalContext.ai = 'copilot'",
             "cells": {
+              "portfolio-intelligence-context": {
+                "sources": [{
+                  "id": "portfolio-intelligence-context.saved-report",
+                  "service": "portfolio-saved-reports",
+                  "operation": "getSavedReport",
+                  "contract": "saved-portfolio-report-envelope/v1",
+                  "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                  "input": { "kind": "jsonata", "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/rich-components'}" },
+                  "output": { "kind": "jsonata", "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}" }
+                }],
+                "compute": [
+                  {
+                    "id": "portfolio-analysis-context",
+                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}",
+                    "assign": "portfolio.analysisContext",
+                    "dependencies": ["inputs.portfolio-value"]
+                  },
+                  {
+                    "id": "saved-portfolio-report-envelope",
+                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                    "assign": "savedReportEnvelope",
+                    "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+                  }
+                ]
+              },
               "portfolio-intelligence": {
                 "sources": [
                   {
@@ -1171,17 +1318,23 @@
                     "service": "portfolio-semantic-intelligence",
                     "operation": "generateReport",
                     "contract": "portfolio-semantic-intelligence/v1",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.analysisRequest.portfolioKey = inputs.analysisContext.portfolioKey and inputs.analysisRequest.analysisKey = inputs.analysisContext.analysisKey",
                     "input": {
                       "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                      "expr": "{'requestId':inputs.analysisRequest.requestId,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and required section-slot presentation>','fallback':'<representation id>'}],'runtime':{'expression':'jsonata','namespaces':'<state namespaces>','actions':[],'capabilities':'<used accepted capabilities only>','externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                     },
                     "output": {
                       "kind": "jsonata",
-                      "expr": "{'report':response,'asOf':$now()}"
+                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':inputs.analysisRequest.requestId}"
                     }
                   }
-                ]
+                ],
+                "compute": [{
+                  "id": "generated-portfolio-report",
+                  "expression": "sources.`portfolio-semantic-intelligence.source`",
+                  "assign": "generatedReport",
+                  "dependencies": ["sources.portfolio-semantic-intelligence.source"]
+                }]
               }
             },
             "services": {
@@ -1195,7 +1348,7 @@
                     "request": {
                       "transform": {
                         "kind": "jsonata",
-                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000})"
+                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                       }
                     },
                     "response": {
@@ -1565,7 +1718,7 @@
                     "settlement": {
                       "transform": {
                         "kind": "jsonata",
-                        "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                        "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
                       }
                     },
                     "onViolation": {
@@ -1708,7 +1861,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000})"
+                "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
               }
             },
             "response": {
@@ -2078,7 +2231,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                "expr": "{'ops':[{'op':'set','path':'portfolio.intelligenceRequest','value':null}],'detail':{'provider':'foundry-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
               }
             },
             "onViolation": {
@@ -2091,6 +2244,35 @@
           "agent": "Portfolio-Semantic-Intelligence-Agent",
           "credentialRef": "foundry-agent/access-key",
           "responseMode": "json"
+        },
+        "scope": "per-blueprint"
+      },
+      "portfolio-saved-reports": {
+        "blueprint": { "$ref": "blueprint:portfolio-intelligence-assets@1.0.0" },
+        "version": "1",
+        "operations": {
+          "getSavedReport": {
+            "operation": "get-report",
+            "contract": "saved-portfolio-report-envelope/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'portfolio_key':input.portfolio_key,'analysis_key':input.analysis_key}"
+              }
+            },
+            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[]}" } }
+          },
+          "putSavedReport": {
+            "operation": "put-report",
+            "contract": "saved-portfolio-report-envelope/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'portfolio_key':input.portfolio_key,'analysis_key':input.analysis_key,'saved_report_envelope':{'asOf':input.report.asOf,'report':input.report.report}}"
+              }
+            },
+            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[]}" } }
+          }
         },
         "scope": "per-blueprint"
       }
@@ -2106,11 +2288,12 @@
         "primitive:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
         "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true } },
         "gik:blueprint": { "propsSchema": { "type": "object", "additionalProperties": true } },
+        "fluent:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] },
         "fluent:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" }
       },
       "externals": {
         "projectionViews": {
-          "fluent": { "from": "fluent", "use": ["table"] },
+          "fluent": { "from": "fluent", "use": ["button", "table"] },
           "primitive": { "from": "primitive", "use": ["chart", "container", "datetime", "editable-table", "markdown"] }
         }
       },
@@ -2122,7 +2305,10 @@
           },
           "stockQuotes": {},
           "value": { "positions": {}, "summary": { "marketValue": 0, "costBasis": 0, "gainLoss": 0 } },
-          "intelligence": null
+          "intelligence": null,
+          "intelligenceRequest": null,
+          "analysisContext": null,
+          "resolvedIntelligenceEnvelope": null
         }
       }
     },
@@ -2195,7 +2381,12 @@
       "portfolio-intelligence": {
         "id": "portfolio-intelligence",
         "kind": "portfolio-cell",
-        "inputs": [{ "token": "portfolio-value" }],
+        "inputs": [
+          { "token": "portfolio-value" },
+          { "token": "portfolio-analysis-context", "as": "analysisContext", "required": true },
+          { "token": "saved-portfolio-report-envelope", "as": "savedReportEnvelope", "required": true },
+          { "token": "portfolio.intelligenceRequest", "as": "analysisRequest" }
+        ],
         "systemInputs": ["numSourcesRunning"],
         "sources": [
           {
@@ -2230,11 +2421,90 @@
             "assign": "portfolio.intelligence",
             "dependencies": ["sources.portfolio-intelligence.source", "sources.portfolio-semantic-intelligence.source"]
           }
+        ],
+        "outputs": [
+          {
+            "token": "generated-portfolio-report-envelope",
+            "from": "computed.generatedReport",
+            "when": "$exists(sources.`portfolio-semantic-intelligence.source`)"
+          }
+        ],
+        "behavior": {
+          "on": {
+            "press": [{
+              "do": "assign",
+              "target": "portfolio.intelligenceRequest",
+              "args": {
+                "from": "{'portfolioKey':portfolio.analysisContext.portfolioKey,'analysisKey':portfolio.analysisContext.analysisKey,'requestId':$now(),'requestedAt':$now()}"
+              }
+            }]
+          }
+        },
+        "events": { "press": { "payloadSchema": { "type": "object" } } }
+      },
+      "portfolio-intelligence-context": {
+        "id": "portfolio-intelligence-context",
+        "kind": "portfolio-intelligence-context",
+        "inputs": [{ "token": "portfolio-value" }],
+        "systemInputs": ["numSourcesRunning"],
+        "sources": [{
+          "id": "portfolio-intelligence-context.saved-report",
+          "service": "portfolio-saved-reports",
+          "operation": "getSavedReport",
+          "contract": "saved-portfolio-report-envelope/v1",
+          "when": "false",
+          "input": {
+            "kind": "jsonata",
+            "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'none'}"
+          },
+          "output": { "kind": "jsonata", "expr": "{'found':false,'report':null,'asOf':null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'none'}" }
+        }],
+        "compute": [
+          {
+            "id": "portfolio-analysis-context",
+            "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':sources.`portfolio-intelligence-context.saved-report`.analysisKey}",
+            "assign": "portfolio.analysisContext",
+            "dependencies": ["inputs.portfolio-value"]
+          },
+          {
+            "id": "saved-portfolio-report-envelope",
+            "expression": "sources.`portfolio-intelligence-context.saved-report`",
+            "assign": "savedReportEnvelope",
+            "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+          }
+        ],
+        "outputs": [
+          { "token": "portfolio-analysis-context", "from": "computed.portfolio.analysisContext" },
+          { "token": "saved-portfolio-report-envelope", "from": "computed.savedReportEnvelope" }
         ]
       },
-      "portfolio-intelligence-as-of": {
-        "id": "portfolio-intelligence-as-of",
-        "kind": "report-metadata-cell"
+      "portfolio-intelligence-resolution": {
+        "id": "portfolio-intelligence-resolution",
+        "kind": "portfolio-intelligence-resolution",
+        "inputs": [
+          { "token": "portfolio-analysis-context", "as": "analysisContext", "required": true },
+          { "token": "saved-portfolio-report-envelope", "as": "savedReportEnvelope", "required": true },
+          { "token": "generated-portfolio-report-envelope", "as": "generatedReport", "required": false }
+        ],
+        "systemInputs": ["numSourcesRunning"],
+        "sources": [{
+          "id": "portfolio-intelligence-resolution.save-report",
+          "service": "portfolio-saved-reports",
+          "operation": "putSavedReport",
+          "contract": "saved-portfolio-report-envelope/v1",
+          "when": "inputs.generatedReport != null",
+          "input": {
+            "kind": "jsonata",
+            "expr": "{'portfolio_key':inputs.analysisContext.portfolioKey,'analysis_key':inputs.analysisContext.analysisKey,'report':inputs.generatedReport}"
+          },
+          "output": { "kind": "jsonata", "expr": "response" }
+        }],
+        "compute": [{
+          "id": "resolved-portfolio-report-envelope",
+          "expression": "$exists(sources.`portfolio-intelligence-resolution.save-report`) and sources.`portfolio-intelligence-resolution.save-report` != null ? sources.`portfolio-intelligence-resolution.save-report` : (inputs.generatedReport != null ? inputs.generatedReport : (inputs.savedReportEnvelope.found ? inputs.savedReportEnvelope : null))",
+          "assign": "portfolio.resolvedIntelligenceEnvelope",
+          "dependencies": ["inputs.savedReportEnvelope", "inputs.generatedReport", "sources.portfolio-intelligence-resolution.save-report"]
+        }]
       },
       "board": {
         "id": "board",

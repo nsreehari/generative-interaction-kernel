@@ -1,13 +1,21 @@
 import React from "react";
 import {
   Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  DialogTrigger,
   makeStyles,
   mergeClasses,
   tokens,
+  type ButtonProps,
 } from "@fluentui/react-components";
 import {
   ChevronLeftRegular,
   ChevronRightRegular,
+  DismissRegular,
 } from "@fluentui/react-icons";
 import type { Json } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
@@ -22,10 +30,12 @@ import {
 } from "../../shared/definition";
 import { componentRootProps, withComponentStylePropsSchema } from "../../shared/component";
 
-export const DRAWER_VARIANTS = ["panel-vertical"] as const;
-export type DrawerVariant = typeof DRAWER_VARIANTS[number];
+export const PANE_WITH_TRIGGER_VARIANTS = ["drawer", "dialog-modal"] as const;
+export type PaneWithTriggerVariant = typeof PANE_WITH_TRIGGER_VARIANTS[number];
 
 const FAB_POSITIONS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
+const TRIGGER_APPEARANCES = ["primary", "secondary", "subtle", "transparent", "outline"] as const;
+type TriggerAppearance = Extract<ButtonProps["appearance"], typeof TRIGGER_APPEARANCES[number]>;
 
 const useStyles = makeStyles({
   root: {
@@ -71,9 +81,10 @@ const useStyles = makeStyles({
   },
 });
 
-export const Drawer: ProjectionView = ({ node, emit, children }) => {
+export const PaneWithTrigger: ProjectionView = ({ node, emit, children }) => {
   const styles = useStyles();
   const props = readProps(node);
+  const variant = props.str("variant", "drawer") as PaneWithTriggerVariant;
   const position = props.str("fabPosition", "top-left");
   const isRight = position.endsWith("-right");
   const isBottom = position.startsWith("bottom-");
@@ -83,9 +94,47 @@ export const Drawer: ProjectionView = ({ node, emit, children }) => {
   const title = props.str("title", "Panel");
   const openLabel = props.str("openLabel", `Open ${title}`);
   const closeLabel = props.str("closeLabel", `Close ${title}`);
+  const triggerLabel = props.str("triggerLabel", openLabel);
   const authoredWidth = typeof node.props.panelWidthPercent === "number" ? node.props.panelWidthPercent : 80;
   const width = Math.min(80, Math.max(20, authoredWidth));
   const rootProps = componentRootProps(node);
+  const setOpen = (nextOpen: boolean) => {
+    if (!controlled) setLocalOpen(nextOpen);
+    void emit("openChange", { open: nextOpen });
+  };
+
+  if (variant === "dialog-modal") {
+    return (
+      <Dialog
+        open={open}
+        modalType="modal"
+        onOpenChange={(_event, data) => setOpen(data.open)}
+      >
+        <DialogTrigger disableButtonEnhancement>
+          <Button appearance={props.str("triggerAppearance") as TriggerAppearance || undefined}>
+            {triggerLabel}
+          </Button>
+        </DialogTrigger>
+        <DialogSurface
+          {...rootProps}
+          aria-label={props.str("ariaLabel", title)}
+        >
+          <DialogBody>
+            <DialogTitle
+              action={(
+                <DialogTrigger action="close" disableButtonEnhancement>
+                  <Button appearance="subtle" icon={<DismissRegular />} aria-label={closeLabel} />
+                </DialogTrigger>
+              )}
+            >
+              {title}
+            </DialogTitle>
+            <DialogContent>{children}</DialogContent>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+    );
+  }
 
   return (
     <aside
@@ -102,11 +151,7 @@ export const Drawer: ProjectionView = ({ node, emit, children }) => {
         aria-label={open ? closeLabel : openLabel}
         title={open ? closeLabel : openLabel}
         aria-expanded={open}
-        onClick={() => {
-          const nextOpen = !open;
-          if (!controlled) setLocalOpen(nextOpen);
-          void emit("openChange", { open: nextOpen });
-        }}
+        onClick={() => setOpen(!open)}
       />
       {open ? (
         <>
@@ -126,8 +171,9 @@ export const Drawer: ProjectionView = ({ node, emit, children }) => {
 const schema = withComponentStylePropsSchema({
   type: "object",
   additionalProperties: false,
+  required: ["variant", "title"],
   properties: {
-    variant: { enum: DRAWER_VARIANTS },
+    variant: { enum: PANE_WITH_TRIGGER_VARIANTS },
     open: { type: "boolean" },
     defaultOpen: { type: "boolean" },
     fabPosition: { enum: FAB_POSITIONS },
@@ -135,63 +181,82 @@ const schema = withComponentStylePropsSchema({
     title: { type: "string", minLength: 1 },
     openLabel: { type: "string", minLength: 1 },
     closeLabel: { type: "string", minLength: 1 },
+    triggerLabel: { type: "string", minLength: 1 },
+    triggerAppearance: { type: "string", enum: TRIGGER_APPEARANCES },
     panelWidthPercent: { type: "number", minimum: 20, maximum: 80 },
   },
+  allOf: [
+    {
+      if: { properties: { variant: { const: "dialog-modal" } }, required: ["variant"] },
+      then: { required: ["triggerLabel", "closeLabel"] },
+    },
+  ],
 } as const);
 
 const description: ComponentDescription = {
-  capability: "primitive:drawer",
-  summary: "Renders one self-contained floating drawer whose vertical panel opens from an authored board corner.",
+  capability: "primitive:pane-with-trigger",
+  summary: "Reveals authored children in a trigger-controlled drawer or modal dialog.",
   slots: ["children"],
   events: ["openChange"],
   eventContracts: {
     openChange: eventContract("The drawer open state changed; handling this event is optional unless open is controlled.", { open: { type: "boolean" } }),
   },
   semanticTokens: [],
-  defaultVariant: "panel-vertical",
-  variants: [{
-    value: "panel-vertical",
-    summary: "Composes a corner-pinned circular toggle with one full-height floating panel.",
-    useWhen: ["Secondary tools must overlay a workspace without resizing it"],
-  }],
+  defaultVariant: "drawer",
+  variants: [
+    {
+      value: "drawer",
+      summary: "Composes a corner-pinned circular toggle with one full-height floating panel.",
+      useWhen: ["Secondary tools must overlay a workspace without resizing it"],
+    },
+    {
+      value: "dialog-modal",
+      summary: "Composes a labeled trigger with a modal dialog, title, and close action.",
+      useWhen: ["A focused temporary workflow must interrupt the current surface"],
+    },
+  ],
   authoring: {
-    useWhen: ["A workspace needs an independently controlled floating side panel"],
-    avoidWhen: ["Content should permanently share horizontal space", "A modal decision interrupts the workflow"],
+    useWhen: ["Authored children belong in a temporary surface opened by its own trigger"],
+    avoidWhen: ["Content should permanently remain in the page flow"],
     rules: [
-      "Prefer local drawer state; use defaultOpen only to choose its initial state",
+      "Choose drawer for supplemental workspace content and dialog-modal for a focused modal workflow",
+      "Prefer local pane state; use defaultOpen only to choose its initial state",
       "Bind open only when application behavior or cross-Cell coordination must control the drawer",
-      "Handle openChange only when the application needs to observe or control drawer state",
-      "Place all authored children inside the panel",
-      "Choose the toggle corner with fabPosition",
-      "Provide concise accessible labels",
+      "Handle openChange only when the application needs to observe or control pane state",
+      "Place all authored children inside the pane",
+      "For drawer, choose the toggle corner with fabPosition",
+      "For dialog-modal, provide triggerLabel and closeLabel",
+      "Provide concise accessible labels for both variants",
     ],
   },
 };
 
-export function validateDrawer(props: unknown): ComponentValidationReport {
+export function validatePaneWithTrigger(props: unknown): ComponentValidationReport {
   return runDeclarativeValidators([{
     kind: "ajv-schema",
     schema,
-    message: "Invalid primitive:drawer props",
-    code: "primitive-drawer-schema",
+    message: "Invalid primitive:pane-with-trigger props",
+    code: "primitive-pane-with-trigger-schema",
   }], props as Json);
 }
 
-export function materializeDrawerTrial() {
-  return trialNode("primitive:drawer", {
-    variant: "panel-vertical",
+export function materializePaneWithTriggerTrial() {
+  return trialNode("primitive:pane-with-trigger", {
+    variant: "drawer",
     defaultOpen: true,
     fabPosition: "top-left",
     title: "Source reports",
+    triggerLabel: "Open source reports",
+    closeLabel: "Close source reports",
     panelWidthPercent: 80,
   });
 }
 
-export const drawerDefinition = defineComponent({
+export const paneWithTriggerDefinition = defineComponent({
   description,
   version: "1.0.0",
-  component: Drawer,
+  component: PaneWithTrigger,
   getSchema: () => schema as unknown as Record<string, unknown>,
-  validate: validateDrawer,
-  materializeTrial: materializeDrawerTrial,
+  validate: validatePaneWithTrigger,
+  materializeTrial: materializePaneWithTriggerTrial,
 });

@@ -510,7 +510,7 @@ describe("@gik/blueprint", () => {
       ...blueprint("multi-root").payload,
       cells: {
         analysis: { id: "analysis", view: { capability: "sample:analysis" } },
-        drawer: { id: "drawer", view: { capability: "primitive:drawer" } },
+        drawer: { id: "drawer", view: { capability: "primitive:pane-with-trigger", props: { variant: "drawer", title: "Details" } } },
       },
       projections: { presentation: { roots: ["analysis", "drawer"] } },
     });
@@ -525,7 +525,7 @@ describe("@gik/blueprint", () => {
       edges: {
         children: [
           { id: "analysis", capability: "sample:analysis" },
-          { id: "drawer", capability: "primitive:drawer" },
+          { id: "drawer", capability: "primitive:pane-with-trigger", props: { variant: "drawer", title: "Details" } },
         ],
       },
     });

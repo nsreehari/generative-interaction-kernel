@@ -130,6 +130,12 @@ export function createBlueprintDurableTransitionAdapter(input: {
       const requestSettlements = acceptedSettlements
         .filter((settlement) => settlement?.effect?.kind === "request")
         .map((settlement) => ({ effect: settlement!.effect!, result: settlement!.result }));
+      const serviceSettlements = acceptedSettlements
+        .filter((settlement) =>
+          settlement?.effect?.kind === "invoke"
+          && Boolean(settlement.effect.control.serviceRef)
+          && !settlement.effect.control.sourceRequestToken)
+        .map((settlement) => settlement!.result);
       const isBootstrap = events.some((event) =>
         event.node === DURABLE_EFFECT_NODE && event.name === DURABLE_BOOTSTRAP);
       const result = await runMaterializedTransition({
@@ -139,6 +145,7 @@ export function createBlueprintDurableTransitionAdapter(input: {
         syncExternal: isBootstrap,
         sourceSettlements,
         requestSettlements,
+        serviceSettlements,
       });
       if (regularEvents.length || isBootstrap) {
         input.onTransition?.(regularEvents[0] ? structuredClone(regularEvents[0]) : null, result);

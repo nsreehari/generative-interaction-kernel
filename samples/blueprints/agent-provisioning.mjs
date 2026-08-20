@@ -7,6 +7,7 @@ import {
   toAgentFunctionTools,
   BLUEPRINT_AUTHORING_GUIDANCE_RESOURCE_URL,
 } from '../../packages/agent-lifecycle-exp/dist/index.js';
+import { agentFacingComponentCatalog } from '../../packages/components/dist/agent-facing.js';
 
 const blueprintsDirectory = dirname(fileURLToPath(import.meta.url));
 const blueprintAuthoringGuidance = readFileSync(
@@ -68,6 +69,7 @@ export function sampleAgentTemplates() {
       instructions: blueprintAuthorInstructions([
         'You are a portfolio intelligence analyst and governed experience author.',
         'Return only one complete self-contained Blueprint JSON artifact, without Markdown fences or commentary.',
+        'JSON-CHECK: before returning, verify the artifact is syntactically complete and every delimiter is closed.',
         'The request supplies the outcome, section map, accepted capabilities, constraints, and local currency.',
         'Sections are semantic obligations, not component assignments. Accepted capabilities are a vocabulary, not a checklist.',
         'Choose and compose the authorized components that make each section most intuitive for the supplied data.',
@@ -128,6 +130,10 @@ export function sampleAgentTemplates() {
 export function copilotWorkspaceFiles(agentFiles, repositoryName = 'demo-boards-copilot-workspace') {
   return [
     ...agentFiles,
+    {
+      path: '.gik/capability-catalog.json',
+      content: `${JSON.stringify(agentFacingComponentCatalog, null, 2)}\n`,
+    },
     {
       path: '.github/copilot-instructions.md',
       content: `# ${repositoryName} Copilot Workspace\n\nThe model proposes tool calls. The host validates and executes them. Read current repository state before acting, keep changes narrow, and report only verified outcomes.\n`,

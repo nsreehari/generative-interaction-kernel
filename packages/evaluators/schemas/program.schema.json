@@ -290,6 +290,7 @@
           "required": ["tool"],
           "properties": {
             "tool": { "type": "string", "minLength": 1 },
+            "serviceRef": { "type": "string", "minLength": 1 },
             "responseSchema": { "type": "object" },
             "sourceId": { "type": "string", "minLength": 1 },
             "sourceCellId": { "type": "string", "minLength": 1 },

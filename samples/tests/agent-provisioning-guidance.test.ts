@@ -9,7 +9,10 @@ import {
 
 // The provisioning definitions are intentionally authored as executable ESM alongside the Blueprints.
 // @ts-expect-error The JavaScript provisioning module has no declaration file.
-import { sampleAgentTemplates } from "../blueprints/agent-provisioning.mjs";
+import {
+  copilotWorkspaceFiles,
+  sampleAgentTemplates,
+} from "../blueprints/agent-provisioning.mjs";
 
 test("provisions shared guidance only for Blueprint-authoring agents", () => {
   const authorIds = new Set([
@@ -39,6 +42,7 @@ test("coaches the semantic portfolio agent without assigning sections to compone
   assert.match(instructions, /Sections are semantic obligations, not component assignments/);
   assert.match(instructions, /Accepted capabilities are a vocabulary, not a checklist/);
   assert.match(instructions, /FIT > VARIETY/);
+  assert.match(instructions, /JSON-CHECK:/);
   assert.match(instructions, /"kind":"multiple-capabilities"/);
   assert.match(instructions, /Never issue serial detail calls/);
   assert.doesNotMatch(instructions, /Use primitive:chart for/);
@@ -51,4 +55,19 @@ test("coaches the semantic portfolio agent without assigning sections to compone
     ["catalog-capabilities", "multiple-capabilities"],
   );
   assert.ok(instructions.length < 8_000, `Provisioned instructions grew to ${instructions.length} characters`);
+});
+
+test("provisions the capability catalog required by the Copilot describe tool", () => {
+  const files = copilotWorkspaceFiles([]);
+  const catalogFile = files.find(({ path }) => path === ".gik/capability-catalog.json");
+  assert.ok(catalogFile);
+
+  const catalog = JSON.parse(catalogFile.content) as {
+    catalog: Record<string, unknown>;
+    details: Record<string, unknown>;
+  };
+  assert.ok(catalog.catalog["primitive:markdown"]);
+  assert.ok(catalog.details["primitive:markdown"]);
+  assert.ok(catalog.catalog["semantic:narrative"]);
+  assert.ok(catalog.details["semantic:narrative"]);
 });
