@@ -15,6 +15,17 @@ test("Foundry JSON response mode parses a complete artifact", () => {
   );
 });
 
+test("Foundry JSON response mode repairs only one omitted root delimiter", () => {
+  assert.deepEqual(
+    parseFoundryJsonReply('{"gik":"0.1","payload":{"cells":{}}'),
+    { gik: "0.1", payload: { cells: {} } },
+  );
+  assert.throws(
+    () => parseFoundryJsonReply('{"gik":"0.1","payload":{"cells":{}'),
+    /Foundry agent returned invalid JSON/,
+  );
+});
+
 test("Foundry proxy checks access without loading agents", async () => {
   let requestUrl = "";
   let request: RequestInit | undefined;

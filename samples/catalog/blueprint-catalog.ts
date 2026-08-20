@@ -419,7 +419,10 @@ export async function bootstrapSampleBlueprintCatalog(options: {
   indexedDB?: IDBFactory;
 } = {}): Promise<BlueprintCatalogSnapshot> {
   const fetchSeed = options.fetch ?? globalThis.fetch;
-  const response = await fetchSeed(options.seedUrl ?? new URL(sampleBlueprintCatalogUrl, document.baseURI).href);
+  const response = await fetchSeed(
+    options.seedUrl ?? new URL(sampleBlueprintCatalogUrl, document.baseURI).href,
+    { cache: "no-store" },
+  );
   if (!response.ok) throw new Error(`Unable to load Blueprint catalog seed (${response.status}).`);
   const bundle = parseBlueprintCatalogBundle(await response.json());
   await verifyBlueprintCatalogBundle(bundle);

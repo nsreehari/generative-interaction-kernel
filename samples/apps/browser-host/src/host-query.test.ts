@@ -49,16 +49,37 @@ test("host query selects Blueprints with canonical b and legacy bundle parameter
     "ai-agent",
   );
   assert.deepEqual(
-    readHostQuery("?b=ai-agent&ai=copilot").externalContext,
+    readHostQuery("?b=ai-agent&context=%7B%22ai%22%3A%22copilot%22%7D").externalContext,
     { ai: "copilot" },
   );
   assert.deepEqual(
-    readHostQuery("?b=portfolio-tracker-new&intelligence-model=semantic&market-prices=live&semantic=rich-components&view=mobile").externalContext,
-    { "intelligence-model": "semantic", "market-prices": "live", semantic: "rich-components", view: "mobile" },
+    readHostQuery(`?b=portfolio-tracker-new&context=${encodeURIComponent(JSON.stringify({
+      "intelligence-model": "semantic",
+      "market-prices": "live",
+      semantic: "rich-components",
+      view: "mobile",
+      limits: { positions: 10 },
+    }))}`).externalContext,
+    {
+      "intelligence-model": "semantic",
+      "market-prices": "live",
+      semantic: "rich-components",
+      view: "mobile",
+      limits: { positions: 10 },
+    },
   );
   assert.deepEqual(
-    readHostQuery("?b=incident-analysis-new-shell&model=refinement&source-report=identity-compromise").externalContext,
+    readHostQuery("?b=incident-analysis-new-shell&context=%7B%22model%22%3A%22refinement%22%2C%22source-report%22%3A%22identity-compromise%22%7D").externalContext,
     { model: "refinement", "source-report": "identity-compromise" },
+  );
+  assert.equal(readHostQuery("?b=ai-agent&ai=copilot").externalContext, undefined);
+  assert.throws(
+    () => readHostQuery("?b=ai-agent&context=copilot"),
+    /URL-encoded JSON object/,
+  );
+  assert.throws(
+    () => readHostQuery("?b=ai-agent&context=%5B%22copilot%22%5D"),
+    /URL-encoded JSON object/,
   );
   assert.equal(
     canonicalizeHostUrl("https://example.test/?bundle=live-workspace-soc"),
@@ -87,9 +108,9 @@ test("host query resolves cached Blueprint paths", () => {
 test("host query canonicalizes legacy controls and redundant presentation state", () => {
   assert.equal(
     canonicalizeHostUrl(
-      "https://example.test/?bundle=live-workspace-soc&demo=soc-t3&context=war-room&plane=runtime&presentation=full-substrate",
+      "https://example.test/?bundle=live-workspace-soc&demo=soc-t3&context=%7B%22mode%22%3A%22war-room%22%7D&plane=runtime&presentation=full-substrate",
     ),
-    "https://example.test/?demo=soc-t3&b=live-workspace-soc&gik=1",
+    "https://example.test/?demo=soc-t3&context=%7B%22mode%22%3A%22war-room%22%7D&b=live-workspace-soc&gik=1",
   );
   assert.equal(
     canonicalizeHostUrl(

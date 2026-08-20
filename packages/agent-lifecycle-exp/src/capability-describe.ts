@@ -32,7 +32,6 @@ export const capabilityDescribeInputSchema: JsonSchema = {
       type: "array",
       items: { type: "string", minLength: 1 },
       maxItems: 32,
-      uniqueItems: true,
     },
   },
 };

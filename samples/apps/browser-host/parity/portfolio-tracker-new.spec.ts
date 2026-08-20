@@ -1,7 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const mockDesktopUrl = "/?b=portfolio-tracker-new&intelligence-model=mock&view=desktop";
-const mockMobileUrl = "/?b=portfolio-tracker-new&intelligence-model=mock&view=mobile";
+const mockDesktopUrl = `/?b=portfolio-tracker-new&context=${encodeURIComponent(JSON.stringify({
+  "intelligence-model": "mock",
+  view: "desktop",
+}))}`;
+const mockMobileUrl = `/?b=portfolio-tracker-new&context=${encodeURIComponent(JSON.stringify({
+  "intelligence-model": "mock",
+  view: "mobile",
+}))}`;
 
 async function expectInitialPortfolio(page: Page): Promise<void> {
   const prices = page.getByRole("table", { name: "Market prices" });

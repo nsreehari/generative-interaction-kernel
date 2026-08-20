@@ -65,4 +65,8 @@ test("describe returns only requested Blueprint authoring contracts", async () =
     (tool.inputSchema.properties?.kind as { enum?: unknown }).enum,
     ["catalog-capabilities", "multiple-capabilities"],
   );
+  assert.equal(
+    "uniqueItems" in (tool.inputSchema.properties?.capabilities as Record<string, unknown>),
+    false,
+  );
 });

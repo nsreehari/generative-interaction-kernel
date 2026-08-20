@@ -2,6 +2,7 @@ import type { Json } from "@gik/kernel";
 import { serviceConfig } from "@gik/controlface";
 import type { WorkerServiceInvocation } from "../worker-service-kind";
 import { executeMcpServiceInvocation } from "../mcp/runtime";
+import { parseAgentJsonReply } from "../agent-json-response";
 
 type McpResult = {
   text?: Json;
@@ -89,11 +90,7 @@ export async function executeCopilotAgentInvocation(
       : {};
     const reply = String(structured.stdout ?? result.text ?? "");
     if (config.responseMode === "json") {
-      try {
-        return JSON.parse(reply) as Json;
-      } catch (error) {
-        throw new Error("copilot-agent returned invalid JSON for responseMode=json", { cause: error });
-      }
+      return parseAgentJsonReply("copilot-agent", reply);
     }
     return {
       reply,
