@@ -4,7 +4,7 @@ package:
   name: "@gik/blueprint"
   version: "0.2.0"
   purpose: >-
-    Define and validate Blueprint JSON, resolve its references and resources, analyze its
+    Define and validate Blueprint JSON, resolve its child Blueprint references, analyze its
     Cells, enforce structural-change policy, lower tier chains through the package-owned fixed
     meta-graph, materialize portable execution values, and run canonical state transitions.
   core_promise: >-
@@ -21,7 +21,7 @@ package:
   implementation_entrypoint: blueprint/src/index.ts
 
 terminology:
-  blueprint: A JSON document that describes Cells, resources, services, and how to produce a Kernel program.
+  blueprint: A JSON document that describes Cells, services, and how to produce a Kernel program.
   blueprint_structure_mode: Enforceable policy selecting fixed, authorized reconfiguration, or adaptive runtime change.
   agent_lifecycle_material: Authored semantic manifest material required when a Blueprint is exposed through a use, customize, or author lifecycle profile.
   cell: A named part of a Blueprint.
@@ -82,7 +82,6 @@ architecture:
     - Selecting worker placement, notification transport, credentials, or trusted effect implementations.
     - Rendering, transports, Faces, or host service bindings.
     - Asynchronous, agent-driven, human-gated, or reconfigurable Lowering Cell scheduling.
-    - Relationship-specific execution semantics.
     - Runtime application of executable ProgramPatch operations.
     - Host identity, credentials, or authorization mechanisms.
     - Nested child Blueprint mutation routing.
@@ -121,18 +120,13 @@ artifact_contracts:
       structureMode?: BlueprintStructureMode;
       structurePolicy?: BlueprintStructurePolicy;
       tiers: TierDefinition[]; recipes: LoweringRecipeDefinition[];
-      context?: Record<string, Json>;
-      resources?: Record<string, BlueprintResource>;
       cells?: Record<string, CellDefinition>;
-      relationships?: Record<string, RelationshipDefinition>;
       presentation?: PresentationDefinition;
       services?: Record<string, ServiceDeclaration>;
       runtime: BlueprintRuntimeDefinition; metadata?: Record<string, Json> }
     guarantees:
-      - runtime carries the vocabulary fields, initial state, and host dependencies used to open the Blueprint.
-      - runtime is not itself an ExecutableVocabularyManifest; the host supplies the executable vocabulary version and combines declared services with externals.
-      - runtime.version is preserved as authored data; this package assigns it no execution semantics.
-      - context is preserved as portable authoring data; this package does not merge it into runtime state.
+      - runtime carries the initial state and host dependencies used to open the Blueprint.
+      - runtime is not itself an ExecutableVocabularyManifest; the host derives namespaces/actions/capabilities and supplies the executable vocabulary version, combining declared services with externals.
       - Backend and worker Blueprints do not require a presentation.
       - A service Blueprint uses the same blueprint:<id>@<version> reference grammar and host registry as a nested Cell Blueprint.
       - Interface output ports may declare from to project one runtime state path as a non-rendered result.
@@ -143,15 +137,12 @@ artifact_contracts:
       - Service declarations are preserved into the opened runtime; an outer host owns ServiceHost construction and trusted kind admission.
   - name: BlueprintRuntimeDefinition
     signature: >-
-      interface BlueprintRuntimeDefinition { version?: string; expression?: string;
-      namespaces?: string[]; contexts?: string[]; actions?: string[];
-      capabilities?: ProjectedVocabularyManifest["capabilities"];
-      externals?: Omit<ExternalsSpec, "services">;
+      interface BlueprintRuntimeDefinition { externals?: Omit<ExternalsSpec, "services">;
       state?: Record<string, Json> }
-    purpose: Supply declarative inputs from which a host constructs executable vocabulary and initial state.
-  - name: BlueprintResource
-    signature: 'type BlueprintResource = { inline: Json } | { $ref: string }'
-    purpose: Carry an inline named resource or defer its value to a caller-supplied resolver.
+    purpose: Supply declarative initial state and host dependencies from which a host constructs executable vocabulary.
+    guarantees:
+      - namespaces and actions are never authored here -- a host derives them (namespaces from this record's own state keys, actions by scanning authored Cell behavior) when constructing the executable vocabulary manifest.
+      - Manifest capabilities are populated from the capability names actually referenced by materialized Cell views and decorations, not authored on this record.
   - name: TierDefinition
     signature: >-
       interface TierDefinition { id: string; kind: string; schema?: string;
@@ -252,16 +243,10 @@ artifact_contracts:
       - A bound $ref uses the same from-or-expression grammar as Cell view bindings.
       - Lowering shapes a bound reference into the reserved hostedBlueprint declaration consumed by the runtime host.
       - Runtime mounting fails closed if a binding reaches the host without resolving to a string reference.
-  - name: RelationshipDefinition
-    signature: >-
-      interface RelationshipDefinition { kind: string; participants: readonly string[];
-      configuration?: Json; metadata?: Record<string, Json> }
-    guarantees:
-      - Every participant references a Cell in the same Blueprint.
-      - Relationship-specific configuration remains opaque to Blueprint core.
   - name: PresentationDefinition
     signature: >-
-      interface PresentationDefinition { slots: readonly PresentationSlot[]; root: string }
+      interface PresentationDefinition { slots: readonly PresentationSlot[]; root: string;
+      allowedCapabilities?: readonly string[] }
       type PresentationSlot = string | { id: string; region?: string }
     purpose: >-
       A closed, flat set of named slots plus a root. Presentation has no knowledge of Cells and no
@@ -279,6 +264,9 @@ artifact_contracts:
       - Slot names express caller-authored semantic placement intent and are not component capability
         insertion points; a slot itself carries no capability or props — visual styling for a region is
         always a rendering host/theme concern, never Blueprint-authored data.
+      - allowedCapabilities is optional; when absent, any capability name is legal. When present, it is a
+        real, validated closed set -- every capability referenced by this Blueprint's Cell views and view
+        decorations must appear in it, or Blueprint validation fails.
     consumed_by:
       - When present, the reserved top-level `presentation` entry is the layout the current compiler projects.
       - composeCellProgram requires a valid root and walks the slot/Cell attachment graph into the Kernel
@@ -496,40 +484,32 @@ exploration_api:
         - Computes transitive unlocks and currently available choices from one definition and state snapshot.
         - Rejects unknown completed participants, choices, options, and unavailable selections.
         - Does not select options, mutate a Blueprint, or retain analysis state between calls.
-  relationship_boundary: >-
-    ExplorationDefinition may be carried by a relationship-specific configuration, but Blueprint
-    core does not automatically interpret arbitrary relationship configuration as exploration.
+  boundary: >-
+    ExplorationDefinition is supplied directly by the caller; Blueprint core does not carry it as a
+    field on any Blueprint document or automatically interpret arbitrary Blueprint data as exploration.
   mutation_boundary: >-
     Exploration results may inform a host or future Blueprint mutation authority. They never
     authorize, apply, lower, or schedule structural mutations themselves.
 
 resolution_api:
   types:
-    - ResourceResolver
     - ResolvedBlueprint
     - ResolvedBlueprintStage
   functions:
     - name: loadBlueprint
       signature: >-
-        loadBlueprint(value: unknown,
-        resolveResource?: ResourceResolver): ResolvedBlueprint
+        loadBlueprint(value: unknown): ResolvedBlueprint
       behavior:
         - Validates the artifact.
-        - Resolves its ordered recipe stages, resources, and services.
+        - Resolves its ordered recipe stages and services.
     - name: resolveBlueprintExecution
       signature: >-
-        resolveBlueprintExecution(artifact: BlueprintArtifact,
-        resolveResource?: ResourceResolver): ResolvedBlueprint
+        resolveBlueprintExecution(artifact: BlueprintArtifact): ResolvedBlueprint
       behavior:
         - Builds tier and recipe lookup maps.
         - Requires exactly one terminal tier when recipes is empty.
         - Requires recipes to form one connected, non-branching chain when recipes are present.
-        - Resolves inline and referenced resources and clones service declarations.
-    - name: resolveResources
-      signature: >-
-        resolveResources(artifact: BlueprintArtifact,
-        resolveResource?: ResourceResolver): Record<string, Json>
-      behavior: Returns inline resources and delegates each $ref to the caller-supplied resolver.
+        - Clones service declarations.
 
 lowering_cell_api:
   types:
@@ -621,7 +601,10 @@ validation:
       known slot id.
     - A Cell may attach its `region` to more than one slot; the presentation model imposes no
       duplicate-placement restriction.
-    - Relationship participants reference known Cells.
+    - Every Cell source's service/operation resolves to a declared entry in top-level services; an
+      unresolvable reference is rejected.
+    - When `presentation.allowedCapabilities` is present, every capability referenced by a Cell view or
+      view decoration must appear in it.
 
 execution_boundary:
   blueprint_input: BlueprintArtifact JSON accepted by this package.
@@ -655,7 +638,6 @@ public_exports:
     - BlueprintArtifact
     - BlueprintDefinition
     - BlueprintRuntimeDefinition
-    - BlueprintResource
     - BlueprintReferenceResolver
     - BlueprintValidationError
     - createBlueprint
@@ -721,19 +703,16 @@ public_exports:
     - inspectExploration
     - analyzeExploration
   resolution:
-    - ResourceResolver
     - ResolvedBlueprint
     - ResolvedBlueprintStage
     - loadBlueprint
     - resolveBlueprintExecution
-    - resolveResources
   language:
     - BlueprintStructureMode
     - BlueprintStructurePolicy
     - BlueprintStructureOperation
     - TierDefinition
     - LoweringRecipeDefinition
-    - RelationshipDefinition
     - PresentationDefinition
     - PresentationSlot
   lowering:

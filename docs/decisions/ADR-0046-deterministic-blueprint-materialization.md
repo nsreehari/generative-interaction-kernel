@@ -141,3 +141,33 @@ rendered instance of that Cell's projection, all reading and writing through the
 prior "a Cell may appear at most once" restriction no longer holds. The terminal program still
 contains only the resulting ordered tree; slot names remain caller-authored placement intent, never a
 component prop or renderer-specific insertion point.
+
+## Amendment (2026-08-22): `runtime` sheds derivable/dead fields; `presentation.allowedCapabilities` replaces `runtime.capabilities`
+
+`BlueprintRuntimeDefinition` no longer carries `version`, `expression`, `namespaces`, `contexts`,
+`actions`, or `capabilities` as authored fields — only `externals` and `state` remain. Evidence for
+each removal:
+
+- `version`/`expression`/`contexts` had zero consumers anywhere, including `describeCatalog` (the one
+  real agent-facing consumer of the materialized manifest). `expression` was always `"jsonata"` in
+  every real sample and never branched on — the Kernel hardcodes `SyncJsonataExpressionProvider`
+  regardless of its value.
+- `namespaces` and `actions` are now derived by the host during materialization rather than
+  hand-authored: `namespaces` = `Object.keys(runtime.state)` (verified to hold exactly, with zero
+  exceptions, across every real sample and every `assign` target); `actions` = the distinct
+  `behavior.on` `do` verbs actually used, scanned rather than maintained by hand. Nothing ever enforced
+  an authored list against either, so authoring one was pure duplication with drift risk and no payoff.
+- `capabilities` is replaced by `presentation.allowedCapabilities: string[]` (optional; absent means
+  open, present makes it a real, validated closed set — the first place "declared once, Cells cannot
+  exceed it" is actually enforced for capabilities). The removed field's `propsSchema`/`dataProp`/
+  `emits`/`slots` were never consulted by the real renderer (`adapters/react`'s `render.tsx` resolves a
+  capability through the platform's own component registry, never through the manifest) and were never
+  checked against what a view actually used — the compiler even auto-registered an unknown decorator
+  capability rather than rejecting it. `validateBlueprintArtifact` now enforces
+  `allowedCapabilities` directly: every capability referenced by a Cell view or view decoration must
+  appear in it, when it is declared.
+
+`$M(A,C)$'s constructed vocabulary manifest is unaffected in shape — it still carries `namespaces`,
+`actions`, and `capabilities` (`ProjectedVocabularyManifest` itself, a kernel-level wire type, is
+untouched) — only their *source* changes, from Blueprint-authored data to host-derived data computed
+during materialization.
