@@ -67,16 +67,24 @@
         "when": { "type": "string", "minLength": 1 },
         "extends": { "type": "string", "minLength": 1 },
         "views": {
+          "description": "Per Cell, upserts one or more named potential views by name. A present entry replaces or introduces that one named view; every other view already declared on that Cell is left untouched.",
           "type": "object",
-          "additionalProperties": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/view" }
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "$ref": "https://genui.dev/schemas/cell.schema.json#/definitions/view" }
+          }
         },
         "decorators": {
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/definitions/representationDecorator" }
         },
-        "presentation": { "$ref": "#/definitions/presentationProjection" },
-        "presentationAppend": { "$ref": "#/definitions/presentationComposition" }
+        "presentation": { "$ref": "#/definitions/presentationDefinition" },
+        "presentationAppend": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/presentationSlot" }
+        }
       }
     },
     "representationDecorator": {
@@ -116,39 +124,32 @@
         "behavior": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/behavior" }
       }
     },
-    "presentationProjection": {
+    "presentationDefinition": {
       "type": "object",
-      "required": ["roots"],
+      "required": ["slots", "root"],
       "additionalProperties": false,
       "properties": {
-        "roots": {
+        "slots": {
           "type": "array",
           "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 }
+          "items": { "$ref": "#/definitions/presentationSlot" }
         },
-        "composition": { "$ref": "#/definitions/presentationComposition" }
+        "root": { "type": "string", "minLength": 1 }
       }
     },
-    "presentationComposition": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "required": ["slots"],
-        "additionalProperties": false,
-        "properties": {
-          "slots": {
-            "type": "object",
-            "minProperties": 1,
-            "propertyNames": { "type": "string", "minLength": 1 },
-            "additionalProperties": {
-              "type": "array",
-              "items": { "type": "string", "minLength": 1 },
-              "uniqueItems": true
-            }
+    "presentationSlot": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["id"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "region": { "type": "string", "minLength": 1 }
           }
         }
-      }
+      ]
     },
     "blueprintPatchOperation": {
       "oneOf": [
@@ -182,40 +183,11 @@
         },
         {
           "type": "object",
-          "required": ["op", "relationshipId", "relationship"],
+          "required": ["op", "presentation"],
           "additionalProperties": false,
           "properties": {
-            "op": { "const": "setRelationship" },
-            "relationshipId": { "type": "string", "minLength": 1 },
-            "relationship": { "type": "object" }
-          }
-        },
-        {
-          "type": "object",
-          "required": ["op", "relationshipId"],
-          "additionalProperties": false,
-          "properties": {
-            "op": { "const": "removeRelationship" },
-            "relationshipId": { "type": "string", "minLength": 1 }
-          }
-        },
-        {
-          "type": "object",
-          "required": ["op", "projectionId", "projection"],
-          "additionalProperties": false,
-          "properties": {
-            "op": { "const": "setProjection" },
-            "projectionId": { "type": "string", "minLength": 1 },
-            "projection": { "type": "object" }
-          }
-        },
-        {
-          "type": "object",
-          "required": ["op", "projectionId"],
-          "additionalProperties": false,
-          "properties": {
-            "op": { "const": "removeProjection" },
-            "projectionId": { "type": "string", "minLength": 1 }
+            "op": { "const": "setPresentation" },
+            "presentation": { "$ref": "#/definitions/presentationDefinition" }
           }
         }
       ]

@@ -62,7 +62,7 @@ export interface EvaluatorCellDefinition {
   id: string;
   blueprint?: unknown;
   behavior?: unknown;
-  view?: EvaluatorCellView;
+  potentialViews?: Readonly<Record<string, EvaluatorCellView>>;
   inputs?: readonly EvaluatorCellInput[];
   systemInputs?: readonly SystemInputToken[];
   sources?: readonly EvaluatorCellSource[];
@@ -254,13 +254,15 @@ export function validateCell(value: unknown): CellValidationResult {
       }
     }
   };
-  if (cell.view) {
-    validateViewExpressions(cell.view, "view");
-    for (const [index, decoration] of (cell.view.before ?? []).entries()) {
-      validateViewExpressions(decoration, `view.before.${index}`);
-    }
-    for (const [index, decoration] of (cell.view.after ?? []).entries()) {
-      validateViewExpressions(decoration, `view.after.${index}`);
+  if (cell.potentialViews) {
+    for (const [viewName, view] of Object.entries(cell.potentialViews)) {
+      validateViewExpressions(view, `potentialViews.${viewName}`);
+      for (const [index, decoration] of (view.before ?? []).entries()) {
+        validateViewExpressions(decoration, `potentialViews.${viewName}.before.${index}`);
+      }
+      for (const [index, decoration] of (view.after ?? []).entries()) {
+        validateViewExpressions(decoration, `potentialViews.${viewName}.after.${index}`);
+      }
     }
   }
 
@@ -276,7 +278,7 @@ export function validateCell(value: unknown): CellValidationResult {
       }
     }
     if (output.from === undefined) continue;
-    const hasRuntimeOutputOwner = cell.blueprint || cell.behavior || cell.view || (cell.sources?.length ?? 0) > 0;
+    const hasRuntimeOutputOwner = cell.blueprint || cell.behavior || (cell.potentialViews && Object.keys(cell.potentialViews).length > 0) || (cell.sources?.length ?? 0) > 0;
     const hasInputOwner = (cell.inputs ?? []).some((input) => {
       const path = `inputs.${input.as ?? input.token}`;
       return output.from === path || output.from.startsWith(`${path}.`);

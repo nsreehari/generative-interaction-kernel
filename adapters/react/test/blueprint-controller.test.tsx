@@ -30,9 +30,12 @@ test("BlueprintController renders and transitions Blueprint-owned in-memory stat
     cells: {
       root: {
         id: "root",
-        view: {
-          capability: "screen",
-          bindings: { value: { from: "counter.value" } },
+        potentialViews: {
+          primary: {
+            capability: "screen",
+            bindings: { value: { from: "counter.value" } },
+            region: "root",
+          },
         },
         events: { increment: { payloadSchema: { type: "object" } } },
         behavior: {
@@ -42,12 +45,12 @@ test("BlueprintController renders and transitions Blueprint-owned in-memory stat
         },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   const controller = new BlueprintController(blueprint);
 
-  assert.equal((await controller.start()).props.value, 1);
-  assert.equal((await controller.emit("root", "increment")).props.value, 1);
+  assert.equal((await controller.start()).children[0]?.props.value, 1);
+  assert.equal((await controller.emit("root--primary--in-root", "increment")).children[0]?.props.value, 1);
   await eventually(() => assert.deepEqual(controller.getState(), { counter: { value: 2 } }));
   controller.stop();
 });
@@ -63,9 +66,12 @@ test("BlueprintController reuses materialized execution with immutable externalC
     cells: {
       root: {
         id: "root",
-        view: {
-          capability: "screen",
-          bindings: { policyValue: { from: "externalContext.policy.nextValue" } },
+        potentialViews: {
+          primary: {
+            capability: "screen",
+            bindings: { policyValue: { from: "externalContext.policy.nextValue" } },
+            region: "root",
+          },
         },
         events: { increment: { payloadSchema: { type: "object" } } },
         behavior: {
@@ -75,14 +81,14 @@ test("BlueprintController reuses materialized execution with immutable externalC
         },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   const externalContext = { policy: { nextValue: 2 } };
   const controller = new BlueprintController(blueprint, { externalContext });
   externalContext.policy.nextValue = 99;
 
-  assert.equal((await controller.start()).props.policyValue, 2);
-  await controller.emit("root", "increment");
+  assert.equal((await controller.start()).children[0]?.props.policyValue, 2);
+  await controller.emit("root--primary--in-root", "increment");
   await eventually(() => assert.deepEqual(controller.getState(), { counter: { value: 2 } }));
   controller.stop();
 });
@@ -105,20 +111,21 @@ test("BlueprintController seeds state on the materialized terminal Blueprint", a
         cellId: "root",
         cell: {
           id: "root",
-          kind: "runtime-cell",
-          view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+          potentialViews: {
+            primary: { capability: "screen", bindings: { value: { from: "counter.value" } }, region: "root" },
+          },
         },
       }],
     }],
     runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
-    cells: { root: { id: "root", kind: "intent-cell" } },
-    projections: { presentation: { roots: ["root"] } },
+    cells: { root: { id: "root" } },
+    presentation: { slots: ["root"], root: "root" },
   });
   const controller = new BlueprintController(blueprint, {
     context: { initialSeed: { counter: { value: 7 } } },
   });
 
-  assert.equal((await controller.start()).props.value, 7);
+  assert.equal((await controller.start()).children[0]?.props.value, 7);
   assert.deepEqual(controller.getState(), { counter: { value: 7 } });
   controller.stop();
 });
@@ -134,12 +141,14 @@ test("BlueprintController executes ordinary native effects without applying retu
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        potentialViews: {
+          primary: { capability: "screen", bindings: { value: { from: "counter.value" } }, region: "root" },
+        },
         events: { save: { payloadSchema: { type: "object" } } },
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   let releaseEffect!: () => void;
   const blockedEffect = new Promise<void>((resolve) => { releaseEffect = resolve; });
@@ -158,7 +167,7 @@ test("BlueprintController executes ordinary native effects without applying retu
   });
 
   await controller.start();
-  await controller.emit("root", "save");
+  await controller.emit("root--primary--in-root", "save");
   assert.deepEqual(controller.getState(), { counter: { value: 1 } });
 
   await controller.settle();
@@ -181,17 +190,19 @@ test("BlueprintController does not retain effects when no native executor is con
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        potentialViews: {
+          primary: { capability: "screen", bindings: { value: { from: "counter.value" } }, region: "root" },
+        },
         events: { save: { payloadSchema: { type: "object" } } },
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   const controller = new BlueprintController(blueprint);
 
   await controller.start();
-  await controller.emit("root", "save");
+  await controller.emit("root--primary--in-root", "save");
   assert.deepEqual(controller.getState(), { counter: { value: 1 } });
   controller.stop();
 });
@@ -207,12 +218,14 @@ test("BlueprintController retries a failed ordinary effect without applying retu
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        potentialViews: {
+          primary: { capability: "screen", bindings: { value: { from: "counter.value" } }, region: "root" },
+        },
         events: { save: { payloadSchema: { type: "object" } } },
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   let attempts = 0;
   let effectCompleted!: () => void;
@@ -231,7 +244,7 @@ test("BlueprintController retries a failed ordinary effect without applying retu
   });
 
   await controller.start();
-  await controller.emit("root", "save");
+  await controller.emit("root--primary--in-root", "save");
   assert.deepEqual(controller.getState(), { counter: { value: 1 } });
 
   await completed;

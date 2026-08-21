@@ -55,6 +55,13 @@ function blueprint(id = "test"): BlueprintArtifact {
   });
 }
 
+function singleSlotPresentation(root: string) {
+  return {
+    slots: [root],
+    root,
+  } as const;
+}
+
 function runState(cells: Record<string, string[]>) {
   return {
     blueprintRunState: {
@@ -79,9 +86,9 @@ describe("@gik/blueprint", () => {
       version: "1",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
+      services: { market: { version: "1", operations: ["quote"] } },
       runtime: {
         ...runtime,
-        externals: { services: { market: { version: "1", operations: ["quote"] } } },
       },
       cells: {
         quote: {
@@ -173,9 +180,9 @@ describe("@gik/blueprint", () => {
       version: "1",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
+      services: { market: { version: "1", operations: ["quote"] } },
       runtime: {
         ...runtime,
-        externals: { services: { market: { version: "1", operations: ["quote"] } } },
       },
       cells: {
         quote: {
@@ -468,14 +475,14 @@ describe("@gik/blueprint", () => {
       cells: {
         child: {
           id: "child",
-          view: { capability: "host:hosted-blueprint" },
+          potentialViews: { primary: { capability: "host:hosted-blueprint" } },
           blueprint: { $ref: "blueprint:child" },
         },
       },
     });
 
     expect(() => assembleBlueprint(parent, () => child)).toThrow("missing required child input(s): report");
-    parent.payload.cells!.child.view!.bindings = { report: { from: "source.report" } };
+    parent.payload.cells!.child.potentialViews!.primary.bindings = { report: { from: "source.report" } };
     expect(assembleBlueprint(parent, () => child).payload.cells?.child.blueprint).toHaveProperty("inline");
   });
 
@@ -485,38 +492,38 @@ describe("@gik/blueprint", () => {
       cells: {
         child: {
           id: "child",
-          view: { props: { mode: "compact" } },
+          potentialViews: { primary: { props: { mode: "compact" }, region: "child" } },
           blueprint: { $ref: "blueprint:analysis@1.0.0" },
         },
       },
-      projections: { presentation: { roots: ["child"] } },
+      presentation: singleSlotPresentation("child"),
     });
 
     const program = composeCellProgram(
-      { cells: parent.payload.cells ?? {}, projections: parent.payload.projections },
+      { cells: parent.payload.cells ?? {}, presentation: parent.payload.presentation },
       compileCellTopology("parent", parent.payload.cells ?? {}),
     );
     expect(program.root).toBeDefined();
     if (!program.root) throw new Error("Expected a projected program");
-    expect(program.root.props).toEqual({
+    expect(program.root.edges?.children?.[0]?.props).toEqual({
       mode: "compact",
       hostedBlueprint: { $ref: "blueprint:analysis@1.0.0" },
     });
-    expect(program.root.capability).toBe(BLUEPRINT_CAPABILITY);
+    expect(program.root.edges?.children?.[0]?.capability).toBe(BLUEPRINT_CAPABILITY);
   });
 
   it("preserves authored order when lowering multiple presentation roots", () => {
     const artifact = createBlueprint({
       ...blueprint("multi-root").payload,
       cells: {
-        analysis: { id: "analysis", view: { capability: "sample:analysis" } },
-        drawer: { id: "drawer", view: { capability: "primitive:pane-with-trigger", props: { variant: "drawer", title: "Details" } } },
+        analysis: { id: "analysis", potentialViews: { primary: { capability: "sample:analysis", region: "root" } } },
+        drawer: { id: "drawer", potentialViews: { primary: { capability: "primitive:pane-with-trigger", props: { variant: "drawer", title: "Details" }, region: "root" } } },
       },
-      projections: { presentation: { roots: ["analysis", "drawer"] } },
+      presentation: singleSlotPresentation("root"),
     });
 
     const program = composeCellProgram(
-      { cells: artifact.payload.cells ?? {}, projections: artifact.payload.projections },
+      { cells: artifact.payload.cells ?? {}, presentation: artifact.payload.presentation },
       compileCellTopology("multi-root", artifact.payload.cells ?? {}),
     );
 
@@ -524,8 +531,8 @@ describe("@gik/blueprint", () => {
       capability: PRESENTATION_FRAGMENT_CAPABILITY,
       edges: {
         children: [
-          { id: "analysis", capability: "sample:analysis" },
-          { id: "drawer", capability: "primitive:pane-with-trigger", props: { variant: "drawer", title: "Details" } },
+          { id: "analysis--primary--in-root", capability: "sample:analysis" },
+          { id: "drawer--primary--in-root", capability: "primitive:pane-with-trigger", props: { variant: "drawer", title: "Details" } },
         ],
       },
     });
@@ -535,35 +542,40 @@ describe("@gik/blueprint", () => {
     const artifact = createBlueprint({
       ...blueprint("composed").payload,
       cells: {
-        root: { id: "root", view: { capability: "primitive:container" } },
-        heading: { id: "heading", view: { capability: "fluent:text" } },
-        primary: { id: "primary", view: { capability: "primitive:note" } },
-        secondary: { id: "secondary", view: { capability: "primitive:note" } },
+        root: { id: "root", potentialViews: { primary: { capability: "primitive:container" } } },
+        heading: { id: "heading", potentialViews: { primary: { capability: "fluent:text", region: "header" } } },
+        primary: { id: "primary", potentialViews: { primary: { capability: "primitive:note", region: "content" } } },
+        secondary: { id: "secondary", potentialViews: { primary: { capability: "primitive:note", region: "content" } } },
       },
-      projections: {
-        presentation: {
-          roots: ["root"],
-          composition: {
-            root: {
-              slots: {
-                header: ["heading"],
-                content: ["primary", "secondary"],
-              },
-            },
-          },
-        },
+      presentation: {
+        slots: [
+          "root",
+          { id: "header", region: "root" },
+          { id: "content", region: "root" },
+        ],
+        root: "root",
       },
     });
 
     const program = composeCellProgram(
-      { cells: artifact.payload.cells ?? {}, projections: artifact.payload.projections },
+      { cells: artifact.payload.cells ?? {}, presentation: artifact.payload.presentation },
       compileCellTopology("composed", artifact.payload.cells ?? {}),
     );
 
     expect(program.root?.edges?.children).toEqual([
-      expect.objectContaining({ id: "heading" }),
-      expect.objectContaining({ id: "primary" }),
-      expect.objectContaining({ id: "secondary" }),
+      expect.objectContaining({
+        id: "header",
+        edges: { children: [expect.objectContaining({ id: "heading--primary--in-header" })] },
+      }),
+      expect.objectContaining({
+        id: "content",
+        edges: {
+          children: [
+            expect.objectContaining({ id: "primary--primary--in-content" }),
+            expect.objectContaining({ id: "secondary--primary--in-content" }),
+          ],
+        },
+      }),
     ]);
     expect(program.root?.props).toBeUndefined();
   });
@@ -578,24 +590,24 @@ describe("@gik/blueprint", () => {
         child: {
           id: "child",
           inputs: [{ token: "analysis-blueprint", as: "analysisBlueprint", required: true }],
-          view: { bindings: { report: { from: "runtime.report" } } },
+          potentialViews: { primary: { bindings: { report: { from: "runtime.report" } }, region: "child" } },
           blueprint: { $ref: binding },
         },
       },
-      projections: { presentation: { roots: ["child"] } },
+      presentation: singleSlotPresentation("child"),
     });
 
     const assembled = assembleBlueprint(parent);
     expect(assembled.payload.cells?.child.blueprint).toEqual({ $ref: binding });
     const program = composeCellProgram(
-      { cells: assembled.payload.cells ?? {}, projections: assembled.payload.projections },
+      { cells: assembled.payload.cells ?? {}, presentation: assembled.payload.presentation },
       compileCellTopology("parent", assembled.payload.cells ?? {}),
     );
 
-    expect(program.root?.props).toBeUndefined();
-    expect(program.root?.edges?.readExpr?.hostedBlueprint).toBe(expectedExpression);
-    expect(program.root?.edges?.read?.report).toBe("runtime.report");
-    expect(program.root?.capability).toBe(BLUEPRINT_CAPABILITY);
+    expect(program.root?.edges?.children?.[0]?.props).toBeUndefined();
+    expect(program.root?.edges?.children?.[0]?.edges?.readExpr?.hostedBlueprint).toBe(expectedExpression);
+    expect(program.root?.edges?.children?.[0]?.edges?.read?.report).toBe("runtime.report");
+    expect(program.root?.edges?.children?.[0]?.capability).toBe(BLUEPRINT_CAPABILITY);
   });
 
   it("binds an inline artifact through the public gik:blueprint capability", () => {
@@ -604,22 +616,25 @@ describe("@gik/blueprint", () => {
       cells: {
         report: {
           id: "report",
-          view: {
-            capability: "gik:blueprint",
-            bindings: { blueprint: { from: "runtime.reportBlueprint" } },
+          potentialViews: {
+            primary: {
+              capability: "gik:blueprint",
+              bindings: { blueprint: { from: "runtime.reportBlueprint" } },
+              region: "report",
+            },
           },
         },
       },
-      projections: { presentation: { roots: ["report"] } },
+      presentation: singleSlotPresentation("report"),
     });
 
     const program = composeCellProgram(
-      { cells: parent.payload.cells ?? {}, projections: parent.payload.projections },
+      { cells: parent.payload.cells ?? {}, presentation: parent.payload.presentation },
       compileCellTopology("parent", parent.payload.cells ?? {}),
     );
 
-    expect(program.root?.capability).toBe("gik:blueprint");
-    expect(program.root?.edges?.read?.blueprint).toBe("runtime.reportBlueprint");
+    expect(program.root?.edges?.children?.[0]?.capability).toBe("gik:blueprint");
+    expect(program.root?.edges?.children?.[0]?.edges?.read?.blueprint).toBe("runtime.reportBlueprint");
   });
 
   it("resolves a direct inline artifact without consulting the host registry", async () => {
@@ -665,17 +680,20 @@ describe("@gik/blueprint", () => {
               }],
             },
           },
-          view: {
-            capability: "primitive:container",
-            visibility: "systemInputs.numSourcesRunning != 0",
+          potentialViews: {
+            primary: {
+              capability: "primitive:container",
+              visibility: "systemInputs.numSourcesRunning != 0",
+              region: "quotes",
+            },
           },
         },
       },
-      projections: { presentation: { roots: ["quotes"] } },
+      presentation: singleSlotPresentation("quotes"),
     });
 
     const program = composeCellProgram(
-      { cells: source.payload.cells ?? {}, projections: source.payload.projections },
+      { cells: source.payload.cells ?? {}, presentation: source.payload.presentation },
       compileCellTopology(source.payload.id, source.payload.cells ?? {}),
     );
 
@@ -687,7 +705,7 @@ describe("@gik/blueprint", () => {
         config: { sources: [{ id: "quotes.source", when: "inputs.marketMode = 'live'" }] },
       },
     });
-    expect(program.root?.edges?.on?.analyze).toEqual([{
+    expect(program.root?.edges?.children?.[0]?.edges?.on?.analyze).toEqual([{
       do: "invoke",
       control: {
         tool: "refreshPrices",
@@ -697,7 +715,7 @@ describe("@gik/blueprint", () => {
       },
       guard: "($count(($lookup(blueprintRunState.cells, \"quotes\").sources)[lastRequestedToken != null and lastRequestedToken != lastCompletedToken])) = 0",
     }]);
-    expect(program.root?.edges?.gate).toBe(
+    expect(program.root?.edges?.children?.[0]?.edges?.gate).toBe(
       "($count(($lookup(blueprintRunState.cells, \"quotes\").sources)[lastRequestedToken != null and lastRequestedToken != lastCompletedToken])) != 0",
     );
   });
@@ -746,6 +764,7 @@ describe("@gik/blueprint", () => {
         id: "analyzer",
         blueprint: { $ref: "blueprint:incident-analyzer@1.0.0" },
         outputs: [{ token: "analysis_report", from: "analysis_report" }],
+        potentialViews: { primary: { region: "analyzer" } },
       },
       cache: {
         id: "cache",
@@ -755,7 +774,7 @@ describe("@gik/blueprint", () => {
 
     const program = composeCellProgram({
       cells,
-      projections: { presentation: { roots: ["analyzer"] } },
+      presentation: singleSlotPresentation("analyzer"),
     }, compileCellTopology("shell", cells));
 
     expect(program.graph?.nodes).toEqual([
@@ -1011,7 +1030,7 @@ describe("@gik/blueprint", () => {
       cells: {
         root: {
           id: "root",
-          view: { capability: "screen" },
+          potentialViews: { primary: { capability: "screen", region: "root" } },
           events: { increment: { payloadSchema: { type: "object" } } },
           behavior: {
             on: {
@@ -1023,7 +1042,7 @@ describe("@gik/blueprint", () => {
           },
         },
       },
-      projections: { presentation: { roots: ["root"] } },
+      presentation: singleSlotPresentation("root"),
     });
     const shared = new InMemoryStateModel(["shared"]);
     shared.apply([{ op: "set", path: "shared.value", value: "initial" }]);
@@ -1031,14 +1050,14 @@ describe("@gik/blueprint", () => {
     const result = await runTransition({
       blueprint: artifact,
       state: { counter: { value: 1 } },
-      events: [{ node: "root", name: "increment" }],
+      events: [{ node: "root--primary--in-root", name: "increment" }],
       contexts: { shared },
     });
 
     expect(result.state).toEqual({ counter: { value: 2 }, ...runState({ root: [] }) });
     expect(result.completedWithinRun).toEqual([
-      { kind: "assign", node: "root", target: "counter.value", value: 2 },
-      { kind: "assign", node: "root", target: "shared.value", value: "updated" },
+      { kind: "assign", node: "root--primary--in-root", target: "counter.value", value: 2 },
+      { kind: "assign", node: "root--primary--in-root", target: "shared.value", value: "updated" },
     ]);
     expect(shared.snapshot()).toEqual({ shared: { value: "updated" } });
   });
@@ -1162,7 +1181,7 @@ describe("@gik/blueprint", () => {
 
     artifact.payload.cells!.source.blueprint = { inline: blueprint("child") };
     expect(() => materializeBlueprint({ blueprint: artifact })).toThrow(
-      "Blueprint 'headless-source' without a presentation projection cannot host child Blueprint Cell 'source'",
+      "Blueprint 'headless-source' without a presentation cannot host child Blueprint Cell 'source'",
     );
   });
 
@@ -1177,7 +1196,7 @@ describe("@gik/blueprint", () => {
       cells: {
         root: {
           id: "root",
-          view: { capability: "screen" },
+          potentialViews: { primary: { capability: "screen", region: "root" } },
           events: { increment: { payloadSchema: { type: "object" } } },
           behavior: {
             on: {
@@ -1186,7 +1205,7 @@ describe("@gik/blueprint", () => {
           },
         },
       },
-      projections: { presentation: { roots: ["root"] } },
+      presentation: singleSlotPresentation("root"),
     });
 
     const externalContext = { policy: { nextValue: 2 } };
@@ -1198,7 +1217,7 @@ describe("@gik/blueprint", () => {
     const result = await runMaterializedTransition({
       materializedBlueprint: first,
       state: first.payload.initialState,
-      events: [{ node: "root", name: "increment" }],
+      events: [{ node: "root--primary--in-root", name: "increment" }],
     });
     expect(result.state).toEqual({ counter: { value: 2 }, ...runState({ root: [] }) });
   });
@@ -1229,9 +1248,9 @@ describe("@gik/blueprint", () => {
       recipes: [],
       runtime: { namespaces: [], capabilities: {}, state: {} },
       cells: {
-        root: { id: "root", view: { capability: "screen" } },
+        root: { id: "root", potentialViews: { primary: { capability: "screen", region: "root" } } },
       },
-      projections: { presentation: { roots: ["root"] } },
+      presentation: singleSlotPresentation("root"),
     });
 
     expect(materializeBlueprint({ blueprint: artifact }).payload.externalContext).toEqual({
@@ -1268,7 +1287,7 @@ describe("@gik/blueprint", () => {
       cells: {
         root: {
           id: "root",
-          view: { capability: "screen" },
+          potentialViews: { primary: { capability: "screen", region: "root" } },
           events: { mutate: { payloadSchema: { type: "object" } } },
           behavior: {
             on: {
@@ -1277,7 +1296,7 @@ describe("@gik/blueprint", () => {
           },
         },
       },
-      projections: { presentation: { roots: ["root"] } },
+      presentation: singleSlotPresentation("root"),
     });
     const materializedBlueprint = materializeBlueprint({
       blueprint: artifact,
@@ -1287,7 +1306,7 @@ describe("@gik/blueprint", () => {
     await expect(runMaterializedTransition({
       materializedBlueprint,
       state: materializedBlueprint.payload.initialState,
-      events: [{ node: "root", name: "mutate" }],
+      events: [{ node: "root--primary--in-root", name: "mutate" }],
     })).rejects.toThrow("externalContext is read-only");
     expect(materializedBlueprint.payload.initialState).toEqual({ local: {}, ...runState({ root: [] }) });
   });
@@ -1301,8 +1320,8 @@ describe("@gik/blueprint", () => {
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
       runtime: { capabilities: {}, state: {} },
-      cells: { root: { id: "root", view: { capability: "screen" } } },
-      projections: { presentation: { roots: ["root"] } },
+      cells: { root: { id: "root", potentialViews: { primary: { capability: "screen", region: "root" } } } },
+      presentation: singleSlotPresentation("root"),
     });
     const applied = applyBlueprintPatches({
       blueprint: artifact,
@@ -1329,7 +1348,7 @@ describe("@gik/blueprint", () => {
       cells: {
         root: {
           id: "root",
-          view: { capability: "screen" },
+          potentialViews: { primary: { capability: "screen", region: "root" } },
           events: { increment: { payloadSchema: { type: "object" } } },
           behavior: {
             on: {
@@ -1338,7 +1357,7 @@ describe("@gik/blueprint", () => {
           },
         },
       },
-      projections: { presentation: { roots: ["root"] } },
+      presentation: singleSlotPresentation("root"),
     });
     const adapter = createBlueprintDurableTransitionAdapter({
       blueprint: artifact,
@@ -1348,7 +1367,7 @@ describe("@gik/blueprint", () => {
     const result = await adapter.transition({
       spec,
       state: adapter.initialState(),
-      events: [{ node: "root", name: "increment" }],
+      events: [{ node: "root--primary--in-root", name: "increment" }],
     });
 
     expect(result.state).toEqual({ counter: { value: 2 }, ...runState({ root: [] }) });

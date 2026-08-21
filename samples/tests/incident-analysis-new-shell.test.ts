@@ -82,9 +82,11 @@ describe("incident analysis shell", () => {
           save: [{ do: "assign", target: "incident.selection", args: { from: "$event.values" } }],
         },
       },
-      view: {
-        capability: "primitive:form",
-        before: [expect.objectContaining({ capability: "fluent:spinner" })],
+      potentialViews: {
+        primary: {
+          capability: "primitive:form",
+          before: [expect.objectContaining({ capability: "fluent:spinner" })],
+        },
       },
       events: { save: { payloadSchema: { type: "object" } } },
     });
@@ -127,17 +129,19 @@ describe("incident analysis shell", () => {
       }],
       outputs: [{ token: "analysis-report-blueprint" }],
       behavior: { on: { press: [expect.objectContaining({ do: "assign", target: "incident.analysisRequest" })] } },
-      view: {
-        capability: "fluent:button",
-        props: { label: "Analyze / refresh report" },
-        before: [expect.objectContaining({
-          capability: "fluent:spinner",
-          visibility: "systemInputs.numSourcesRunning > 0",
-        })],
+      potentialViews: {
+        primary: {
+          capability: "fluent:button",
+          props: { label: "Analyze / refresh report" },
+          before: [expect.objectContaining({
+            capability: "fluent:spinner",
+            visibility: "systemInputs.numSourcesRunning > 0",
+          })],
+        },
       },
       events: { press: { payloadSchema: { type: "object" } } },
     });
-    expect(payload.cells["report-analysis"].view.visibility).toBeUndefined();
+    expect(payload.cells["report-analysis"].potentialViews?.primary.visibility).toBeUndefined();
   });
 
   it("saves every newly generated report and prefers it over the loaded report", () => {
@@ -152,12 +156,14 @@ describe("incident analysis shell", () => {
         operation: "putSavedReport",
         when: "inputs.analysisReport != null",
       }],
-      view: {
-        capability: "gik:blueprint",
-        visibility: "incident.resolvedSavedReportEnvelope.found and incident.resolvedSavedReportEnvelope.analysisReport != null",
-        bindings: {
-          blueprint: {
-            expression: "incident.resolvedSavedReportEnvelope.analysisReport",
+      potentialViews: {
+        primary: {
+          capability: "gik:blueprint",
+          visibility: "incident.resolvedSavedReportEnvelope.found and incident.resolvedSavedReportEnvelope.analysisReport != null",
+          bindings: {
+            blueprint: {
+              expression: "incident.resolvedSavedReportEnvelope.analysisReport",
+            },
           },
         },
       },

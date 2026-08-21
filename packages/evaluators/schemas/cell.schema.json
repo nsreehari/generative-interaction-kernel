@@ -8,7 +8,6 @@
   "additionalProperties": false,
   "properties": {
     "id": { "type": "string", "minLength": 1 },
-    "kind": { "type": "string", "minLength": 1 },
     "metadata": { "type": "object" },
     "state": {
       "type": "object",
@@ -119,7 +118,11 @@
         }
       }
     },
-    "view": { "$ref": "#/definitions/view" },
+    "potentialViews": {
+      "description": "Zero, one, or many named external manifestations this Cell carries. Each one is dormant unless its own declared region is reachable from the presentation active for the current materialization.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/view" }
+    },
     "blueprint": {
       "description": "A child Blueprint whose live instance is represented by this Cell.",
       "oneOf": [
@@ -191,6 +194,13 @@
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/definitions/viewDecoration" }
+        },
+        "region": {
+          "description": "Which presentation slot(s) this view attaches to. An array renders one independent instance per slot, all through this same Cell.",
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+          ]
         }
       }
     },

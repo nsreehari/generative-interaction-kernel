@@ -18,9 +18,6 @@ import type {
   BlueprintRepresentation,
   BlueprintRepresentationDecorator,
   CellDefinition,
-  PresentationComposition,
-  PresentationCompositionEntry,
-  PresentationProjection,
   RepresentationLoweringRecipeDefinition,
   VocabularyLoweringRecipeDefinition,
 } from "./types";
@@ -53,8 +50,7 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
   cells: {
     "resolve-stage": {
       id: "resolve-stage",
-      kind: "transform",
-      view: { capability: "compiler:resolve-stage" },
+      potentialViews: { primary: { capability: "compiler:resolve-stage", region: "root" } },
       inputs: [{ token: "lowering:source", as: "source" }],
       compute: [{ id: "stage", expression: "inputs.source", assign: "stage", dependencies: ["inputs.source"] }],
       outputs: [{ token: "lowering:stage", from: "computed.stage" }],
@@ -62,7 +58,7 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
     },
     "apply-vocabulary-patch": {
       id: "apply-vocabulary-patch",
-      kind: "transform",
+      potentialViews: { primary: { region: "children" } },
       inputs: [{ token: "lowering:stage", as: "stage" }],
       compute: [{ id: "artifact", expression: "inputs.stage", assign: "artifact", dependencies: ["inputs.stage"] }],
       outputs: [{ token: "lowering:artifact", from: "computed.artifact" }],
@@ -70,24 +66,16 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
     },
     "emit-blueprint": {
       id: "emit-blueprint",
-      kind: "emit-blueprint",
+      potentialViews: { primary: { region: "children" } },
       inputs: [{ token: "lowering:artifact", as: "artifact" }],
       compute: [{ id: "compiled", expression: "inputs.artifact", assign: "compiled", dependencies: ["inputs.artifact"] }],
       outputs: [{ token: "compiled:artifact", from: "computed.compiled" }],
       metadata: { operation: "emit-blueprint", validation: "blueprint" },
     },
   },
-  projections: {
-    presentation: {
-      roots: ["resolve-stage"],
-      composition: {
-        "resolve-stage": {
-          slots: {
-            children: ["apply-vocabulary-patch", "emit-blueprint"],
-          },
-        },
-      },
-    },
+  presentation: {
+    slots: ["root", { id: "children", region: "root" }],
+    root: "root",
   },
 });
 
@@ -274,22 +262,21 @@ function applyRepresentationRecipe(
   }
 
   const artifact = structuredClone(source);
-  let presentation = artifact.payload.projections?.presentation
-    ? structuredClone(artifact.payload.projections.presentation)
+  let presentation = artifact.payload.presentation
+    ? structuredClone(artifact.payload.presentation)
     : undefined;
   for (const representation of chain) {
-    for (const [cellId, view] of Object.entries(representation.views ?? {})) {
+    for (const [cellId, viewsForCell] of Object.entries(representation.views ?? {})) {
       const cell = artifact.payload.cells?.[cellId];
       if (!cell) throw new Error(`Blueprint representation '${representation.id}' references unknown Cell '${cellId}'`);
-      cell.view = structuredClone(view);
+      // Upsert by view name: a present entry replaces or introduces that one named view; every
+      // other view already declared on the Cell is left untouched.
+      cell.potentialViews = { ...(cell.potentialViews ?? {}), ...structuredClone(viewsForCell) };
     }
     if (representation.presentation) presentation = structuredClone(representation.presentation);
     if (representation.presentationAppend) {
       if (!presentation) throw new Error(`Blueprint representation '${representation.id}' cannot append to a missing presentation`);
-      presentation.composition = mergePresentationComposition(
-        presentation.composition,
-        representation.presentationAppend,
-      );
+      presentation = { ...presentation, slots: [...presentation.slots, ...structuredClone(representation.presentationAppend)] };
     }
   }
   for (const representation of chain) {
@@ -298,29 +285,9 @@ function applyRepresentationRecipe(
     }
   }
   if (!presentation) throw new Error(`Blueprint representation '${selected.id}' produced no presentation`);
-  artifact.payload.projections = { ...artifact.payload.projections, presentation };
+  artifact.payload.presentation = presentation;
   applyImplementationProgram(artifact, recipe, externalContext);
   return artifact;
-}
-
-function mergePresentationComposition(
-  current: PresentationProjection["composition"],
-  appended: PresentationComposition,
-): PresentationComposition {
-  const merged = structuredClone(current ?? {}) as Record<string, PresentationCompositionEntry>;
-  for (const [parentId, entry] of Object.entries(appended)) {
-    const currentSlots = merged[parentId]?.slots ?? {};
-    merged[parentId] = {
-      slots: Object.fromEntries([
-        ...Object.entries(currentSlots),
-        ...Object.entries(entry.slots).map(([slot, childIds]) => [
-          slot,
-          [...(currentSlots[slot] ?? []), ...structuredClone(childIds)],
-        ]),
-      ]),
-    };
-  }
-  return merged;
 }
 
 function applyRepresentationDecorator(
@@ -354,18 +321,23 @@ function applyRepresentationDecorator(
     if (!cell) {
       throw new Error(`Blueprint representation '${representationId}' decorator selected unknown Cell '${cellId}'`);
     }
-    if (!cell.view?.capability) {
+    const viewEntries = Object.entries(cell.potentialViews ?? {});
+    if (viewEntries.length === 0) {
       throw new Error(`Blueprint representation '${representationId}' decorator selected Cell '${cellId}' without a view`);
     }
-    cell.view = {
-      ...cell.view,
-      ...(decorator.before
-        ? { before: [...(cell.view.before ?? []), structuredClone(decorator.before)] }
-        : {}),
-      ...(decorator.after
-        ? { after: [...(cell.view.after ?? []), structuredClone(decorator.after)] }
-        : {}),
-    };
+    // A decorator selects a Cell, not one named view; it decorates every potential view the
+    // selected Cell currently carries.
+    for (const [viewName, view] of viewEntries) {
+      cell.potentialViews![viewName] = {
+        ...view,
+        ...(decorator.before
+          ? { before: [...(view.before ?? []), structuredClone(decorator.before)] }
+          : {}),
+        ...(decorator.after
+          ? { after: [...(view.after ?? []), structuredClone(decorator.after)] }
+          : {}),
+      };
+    }
   }
 }
 

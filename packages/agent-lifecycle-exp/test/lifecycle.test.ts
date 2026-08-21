@@ -33,7 +33,7 @@ test("exports package-owned Blueprint authoring guidance", () => {
   assert.match(guidance, /^# Blueprint Authoring Playbook/m);
   assert.match(guidance, /## Blueprint mechanics/);
   assert.match(guidance, /## Authoring loop/);
-  assert.match(guidance, /"composition"/);
+  assert.match(guidance, /"slots"/);
   assert.match(guidance, /\*\*SECTIONS ≠ COMPONENTS\*\*/);
   assert.match(guidance, /\*\*VOCABULARY ≠ CHECKLIST\*\*/);
   assert.match(guidance, /\*\*KISS\*\*/);

@@ -59,10 +59,10 @@ function structureModeBlueprint(
           control: { kind: "data", responseSchema: { type: "object" } },
           data: {},
         }] } } : undefined,
-        view: { capability: `${structureMode}:before` },
+        potentialViews: { primary: { capability: `${structureMode}:before`, region: "root" } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
 }
 
@@ -74,7 +74,8 @@ function createFace(blueprint: BlueprintArtifact, orchestrator?: Orchestrator): 
 function capability(face: ControlFace): string {
   const root = face.getProgram().root;
   if (!root) throw new Error("Structure mode demo requires a presentation root");
-  return root.capability;
+  const rendered = root.edges?.children?.[0] ?? root;
+  return rendered.capability;
 }
 
 export async function runStructureModesDemo(): Promise<StructureModeDemoResult> {
@@ -85,7 +86,7 @@ export async function runStructureModesDemo(): Promise<StructureModeDemoResult> 
     await fixed.reconfigureBlueprint([{
       op: "replaceCell",
       cellId: "root",
-      cell: { id: "root", view: { capability: "fixed:after" } },
+      cell: { id: "root", potentialViews: { primary: { capability: "fixed:after", region: "root" } } },
     }]);
   } catch (error) {
     fixedRejection = error instanceof Error ? error.message : String(error);
@@ -95,12 +96,12 @@ export async function runStructureModesDemo(): Promise<StructureModeDemoResult> 
 
   const reconfigurable = createFace(structureModeBlueprint("reconfigurable"));
   const reconfigurableBefore = capability(reconfigurable);
-  await reconfigurable.emit({ node: "root", name: "adapt" });
+  await reconfigurable.emit({ node: "root--primary--in-root", name: "adapt" });
   const reconfigurableAfterEvent = capability(reconfigurable);
   const reconfiguration = await reconfigurable.reconfigureBlueprint([{
     op: "replaceCell",
     cellId: "root",
-    cell: { id: "root", view: { capability: "reconfigurable:after" } },
+    cell: { id: "root", potentialViews: { primary: { capability: "reconfigurable:after", region: "root" } } },
   }]);
   const reconfigurableAfter = capability(reconfigurable);
   reconfigurable.stop();
@@ -118,7 +119,7 @@ export async function runStructureModesDemo(): Promise<StructureModeDemoResult> 
   });
   const adaptiveBefore = capability(adaptive);
   const checkpoint = adaptive.checkpoint();
-  const adaptivePatch = await adaptive.emit({ node: "root", name: "adapt" });
+  const adaptivePatch = await adaptive.emit({ node: "root--primary--in-root", name: "adapt" });
   const adaptiveAfter = capability(adaptive);
   await adaptive.restore(checkpoint);
   const adaptiveRestored = capability(adaptive);

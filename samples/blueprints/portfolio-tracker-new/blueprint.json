@@ -13,35 +13,73 @@
           "intelligence-model": {
             "type": "string",
             "title": "Intelligence model",
-            "enum": ["simple", "mock", "semantic"],
-            "enumNames": ["Simple", "Mock", "Semantic"]
+            "enum": [
+              "simple",
+              "mock",
+              "semantic"
+            ],
+            "enumNames": [
+              "Simple",
+              "Mock",
+              "Semantic"
+            ]
           },
           "market-prices": {
             "type": "string",
             "title": "Market prices",
-            "enum": ["mock", "live"],
-            "enumNames": ["Mock", "Live"]
+            "enum": [
+              "mock",
+              "live"
+            ],
+            "enumNames": [
+              "Mock",
+              "Live"
+            ]
           },
           "view": {
             "type": "string",
             "title": "View",
-            "enum": ["desktop", "mobile"],
-            "enumNames": ["Desktop", "Mobile"]
+            "enum": [
+              "desktop",
+              "mobile"
+            ],
+            "enumNames": [
+              "Desktop",
+              "Mobile"
+            ]
           },
           "ai": {
             "type": "string",
             "title": "AI provider",
-            "enum": ["foundry", "copilot"],
-            "enumNames": ["Foundry", "Copilot"]
+            "enum": [
+              "foundry",
+              "copilot"
+            ],
+            "enumNames": [
+              "Foundry",
+              "Copilot"
+            ]
           },
           "semantic": {
             "type": "string",
             "title": "Semantic presentation",
-            "enum": ["simple-markdown", "rich-components"],
-            "enumNames": ["Simple markdown", "Rich components"]
+            "enum": [
+              "simple-markdown",
+              "rich-components"
+            ],
+            "enumNames": [
+              "Simple markdown",
+              "Rich components"
+            ]
           }
         },
-        "required": ["intelligence-model", "market-prices", "view", "ai", "semantic"],
+        "required": [
+          "intelligence-model",
+          "market-prices",
+          "view",
+          "ai",
+          "semantic"
+        ],
         "additionalProperties": true
       },
       "initialValue": {
@@ -55,9 +93,18 @@
       "discardLabel": "Discard"
     },
     "tiers": [
-      { "id": "portfolio-logic", "kind": "portfolio-domain" },
-      { "id": "portfolio-market", "kind": "portfolio-domain" },
-      { "id": "portfolio-presentation", "kind": "runtime-document" }
+      {
+        "id": "portfolio-logic",
+        "kind": "portfolio-domain"
+      },
+      {
+        "id": "portfolio-market",
+        "kind": "portfolio-domain"
+      },
+      {
+        "id": "portfolio-presentation",
+        "kind": "runtime-document"
+      }
     ],
     "recipes": [
       {
@@ -68,27 +115,26 @@
           {
             "id": "market-base",
             "presentation": {
-              "roots": [
-                "board"
-              ],
-              "composition": {
-                "board": {
-                  "slots": {
-                    "holdings": [
-                      "portfolio-holdings"
-                    ],
-                    "market": [
-                      "market-prices"
-                    ],
-                    "valuation": [
-                      "portfolio-value-cell"
-                    ],
-                    "intelligence": [
-                      "portfolio-intelligence"
-                    ]
-                  }
+              "slots": [
+                "board",
+                {
+                  "id": "holdings",
+                  "region": "board"
+                },
+                {
+                  "id": "market",
+                  "region": "board"
+                },
+                {
+                  "id": "valuation",
+                  "region": "board"
+                },
+                {
+                  "id": "intelligence",
+                  "region": "board"
                 }
-              }
+              ],
+              "root": "board"
             }
           }
         ],
@@ -175,132 +221,132 @@
           {
             "id": "desktop-base",
             "views": {
-              "board": {
-                "capability": "primitive:container",
-                "props": {
-                  "variant": "stack",
-                  "gap": "m",
-                  "fullWidth": true,
-                  "ariaLabel": "Portfolio tracker",
-                  "style": {
-                    "gridTemplateColumns": "minmax(0, 1fr) minmax(0, 1fr)",
-                    "alignItems": "start"
-                  }
-                }
-              },
               "portfolio-holdings": {
-                "capability": "primitive:editable-table",
-                "props": {
-                  "label": "Holdings",
-                  "columns": [
-                    {
-                      "key": "ticker",
-                      "label": "Ticker"
-                    },
-                    {
-                      "key": "quantity",
-                      "label": "Quantity"
-                    },
-                    {
-                      "key": "costBasis",
-                      "label": "Cost basis"
+                "primary": {
+                  "capability": "primitive:editable-table",
+                  "props": {
+                    "label": "Holdings",
+                    "columns": [
+                      {
+                        "key": "ticker",
+                        "label": "Ticker"
+                      },
+                      {
+                        "key": "quantity",
+                        "label": "Quantity"
+                      },
+                      {
+                        "key": "costBasis",
+                        "label": "Cost basis"
+                      }
+                    ]
+                  },
+                  "bindings": {
+                    "rows": {
+                      "expression": "[portfolio.holdings.*]"
                     }
-                  ]
-                },
-                "bindings": {
-                  "rows": {
-                    "expression": "[portfolio.holdings.*]"
-                  }
+                  },
+                  "region": "holdings"
                 }
               },
               "market-prices": {
-                "capability": "fluent:table",
-                "props": {
-                  "ariaLabel": "Market prices",
-                  "columns": [
-                    {
-                      "id": "ticker",
-                      "label": "Ticker"
-                    },
-                    {
-                      "id": "price",
-                      "label": "Price"
+                "primary": {
+                  "capability": "fluent:table",
+                  "props": {
+                    "ariaLabel": "Market prices",
+                    "columns": [
+                      {
+                        "id": "ticker",
+                        "label": "Ticker"
+                      },
+                      {
+                        "id": "price",
+                        "label": "Price"
+                      }
+                    ]
+                  },
+                  "bindings": {
+                    "rows": {
+                      "expression": "[portfolio.stockQuotes.*.{'id':$string(ticker),'cells':{'ticker':ticker,'price':price}}]"
                     }
-                  ]
-                },
-                "bindings": {
-                  "rows": {
-                    "expression": "[portfolio.stockQuotes.*.{'id':$string(ticker),'cells':{'ticker':ticker,'price':price}}]"
-                  }
+                  },
+                  "region": "market"
                 }
               },
               "portfolio-value-cell": {
-                "capability": "primitive:chart",
-                "props": {
-                  "variant": "standard",
-                  "spec": {
-                    "kind": "pie",
-                    "title": "Holdings value",
-                    "valueSuffix": " USD",
-                    "fields": {
-                      "label": "ticker",
-                      "value": "value"
-                    },
-                    "summary": {
-                      "label": "Total portfolio value",
-                      "prefix": "$"
-                    },
-                    "table": {
-                      "label": "Portfolio positions",
-                      "columns": [
-                        {
-                          "field": "ticker",
-                          "label": "Ticker"
-                        },
-                        {
-                          "field": "quantity",
-                          "label": "Quantity"
-                        },
-                        {
-                          "field": "price",
-                          "label": "Price",
-                          "prefix": "$"
-                        },
-                        {
-                          "field": "value",
-                          "label": "Value",
-                          "prefix": "$"
-                        },
-                        {
-                          "field": "costBasis",
-                          "label": "Cost basis",
-                          "prefix": "$"
-                        },
-                        {
-                          "field": "gainLoss",
-                          "label": "Gain/loss",
-                          "prefix": "$"
-                        }
-                      ]
+                "primary": {
+                  "capability": "primitive:chart",
+                  "props": {
+                    "variant": "standard",
+                    "spec": {
+                      "kind": "pie",
+                      "title": "Holdings value",
+                      "valueSuffix": " USD",
+                      "fields": {
+                        "label": "ticker",
+                        "value": "value"
+                      },
+                      "summary": {
+                        "label": "Total portfolio value",
+                        "prefix": "$"
+                      },
+                      "table": {
+                        "label": "Portfolio positions",
+                        "columns": [
+                          {
+                            "field": "ticker",
+                            "label": "Ticker"
+                          },
+                          {
+                            "field": "quantity",
+                            "label": "Quantity"
+                          },
+                          {
+                            "field": "price",
+                            "label": "Price",
+                            "prefix": "$"
+                          },
+                          {
+                            "field": "value",
+                            "label": "Value",
+                            "prefix": "$"
+                          },
+                          {
+                            "field": "costBasis",
+                            "label": "Cost basis",
+                            "prefix": "$"
+                          },
+                          {
+                            "field": "gainLoss",
+                            "label": "Gain/loss",
+                            "prefix": "$"
+                          }
+                        ]
+                      }
                     }
-                  }
-                },
-                "bindings": {
-                  "points": {
-                    "expression": "[portfolio.value.positions.*]"
                   },
-                  "summaryValue": {
-                    "from": "portfolio.value.summary.marketValue"
-                  }
+                  "bindings": {
+                    "points": {
+                      "expression": "[portfolio.value.positions.*]"
+                    },
+                    "summaryValue": {
+                      "from": "portfolio.value.summary.marketValue"
+                    }
+                  },
+                  "region": "valuation"
                 }
               },
               "portfolio-intelligence-context": {
-                "capability": "primitive:container",
-                "visibility": "false"
+                "primary": {
+                  "capability": "primitive:container",
+                  "visibility": "false"
+                }
               },
               "portfolio-intelligence-resolution": {
-                "capability": "primitive:container",
-                "visibility": "false"
+                "primary": {
+                  "capability": "primitive:container",
+                  "visibility": "false"
+                }
               }
             },
             "decorators": [
@@ -316,71 +362,60 @@
               }
             ],
             "presentation": {
-              "roots": [
-                "board"
-              ],
-              "composition": {
-                "board": {
-                  "slots": {
-                    "holdings": [
-                      "portfolio-holdings"
-                    ],
-                    "market": [
-                      "market-prices"
-                    ],
-                    "valuation": [
-                      "portfolio-value-cell"
-                    ],
-                    "intelligence": [
-                      "portfolio-intelligence"
-                    ]
-                  }
+              "slots": [
+                "board",
+                {
+                  "id": "holdings",
+                  "region": "board"
+                },
+                {
+                  "id": "market",
+                  "region": "board"
+                },
+                {
+                  "id": "valuation",
+                  "region": "board"
+                },
+                {
+                  "id": "intelligence",
+                  "region": "board"
                 }
-              }
+              ],
+              "root": "board"
             }
           },
           {
             "id": "mobile-base",
             "extends": "desktop-base",
             "views": {
-              "board": {
-                "capability": "primitive:container",
-                "props": {
-                  "variant": "column",
-                  "gap": "s",
-                  "fullWidth": true,
-                  "ariaLabel": "Portfolio tracker",
-                  "style": {
-                    "gridTemplateColumns": "none",
-                    "alignItems": "stretch"
-                  }
-                }
-              },
               "portfolio-value-cell": {
-                "capability": "primitive:chart",
-                "props": {
-                  "variant": "compact",
-                  "spec": {
-                    "kind": "pie",
-                    "title": "Holdings value",
-                    "valueSuffix": " USD",
-                    "fields": {
-                      "label": "ticker",
-                      "value": "value"
-                    },
-                    "summary": {
-                      "label": "Total portfolio value",
-                      "prefix": "$"
+                "primary": {
+                  "capability": "primitive:chart",
+                  "props": {
+                    "variant": "compact",
+                    "spec": {
+                      "kind": "pie",
+                      "title": "Holdings value",
+                      "valueSuffix": " USD",
+                      "fields": {
+                        "label": "ticker",
+                        "value": "value"
+                      },
+                      "summary": {
+                        "label": "Total portfolio value",
+                        "prefix": "$"
+                      }
                     }
-                  }
-                },
-                "bindings": {
-                  "points": {
-                    "expression": "[portfolio.value.positions.*]"
                   },
-                  "summaryValue": {
-                    "from": "portfolio.value.summary.marketValue"
-                  }
+                  "bindings": {
+                    "points": {
+                      "expression": "[portfolio.value.positions.*]"
+                    },
+                    "summaryValue": {
+                      "from": "portfolio.value.summary.marketValue"
+                    }
+                  },
+                  "region": "valuation"
                 }
               }
             }
@@ -391,20 +426,27 @@
             "extends": "desktop-base",
             "views": {
               "portfolio-intelligence": {
-                "capability": "primitive:markdown",
-                "bindings": {
-                  "value": {
-                    "from": "portfolio.intelligence.markdown"
-                  }
+                "primary": {
+                  "capability": "primitive:markdown",
+                  "bindings": {
+                    "value": {
+                      "from": "portfolio.intelligence.markdown"
+                    }
+                  },
+                  "region": "intelligence"
                 }
               },
               "portfolio-intelligence-context": {
-                "capability": "primitive:container",
-                "visibility": "false"
+                "primary": {
+                  "capability": "primitive:container",
+                  "visibility": "false"
+                }
               },
               "portfolio-intelligence-resolution": {
-                "capability": "primitive:container",
-                "visibility": "false"
+                "primary": {
+                  "capability": "primitive:container",
+                  "visibility": "false"
+                }
               }
             }
           },
@@ -414,11 +456,14 @@
             "extends": "desktop-base",
             "views": {
               "portfolio-intelligence": {
-                "capability": "primitive:markdown",
-                "bindings": {
-                  "value": {
-                    "from": "portfolio.intelligence.markdown"
-                  }
+                "primary": {
+                  "capability": "primitive:markdown",
+                  "bindings": {
+                    "value": {
+                      "from": "portfolio.intelligence.markdown"
+                    }
+                  },
+                  "region": "intelligence"
                 }
               }
             }
@@ -429,60 +474,68 @@
             "extends": "desktop-base",
             "views": {
               "portfolio-intelligence": {
-                "capability": "fluent:button",
-                "props": {
-                  "label": "Generate / refresh intelligence report",
-                  "appearance": "primary"
+                "primary": {
+                  "capability": "fluent:button",
+                  "props": {
+                    "label": "Generate / refresh intelligence report",
+                    "appearance": "primary"
+                  },
+                  "region": "status"
                 }
               },
               "portfolio-intelligence-resolution": {
-                "capability": "gik:blueprint",
-                "bindings": {
-                  "blueprint": {
-                    "from": "portfolio.resolvedIntelligenceEnvelope.report"
-                  }
-                },
-                "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
-                "before": [{
-                  "capability": "primitive:datetime",
-                  "props": {
-                    "variant": "timestamp",
-                    "label": "Report generated"
-                  },
+                "primary": {
+                  "capability": "gik:blueprint",
                   "bindings": {
-                    "value": {
-                      "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                    "blueprint": {
+                      "from": "portfolio.resolvedIntelligenceEnvelope.report"
                     }
                   },
-                  "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
-                }]
+                  "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
+                  "before": [
+                    {
+                      "capability": "primitive:datetime",
+                      "props": {
+                        "variant": "timestamp",
+                        "label": "Report generated"
+                      },
+                      "bindings": {
+                        "value": {
+                          "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                        }
+                      },
+                      "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
+                    }
+                  ],
+                  "region": "intelligence"
+                }
               }
             },
             "presentation": {
-              "roots": [
-                "board"
-              ],
-              "composition": {
-                "board": {
-                  "slots": {
-                    "holdings": [
-                      "portfolio-holdings"
-                    ],
-                    "market": [
-                      "market-prices"
-                    ],
-                    "valuation": [
-                      "portfolio-value-cell"
-                    ],
-                    "status": [
-                      "portfolio-intelligence"
-                    ],
-                    "intelligence": [
-                      "portfolio-intelligence-resolution"
-                    ]
-                  }
+              "slots": [
+                "board",
+                {
+                  "id": "holdings",
+                  "region": "board"
+                },
+                {
+                  "id": "market",
+                  "region": "board"
+                },
+                {
+                  "id": "valuation",
+                  "region": "board"
+                },
+                {
+                  "id": "status",
+                  "region": "board"
+                },
+                {
+                  "id": "intelligence",
+                  "region": "board"
                 }
-              }
+              ],
+              "root": "board"
             }
           },
           {
@@ -491,11 +544,14 @@
             "extends": "mobile-base",
             "views": {
               "portfolio-intelligence": {
-                "capability": "primitive:markdown",
-                "bindings": {
-                  "value": {
-                    "from": "portfolio.intelligence.markdown"
-                  }
+                "primary": {
+                  "capability": "primitive:markdown",
+                  "bindings": {
+                    "value": {
+                      "from": "portfolio.intelligence.markdown"
+                    }
+                  },
+                  "region": "intelligence"
                 }
               }
             }
@@ -506,11 +562,14 @@
             "extends": "mobile-base",
             "views": {
               "portfolio-intelligence": {
-                "capability": "primitive:markdown",
-                "bindings": {
-                  "value": {
-                    "from": "portfolio.intelligence.markdown"
-                  }
+                "primary": {
+                  "capability": "primitive:markdown",
+                  "bindings": {
+                    "value": {
+                      "from": "portfolio.intelligence.markdown"
+                    }
+                  },
+                  "region": "intelligence"
                 }
               }
             }
@@ -521,60 +580,68 @@
             "extends": "mobile-base",
             "views": {
               "portfolio-intelligence": {
-                "capability": "fluent:button",
-                "props": {
-                  "label": "Generate / refresh intelligence report",
-                  "appearance": "primary"
+                "primary": {
+                  "capability": "fluent:button",
+                  "props": {
+                    "label": "Generate / refresh intelligence report",
+                    "appearance": "primary"
+                  },
+                  "region": "status"
                 }
               },
               "portfolio-intelligence-resolution": {
-                "capability": "gik:blueprint",
-                "bindings": {
-                  "blueprint": {
-                    "from": "portfolio.resolvedIntelligenceEnvelope.report"
-                  }
-                },
-                "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
-                "before": [{
-                  "capability": "primitive:datetime",
-                  "props": {
-                    "variant": "timestamp",
-                    "label": "Report generated"
-                  },
+                "primary": {
+                  "capability": "gik:blueprint",
                   "bindings": {
-                    "value": {
-                      "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                    "blueprint": {
+                      "from": "portfolio.resolvedIntelligenceEnvelope.report"
                     }
                   },
-                  "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
-                }]
+                  "visibility": "portfolio.resolvedIntelligenceEnvelope.report != null",
+                  "before": [
+                    {
+                      "capability": "primitive:datetime",
+                      "props": {
+                        "variant": "timestamp",
+                        "label": "Report generated"
+                      },
+                      "bindings": {
+                        "value": {
+                          "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
+                        }
+                      },
+                      "visibility": "portfolio.resolvedIntelligenceEnvelope.asOf != null"
+                    }
+                  ],
+                  "region": "intelligence"
+                }
               }
             },
             "presentation": {
-              "roots": [
-                "board"
-              ],
-              "composition": {
-                "board": {
-                  "slots": {
-                    "holdings": [
-                      "portfolio-holdings"
-                    ],
-                    "market": [
-                      "market-prices"
-                    ],
-                    "valuation": [
-                      "portfolio-value-cell"
-                    ],
-                    "status": [
-                      "portfolio-intelligence"
-                    ],
-                    "intelligence": [
-                      "portfolio-intelligence-resolution"
-                    ]
-                  }
+              "slots": [
+                "board",
+                {
+                  "id": "holdings",
+                  "region": "board"
+                },
+                {
+                  "id": "market",
+                  "region": "board"
+                },
+                {
+                  "id": "valuation",
+                  "region": "board"
+                },
+                {
+                  "id": "status",
+                  "region": "board"
+                },
+                {
+                  "id": "intelligence",
+                  "region": "board"
                 }
-              }
+              ],
+              "root": "board"
             }
           }
         ],
@@ -660,27 +727,39 @@
             "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
             "cells": {
               "portfolio-intelligence-context": {
-                "sources": [{
-                  "id": "portfolio-intelligence-context.saved-report",
-                  "service": "portfolio-saved-reports",
-                  "operation": "getSavedReport",
-                  "contract": "saved-portfolio-report-envelope/v1",
-                  "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                  "input": { "kind": "jsonata", "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/simple-markdown'}" },
-                  "output": { "kind": "jsonata", "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}" }
-                }],
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence-context.saved-report",
+                    "service": "portfolio-saved-reports",
+                    "operation": "getSavedReport",
+                    "contract": "saved-portfolio-report-envelope/v1",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/simple-markdown'}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}"
+                    }
+                  }
+                ],
                 "compute": [
                   {
                     "id": "portfolio-analysis-context",
                     "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}",
                     "assign": "portfolio.analysisContext",
-                    "dependencies": ["inputs.portfolio-value"]
+                    "dependencies": [
+                      "inputs.portfolio-value"
+                    ]
                   },
                   {
                     "id": "saved-portfolio-report-envelope",
                     "expression": "sources.`portfolio-intelligence-context.saved-report`",
                     "assign": "savedReportEnvelope",
-                    "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+                    "dependencies": [
+                      "sources.portfolio-intelligence-context.saved-report"
+                    ]
                   }
                 ]
               },
@@ -717,12 +796,16 @@
                     }
                   }
                 ],
-                "compute": [{
-                  "id": "generated-portfolio-report",
-                  "expression": "sources.`portfolio-semantic-intelligence.source`",
-                  "assign": "generatedReport",
-                  "dependencies": ["sources.portfolio-semantic-intelligence.source"]
-                }]
+                "compute": [
+                  {
+                    "id": "generated-portfolio-report",
+                    "expression": "sources.`portfolio-semantic-intelligence.source`",
+                    "assign": "generatedReport",
+                    "dependencies": [
+                      "sources.portfolio-semantic-intelligence.source"
+                    ]
+                  }
+                ]
               }
             }
           },
@@ -731,27 +814,39 @@
             "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and externalContext.ai = 'copilot'",
             "cells": {
               "portfolio-intelligence-context": {
-                "sources": [{
-                  "id": "portfolio-intelligence-context.saved-report",
-                  "service": "portfolio-saved-reports",
-                  "operation": "getSavedReport",
-                  "contract": "saved-portfolio-report-envelope/v1",
-                  "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                  "input": { "kind": "jsonata", "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/simple-markdown'}" },
-                  "output": { "kind": "jsonata", "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}" }
-                }],
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence-context.saved-report",
+                    "service": "portfolio-saved-reports",
+                    "operation": "getSavedReport",
+                    "contract": "saved-portfolio-report-envelope/v1",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/simple-markdown'}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}"
+                    }
+                  }
+                ],
                 "compute": [
                   {
                     "id": "portfolio-analysis-context",
                     "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}",
                     "assign": "portfolio.analysisContext",
-                    "dependencies": ["inputs.portfolio-value"]
+                    "dependencies": [
+                      "inputs.portfolio-value"
+                    ]
                   },
                   {
                     "id": "saved-portfolio-report-envelope",
                     "expression": "sources.`portfolio-intelligence-context.saved-report`",
                     "assign": "savedReportEnvelope",
-                    "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+                    "dependencies": [
+                      "sources.portfolio-intelligence-context.saved-report"
+                    ]
                   }
                 ]
               },
@@ -788,12 +883,16 @@
                     }
                   }
                 ],
-                "compute": [{
-                  "id": "generated-portfolio-report",
-                  "expression": "sources.`portfolio-semantic-intelligence.source`",
-                  "assign": "generatedReport",
-                  "dependencies": ["sources.portfolio-semantic-intelligence.source"]
-                }]
+                "compute": [
+                  {
+                    "id": "generated-portfolio-report",
+                    "expression": "sources.`portfolio-semantic-intelligence.source`",
+                    "assign": "generatedReport",
+                    "dependencies": [
+                      "sources.portfolio-semantic-intelligence.source"
+                    ]
+                  }
+                ]
               }
             },
             "services": {
@@ -933,73 +1032,90 @@
                                                 "minProperties": 1,
                                                 "additionalProperties": {
                                                   "type": "object",
-                                                  "required": [
-                                                    "capability"
-                                                  ],
-                                                  "properties": {
-                                                    "capability": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "semantic:narrative",
-                                                        "semantic:measure-set",
-                                                        "semantic:argument",
-                                                        "semantic:entity-set",
-                                                        "semantic:relationship-set",
-                                                        "semantic:decision",
-                                                        "primitive:container",
-                                                        "primitive:chart",
-                                                        "primitive:markdown",
-                                                        "fluent:text",
-                                                        "fluent:list",
-                                                        "fluent:table"
-                                                      ]
+                                                  "minProperties": 1,
+                                                  "additionalProperties": {
+                                                    "type": "object",
+                                                    "required": [
+                                                      "capability"
+                                                    ],
+                                                    "properties": {
+                                                      "capability": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "semantic:narrative",
+                                                          "semantic:measure-set",
+                                                          "semantic:argument",
+                                                          "semantic:entity-set",
+                                                          "semantic:relationship-set",
+                                                          "semantic:decision",
+                                                          "primitive:container",
+                                                          "primitive:chart",
+                                                          "primitive:markdown",
+                                                          "fluent:text",
+                                                          "fluent:list",
+                                                          "fluent:table"
+                                                        ]
+                                                      },
+                                                      "props": {
+                                                        "type": "object"
+                                                      },
+                                                      "bindings": {
+                                                        "type": "object"
+                                                      },
+                                                      "region": {
+                                                        "oneOf": [
+                                                          {
+                                                            "type": "string"
+                                                          },
+                                                          {
+                                                            "type": "array",
+                                                            "minItems": 1,
+                                                            "items": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
                                                     },
-                                                    "props": {
-                                                      "type": "object"
-                                                    },
-                                                    "bindings": {
-                                                      "type": "object"
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
+                                                    "additionalProperties": false
+                                                  }
                                                 }
                                               },
                                               "presentation": {
                                                 "type": "object",
                                                 "required": [
-                                                  "roots",
-                                                  "composition"
+                                                  "slots",
+                                                  "root"
                                                 ],
                                                 "properties": {
-                                                  "roots": {
+                                                  "slots": {
                                                     "type": "array",
                                                     "minItems": 1,
                                                     "items": {
-                                                      "type": "string"
-                                                    }
-                                                  },
-                                                  "composition": {
-                                                    "type": "object",
-                                                    "additionalProperties": {
-                                                      "type": "object",
-                                                      "required": [
-                                                        "slots"
-                                                      ],
-                                                      "additionalProperties": false,
-                                                      "properties": {
-                                                        "slots": {
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "string"
+                                                        },
+                                                        {
                                                           "type": "object",
-                                                          "minProperties": 1,
-                                                          "additionalProperties": {
-                                                            "type": "array",
-                                                            "items": {
+                                                          "required": [
+                                                            "id"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "id": {
                                                               "type": "string"
                                                             },
-                                                            "uniqueItems": true
+                                                            "region": {
+                                                              "type": "string"
+                                                            }
                                                           }
                                                         }
-                                                      }
+                                                      ]
                                                     }
+                                                  },
+                                                  "root": {
+                                                    "type": "string"
                                                   }
                                                 },
                                                 "additionalProperties": false
@@ -1145,14 +1261,10 @@
                                     "additionalProperties": {
                                       "type": "object",
                                       "required": [
-                                        "id",
-                                        "kind"
+                                        "id"
                                       ],
                                       "properties": {
                                         "id": {
-                                          "type": "string"
-                                        },
-                                        "kind": {
                                           "type": "string"
                                         }
                                       },
@@ -1168,7 +1280,7 @@
                         },
                         {
                           "kind": "jsonata",
-                          "expr": "($accepted := $request.acceptedCapabilities; $declared := $keys(data.payload.runtime.capabilities); $viewCapabilities := data.payload.recipes.representations.views.*.capability; $used := $distinct($append($declared,$viewCapabilities)); $sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := $keys(data.payload.recipes.representations.presentation.composition.*.slots); $count($used[$not($ in $accepted)]) = 0 and $count($sectionSlots[$not($ in $slotNames)]) = 0 and $count(data.payload.runtime.actions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
+                          "expr": "($accepted := $request.acceptedCapabilities; $declared := $keys(data.payload.runtime.capabilities); $viewCapabilities := data.payload.recipes.representations.views.*.*.capability; $used := $distinct($append($declared,$viewCapabilities)); $sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($used[$not($ in $accepted)]) = 0 and $count($sectionSlots[$not($ in $slotNames)]) = 0 and $count(data.payload.runtime.actions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
                           "message": "Semantic portfolio report violates its capability, section, tier, or inertness policy",
                           "code": "semantic-report-admission"
                         }
@@ -1201,27 +1313,39 @@
             "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
             "cells": {
               "portfolio-intelligence-context": {
-                "sources": [{
-                  "id": "portfolio-intelligence-context.saved-report",
-                  "service": "portfolio-saved-reports",
-                  "operation": "getSavedReport",
-                  "contract": "saved-portfolio-report-envelope/v1",
-                  "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                  "input": { "kind": "jsonata", "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/rich-components'}" },
-                  "output": { "kind": "jsonata", "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}" }
-                }],
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence-context.saved-report",
+                    "service": "portfolio-saved-reports",
+                    "operation": "getSavedReport",
+                    "contract": "saved-portfolio-report-envelope/v1",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/rich-components'}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}"
+                    }
+                  }
+                ],
                 "compute": [
                   {
                     "id": "portfolio-analysis-context",
                     "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}",
                     "assign": "portfolio.analysisContext",
-                    "dependencies": ["inputs.portfolio-value"]
+                    "dependencies": [
+                      "inputs.portfolio-value"
+                    ]
                   },
                   {
                     "id": "saved-portfolio-report-envelope",
                     "expression": "sources.`portfolio-intelligence-context.saved-report`",
                     "assign": "savedReportEnvelope",
-                    "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+                    "dependencies": [
+                      "sources.portfolio-intelligence-context.saved-report"
+                    ]
                   }
                 ]
               },
@@ -1258,12 +1382,16 @@
                     }
                   }
                 ],
-                "compute": [{
-                  "id": "generated-portfolio-report",
-                  "expression": "sources.`portfolio-semantic-intelligence.source`",
-                  "assign": "generatedReport",
-                  "dependencies": ["sources.portfolio-semantic-intelligence.source"]
-                }]
+                "compute": [
+                  {
+                    "id": "generated-portfolio-report",
+                    "expression": "sources.`portfolio-semantic-intelligence.source`",
+                    "assign": "generatedReport",
+                    "dependencies": [
+                      "sources.portfolio-semantic-intelligence.source"
+                    ]
+                  }
+                ]
               }
             }
           },
@@ -1272,27 +1400,39 @@
             "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and externalContext.ai = 'copilot'",
             "cells": {
               "portfolio-intelligence-context": {
-                "sources": [{
-                  "id": "portfolio-intelligence-context.saved-report",
-                  "service": "portfolio-saved-reports",
-                  "operation": "getSavedReport",
-                  "contract": "saved-portfolio-report-envelope/v1",
-                  "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                  "input": { "kind": "jsonata", "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/rich-components'}" },
-                  "output": { "kind": "jsonata", "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}" }
-                }],
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence-context.saved-report",
+                    "service": "portfolio-saved-reports",
+                    "operation": "getSavedReport",
+                    "contract": "saved-portfolio-report-envelope/v1",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/rich-components'}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}"
+                    }
+                  }
+                ],
                 "compute": [
                   {
                     "id": "portfolio-analysis-context",
                     "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}",
                     "assign": "portfolio.analysisContext",
-                    "dependencies": ["inputs.portfolio-value"]
+                    "dependencies": [
+                      "inputs.portfolio-value"
+                    ]
                   },
                   {
                     "id": "saved-portfolio-report-envelope",
                     "expression": "sources.`portfolio-intelligence-context.saved-report`",
                     "assign": "savedReportEnvelope",
-                    "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+                    "dependencies": [
+                      "sources.portfolio-intelligence-context.saved-report"
+                    ]
                   }
                 ]
               },
@@ -1329,12 +1469,16 @@
                     }
                   }
                 ],
-                "compute": [{
-                  "id": "generated-portfolio-report",
-                  "expression": "sources.`portfolio-semantic-intelligence.source`",
-                  "assign": "generatedReport",
-                  "dependencies": ["sources.portfolio-semantic-intelligence.source"]
-                }]
+                "compute": [
+                  {
+                    "id": "generated-portfolio-report",
+                    "expression": "sources.`portfolio-semantic-intelligence.source`",
+                    "assign": "generatedReport",
+                    "dependencies": [
+                      "sources.portfolio-semantic-intelligence.source"
+                    ]
+                  }
+                ]
               }
             },
             "services": {
@@ -1474,73 +1618,90 @@
                                                 "minProperties": 1,
                                                 "additionalProperties": {
                                                   "type": "object",
-                                                  "required": [
-                                                    "capability"
-                                                  ],
-                                                  "properties": {
-                                                    "capability": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "semantic:narrative",
-                                                        "semantic:measure-set",
-                                                        "semantic:argument",
-                                                        "semantic:entity-set",
-                                                        "semantic:relationship-set",
-                                                        "semantic:decision",
-                                                        "primitive:container",
-                                                        "primitive:chart",
-                                                        "primitive:markdown",
-                                                        "fluent:text",
-                                                        "fluent:list",
-                                                        "fluent:table"
-                                                      ]
+                                                  "minProperties": 1,
+                                                  "additionalProperties": {
+                                                    "type": "object",
+                                                    "required": [
+                                                      "capability"
+                                                    ],
+                                                    "properties": {
+                                                      "capability": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "semantic:narrative",
+                                                          "semantic:measure-set",
+                                                          "semantic:argument",
+                                                          "semantic:entity-set",
+                                                          "semantic:relationship-set",
+                                                          "semantic:decision",
+                                                          "primitive:container",
+                                                          "primitive:chart",
+                                                          "primitive:markdown",
+                                                          "fluent:text",
+                                                          "fluent:list",
+                                                          "fluent:table"
+                                                        ]
+                                                      },
+                                                      "props": {
+                                                        "type": "object"
+                                                      },
+                                                      "bindings": {
+                                                        "type": "object"
+                                                      },
+                                                      "region": {
+                                                        "oneOf": [
+                                                          {
+                                                            "type": "string"
+                                                          },
+                                                          {
+                                                            "type": "array",
+                                                            "minItems": 1,
+                                                            "items": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
                                                     },
-                                                    "props": {
-                                                      "type": "object"
-                                                    },
-                                                    "bindings": {
-                                                      "type": "object"
-                                                    }
-                                                  },
-                                                  "additionalProperties": false
+                                                    "additionalProperties": false
+                                                  }
                                                 }
                                               },
                                               "presentation": {
                                                 "type": "object",
                                                 "required": [
-                                                  "roots",
-                                                  "composition"
+                                                  "slots",
+                                                  "root"
                                                 ],
                                                 "properties": {
-                                                  "roots": {
+                                                  "slots": {
                                                     "type": "array",
                                                     "minItems": 1,
                                                     "items": {
-                                                      "type": "string"
-                                                    }
-                                                  },
-                                                  "composition": {
-                                                    "type": "object",
-                                                    "additionalProperties": {
-                                                      "type": "object",
-                                                      "required": [
-                                                        "slots"
-                                                      ],
-                                                      "additionalProperties": false,
-                                                      "properties": {
-                                                        "slots": {
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "string"
+                                                        },
+                                                        {
                                                           "type": "object",
-                                                          "minProperties": 1,
-                                                          "additionalProperties": {
-                                                            "type": "array",
-                                                            "items": {
+                                                          "required": [
+                                                            "id"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "id": {
                                                               "type": "string"
                                                             },
-                                                            "uniqueItems": true
+                                                            "region": {
+                                                              "type": "string"
+                                                            }
                                                           }
                                                         }
-                                                      }
+                                                      ]
                                                     }
+                                                  },
+                                                  "root": {
+                                                    "type": "string"
                                                   }
                                                 },
                                                 "additionalProperties": false
@@ -1686,14 +1847,10 @@
                                     "additionalProperties": {
                                       "type": "object",
                                       "required": [
-                                        "id",
-                                        "kind"
+                                        "id"
                                       ],
                                       "properties": {
                                         "id": {
-                                          "type": "string"
-                                        },
-                                        "kind": {
                                           "type": "string"
                                         }
                                       },
@@ -1709,7 +1866,7 @@
                         },
                         {
                           "kind": "jsonata",
-                          "expr": "($accepted := $request.acceptedCapabilities; $declared := $keys(data.payload.runtime.capabilities); $viewCapabilities := data.payload.recipes.representations.views.*.capability; $used := $distinct($append($declared,$viewCapabilities)); $sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := $keys(data.payload.recipes.representations.presentation.composition.*.slots); $count($used[$not($ in $accepted)]) = 0 and $count($sectionSlots[$not($ in $slotNames)]) = 0 and $count(data.payload.runtime.actions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
+                          "expr": "($accepted := $request.acceptedCapabilities; $declared := $keys(data.payload.runtime.capabilities); $viewCapabilities := data.payload.recipes.representations.views.*.*.capability; $used := $distinct($append($declared,$viewCapabilities)); $sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($used[$not($ in $accepted)]) = 0 and $count($sectionSlots[$not($ in $slotNames)]) = 0 and $count(data.payload.runtime.actions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
                           "message": "Semantic portfolio report violates its capability, section, tier, or inertness policy",
                           "code": "semantic-report-admission"
                         }
@@ -1743,14 +1900,19 @@
     ],
     "services": {
       "portfolio-market-data": {
-        "blueprint": { "$ref": "blueprint:portfolio-tracker-mock@1.0.0" },
+        "blueprint": {
+          "$ref": "blueprint:portfolio-tracker-mock@1.0.0"
+        },
         "version": "1",
         "operations": {
           "refreshPrices": {
             "operation": "fetch-quotes",
             "contract": "portfolio-market-quotes/v1",
             "request": {
-              "transform": { "kind": "jsonata", "expr": "input" }
+              "transform": {
+                "kind": "jsonata",
+                "expr": "input"
+              }
             },
             "settlement": {
               "transform": {
@@ -1783,9 +1945,14 @@
                   "message": "Portfolio intelligence response is invalid",
                   "schema": {
                     "type": "object",
-                    "required": ["markdown"],
+                    "required": [
+                      "markdown"
+                    ],
                     "properties": {
-                      "markdown": { "type": "string", "minLength": 1 }
+                      "markdown": {
+                        "type": "string",
+                        "minLength": 1
+                      }
                     },
                     "additionalProperties": false
                   }
@@ -1821,17 +1988,26 @@
               }
             },
             "response": {
-              "validators": [{
-                "kind": "ajv-schema",
-                "code": "provider-structured-output",
-                "message": "Copilot portfolio intelligence response is invalid",
-                "schema": {
-                  "type": "object",
-                  "required": ["markdown"],
-                  "properties": { "markdown": { "type": "string", "minLength": 1 } },
-                  "additionalProperties": false
+              "validators": [
+                {
+                  "kind": "ajv-schema",
+                  "code": "provider-structured-output",
+                  "message": "Copilot portfolio intelligence response is invalid",
+                  "schema": {
+                    "type": "object",
+                    "required": [
+                      "markdown"
+                    ],
+                    "properties": {
+                      "markdown": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  }
                 }
-              }]
+              ]
             },
             "settlement": {
               "transform": {
@@ -1839,7 +2015,9 @@
                 "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':$merge([response,{'provider':'copilot-agent:Portfolio-Intelligence-Agent'}])}],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Intelligence-Agent'}}"
               }
             },
-            "onViolation": { "action": "fail" }
+            "onViolation": {
+              "action": "fail"
+            }
           }
         },
         "config": {
@@ -1987,73 +2165,90 @@
                                         "minProperties": 1,
                                         "additionalProperties": {
                                           "type": "object",
-                                          "required": [
-                                            "capability"
-                                          ],
-                                          "properties": {
-                                            "capability": {
-                                              "type": "string",
-                                              "enum": [
-                                                "semantic:narrative",
-                                                "semantic:measure-set",
-                                                "semantic:argument",
-                                                "semantic:entity-set",
-                                                "semantic:relationship-set",
-                                                "semantic:decision",
-                                                "primitive:container",
-                                                "primitive:chart",
-                                                "primitive:markdown",
-                                                "fluent:text",
-                                                "fluent:list",
-                                                "fluent:table"
-                                              ]
+                                          "minProperties": 1,
+                                          "additionalProperties": {
+                                            "type": "object",
+                                            "required": [
+                                              "capability"
+                                            ],
+                                            "properties": {
+                                              "capability": {
+                                                "type": "string",
+                                                "enum": [
+                                                  "semantic:narrative",
+                                                  "semantic:measure-set",
+                                                  "semantic:argument",
+                                                  "semantic:entity-set",
+                                                  "semantic:relationship-set",
+                                                  "semantic:decision",
+                                                  "primitive:container",
+                                                  "primitive:chart",
+                                                  "primitive:markdown",
+                                                  "fluent:text",
+                                                  "fluent:list",
+                                                  "fluent:table"
+                                                ]
+                                              },
+                                              "props": {
+                                                "type": "object"
+                                              },
+                                              "bindings": {
+                                                "type": "object"
+                                              },
+                                              "region": {
+                                                "oneOf": [
+                                                  {
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "type": "array",
+                                                    "minItems": 1,
+                                                    "items": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                ]
+                                              }
                                             },
-                                            "props": {
-                                              "type": "object"
-                                            },
-                                            "bindings": {
-                                              "type": "object"
-                                            }
-                                          },
-                                          "additionalProperties": false
+                                            "additionalProperties": false
+                                          }
                                         }
                                       },
                                       "presentation": {
                                         "type": "object",
                                         "required": [
-                                          "roots",
-                                          "composition"
+                                          "slots",
+                                          "root"
                                         ],
                                         "properties": {
-                                          "roots": {
+                                          "slots": {
                                             "type": "array",
                                             "minItems": 1,
                                             "items": {
-                                              "type": "string"
-                                            }
-                                          },
-                                          "composition": {
-                                            "type": "object",
-                                            "additionalProperties": {
-                                              "type": "object",
-                                              "required": [
-                                                "slots"
-                                              ],
-                                              "additionalProperties": false,
-                                              "properties": {
-                                                "slots": {
+                                              "oneOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
                                                   "type": "object",
-                                                  "minProperties": 1,
-                                                  "additionalProperties": {
-                                                    "type": "array",
-                                                    "items": {
+                                                  "required": [
+                                                    "id"
+                                                  ],
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "id": {
                                                       "type": "string"
                                                     },
-                                                    "uniqueItems": true
+                                                    "region": {
+                                                      "type": "string"
+                                                    }
                                                   }
                                                 }
-                                              }
+                                              ]
                                             }
+                                          },
+                                          "root": {
+                                            "type": "string"
                                           }
                                         },
                                         "additionalProperties": false
@@ -2199,14 +2394,10 @@
                             "additionalProperties": {
                               "type": "object",
                               "required": [
-                                "id",
-                                "kind"
+                                "id"
                               ],
                               "properties": {
                                 "id": {
-                                  "type": "string"
-                                },
-                                "kind": {
                                   "type": "string"
                                 }
                               },
@@ -2222,7 +2413,7 @@
                 },
                 {
                   "kind": "jsonata",
-                  "expr": "($accepted := $request.acceptedCapabilities; $declared := $keys(data.payload.runtime.capabilities); $viewCapabilities := data.payload.recipes.representations.views.*.capability; $used := $distinct($append($declared,$viewCapabilities)); $sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := $keys(data.payload.recipes.representations.presentation.composition.*.slots); $count($used[$not($ in $accepted)]) = 0 and $count($sectionSlots[$not($ in $slotNames)]) = 0 and $count(data.payload.runtime.actions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
+                  "expr": "($accepted := $request.acceptedCapabilities; $declared := $keys(data.payload.runtime.capabilities); $viewCapabilities := data.payload.recipes.representations.views.*.*.capability; $used := $distinct($append($declared,$viewCapabilities)); $sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($used[$not($ in $accepted)]) = 0 and $count($sectionSlots[$not($ in $slotNames)]) = 0 and $count(data.payload.runtime.actions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
                   "message": "Semantic portfolio report violates its capability, section, tier, or inertness policy",
                   "code": "semantic-report-admission"
                 }
@@ -2248,7 +2439,9 @@
         "scope": "per-blueprint"
       },
       "portfolio-saved-reports": {
-        "blueprint": { "$ref": "blueprint:portfolio-intelligence-assets@1.0.0" },
+        "blueprint": {
+          "$ref": "blueprint:portfolio-intelligence-assets@1.0.0"
+        },
         "version": "1",
         "operations": {
           "getSavedReport": {
@@ -2260,7 +2453,12 @@
                 "expr": "{'portfolio_key':input.portfolio_key,'analysis_key':input.analysis_key}"
               }
             },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[]}" } }
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[]}"
+              }
+            }
           },
           "putSavedReport": {
             "operation": "put-report",
@@ -2271,7 +2469,12 @@
                 "expr": "{'portfolio_key':input.portfolio_key,'analysis_key':input.analysis_key,'saved_report_envelope':{'asOf':input.report.asOf,'report':input.report.report}}"
               }
             },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[]}" } }
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[]}"
+              }
+            }
           }
         },
         "scope": "per-blueprint"
@@ -2279,32 +2482,118 @@
     },
     "runtime": {
       "expression": "jsonata",
-      "namespaces": ["portfolio"],
-      "actions": ["assign"],
+      "namespaces": [
+        "portfolio"
+      ],
+      "actions": [
+        "assign"
+      ],
       "capabilities": {
-        "primitive:container": { "propsSchema": { "type": "object", "additionalProperties": true }, "slots": ["children"] },
-        "primitive:chart": { "propsSchema": { "type": "object", "additionalProperties": true } },
-        "primitive:datetime": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "value" },
-        "primitive:editable-table": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["save"], "dataProp": "rows" },
-        "primitive:markdown": { "propsSchema": { "type": "object", "additionalProperties": true } },
-        "gik:blueprint": { "propsSchema": { "type": "object", "additionalProperties": true } },
-        "fluent:button": { "propsSchema": { "type": "object", "additionalProperties": true }, "emits": ["press"] },
-        "fluent:table": { "propsSchema": { "type": "object", "additionalProperties": true }, "dataProp": "rows" }
+        "primitive:container": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "slots": [
+            "children"
+          ]
+        },
+        "primitive:chart": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "primitive:datetime": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "value"
+        },
+        "primitive:editable-table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "save"
+          ],
+          "dataProp": "rows"
+        },
+        "primitive:markdown": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "gik:blueprint": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "fluent:button": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
+        },
+        "fluent:table": {
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "dataProp": "rows"
+        }
       },
       "externals": {
         "projectionViews": {
-          "fluent": { "from": "fluent", "use": ["button", "table"] },
-          "primitive": { "from": "primitive", "use": ["chart", "container", "datetime", "editable-table", "markdown"] }
+          "fluent": {
+            "from": "fluent",
+            "use": [
+              "button",
+              "table"
+            ]
+          },
+          "primitive": {
+            "from": "primitive",
+            "use": [
+              "chart",
+              "container",
+              "datetime",
+              "editable-table",
+              "markdown"
+            ]
+          }
         }
       },
       "state": {
         "portfolio": {
           "holdings": {
-            "AAPL": { "ticker": "AAPL", "quantity": 2, "costBasis": 90 },
-            "MSFT": { "ticker": "MSFT", "quantity": 3, "costBasis": 180 }
+            "AAPL": {
+              "ticker": "AAPL",
+              "quantity": 2,
+              "costBasis": 90
+            },
+            "MSFT": {
+              "ticker": "MSFT",
+              "quantity": 3,
+              "costBasis": 180
+            }
           },
           "stockQuotes": {},
-          "value": { "positions": {}, "summary": { "marketValue": 0, "costBasis": 0, "gainLoss": 0 } },
+          "value": {
+            "positions": {},
+            "summary": {
+              "marketValue": 0,
+              "costBasis": 0,
+              "gainLoss": 0
+            }
+          },
           "intelligence": null,
           "intelligenceRefreshGeneration": 0,
           "analysisContext": null,
@@ -2315,9 +2604,19 @@
     "cells": {
       "portfolio-holdings": {
         "id": "portfolio-holdings",
-        "kind": "portfolio-cell",
-        "outputs": [{ "token": "holdings", "from": "portfolio.holdings" }],
-        "events": { "save": { "payloadSchema": { "type": "object" } } },
+        "outputs": [
+          {
+            "token": "holdings",
+            "from": "portfolio.holdings"
+          }
+        ],
+        "events": {
+          "save": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        },
         "behavior": {
           "on": {
             "save": [
@@ -2334,9 +2633,14 @@
       },
       "market-prices": {
         "id": "market-prices",
-        "kind": "portfolio-cell",
-        "inputs": [{ "token": "holdings" }],
-        "systemInputs": ["numSourcesRunning"],
+        "inputs": [
+          {
+            "token": "holdings"
+          }
+        ],
+        "systemInputs": [
+          "numSourcesRunning"
+        ],
         "sources": [
           {
             "id": "market-prices.source",
@@ -2344,24 +2648,43 @@
             "operation": "refreshPrices",
             "contract": "portfolio-market-quotes/v1",
             "when": "$count(inputs.holdings.*) > 0",
-            "input": { "kind": "jsonata", "expr": "{'holdings':inputs.holdings}" },
-            "output": { "kind": "jsonata", "expr": "response.quotes" }
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'holdings':inputs.holdings}"
+            },
+            "output": {
+              "kind": "jsonata",
+              "expr": "response.quotes"
+            }
           }
         ],
-        "outputs": [{ "token": "stock-quotes", "from": "computed.portfolio.stockQuotes" }],
+        "outputs": [
+          {
+            "token": "stock-quotes",
+            "from": "computed.portfolio.stockQuotes"
+          }
+        ],
         "compute": [
           {
             "id": "settled-market-prices",
             "expression": "sources.`market-prices.source`",
             "assign": "portfolio.stockQuotes",
-            "dependencies": ["sources.market-prices.source"]
+            "dependencies": [
+              "sources.market-prices.source"
+            ]
           }
         ]
       },
       "portfolio-value-cell": {
         "id": "portfolio-value-cell",
-        "kind": "portfolio-cell",
-        "inputs": [{ "token": "holdings" }, { "token": "stock-quotes" }],
+        "inputs": [
+          {
+            "token": "holdings"
+          },
+          {
+            "token": "stock-quotes"
+          }
+        ],
         "outputs": [
           {
             "token": "portfolio-value",
@@ -2374,20 +2697,37 @@
             "id": "calculate-portfolio-value",
             "expression": "($positions := $merge(inputs.holdings.*.($quote := $lookup($$.inputs.`stock-quotes`, ticker); {ticker:{'ticker':ticker,'quantity':quantity,'price':$quote.price,'value':$round(quantity * $quote.price, 2),'costBasis':$round(quantity * costBasis, 2),'gainLoss':$round((quantity * $quote.price) - (quantity * costBasis), 2)}})); {'positions':$positions,'summary':{'marketValue':$count($positions.*) > 0 ? $round($sum($positions.*.value), 2) : 0,'costBasis':$count($positions.*) > 0 ? $round($sum($positions.*.costBasis), 2) : 0,'gainLoss':$count($positions.*) > 0 ? $round($sum($positions.*.gainLoss), 2) : 0}})",
             "assign": "portfolio.value",
-            "dependencies": ["portfolio.holdings", "portfolio.stockQuotes"]
+            "dependencies": [
+              "portfolio.holdings",
+              "portfolio.stockQuotes"
+            ]
           }
         ]
       },
       "portfolio-intelligence": {
         "id": "portfolio-intelligence",
-        "kind": "portfolio-cell",
         "inputs": [
-          { "token": "portfolio-value" },
-          { "token": "portfolio-analysis-context", "as": "analysisContext", "required": true },
-          { "token": "saved-portfolio-report-envelope", "as": "savedReportEnvelope", "required": true },
-          { "token": "portfolio.intelligenceRefreshGeneration", "as": "refreshGeneration" }
+          {
+            "token": "portfolio-value"
+          },
+          {
+            "token": "portfolio-analysis-context",
+            "as": "analysisContext",
+            "required": true
+          },
+          {
+            "token": "saved-portfolio-report-envelope",
+            "as": "savedReportEnvelope",
+            "required": true
+          },
+          {
+            "token": "portfolio.intelligenceRefreshGeneration",
+            "as": "refreshGeneration"
+          }
         ],
-        "systemInputs": ["numSourcesRunning"],
+        "systemInputs": [
+          "numSourcesRunning"
+        ],
         "sources": [
           {
             "id": "portfolio-intelligence.source",
@@ -2399,7 +2739,10 @@
               "kind": "jsonata",
               "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
             },
-            "output": { "kind": "jsonata", "expr": "response" }
+            "output": {
+              "kind": "jsonata",
+              "expr": "response"
+            }
           },
           {
             "id": "portfolio-semantic-intelligence.source",
@@ -2411,7 +2754,10 @@
               "kind": "jsonata",
               "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
             },
-            "output": { "kind": "jsonata", "expr": "response" }
+            "output": {
+              "kind": "jsonata",
+              "expr": "response"
+            }
           }
         ],
         "compute": [
@@ -2419,7 +2765,10 @@
             "id": "settled-portfolio-intelligence",
             "expression": "$exists(sources.`portfolio-semantic-intelligence.source`) ? sources.`portfolio-semantic-intelligence.source` : sources.`portfolio-intelligence.source`",
             "assign": "portfolio.intelligence",
-            "dependencies": ["sources.portfolio-intelligence.source", "sources.portfolio-semantic-intelligence.source"]
+            "dependencies": [
+              "sources.portfolio-intelligence.source",
+              "sources.portfolio-semantic-intelligence.source"
+            ]
           }
         ],
         "outputs": [
@@ -2431,84 +2780,132 @@
         ],
         "behavior": {
           "on": {
-            "press": [{
-              "do": "assign",
-              "target": "portfolio.intelligenceRefreshGeneration",
-              "args": {
-                "from": "$number(portfolio.intelligenceRefreshGeneration) + 1"
+            "press": [
+              {
+                "do": "assign",
+                "target": "portfolio.intelligenceRefreshGeneration",
+                "args": {
+                  "from": "$number(portfolio.intelligenceRefreshGeneration) + 1"
+                }
               }
-            }]
+            ]
           }
         },
-        "events": { "press": { "payloadSchema": { "type": "object" } } }
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
       },
       "portfolio-intelligence-context": {
         "id": "portfolio-intelligence-context",
-        "kind": "portfolio-intelligence-context",
-        "inputs": [{ "token": "portfolio-value" }],
-        "systemInputs": ["numSourcesRunning"],
-        "sources": [{
-          "id": "portfolio-intelligence-context.saved-report",
-          "service": "portfolio-saved-reports",
-          "operation": "getSavedReport",
-          "contract": "saved-portfolio-report-envelope/v1",
-          "when": "false",
-          "input": {
-            "kind": "jsonata",
-            "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'none'}"
-          },
-          "output": { "kind": "jsonata", "expr": "{'found':false,'report':null,'asOf':null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'none'}" }
-        }],
+        "inputs": [
+          {
+            "token": "portfolio-value"
+          }
+        ],
+        "systemInputs": [
+          "numSourcesRunning"
+        ],
+        "sources": [
+          {
+            "id": "portfolio-intelligence-context.saved-report",
+            "service": "portfolio-saved-reports",
+            "operation": "getSavedReport",
+            "contract": "saved-portfolio-report-envelope/v1",
+            "when": "false",
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'none'}"
+            },
+            "output": {
+              "kind": "jsonata",
+              "expr": "{'found':false,'report':null,'asOf':null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'none'}"
+            }
+          }
+        ],
         "compute": [
           {
             "id": "portfolio-analysis-context",
             "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':sources.`portfolio-intelligence-context.saved-report`.analysisKey}",
             "assign": "portfolio.analysisContext",
-            "dependencies": ["inputs.portfolio-value"]
+            "dependencies": [
+              "inputs.portfolio-value"
+            ]
           },
           {
             "id": "saved-portfolio-report-envelope",
             "expression": "sources.`portfolio-intelligence-context.saved-report`",
             "assign": "savedReportEnvelope",
-            "dependencies": ["sources.portfolio-intelligence-context.saved-report"]
+            "dependencies": [
+              "sources.portfolio-intelligence-context.saved-report"
+            ]
           }
         ],
         "outputs": [
-          { "token": "portfolio-analysis-context", "from": "computed.portfolio.analysisContext" },
-          { "token": "saved-portfolio-report-envelope", "from": "computed.savedReportEnvelope" }
+          {
+            "token": "portfolio-analysis-context",
+            "from": "computed.portfolio.analysisContext"
+          },
+          {
+            "token": "saved-portfolio-report-envelope",
+            "from": "computed.savedReportEnvelope"
+          }
         ]
       },
       "portfolio-intelligence-resolution": {
         "id": "portfolio-intelligence-resolution",
-        "kind": "portfolio-intelligence-resolution",
         "inputs": [
-          { "token": "portfolio-analysis-context", "as": "analysisContext", "required": true },
-          { "token": "saved-portfolio-report-envelope", "as": "savedReportEnvelope", "required": true },
-          { "token": "generated-portfolio-report-envelope", "as": "generatedReport", "required": false }
-        ],
-        "systemInputs": ["numSourcesRunning"],
-        "sources": [{
-          "id": "portfolio-intelligence-resolution.save-report",
-          "service": "portfolio-saved-reports",
-          "operation": "putSavedReport",
-          "contract": "saved-portfolio-report-envelope/v1",
-          "when": "inputs.generatedReport != null",
-          "input": {
-            "kind": "jsonata",
-            "expr": "{'portfolio_key':inputs.analysisContext.portfolioKey,'analysis_key':inputs.analysisContext.analysisKey,'report':inputs.generatedReport}"
+          {
+            "token": "portfolio-analysis-context",
+            "as": "analysisContext",
+            "required": true
           },
-          "output": { "kind": "jsonata", "expr": "response" }
-        }],
-        "compute": [{
-          "id": "resolved-portfolio-report-envelope",
-          "expression": "$exists(sources.`portfolio-intelligence-resolution.save-report`) and sources.`portfolio-intelligence-resolution.save-report` != null ? sources.`portfolio-intelligence-resolution.save-report` : (inputs.generatedReport != null ? inputs.generatedReport : (inputs.savedReportEnvelope.found ? inputs.savedReportEnvelope : null))",
-          "assign": "portfolio.resolvedIntelligenceEnvelope",
-          "dependencies": ["inputs.savedReportEnvelope", "inputs.generatedReport", "sources.portfolio-intelligence-resolution.save-report"]
-        }]
-      },
-      "board": {
-        "id": "board",
-        "kind": "portfolio-board-cell"
+          {
+            "token": "saved-portfolio-report-envelope",
+            "as": "savedReportEnvelope",
+            "required": true
+          },
+          {
+            "token": "generated-portfolio-report-envelope",
+            "as": "generatedReport",
+            "required": false
+          }
+        ],
+        "systemInputs": [
+          "numSourcesRunning"
+        ],
+        "sources": [
+          {
+            "id": "portfolio-intelligence-resolution.save-report",
+            "service": "portfolio-saved-reports",
+            "operation": "putSavedReport",
+            "contract": "saved-portfolio-report-envelope/v1",
+            "when": "inputs.generatedReport != null",
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'portfolio_key':inputs.analysisContext.portfolioKey,'analysis_key':inputs.analysisContext.analysisKey,'report':inputs.generatedReport}"
+            },
+            "output": {
+              "kind": "jsonata",
+              "expr": "response"
+            }
+          }
+        ],
+        "compute": [
+          {
+            "id": "resolved-portfolio-report-envelope",
+            "expression": "$exists(sources.`portfolio-intelligence-resolution.save-report`) and sources.`portfolio-intelligence-resolution.save-report` != null ? sources.`portfolio-intelligence-resolution.save-report` : (inputs.generatedReport != null ? inputs.generatedReport : (inputs.savedReportEnvelope.found ? inputs.savedReportEnvelope : null))",
+            "assign": "portfolio.resolvedIntelligenceEnvelope",
+            "dependencies": [
+              "inputs.savedReportEnvelope",
+              "inputs.generatedReport",
+              "sources.portfolio-intelligence-resolution.save-report"
+            ]
+          }
+        ]
       }
     }
   }

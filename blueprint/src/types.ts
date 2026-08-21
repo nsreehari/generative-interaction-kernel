@@ -36,10 +36,15 @@ export interface BlueprintRepresentation {
   id: string;
   when?: string;
   extends?: string;
-  views?: Record<string, CellView>;
+  /** Upserts one named potential view on an existing Cell, addressed by (cellId, viewName). Every
+   * other named view already declared on that Cell is left untouched. */
+  views?: Record<string, Record<string, CellPotentialView>>;
   decorators?: BlueprintRepresentationDecorator[];
-  presentation?: PresentationProjection;
-  presentationAppend?: PresentationComposition;
+  /** Replaces the whole authored presentation for this representation. */
+  presentation?: PresentationDefinition;
+  /** Appends additional slot entries to the authored presentation — a plain array concat, since
+   * slots are a flat list rather than a nested tree. */
+  presentationAppend?: readonly PresentationSlot[];
 }
 
 export interface BlueprintRepresentationDecorator {
@@ -68,8 +73,6 @@ export interface RepresentationLoweringRecipeDefinition extends LoweringRecipeDe
   implementationPrograms?: BlueprintImplementationProgram[];
   implementationFallback?: string;
 }
-
-export type BlueprintResource = { inline: Json } | { $ref: string };
 
 export interface BlueprintRuntimeDefinition {
   version?: string;
@@ -131,10 +134,16 @@ export interface CellViewDecoration {
   visibility?: string;
 }
 
-export interface CellView extends Omit<CellViewDecoration, "capability"> {
+/** A named potential manifestation carried by a Cell. It is not a data-flow participant and is
+ * dormant — never materialized — unless its own `region` resolves into a slot that is part of the
+ * presentation active for the current materialization. */
+export interface CellPotentialView extends Omit<CellViewDecoration, "capability"> {
   capability?: string;
   before?: readonly CellViewDecoration[];
   after?: readonly CellViewDecoration[];
+  /** Which presentation slot(s) this view attaches to. An array renders one independent instance
+   * per slot, all reading/writing through this same Cell. */
+  region?: string | readonly string[];
 }
 
 export type CellBlueprint =
@@ -143,7 +152,6 @@ export type CellBlueprint =
 
 export interface CellDefinition {
   id: string;
-  kind?: string;
   metadata?: Record<string, Json>;
   state?: {
     initial?: Record<string, Json>;
@@ -157,34 +165,29 @@ export interface CellDefinition {
   outputs?: readonly CellOutput[];
   events?: Record<string, CellEventContract>;
   behavior?: CellBehavior;
-  view?: CellView;
+  /** Zero, one, or many named external manifestations this Cell carries. A Cell has no knowledge
+   * of whether any of them ever materializes. */
+  potentialViews?: Record<string, CellPotentialView>;
   blueprint?: CellBlueprint;
 }
 
-export interface RelationshipDefinition {
-  kind: string;
-  participants: readonly string[];
-  configuration?: Json;
-  metadata?: Record<string, Json>;
+/** A presentation slot entry. A bare string is a slot with no declared parent (typically the root).
+ * An object self-declares which slot it nests inside via `region` — the same mechanism a Cell's view
+ * uses to attach to a slot. */
+export interface PresentationSlotEntry {
+  id: string;
+  region?: string;
 }
 
-export interface ProjectionDefinition {
-  kind: string;
-  participants?: readonly string[];
-  configuration?: Json;
-  metadata?: Record<string, Json>;
-}
+export type PresentationSlot = string | PresentationSlotEntry;
 
-export interface PresentationProjection {
-  roots: readonly string[];
-  composition?: PresentationComposition;
+/** The whole presentation is a closed, flat set of named slots plus a root. It has no knowledge of
+ * Cells and no tree of who contains whom — every attachment (slot-in-slot, or Cell-into-slot via
+ * `CellView.region`) is self-declared on the thing attaching. */
+export interface PresentationDefinition {
+  slots: readonly PresentationSlot[];
+  root: string;
 }
-
-export interface PresentationCompositionEntry {
-  slots: Readonly<Record<string, readonly string[]>>;
-}
-
-export type PresentationComposition = Readonly<Record<string, PresentationCompositionEntry>>;
 
 export type BlueprintStructureMode = "fixed" | "reconfigurable" | "adaptive";
 
@@ -192,10 +195,7 @@ export type BlueprintStructureOperation =
   | "addCell"
   | "replaceCell"
   | "removeCell"
-  | "setRelationship"
-  | "removeRelationship"
-  | "setProjection"
-  | "removeProjection";
+  | "setPresentation";
 
 export interface BlueprintStructurePolicy {
   /** Semantic Blueprint operations admitted in adaptive mode. */
@@ -246,10 +246,7 @@ export type BlueprintPatchOperation =
   | { op: "addCell"; cell: CellDefinition }
   | { op: "replaceCell"; cellId: string; cell: CellDefinition }
   | { op: "removeCell"; cellId: string }
-  | { op: "setRelationship"; relationshipId: string; relationship: RelationshipDefinition }
-  | { op: "removeRelationship"; relationshipId: string }
-  | { op: "setProjection"; projectionId: string; projection: ProjectionDefinition | PresentationProjection }
-  | { op: "removeProjection"; projectionId: string };
+  | { op: "setPresentation"; presentation: PresentationDefinition };
 
 export type BlueprintPatch = readonly BlueprintPatchOperation[];
 export type BlueprintPatchOrigin = "authorized" | "runtime";
@@ -273,14 +270,9 @@ export interface BlueprintDefinition<TRecipe extends LoweringRecipeDefinition = 
   interface?: BlueprintInterfaceDefinition;
   tiers: TierDefinition[];
   recipes: TRecipe[];
-  context?: Record<string, Json>;
   contextFormSpec?: DeclarativeFormSpec;
-  resources?: Record<string, BlueprintResource>;
   cells?: Record<string, CellDefinition>;
-  relationships?: Record<string, RelationshipDefinition>;
-  projections?: Record<string, ProjectionDefinition | PresentationProjection> & {
-    presentation?: PresentationProjection;
-  };
+  presentation?: PresentationDefinition;
   services?: Record<string, ServiceRequirement | ServiceDeclaration>;
   runtime: BlueprintRuntimeDefinition;
   metadata?: Record<string, Json>;

@@ -15,23 +15,23 @@ import {
 import type { ExecutableCellTopology } from "./cells";
 import type {
   CellDefinition,
+  CellPotentialView,
   CellViewDecoration,
-  PresentationProjection,
+  PresentationDefinition,
 } from "./types";
 
 export interface CellProjectionDefinition {
   cells: Readonly<Record<string, CellDefinition>>;
-  projections?: {
-    presentation?: {
-      roots: readonly string[];
-      composition?: PresentationProjection["composition"];
-    };
-  };
+  presentation?: PresentationDefinition;
 }
 
 export const HOSTED_BLUEPRINT_OUTPUT_EVENT = "gik-hosted-blueprint-output";
 
-/** Compile a Blueprint's optional presentation into the executable Kernel program. */
+/** Compile a Blueprint's optional presentation into the executable Kernel program. Presentation is a
+ * closed set of named slots (self-declared nesting via each slot's own `region`) plus a root. A Cell
+ * carries zero, one, or many named `potentialViews`; each one independently self-declares which
+ * slot(s) it attaches to — never the reverse — and stays dormant unless that slot is reachable from
+ * the active presentation's root. */
 export function composeCellProgram(
   definition: CellProjectionDefinition,
   topology: ExecutableCellTopology,
@@ -39,12 +39,12 @@ export function composeCellProgram(
   if (topology.diagnostics.length > 0) {
     throw new Error(`Invalid cell topology '${topology.id}': ${topology.diagnostics.map(({ detail }) => detail).join("; ")}`);
   }
-  const presentation = definition.projections?.presentation;
+  const presentation = definition.presentation;
   const graph = composeCellGraph(topology);
   if (!presentation) {
     const hostedCell = topology.cells.find((cell) => cell.blueprint);
     if (hostedCell) {
-      throw new Error(`Blueprint '${topology.id}' without a presentation projection cannot host child Blueprint Cell '${hostedCell.id}'`);
+      throw new Error(`Blueprint '${topology.id}' without a presentation cannot host child Blueprint Cell '${hostedCell.id}'`);
     }
     const handlers: RuntimeHandler[] = topology.cells.flatMap((cell) => {
       const events = cellEvents(cell);
@@ -55,41 +55,96 @@ export function composeCellProgram(
       ...(handlers.length > 0 ? { handlers } : {}),
     };
   }
-  const rootIds = presentation?.roots ?? [];
-  if (rootIds.length === 0) {
-    throw new Error(`Blueprint '${topology.id}' requires at least one presentation root`);
-  }
-  const composition = presentation.composition ?? {};
-  const presentedCellIds = new Set<string>();
-  const compile = (cellId: string, ancestors: readonly string[]): DocNode => {
-    if (ancestors.includes(cellId)) {
-      throw new Error(`Blueprint '${topology.id}' has a presentation cycle at '${cellId}'`);
-    }
 
-    const cell = definition.cells[cellId];
-    if (!cell) throw new Error(`Blueprint '${topology.id}' references unknown cell '${cellId}'`);
-    if (!cell.blueprint && !cell.view?.capability) throw new Error(`Presentation cell '${cellId}' has no view capability`);
-    presentedCellIds.add(cellId);
-    const children = Object.values(composition[cellId]?.slots ?? {})
-      .flatMap((childIds) => childIds)
-      .map((childId) => compile(childId, [...ancestors, cellId]));
-    return toProgramNode(cell, children);
+  // Every slot's own declared parent, and the fixed declaration order used to resolve attachment order.
+  const slotParent = new Map<string, string | undefined>();
+  const slotOrder: string[] = [];
+  for (const entry of presentation.slots) {
+    const id = typeof entry === "string" ? entry : entry.id;
+    const region = typeof entry === "string" ? undefined : entry.region;
+    if (slotParent.has(id)) throw new Error(`Blueprint '${topology.id}' declares slot '${id}' more than once`);
+    slotParent.set(id, region);
+    slotOrder.push(id);
+  }
+  if (!slotParent.has(presentation.root)) {
+    throw new Error(`Blueprint '${topology.id}' presentation root '${presentation.root}' is not a declared slot`);
+  }
+
+  type Attachment =
+    | { kind: "slot"; id: string }
+    | { kind: "cell"; cell: CellDefinition; viewName: string; view: CellPotentialView };
+  const attachments = new Map<string, Attachment[]>();
+  const attach = (parent: string, attachment: Attachment) => {
+    if (!attachments.has(parent)) attachments.set(parent, []);
+    attachments.get(parent)!.push(attachment);
   };
-  const roots = rootIds.map((rootId) => compile(rootId, []));
+
+  // Nested slots attach in slots-array declaration order, always ahead of any Cell attached to the
+  // same parent — a fixed, deterministic rule since attachment is declared on each participant
+  // independently rather than as one ordered parent-owned list.
+  for (const id of slotOrder) {
+    const parent = slotParent.get(id);
+    if (parent === undefined) continue;
+    if (!slotParent.has(parent)) {
+      throw new Error(`Blueprint '${topology.id}' slot '${id}' declares unknown parent region '${parent}'`);
+    }
+    attach(parent, { kind: "slot", id });
+  }
+
+  // Cell attachments follow, in Cell declaration order, then declared potentialViews order; a
+  // `region` array attaches one named view independently into each named slot (one rendered
+  // instance per attachment). A Cell may carry many named views; each is dormant unless its own
+  // region is reachable from the active presentation's root.
+  const presentedCellIds = new Set<string>();
+  for (const cell of topology.cells) {
+    for (const [viewName, view] of Object.entries(cell.potentialViews ?? {})) {
+      const region = view.region;
+      if (region === undefined) continue;
+      for (const targetSlot of Array.isArray(region) ? region : [region]) {
+        if (!slotParent.has(targetSlot)) {
+          throw new Error(`Blueprint '${topology.id}' Cell '${cell.id}' view '${viewName}' attaches to unknown region '${targetSlot}'`);
+        }
+        attach(targetSlot, { kind: "cell", cell, viewName, view });
+        presentedCellIds.add(cell.id);
+      }
+    }
+  }
+
+  const compileSlot = (slotId: string, ancestors: readonly string[]): DocNode => {
+    if (ancestors.includes(slotId)) {
+      throw new Error(`Blueprint '${topology.id}' has a presentation cycle at slot '${slotId}'`);
+    }
+    const children = (attachments.get(slotId) ?? []).map((attachment) =>
+      attachment.kind === "slot"
+        ? compileSlot(attachment.id, [...ancestors, slotId])
+        : compileCellInstance(attachment.cell, attachment.viewName, attachment.view, slotId));
+    return {
+      capability: PRESENTATION_FRAGMENT_CAPABILITY,
+      id: slotId,
+      ...(children.length > 0 ? { edges: { children } } : {}),
+    };
+  };
+  const compileCellInstance = (
+    cell: CellDefinition,
+    viewName: string,
+    view: CellPotentialView,
+    slotId: string,
+  ): DocNode => {
+    if (!cell.blueprint && !view.capability) {
+      throw new Error(`Presentation cell '${cell.id}' view '${viewName}' has no view capability`);
+    }
+    return toProgramNode(cell, view, `${cell.id}--${viewName}--in-${slotId}`);
+  };
+
+  const root = compileSlot(presentation.root, []);
   const backgroundCells = topology.cells.filter((cell) => !presentedCellIds.has(cell.id));
   const handlers: RuntimeHandler[] = backgroundCells.flatMap((cell) => {
     const events = cellEvents(cell);
     return Object.keys(events).length > 0 ? [{ id: cell.id, on: events }] : [];
   });
   return {
-    root: roots.length === 1
-      ? roots[0]
-      : {
-          capability: PRESENTATION_FRAGMENT_CAPABILITY,
-          id: "presentation-roots",
-          edges: { children: roots },
-        },
-      ...(graph ? { graph } : {}),
+    root,
+    ...(graph ? { graph } : {}),
     ...(handlers.length > 0 ? { handlers } : {}),
   };
 }
@@ -184,23 +239,23 @@ function providedTokens(cell: CellDefinition): string[] {
   return (cell.outputs ?? []).map(({ token }) => token);
 }
 
-function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocNode {
+function toProgramNode(cell: CellDefinition, view: CellPotentialView, nodeId: string): DocNode {
   const source = cell.sources?.[0];
   const blueprintReference = cell.blueprint && "$ref" in cell.blueprint ? cell.blueprint.$ref : undefined;
   const blueprintBinding = blueprintReference && typeof blueprintReference !== "string" ? blueprintReference : undefined;
-  const directBindings = Object.entries(cell.view?.bindings ?? {})
+  const directBindings = Object.entries(view.bindings ?? {})
     .filter(([, binding]) => binding.from !== undefined)
     .map(([prop, binding]) => [prop, binding.from!] as const);
-  const expressionBindings = Object.entries(cell.view?.bindings ?? {})
+  const expressionBindings = Object.entries(view.bindings ?? {})
     .filter(([, binding]) => binding.expression !== undefined)
     .map(([prop, binding]) => [prop, scopeCellExpression(binding.expression!, cell)] as const);
   const viewProps = source
     ? {
-        ...structuredClone(cell.view?.props ?? {}),
+        ...structuredClone(view.props ?? {}),
         externalSource: { refreshEvent: "refresh" },
       }
-    : cell.view?.props
-      ? structuredClone(cell.view.props)
+    : view.props
+      ? structuredClone(view.props)
       : undefined;
   const props = cell.blueprint && !blueprintBinding
     ? { ...viewProps, hostedBlueprint: JSON.parse(JSON.stringify(cell.blueprint)) as Json }
@@ -216,24 +271,23 @@ function toProgramNode(cell: CellDefinition, children: readonly DocNode[]): DocN
         } : {}),
       },
     } : {}),
-    ...(cell.view?.visibility ? { gate: scopeCellExpression(cell.view.visibility, cell) } : {}),
+    ...(view.visibility ? { gate: scopeCellExpression(view.visibility, cell) } : {}),
     ...(Object.keys(events).length > 0 ? { on: events } : {}),
-    ...(children.length > 0 ? { children: [...children] } : {}),
   };
   const cellNode: DocNode = {
-    capability: cell.blueprint ? BLUEPRINT_CAPABILITY : cell.view!.capability!,
-    id: cell.id,
+    capability: cell.blueprint ? BLUEPRINT_CAPABILITY : view.capability!,
+    id: nodeId,
     ...(props ? { props } : {}),
     ...(Object.keys(edges).length > 0 ? { edges } : {}),
   };
-  const before = (cell.view?.before ?? []).map((view, index) =>
-    toDecorationNode(view, `${cell.id}--before-${index}`, cell));
-  const after = (cell.view?.after ?? []).map((view, index) =>
-    toDecorationNode(view, `${cell.id}--after-${index}`, cell));
+  const before = (view.before ?? []).map((decoration, index) =>
+    toDecorationNode(decoration, `${nodeId}--before-${index}`, cell));
+  const after = (view.after ?? []).map((decoration, index) =>
+    toDecorationNode(decoration, `${nodeId}--after-${index}`, cell));
   if (before.length === 0 && after.length === 0) return cellNode;
   return {
     capability: PRESENTATION_FRAGMENT_CAPABILITY,
-    id: `${cell.id}--decorated`,
+    id: `${nodeId}--decorated`,
     edges: { children: [...before, cellNode, ...after] },
   };
 }

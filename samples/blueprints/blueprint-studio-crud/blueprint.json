@@ -36,8 +36,12 @@
     "recipes": [],
     "runtime": {
       "expression": "jsonata",
-      "namespaces": ["studioCrud"],
-      "actions": ["invoke"],
+      "namespaces": [
+        "studioCrud"
+      ],
+      "actions": [
+        "invoke"
+      ],
       "state": {
         "studioCrud": {
           "result": null
@@ -47,117 +51,219 @@
     "cells": {
       "crud-controller": {
         "id": "crud-controller",
-        "kind": "blueprint-studio-crud-controller",
         "behavior": {
           "on": {
             "list-blueprints": [
               {
                 "do": "invoke",
-                "control": { "tool": "readBlueprintIndex" }
+                "control": {
+                  "tool": "readBlueprintIndex"
+                }
               }
             ],
             "fetch-blueprint": [
               {
                 "do": "invoke",
-                "control": { "tool": "readBlueprint" }
+                "control": {
+                  "tool": "readBlueprint"
+                }
               }
             ],
             "create-blueprint": [
               {
                 "do": "invoke",
-                "control": { "tool": "readIndexForCreate" }
+                "control": {
+                  "tool": "readIndexForCreate"
+                }
               }
             ],
             "update-blueprint": [
               {
                 "do": "invoke",
-                "control": { "tool": "readIndexForUpdate" }
+                "control": {
+                  "tool": "readIndexForUpdate"
+                }
               }
             ],
             "delete-blueprint": [
               {
                 "do": "invoke",
-                "control": { "tool": "readIndexForDelete" }
+                "control": {
+                  "tool": "readIndexForDelete"
+                }
               }
             ],
             "create-draft": [
               {
                 "do": "invoke",
-                "control": { "tool": "readBlueprintForCreateDraft" }
+                "control": {
+                  "tool": "readBlueprintForCreateDraft"
+                }
               }
             ],
             "create-blueprint-draft": [
               {
                 "do": "invoke",
-                "control": { "tool": "readIndexForCreateDraft" }
+                "control": {
+                  "tool": "readIndexForCreateDraft"
+                }
               }
             ],
             "clone-blueprint-draft": [
               {
                 "do": "invoke",
-                "control": { "tool": "readBlueprintForCloneDraft" }
+                "control": {
+                  "tool": "readBlueprintForCloneDraft"
+                }
               }
             ],
             "save-draft": [
               {
                 "do": "invoke",
-                "control": { "tool": "readBlueprintForSaveDraft" }
+                "control": {
+                  "tool": "readBlueprintForSaveDraft"
+                }
               }
             ],
             "delete-draft": [
               {
                 "do": "invoke",
-                "control": { "tool": "readBlueprintForDeleteDraft" }
+                "control": {
+                  "tool": "readBlueprintForDeleteDraft"
+                }
+              }
+            ],
+            "read-index-for-delete-draft-entry": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "readIndexForDeleteDraftEntry"
+                }
               }
             ],
             "promote-draft": [
               {
                 "do": "invoke",
-                "control": { "tool": "readBlueprintForPromoteDraft" }
+                "control": {
+                  "tool": "readBlueprintForPromoteDraft"
+                }
               }
             ],
             "read-index-for-promote-draft": [
               {
                 "do": "invoke",
-                "control": { "tool": "readIndexForPromoteDraft" }
+                "control": {
+                  "tool": "readIndexForPromoteDraft"
+                }
               }
             ],
             "write-blueprint-record": [
               {
                 "do": "invoke",
-                "control": { "tool": "writeBlueprintRecord" }
+                "control": {
+                  "tool": "writeBlueprintRecord"
+                }
               }
             ],
             "delete-blueprint-record": [
               {
                 "do": "invoke",
-                "control": { "tool": "deleteBlueprintRecord" }
+                "control": {
+                  "tool": "deleteBlueprintRecord"
+                }
               }
             ],
             "write-blueprint-index": [
               {
                 "do": "invoke",
-                "control": { "tool": "writeBlueprintIndex" }
+                "control": {
+                  "tool": "writeBlueprintIndex"
+                }
               }
             ]
           }
         },
         "events": {
-          "list-blueprints": { "payloadSchema": { "type": "object" } },
-          "fetch-blueprint": { "payloadSchema": { "type": "object" } },
-          "create-blueprint": { "payloadSchema": { "type": "object" } },
-          "update-blueprint": { "payloadSchema": { "type": "object" } },
-          "delete-blueprint": { "payloadSchema": { "type": "object" } },
-          "create-draft": { "payloadSchema": { "type": "object" } },
-          "create-blueprint-draft": { "payloadSchema": { "type": "object" } },
-          "clone-blueprint-draft": { "payloadSchema": { "type": "object" } },
-          "save-draft": { "payloadSchema": { "type": "object" } },
-          "delete-draft": { "payloadSchema": { "type": "object" } },
-          "promote-draft": { "payloadSchema": { "type": "object" } },
-          "read-index-for-promote-draft": { "payloadSchema": { "type": "object" } },
-          "write-blueprint-record": { "payloadSchema": { "type": "object" } },
-          "delete-blueprint-record": { "payloadSchema": { "type": "object" } },
-          "write-blueprint-index": { "payloadSchema": { "type": "object" } }
+          "list-blueprints": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "fetch-blueprint": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "create-blueprint": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "update-blueprint": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "delete-blueprint": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "create-draft": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "create-blueprint-draft": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "clone-blueprint-draft": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "save-draft": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "delete-draft": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "read-index-for-delete-draft-entry": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "promote-draft": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "read-index-for-promote-draft": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "write-blueprint-record": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "delete-blueprint-record": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "write-blueprint-index": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       }
     },
@@ -333,7 +439,23 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($entry := response; $id := $trim(effect.data.id); $updated := $merge([$entry,{'draft':null}]); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$updated,'result':{'draftDeleted':true,'blueprint':$updated}}}]})"
+                "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : $entry.artifact = null ? {'events':[{'node':'crud-controller','name':'read-index-for-delete-draft-entry','payload':{'id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':null}]),'result':{'draftDeleted':true,'blueprint':$merge([$entry,{'draft':null}])}}}]})"
+              }
+            }
+          },
+          "readIndexForDeleteDraftEntry": {
+            "operation": "read",
+            "contract": "storage-kv/v1",
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'index:blueprints'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($id := effect.data.id; $nextIndex := (response ? response : [])[id != $id]; {'events':[{'node':'crud-controller','name':'delete-blueprint-record','payload':{'id':$id,'index':$nextIndex,'result':{'draftDeleted':true,'deleted':true,'id':$id,'blueprints':$nextIndex}}}]})"
               }
             }
           },

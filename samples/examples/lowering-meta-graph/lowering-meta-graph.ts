@@ -107,18 +107,20 @@ export function compilerBlueprint(): BlueprintArtifact {
       },
     },
     cells: {
-      // `transform`: tier-1 source artifact. Also stands in as the presentation root:
-      // today's `composeCellProgram` always requires exactly one view-bearing root, even for
-      // a headless compiler graph. That view is otherwise inert here.
+      // `agent-tier`: the tier-1 source metadata placeholder. It carries no ports/compute/view —
+      // it exists only so `loweringCellGraph()`'s "not declared here" comment above has a Cell to
+      // point at. This Blueprint has no presentation at all: it is a pure computation meta-graph,
+      // never opened through `openBlueprint`/`ControlFace` (only `runTransition` drives it), so it
+      // needs no view-bearing root or slot tree — every Cell's `behavior.on` handlers are wired via
+      // the background-cell fallback (keyed by Cell id) that `composeCellProgram` uses whenever a
+      // Blueprint declares no `presentation`.
       "agent-tier": {
         id: "agent-tier",
-        view: { capability: "workflow:compiler-root" },
       },
       // `transform`: findings -> presentation rows (pure JSONata compute Cell — the same
       // shape as `positions` in the portfolio-tracker sample).
       "transform-rows": {
         id: "transform-rows",
-        view: { capability: "workflow:transform-rows" },
         inputs: [{ token: "agentData.findings", as: "findings" }],
         outputs: [{ token: "presentation:rows", from: "computed.presentation.rows" }],
         compute: [
@@ -134,7 +136,6 @@ export function compilerBlueprint(): BlueprintArtifact {
       // `transform`: findings -> presentation summary stats.
       "transform-summary": {
         id: "transform-summary",
-        view: { capability: "workflow:transform-summary" },
         inputs: [
           { token: "agentData.findings", as: "findings" },
           { token: "agentData.riskFlags", as: "riskFlags" },
@@ -153,7 +154,6 @@ export function compilerBlueprint(): BlueprintArtifact {
       // `approve`: a resolver-neutral request that the host may route to a human or policy.
       approve: {
         id: "approve",
-        view: { capability: "workflow:approve" },
         events: {
           approve: { payloadSchema: { type: "object" } },
           resolved: { payloadSchema: { type: "object" } },
@@ -178,7 +178,6 @@ export function compilerBlueprint(): BlueprintArtifact {
       // `openBlueprint()`, both already-shipped, unchanged primitives.
       "emit-blueprint": {
         id: "emit-blueprint",
-        view: { capability: "workflow:emit-blueprint" },
         inputs: [
           { token: "presentation:rows", as: "rows" },
           { token: "presentation:summary", as: "summary" },
@@ -208,35 +207,15 @@ export function compilerBlueprint(): BlueprintArtifact {
               'cells': {
                 'report-view': {
                   'id': 'report-view',
-                  'view': { 'capability': 'workflow:due-diligence-report' }
+                  'potentialViews': { 'primary': { 'capability': 'workflow:due-diligence-report', 'region': 'report-view' } }
                 }
               },
-              'projections': {
-                'presentation': { 'roots': ['report-view'] }
-              }
+              'presentation': { 'slots': ['report-view'], 'root': 'report-view' }
             } : null`,
             assign: "compiled.artifact",
             dependencies: ["presentation.rows", "presentation.summary", "compiled.approved"],
           },
         ],
-      },
-    },
-    projections: {
-      presentation: {
-        roots: ["agent-tier"],
-        // `behavior.on` handlers only get wired into the dispatchable document tree for
-        // cells reachable from the presentation root — compute Cells resolve purely through
-        // token wiring regardless of tree placement (confirmed by transform-rows/
-        // transform-summary above), but a Cell with an event handler (approve) needs an
-        // explicit composition or `face.emit` has no node to resolve it against. Same pattern
-        // as portfolio-tracker's non-visual access-gate Cells (no `view`, placed as children).
-        composition: {
-          "agent-tier": {
-            slots: {
-              children: ["transform-rows", "transform-summary", "approve", "emit-blueprint"],
-            },
-          },
-        },
       },
     },
   });

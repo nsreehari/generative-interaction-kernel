@@ -44,7 +44,7 @@ describe("Node nested report Blueprint composition", () => {
       ]));
 
       await host.controlface.emit({
-        node: "analysis-selection",
+        node: "analysis-selection--primary--in-shell",
         name: "save",
         payload: { values: { sourceReport: "password-spray-mailbox" } },
       });

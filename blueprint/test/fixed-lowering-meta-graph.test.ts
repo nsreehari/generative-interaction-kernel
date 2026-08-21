@@ -34,7 +34,10 @@ test("the fixed meta-graph lowers the two-tier vocabulary recipe to an executabl
 
   assert.deepEqual(terminal.payload.tiers, [{ id: "runtime", kind: "runtime-document" }]);
   assert.deepEqual(terminal.payload.recipes, []);
-  assert.deepEqual(terminal.payload.projections?.presentation?.roots, ["query-input"]);
+  assert.deepEqual(terminal.payload.presentation, {
+    slots: ["query-input", { id: "children", region: "query-input" }],
+    root: "query-input",
+  });
   assert.equal(Object.keys(terminal.payload.cells ?? {}).length, 3);
   assert.deepEqual(materialized.payload.terminalBlueprint, terminal);
   assert.ok(unwrap(materialized.payload.program).root);
@@ -82,7 +85,10 @@ test("the same fixed meta-graph folds an arbitrary ordered tier chain", () => {
     { id: "runtime", kind: "runtime-document" },
   ]);
   assert.deepEqual(materialized.payload.terminalBlueprint.payload.recipes, []);
-  assert.deepEqual(materialized.payload.terminalBlueprint.payload.projections?.presentation?.roots, ["query-input"]);
+  assert.deepEqual(materialized.payload.terminalBlueprint.payload.presentation, {
+    slots: ["query-input", { id: "children", region: "query-input" }],
+    root: "query-input",
+  });
 });
 
 test("materialization rejects a recipe without deterministic vocabulary operations", () => {
@@ -136,27 +142,27 @@ test("representation append merges sparse parent and slot composition", () => {
         {
           id: "base",
           presentation: {
-            roots: ["root"],
-            composition: {
-              root: {
-                slots: {
-                  header: ["heading"],
-                  content: ["primary"],
-                },
-              },
-            },
+            slots: [
+              "root",
+              { id: "header", region: "root" },
+              { id: "content", region: "root" },
+            ],
+            root: "root",
+          },
+          views: {
+            heading: { main: { region: "header" } },
+            primary: { main: { region: "content" } },
           },
         },
         {
           id: "extended",
           extends: "base",
-          presentationAppend: {
-            root: {
-              slots: {
-                content: ["secondary"],
-                actions: ["save"],
-              },
-            },
+          presentationAppend: [
+            { id: "actions", region: "root" },
+          ],
+          views: {
+            secondary: { main: { region: "content" } },
+            save: { main: { region: "actions" } },
           },
         },
       ],
@@ -165,21 +171,25 @@ test("representation append merges sparse parent and slot composition", () => {
     runtime: { namespaces: ["state"], capabilities: {} },
     cells: Object.fromEntries(["root", "heading", "primary", "secondary", "save"].map((id) => [
       id,
-      { id, view: { capability: "ui:text" } },
+      { id, potentialViews: { main: { capability: "ui:text" } } },
     ])),
   });
 
   const terminal = lowerWithFixedMetaGraph(authored);
 
-  assert.deepEqual(terminal.payload.projections?.presentation?.composition, {
-    root: {
-      slots: {
-        header: ["heading"],
-        content: ["primary", "secondary"],
-        actions: ["save"],
-      },
-    },
+  assert.deepEqual(terminal.payload.presentation, {
+    slots: [
+      "root",
+      { id: "header", region: "root" },
+      { id: "content", region: "root" },
+      { id: "actions", region: "root" },
+    ],
+    root: "root",
   });
+  assert.equal(terminal.payload.cells?.heading.potentialViews?.main.region, "header");
+  assert.equal(terminal.payload.cells?.primary.potentialViews?.main.region, "content");
+  assert.equal(terminal.payload.cells?.secondary.potentialViews?.main.region, "content");
+  assert.equal(terminal.payload.cells?.save.potentialViews?.main.region, "actions");
 });
 
 test("a representation decorator uses JSONata to add loading UI around source-backed Cells", () => {
@@ -195,19 +205,13 @@ test("a representation decorator uses JSONata to add loading UI around source-ba
       representations: [{
         id: "screen",
         views: {
-          board: { capability: "primitive:container" },
-          remote: { capability: "ui:text" },
-          local: { capability: "ui:text" },
+          board: { main: { capability: "primitive:container" } },
+          remote: { main: { capability: "ui:text", region: "board" } },
+          local: { main: { capability: "ui:text", region: "board" } },
         },
         presentation: {
-          roots: ["board"],
-          composition: {
-            board: {
-              slots: {
-                children: ["remote", "local"],
-              },
-            },
-          },
+          slots: ["board"],
+          root: "board",
         },
         decorators: [{
           select: "cells[sources].id",
@@ -228,7 +232,17 @@ test("a representation decorator uses JSONata to add loading UI around source-ba
         systemInputs: ["numSourcesRunning"],
         sources: [{
           id: "remote.source",
-          inline: { gik: "0.1", type: "service", payload: {} },
+          inline: {
+            kind: "mock-service",
+            version: "1",
+            operations: {
+              read: {
+                operation: "read",
+                contract: "remote/v1",
+                settlement: { transform: { kind: "jsonata", expr: "response" } },
+              },
+            },
+          },
           operation: "read",
           contract: "remote/v1",
         }],
@@ -253,6 +267,6 @@ test("a representation decorator uses JSONata to add loading UI around source-ba
     remote?.edges?.children?.[0]?.edges?.gate,
     '($count(($lookup(blueprintRunState.cells, "remote").sources)[lastRequestedToken != null and lastRequestedToken != lastCompletedToken])) > 0',
   );
-  assert.equal(remote?.edges?.children?.[1]?.id, "remote");
-  assert.equal(local?.id, "local");
+  assert.equal(remote?.edges?.children?.[1]?.id, "remote--main--in-board");
+  assert.equal(local?.id, "local--main--in-board");
 });

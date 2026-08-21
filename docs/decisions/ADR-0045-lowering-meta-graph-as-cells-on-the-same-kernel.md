@@ -231,3 +231,13 @@ when the terminal Kernel tree is composed.
 This supersedes the `placements` wording in finding 2 above. It does not change token-graph
 reachability or event dispatch: Cells outside the presentation remain graph participants, while an
 event-bearing Cell must still be reachable from a presentation root.
+
+## Amendment (2026-08-21): presentation slots supersede parent-keyed composition
+
+The 2026-08-19 amendment's parent-keyed `composition` map is superseded by a flat, Cell-agnostic
+top-level `presentation` (`{ slots, root }`, no `projections` wrapper). Compiler Blueprints reach
+their Cells the same way application Blueprints do: each Cell's own `view.region` attaches it to a
+slot, and a slot self-declares its own parent slot via `region`. The reachability constraint from
+finding 2 is unchanged in substance — an event-bearing Cell must still declare a `region` that
+resolves into the presentation reachable from `root` — only the mechanism recording that attachment
+moved from a third structure onto the Cell (and slot) itself.

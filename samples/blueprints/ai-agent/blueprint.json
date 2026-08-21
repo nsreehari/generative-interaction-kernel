@@ -275,18 +275,6 @@
       }
     ],
     "cells": {
-      "ai-agent-root": {
-        "id": "ai-agent-root",
-        "view": {
-          "capability": "primitive:container",
-          "props": {
-            "variant": "column",
-            "gap": "m",
-            "fill": true,
-            "ariaLabel": "AI Agent"
-          }
-        }
-      },
       "agent-query-form": {
         "id": "agent-query-form",
         "systemInputs": ["numSourcesRunning"],
@@ -328,25 +316,28 @@
             ]
           }
         },
-        "view": {
-          "capability": "primitive:form",
-          "before": [{
-            "capability": "fluent:spinner",
-            "props": { "label": "Loading agents", "size": "medium" },
-            "visibility": "systemInputs.numSourcesRunning > 0"
-          }],
-          "props": {
-            "saveLabel": "Ask",
-            "discardLabel": "Discard",
-            "initiallyDirty": true
-          },
-          "bindings": {
-            "fields": {
-              "expression": "{'properties':{'agentName':{'title':'Agent','type':'string','options':agent.agentOptions,'placeholder':'Choose an agent','span':12},'message':{'title':'Message','type':'string','format':'textarea','rows':5,'minLength':1,'placeholder':'Ask the agent something...','span':12}},'required':['agentName','message']}"
+        "potentialViews": {
+          "primary": {
+            "capability": "primitive:form",
+            "region": "query",
+            "before": [{
+              "capability": "fluent:spinner",
+              "props": { "label": "Loading agents", "size": "medium" },
+              "visibility": "systemInputs.numSourcesRunning > 0"
+            }],
+            "props": {
+              "saveLabel": "Ask",
+              "discardLabel": "Discard",
+              "initiallyDirty": true
             },
-            "value": { "from": "agent.formValue" }
-          },
-          "visibility": "$count(agent.agentOptions) > 0"
+            "bindings": {
+              "fields": {
+                "expression": "{'properties':{'agentName':{'title':'Agent','type':'string','options':agent.agentOptions,'placeholder':'Choose an agent','span':12},'message':{'title':'Message','type':'string','format':'textarea','rows':5,'minLength':1,'placeholder':'Ask the agent something...','span':12}},'required':['agentName','message']}"
+              },
+              "value": { "from": "agent.formValue" }
+            },
+            "visibility": "$count(agent.agentOptions) > 0"
+          }
         },
         "events": {
           "save": {
@@ -390,42 +381,34 @@
             "dependencies": ["sources.agent-response.source"]
           }
         ],
-        "view": {
-          "capability": "primitive:markdown",
-          "before": [
-            {
-              "capability": "fluent:spinner",
-              "props": {
-                "label": "Waiting for agent response",
-                "size": "medium"
-              },
-              "visibility": "systemInputs.numSourcesRunning > 0"
+        "potentialViews": {
+          "primary": {
+            "capability": "primitive:markdown",
+            "region": "response",
+            "before": [
+              {
+                "capability": "fluent:spinner",
+                "props": {
+                  "label": "Waiting for agent response",
+                  "size": "medium"
+                },
+                "visibility": "systemInputs.numSourcesRunning > 0"
+              }
+            ],
+            "bindings": {
+              "value": { "from": "agent.reply" }
             }
-          ],
-          "bindings": {
-            "value": { "from": "agent.reply" }
           }
         }
       }
     },
-    "projections": {
-      "presentation": {
-        "roots": [
-          "ai-agent-root"
-        ],
-        "composition": {
-          "ai-agent-root": {
-            "slots": {
-              "query": [
-                "agent-query-form"
-              ],
-              "response": [
-                "agent-response"
-              ]
-            }
-          }
-        }
-      }
+    "presentation": {
+      "slots": [
+        "ai-agent-root",
+        { "id": "query", "region": "ai-agent-root" },
+        { "id": "response", "region": "ai-agent-root" }
+      ],
+      "root": "ai-agent-root"
     }
   }
 }

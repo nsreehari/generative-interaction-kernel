@@ -72,7 +72,7 @@ test("portfolio-tracker-new executes through the headless Node host HTTP control
       baseUrl,
       "/mcp-control",
       "emit",
-      { event: { node: "portfolio-holdings", name: "save", payload: { rows } } },
+      { event: { node: "portfolio-holdings--primary--in-holdings", name: "save", payload: { rows } } },
     );
     await save([
       { ticker: "AAPL", quantity: 2, costBasis: 90 },

@@ -19,6 +19,7 @@ import {
   JsonataExpressionProvider,
   createInMemoryTransportPair,
   type Checkpoint,
+  type DocNode,
   type Orchestrator,
   type OrchestratorEffect,
   type ResolvedNode,
@@ -41,6 +42,19 @@ import {
   defineDeclarativeBlueprint,
   runtimeTools,
 } from "../src/index";
+
+function singleSlotPresentation(root: string) {
+  return {
+    slots: [root],
+    root,
+  } as const;
+}
+
+function effectiveRoot(root: DocNode | undefined) {
+  return root?.capability === "gik:presentation-fragment" && root.edges?.children?.length === 1
+    ? root.edges.children[0]
+    : root;
+}
 
 function structuralBlueprint(
   structureMode: "fixed" | "reconfigurable" | "adaptive",
@@ -69,10 +83,10 @@ function structuralBlueprint(
           control: { kind: "data", responseSchema: { type: "object" } },
           data: {},
         }] } } : undefined,
-        view: { capability: "surface:before" },
+        potentialViews: { primary: { capability: "surface:before", region: "root" } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: singleSlotPresentation("root"),
   });
 }
 
@@ -86,8 +100,9 @@ function structuralFace(blueprint: BlueprintArtifact, orchestrator?: Orchestrato
 
 function projectedProgram(face: ControlFace) {
   const program = face.getProgram();
-  assert.ok(program.root);
-  return program;
+  const root = effectiveRoot(program.root);
+  assert.ok(root);
+  return { ...program, root };
 }
 
 test("ControlFace defines zero-recipe JSON cell Blueprints without product code", () => {
@@ -104,32 +119,21 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
       cells: {
           root: {
             id: "root",
-            view: { capability: "ui:screen" },
+            potentialViews: { primary: { capability: "ui:screen" } },
           },
           source: {
             id: "source",
             compute: [{ id: "ready", expression: "true", assign: "ready" }],
             outputs: [{ token: "ready", from: "ready" }],
-            view: { capability: "ui:text" },
+            potentialViews: { primary: { capability: "ui:text", region: "root" } },
           },
           consumer: {
             id: "consumer",
             inputs: [{ token: "ready" }],
-            view: { capability: "ui:text" },
+            potentialViews: { primary: { capability: "ui:text", region: "root" } },
           },
       },
-      projections: {
-        presentation: {
-          roots: ["root"],
-          composition: {
-            root: {
-              slots: {
-                children: ["source", "consumer"],
-              },
-            },
-          },
-        },
-      },
+      presentation: singleSlotPresentation("root"),
     },
   };
 
@@ -137,7 +141,7 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
   assert.ok(definition);
   const document = definition.lower({});
   assert.ok(document.root);
-  assert.deepEqual(document.root.edges?.children?.map((node) => node.id), ["source", "consumer"]);
+  assert.deepEqual(document.root.edges?.children?.map((node) => node.id), ["source--primary--in-root", "consumer--primary--in-root"]);
   assert.equal("provides" in (document.root.edges?.children?.[0] ?? {}), false);
   assert.equal("requires" in (document.root.edges?.children?.[1] ?? {}), false);
 
@@ -168,23 +172,24 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
       cells: {
           example: {
             id: "example",
-            view: {
-              capability: "ui:text",
-              props: { value: "Opened" },
+            potentialViews: {
+              primary: {
+                capability: "ui:text",
+                props: { value: "Opened" },
+                region: "example",
+              },
             },
           },
       },
-      projections: {
-        presentation: { roots: ["example"] },
-      },
+      presentation: singleSlotPresentation("example"),
     },
   };
   const runtime = ControlFace.openBlueprint(artifact);
 
   assert.equal(runtime.blueprintId, "example");
   const program = unwrap(runtime.program);
-  assert.ok(program.root);
-  assert.equal(program.root.props?.value, "Opened");
+  assert.ok(program.root?.edges?.children?.[0]);
+  assert.equal(program.root.edges?.children?.[0]?.props?.value, "Opened");
   assert.deepEqual(runtime.state, { example: { ready: true } });
   assert.deepEqual(runtime.initialState, {
     example: { ready: true },
@@ -258,15 +263,16 @@ test("ControlFace applies initialSeed from blueprint context", () => {
       cells: {
           seeded: {
             id: "seeded",
-            view: {
-              capability: "ui:text",
-              props: { value: "Seeded" },
+            potentialViews: {
+              primary: {
+                capability: "ui:text",
+                props: { value: "Seeded" },
+                region: "seeded",
+              },
             },
           },
       },
-      projections: {
-        presentation: { roots: ["seeded"] },
-      },
+      presentation: singleSlotPresentation("seeded"),
     },
   };
 
@@ -301,8 +307,8 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
       tiers: [{ id: "runtime-document", kind: "runtime-document" }],
       recipes: [],
       runtime: { capabilities: {}, state: { child: { count: 1 } } },
-      cells: { root: { id: "root", view: { capability: "ui:text" } } },
-      projections: { presentation: { roots: ["root"] } },
+      cells: { root: { id: "root", potentialViews: { primary: { capability: "ui:text", region: "root" } } } },
+      presentation: singleSlotPresentation("root"),
     },
   };
   const parent: BlueprintArtifact = {
@@ -319,10 +325,10 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
         child: {
           id: "child",
           blueprint: { $ref: "./child.blueprint.json" },
-          view: { capability: "ui:blueprint" },
+          potentialViews: { primary: { capability: "ui:blueprint", region: "child" } },
         },
       },
-      projections: { presentation: { roots: ["child"] } },
+      presentation: singleSlotPresentation("child"),
     },
   };
 
@@ -591,7 +597,7 @@ test("Face enforces fixed and authorized reconfigurable Blueprint changes", asyn
   const change = [{
     op: "replaceCell" as const,
     cellId: "root",
-    cell: { id: "root", view: { capability: "surface:after" } },
+    cell: { id: "root", potentialViews: { primary: { capability: "surface:after", region: "root" } } },
   }];
   const fixed = structuralFace(structuralBlueprint("fixed"));
   assert.deepEqual(fixed.inspectBlueprintStructureChange({ origin: "authorized", patch: change }), {
@@ -610,13 +616,16 @@ test("Face enforces fixed and authorized reconfigurable Blueprint changes", asyn
   const result = await reconfigurable.reconfigureBlueprint(change);
   assert.equal(result.transition?.program?.[0].op, "setRoot");
   assert.equal(projectedProgram(reconfigurable).root.capability, "surface:after");
-  const relationshipOnly = await reconfigurable.reconfigureBlueprint([{
-    op: "setRelationship",
-    relationshipId: "self",
-    relationship: { kind: "association", participants: ["root"] },
+  // A patch that only touches Blueprint-authored metadata (never compiled into the executable
+  // program) produces an empty program diff, so no transition is applied — the same generic
+  // diff-driven behavior that applies to any patch, not something special-cased per operation.
+  const metadataOnly = await reconfigurable.reconfigureBlueprint([{
+    op: "replaceCell",
+    cellId: "root",
+    cell: { id: "root", potentialViews: { primary: { capability: "surface:after", region: "root" } }, metadata: { note: "annotated" } },
   }]);
-  assert.equal(relationshipOnly.blueprint.payload.relationships?.self.kind, "association");
-  assert.equal(relationshipOnly.transition, undefined);
+  assert.equal(metadataOnly.blueprint.payload.cells?.root.metadata?.note, "annotated");
+  assert.equal(metadataOnly.transition, undefined);
   reconfigurable.stop();
 });
 
@@ -631,8 +640,8 @@ test("adaptive Face events admit policy-allowed program patches and checkpoint t
   });
 
   const checkpoint = face.checkpoint();
-  assert.equal(checkpoint.program?.root?.capability, "surface:before");
-  const patch = await face.emit({ node: "root", name: "adapt" });
+  assert.equal(effectiveRoot(checkpoint.program?.root)?.capability, "surface:before");
+  const patch = await face.emit({ node: "root--primary--in-root", name: "adapt" });
   assert.equal(patch.program?.[0].op, "setRoot");
   assert.equal(projectedProgram(face).root.capability, "surface:adapted");
   await face.restore(checkpoint);

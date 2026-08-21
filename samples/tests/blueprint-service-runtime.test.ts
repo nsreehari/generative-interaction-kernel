@@ -35,7 +35,6 @@ const backend = {
     cells: {
       controller: {
         id: "controller",
-        kind: "backend-controller",
         events: {
           put: { payloadSchema: { type: "object" } },
           get: { payloadSchema: { type: "object" } },

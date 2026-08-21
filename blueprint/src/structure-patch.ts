@@ -84,23 +84,8 @@ export function applyBlueprintPatch(
       case "removeCell":
         if (next.payload.cells) delete next.payload.cells[operation.cellId];
         break;
-      case "setRelationship":
-        next.payload.relationships = {
-          ...(next.payload.relationships ?? {}),
-          [operation.relationshipId]: structuredClone(operation.relationship),
-        };
-        break;
-      case "removeRelationship":
-        if (next.payload.relationships) delete next.payload.relationships[operation.relationshipId];
-        break;
-      case "setProjection":
-        next.payload.projections = {
-          ...(next.payload.projections ?? {}),
-          [operation.projectionId]: structuredClone(operation.projection),
-        };
-        break;
-      case "removeProjection":
-        if (next.payload.projections) delete next.payload.projections[operation.projectionId];
+      case "setPresentation":
+        next.payload.presentation = structuredClone(operation.presentation);
         break;
     }
   }

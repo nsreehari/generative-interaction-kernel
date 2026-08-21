@@ -13,75 +13,114 @@
           "model": {
             "type": "string",
             "title": "Analysis model",
-            "enum": ["semantic", "source-faithful", "refinement"],
-            "enumNames": ["Semantic", "Source faithful", "Refinement"]
+            "enum": [
+              "semantic",
+              "source-faithful",
+              "refinement"
+            ],
+            "enumNames": [
+              "Semantic",
+              "Source faithful",
+              "Refinement"
+            ]
           }
         },
-        "required": ["model"],
+        "required": [
+          "model"
+        ],
         "additionalProperties": true
       },
-      "initialValue": { "model": "semantic" },
+      "initialValue": {
+        "model": "semantic"
+      },
       "saveLabel": "Apply context",
       "discardLabel": "Discard"
     },
     "tiers": [
-      { "id": "incident-analysis", "kind": "incident-analysis" },
-      { "id": "runtime-document", "kind": "runtime-document" }
+      {
+        "id": "incident-analysis",
+        "kind": "incident-analysis"
+      },
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document"
+      }
     ],
-    "recipes": [{
-      "id": "incident-analysis-to-runtime",
-      "from": "incident-analysis",
-      "to": "runtime-document",
-      "representations": [{ "id": "shared-shell", "views": {} }],
-      "fallback": "shared-shell",
-      "implementationPrograms": [
-        {
-          "id": "semantic",
-          "when": "externalContext.model = 'semantic'"
-        },
-        {
-          "id": "source-faithful",
-          "when": "externalContext.model = 'source-faithful'",
-          "cells": {
-            "analysis-selection": {
-              "compute": [{
-                "id": "selected-model",
-                "expression": "'source-faithful'",
-                "assign": "model"
-              }]
+    "recipes": [
+      {
+        "id": "incident-analysis-to-runtime",
+        "from": "incident-analysis",
+        "to": "runtime-document",
+        "representations": [
+          {
+            "id": "shared-shell",
+            "views": {}
+          }
+        ],
+        "fallback": "shared-shell",
+        "implementationPrograms": [
+          {
+            "id": "semantic",
+            "when": "externalContext.model = 'semantic'"
+          },
+          {
+            "id": "source-faithful",
+            "when": "externalContext.model = 'source-faithful'",
+            "cells": {
+              "analysis-selection": {
+                "compute": [
+                  {
+                    "id": "selected-model",
+                    "expression": "'source-faithful'",
+                    "assign": "model"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "refinement",
+            "when": "externalContext.model = 'refinement'",
+            "cells": {
+              "analysis-selection": {
+                "compute": [
+                  {
+                    "id": "selected-model",
+                    "expression": "'refinement'",
+                    "assign": "model"
+                  }
+                ]
+              },
+              "report-analysis": {
+                "sources": [
+                  {
+                    "id": "report-analysis.source",
+                    "service": "incident-report-refinement",
+                    "operation": "analyzeReportBlueprint",
+                    "contract": "incident-report-blueprint/v1",
+                    "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'incident_report':inputs.reportContent,'model':inputs.selectedModel}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "response"
+                    }
+                  }
+                ]
+              }
             }
           }
-        },
-        {
-          "id": "refinement",
-          "when": "externalContext.model = 'refinement'",
-          "cells": {
-            "analysis-selection": {
-              "compute": [{
-                "id": "selected-model",
-                "expression": "'refinement'",
-                "assign": "model"
-              }]
-            },
-            "report-analysis": {
-              "sources": [{
-                "id": "report-analysis.source",
-                "service": "incident-report-refinement",
-                "operation": "analyzeReportBlueprint",
-                "contract": "incident-report-blueprint/v1",
-                "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
-                "input": { "kind": "jsonata", "expr": "{'incident_report':inputs.reportContent,'model':inputs.selectedModel}" },
-                "output": { "kind": "jsonata", "expr": "response" }
-              }]
-            }
-          }
-        }
-      ],
-      "implementationFallback": "semantic"
-    }],
+        ],
+        "implementationFallback": "semantic"
+      }
+    ],
     "services": {
       "incident-sources": {
-        "blueprint": { "$ref": "blueprint:incident-analysis-assets@1.0.0" },
+        "blueprint": {
+          "$ref": "blueprint:incident-analysis-assets@1.0.0"
+        },
         "version": "1",
         "operations": {
           "listSourceReports": {
@@ -114,7 +153,9 @@
         "scope": "per-blueprint"
       },
       "incident-saved-reports": {
-        "blueprint": { "$ref": "blueprint:incident-analysis-assets@1.0.0" },
+        "blueprint": {
+          "$ref": "blueprint:incident-analysis-assets@1.0.0"
+        },
         "version": "1",
         "operations": {
           "getSavedReport": {
@@ -159,7 +200,12 @@
           "analyzeReportBlueprint": {
             "operation": "chat",
             "contract": "incident-report-blueprint/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "($mode := input.model; $guidance := $mode = 'refinement' ? 'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.' : ($mode = 'source-faithful' ? 'Preserve only facts, relationships, verdicts, impacts, priorities, actions, ordering, identifiers, evidence, and uncertainty explicitly asserted by the source. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations.' : 'Normalize the supplied incident facts, relationships, evidence, uncertainty, impacts, and actions without inventing content.'); {'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\n\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. ' & $guidance & ' Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000})" } },
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($mode := input.model; $guidance := $mode = 'refinement' ? 'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.' : ($mode = 'source-faithful' ? 'Preserve only facts, relationships, verdicts, impacts, priorities, actions, ordering, identifiers, evidence, and uncertainty explicitly asserted by the source. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations.' : 'Normalize the supplied incident facts, relationships, evidence, uncertainty, impacts, and actions without inventing content.'); {'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\n\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. ' & $guidance & ' Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000})"
+              }
+            },
             "response": {
               "validators": [
                 {
@@ -529,11 +575,22 @@
                 }
               ]
             },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[]}" } },
-            "onViolation": { "action": "fail" }
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[]}"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
           }
         },
-        "config": { "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}", "agent": "Incident-Report-Semantic-Agent", "credentialRef": "foundry-agent/access-key" },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Incident-Report-Semantic-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
         "scope": "per-blueprint"
       },
       "incident-report-refinement": {
@@ -543,48 +600,101 @@
           "analyzeReportBlueprint": {
             "operation": "chat",
             "contract": "incident-report-blueprint/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\\n\\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity. Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[]}" } },
-            "onViolation": { "action": "fail" }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\\n\\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity. Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[]}"
+              }
+            },
+            "onViolation": {
+              "action": "fail"
+            }
           }
         },
-        "config": { "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}", "agent": "Incident-Report-Refinement-Agent", "credentialRef": "foundry-agent/access-key" },
+        "config": {
+          "endpoint": "${GIK_FOUNDRY_PROXY_ORIGIN}",
+          "agent": "Incident-Report-Refinement-Agent",
+          "credentialRef": "foundry-agent/access-key"
+        },
         "scope": "per-blueprint"
       }
     },
     "runtime": {
       "expression": "jsonata",
-      "namespaces": ["incident"],
-      "actions": ["assign"],
+      "namespaces": [
+        "incident"
+      ],
+      "actions": [
+        "assign"
+      ],
       "capabilities": {
         "gik:blueprint": {
-          "propsSchema": { "type": "object", "additionalProperties": true }
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
         },
         "fluent:button": {
-          "propsSchema": { "type": "object", "additionalProperties": true },
-          "emits": ["press"]
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "press"
+          ]
         },
         "fluent:spinner": {
-          "propsSchema": { "type": "object", "additionalProperties": true }
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
         },
         "primitive:form": {
-          "propsSchema": { "type": "object", "additionalProperties": true },
-          "emits": ["save"]
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "emits": [
+            "save"
+          ]
         },
         "primitive:datetime": {
-          "propsSchema": { "type": "object", "additionalProperties": true },
+          "propsSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
           "dataProp": "value"
         }
       },
       "externals": {
         "projectionViews": {
-          "fluent": { "from": "fluent", "use": ["button", "spinner"] },
-          "primitive": { "from": "primitive", "use": ["form", "datetime"] }
+          "fluent": {
+            "from": "fluent",
+            "use": [
+              "button",
+              "spinner"
+            ]
+          },
+          "primitive": {
+            "from": "primitive",
+            "use": [
+              "form",
+              "datetime"
+            ]
+          }
         }
       },
       "state": {
         "incident": {
-          "selection": { "sourceReport": "" },
+          "selection": {
+            "sourceReport": ""
+          },
           "analysisRequest": null,
           "sourceOptions": [],
           "resolvedSavedReportEnvelope": null
@@ -594,22 +704,35 @@
     "cells": {
       "analysis-selection": {
         "id": "analysis-selection",
-        "kind": "incident-analysis-selection",
-        "systemInputs": ["numSourcesRunning"],
-        "inputs": [{ "token": "incident.selection", "as": "selection" }],
-        "sources": [{
-          "id": "analysis-selection.source",
-          "service": "incident-sources",
-          "operation": "listSourceReports",
-          "contract": "incident-source-list/v1",
-          "output": { "kind": "jsonata", "expr": "response.sources" }
-        }],
+        "systemInputs": [
+          "numSourcesRunning"
+        ],
+        "inputs": [
+          {
+            "token": "incident.selection",
+            "as": "selection"
+          }
+        ],
+        "sources": [
+          {
+            "id": "analysis-selection.source",
+            "service": "incident-sources",
+            "operation": "listSourceReports",
+            "contract": "incident-source-list/v1",
+            "output": {
+              "kind": "jsonata",
+              "expr": "response.sources"
+            }
+          }
+        ],
         "compute": [
           {
             "id": "source-options",
             "expression": "$exists(sources.`analysis-selection.source`) ? sources.`analysis-selection.source`.{'value':id,'label':label} : []",
             "assign": "incident.sourceOptions",
-            "dependencies": ["sources.analysis-selection.source"]
+            "dependencies": [
+              "sources.analysis-selection.source"
+            ]
           },
           {
             "id": "selected-model",
@@ -630,90 +753,174 @@
         ],
         "behavior": {
           "on": {
-            "save": [{
-              "do": "assign",
-              "target": "incident.selection",
-              "args": { "from": "$event.values" }
-            }]
+            "save": [
+              {
+                "do": "assign",
+                "target": "incident.selection",
+                "args": {
+                  "from": "$event.values"
+                }
+              }
+            ]
           }
         },
-        "view": {
-          "capability": "primitive:form",
-          "props": { "saveLabel": "Select report", "discardLabel": "Discard", "initiallyDirty": true },
-          "before": [{
-            "capability": "fluent:spinner",
-            "props": { "label": "Loading incident reports", "size": "medium" },
-            "visibility": "systemInputs.numSourcesRunning > 0"
-          }],
-          "bindings": {
-            "fields": {
-              "expression": "{'properties':{'sourceReport':{'title':'Source report','type':'string','options':incident.sourceOptions,'placeholder':'Choose a source report','span':12}},'required':['sourceReport']}"
+        "potentialViews": {
+          "primary": {
+            "capability": "primitive:form",
+            "region": "shell",
+            "props": {
+              "saveLabel": "Select report",
+              "discardLabel": "Discard",
+              "initiallyDirty": true
             },
-            "value": { "from": "incident.selection" }
-          },
-          "visibility": "$count(incident.sourceOptions) > 0"
+            "before": [
+              {
+                "capability": "fluent:spinner",
+                "props": {
+                  "label": "Loading incident reports",
+                  "size": "medium"
+                },
+                "visibility": "systemInputs.numSourcesRunning > 0"
+              }
+            ],
+            "bindings": {
+              "fields": {
+                "expression": "{'properties':{'sourceReport':{'title':'Source report','type':'string','options':incident.sourceOptions,'placeholder':'Choose a source report','span':12}},'required':['sourceReport']}"
+              },
+              "value": {
+                "from": "incident.selection"
+              }
+            },
+            "visibility": "$count(incident.sourceOptions) > 0"
+          }
         },
-        "events": { "save": { "payloadSchema": { "type": "object" } } }
+        "events": {
+          "save": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
       },
       "report-analysis": {
         "id": "report-analysis",
-        "kind": "incident-report-analysis",
-        "systemInputs": ["numSourcesRunning"],
-        "inputs": [
-          { "token": "selected-report", "as": "selectedReport", "required": true },
-          { "token": "selected-model", "as": "selectedModel", "required": true },
-          { "token": "selected-report-content", "as": "reportContent", "required": true },
-          { "token": "saved-report-lookup-envelope", "as": "savedReportEnvelope", "required": true },
-          { "token": "incident.analysisRequest", "as": "analysisRequest" }
+        "systemInputs": [
+          "numSourcesRunning"
         ],
-        "sources": [{
-          "id": "report-analysis.source",
-          "service": "incident-report-analysis",
-          "operation": "analyzeReportBlueprint",
-          "contract": "incident-report-blueprint/v1",
-          "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
-          "input": { "kind": "jsonata", "expr": "{'incident_report':inputs.reportContent,'model':inputs.selectedModel}" },
-          "output": { "kind": "jsonata", "expr": "response" }
-        }],
-        "compute": [{
-          "id": "analysis-report",
-          "expression": "sources.`report-analysis.source`",
-          "assign": "analysisReport",
-          "dependencies": ["sources.report-analysis.source"]
-        }],
-        "outputs": [{
-          "token": "analysis-report-blueprint",
-          "from": "computed.analysisReport",
-          "when": "computed.analysisReport != null"
-        }],
+        "inputs": [
+          {
+            "token": "selected-report",
+            "as": "selectedReport",
+            "required": true
+          },
+          {
+            "token": "selected-model",
+            "as": "selectedModel",
+            "required": true
+          },
+          {
+            "token": "selected-report-content",
+            "as": "reportContent",
+            "required": true
+          },
+          {
+            "token": "saved-report-lookup-envelope",
+            "as": "savedReportEnvelope",
+            "required": true
+          },
+          {
+            "token": "incident.analysisRequest",
+            "as": "analysisRequest"
+          }
+        ],
+        "sources": [
+          {
+            "id": "report-analysis.source",
+            "service": "incident-report-analysis",
+            "operation": "analyzeReportBlueprint",
+            "contract": "incident-report-blueprint/v1",
+            "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'incident_report':inputs.reportContent,'model':inputs.selectedModel}"
+            },
+            "output": {
+              "kind": "jsonata",
+              "expr": "response"
+            }
+          }
+        ],
+        "compute": [
+          {
+            "id": "analysis-report",
+            "expression": "sources.`report-analysis.source`",
+            "assign": "analysisReport",
+            "dependencies": [
+              "sources.report-analysis.source"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "token": "analysis-report-blueprint",
+            "from": "computed.analysisReport",
+            "when": "computed.analysisReport != null"
+          }
+        ],
         "behavior": {
           "on": {
-            "press": [{
-              "do": "assign",
-              "target": "incident.analysisRequest",
-              "args": {
-                "from": "{'selectedReport':inputs.selectedReport,'selectedModel':inputs.selectedModel,'requestedAt':$now()}"
+            "press": [
+              {
+                "do": "assign",
+                "target": "incident.analysisRequest",
+                "args": {
+                  "from": "{'selectedReport':inputs.selectedReport,'selectedModel':inputs.selectedModel,'requestedAt':$now()}"
+                }
               }
-            }]
+            ]
           }
         },
-        "view": {
-          "capability": "fluent:button",
-          "props": { "label": "Analyze / refresh report", "appearance": "primary" },
-          "before": [{
-            "capability": "fluent:spinner",
-            "props": { "label": "Analyzing report", "size": "medium" },
-            "visibility": "systemInputs.numSourcesRunning > 0"
-          }]
+        "potentialViews": {
+          "primary": {
+            "capability": "fluent:button",
+            "region": "shell",
+            "props": {
+              "label": "Analyze / refresh report",
+              "appearance": "primary"
+            },
+            "before": [
+              {
+                "capability": "fluent:spinner",
+                "props": {
+                  "label": "Analyzing report",
+                  "size": "medium"
+                },
+                "visibility": "systemInputs.numSourcesRunning > 0"
+              }
+            ]
+          }
         },
-        "events": { "press": { "payloadSchema": { "type": "object" } } }
+        "events": {
+          "press": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        }
       },
       "analysis-context": {
         "id": "analysis-context",
-        "kind": "incident-analysis-context",
         "inputs": [
-          { "token": "selected-report", "as": "selectedReport", "required": true },
-          { "token": "selected-model", "as": "selectedModel", "required": true }
+          {
+            "token": "selected-report",
+            "as": "selectedReport",
+            "required": true
+          },
+          {
+            "token": "selected-model",
+            "as": "selectedModel",
+            "required": true
+          }
         ],
         "sources": [
           {
@@ -722,8 +929,14 @@
             "operation": "getSourceReport",
             "contract": "incident-source/v1",
             "when": "$length(inputs.selectedReport) > 0",
-            "input": { "kind": "jsonata", "expr": "{'source_report_key':inputs.selectedReport}" },
-            "output": { "kind": "jsonata", "expr": "response" }
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'source_report_key':inputs.selectedReport}"
+            },
+            "output": {
+              "kind": "jsonata",
+              "expr": "response"
+            }
           },
           {
             "id": "analysis-context.saved-report",
@@ -731,8 +944,14 @@
             "operation": "getSavedReport",
             "contract": "saved-report-envelope/v1",
             "when": "$length(inputs.selectedReport) > 0 and $length(inputs.selectedModel) > 0",
-            "input": { "kind": "jsonata", "expr": "{'source_report_key':inputs.selectedReport,'model':inputs.selectedModel}" },
-            "output": { "kind": "jsonata", "expr": "{'found':response != null,'analysisReport':response ? response.analysisReport : null,'asOn':response ? response.asOn : null}" }
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'source_report_key':inputs.selectedReport,'model':inputs.selectedModel}"
+            },
+            "output": {
+              "kind": "jsonata",
+              "expr": "{'found':response != null,'analysisReport':response ? response.analysisReport : null,'asOn':response ? response.asOn : null}"
+            }
           }
         ],
         "compute": [
@@ -740,13 +959,17 @@
             "id": "selected-source-content",
             "expression": "$exists(sources.`analysis-context.source-report`) ? sources.`analysis-context.source-report`.content : ''",
             "assign": "incidentReport",
-            "dependencies": ["sources.analysis-context.source-report"]
+            "dependencies": [
+              "sources.analysis-context.source-report"
+            ]
           },
           {
             "id": "saved-report-result",
             "expression": "sources.`analysis-context.saved-report`",
             "assign": "savedReportResult",
-            "dependencies": ["sources.analysis-context.saved-report"]
+            "dependencies": [
+              "sources.analysis-context.saved-report"
+            ]
           }
         ],
         "outputs": [
@@ -763,52 +986,91 @@
       },
       "report-resolution": {
         "id": "report-resolution",
-        "kind": "incident-analysis-report-resolution",
         "inputs": [
-          { "token": "selected-report", "as": "selectedReport", "required": true },
-          { "token": "selected-model", "as": "selectedModel", "required": true },
-          { "token": "saved-report-lookup-envelope", "as": "savedReportEnvelope", "required": true },
-          { "token": "analysis-report-blueprint", "as": "analysisReport", "required": false }
+          {
+            "token": "selected-report",
+            "as": "selectedReport",
+            "required": true
+          },
+          {
+            "token": "selected-model",
+            "as": "selectedModel",
+            "required": true
+          },
+          {
+            "token": "saved-report-lookup-envelope",
+            "as": "savedReportEnvelope",
+            "required": true
+          },
+          {
+            "token": "analysis-report-blueprint",
+            "as": "analysisReport",
+            "required": false
+          }
         ],
-        "sources": [{
-          "id": "report-resolution.source",
-          "service": "incident-saved-reports",
-          "operation": "putSavedReport",
-          "contract": "saved-report-envelope/v1",
-          "when": "inputs.analysisReport != null",
-          "input": { "kind": "jsonata", "expr": "{'source_report_key':inputs.selectedReport,'model':inputs.selectedModel,'analysis_report':inputs.analysisReport}" },
-          "output": { "kind": "jsonata", "expr": "response" }
-        }],
+        "sources": [
+          {
+            "id": "report-resolution.source",
+            "service": "incident-saved-reports",
+            "operation": "putSavedReport",
+            "contract": "saved-report-envelope/v1",
+            "when": "inputs.analysisReport != null",
+            "input": {
+              "kind": "jsonata",
+              "expr": "{'source_report_key':inputs.selectedReport,'model':inputs.selectedModel,'analysis_report':inputs.analysisReport}"
+            },
+            "output": {
+              "kind": "jsonata",
+              "expr": "response"
+            }
+          }
+        ],
         "compute": [
           {
             "id": "resolved-saved-report-envelope",
             "expression": "$exists(sources.`report-resolution.source`) and sources.`report-resolution.source` != null ? {'found':true,'analysisReport':sources.`report-resolution.source`.analysisReport,'asOn':sources.`report-resolution.source`.asOn} : inputs.savedReportEnvelope",
             "assign": "incident.resolvedSavedReportEnvelope",
-            "dependencies": ["inputs.savedReportEnvelope", "sources.report-resolution.source"]
+            "dependencies": [
+              "inputs.savedReportEnvelope",
+              "sources.report-resolution.source"
+            ]
           }
         ],
-        "view": {
-          "capability": "gik:blueprint",
-          "visibility": "incident.resolvedSavedReportEnvelope.found and incident.resolvedSavedReportEnvelope.analysisReport != null",
-          "bindings": { "blueprint": { "expression": "incident.resolvedSavedReportEnvelope.analysisReport" } },
-          "before": [{
-            "capability": "primitive:datetime",
-            "props": { "label": "Analysis as of" },
-            "bindings": { "value": { "expression": "incident.resolvedSavedReportEnvelope.asOn" } }
-          }]
+        "potentialViews": {
+          "primary": {
+            "capability": "gik:blueprint",
+            "region": "shell",
+            "visibility": "incident.resolvedSavedReportEnvelope.found and incident.resolvedSavedReportEnvelope.analysisReport != null",
+            "bindings": {
+              "blueprint": {
+                "expression": "incident.resolvedSavedReportEnvelope.analysisReport"
+              }
+            },
+            "before": [
+              {
+                "capability": "primitive:datetime",
+                "props": {
+                  "label": "Analysis as of"
+                },
+                "bindings": {
+                  "value": {
+                    "expression": "incident.resolvedSavedReportEnvelope.asOn"
+                  }
+                }
+              }
+            ]
+          }
         }
       }
     },
-    "projections": {
-      "presentation": {
-        "roots": [
-          "analysis-selection",
-          "report-analysis",
-          "report-resolution"
-        ],
-        "composition": {}
-      }
+    "presentation": {
+      "slots": [
+        "shell"
+      ],
+      "root": "shell"
     },
-    "metadata": { "compositionPattern": "external-model-selected-analysis-with-nested-report" }
+    "metadata": {
+      "compositionPattern": "external-model-selected-analysis-with-nested-report"
+    }
   }
 }

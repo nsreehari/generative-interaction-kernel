@@ -2,10 +2,13 @@
 
 A Blueprint is a governed data-flow graph plus an independent presentation skeleton. A Cell is the
 only unit of data flow — it owns ports, sources, compute, and event behavior, and its shape never
-changes across tiers. `presentation` is a closed set of named slots with no knowledge of Cells.
-Attachment — which slot a Cell's view occupies, or which slot a slot nests inside — is always
-self-declared on the thing attaching, never a separate table. Tiers and recipes only ever select:
-which view, which slot attachment, which internal implementation — never which Cells or slots exist.
+changes across tiers. A Cell also carries `potentialViews`: zero, one, or many named external
+manifestations, each dormant unless its own declared region is reachable from the active
+presentation. `presentation` is a closed set of named slots with no knowledge of Cells. Attachment —
+which slot a potential view occupies, or which slot a slot nests inside — is always self-declared on
+the thing attaching, never a separate table. Tiers and recipes only ever select, add, or replace: which
+views exist, which slot attachment each occupies, which internal implementation backs a Cell — never
+which Cells or slots exist.
 
 ## Experience heuristics
 
@@ -59,19 +62,25 @@ top-level fields — nothing else is invented:
   **Structure mode** below);
 - `agentLifecycle` — which agent operations (`author`/`customize`/`use`) this Blueprint exposes, and to
   which target/intent kinds;
-- `context` / `contextFormSpec` — the schema for the immutable `externalContext` a materialization
-  expects;
+- `interface` — this Blueprint's own port surface, for when it is hosted inside another Blueprint (see
+  **Interface** below);
+- `contextFormSpec` — the schema for the immutable `externalContext` a materialization expects;
 - `tiers` / `recipes` — the authored representations and the lowering between them (see **Tiers +
   recipes** below);
 - `cells` — the data-flow graph (see **Cells** above);
 - `presentation` — the named-slot skeleton (see **Presentation** below);
 - `services` — the declared contracts Cells call through (see **Services** below);
-- `runtime` — declared state, namespaces, and context shape (see **Runtime** below).
+- `runtime` — declared state, namespaces, and context shape (see **Runtime** below);
+- `metadata` — rarely needed freeform notes with no authoritative meaning. Leave it out unless a real
+  need arises.
 
 A minimal, complete Blueprint — one source-backed Cell feeding a second Cell through a port, both
 attached to the presentation skeleton — looks like this. Note the `compute` step: it is what turns the
 settled source into both committed state and the `computed.*` value the output reads; a source alone
-never populates `computed` on its own.
+never populates `computed` on its own. Note also `potentialViews`: even a Cell with only one
+manifestation still names it (`primary` is the conventional name for a Cell's sole view) — tiers/recipes
+address a view by that name, and the name is what lets an AI coding agent add a second manifestation
+later (e.g. `compact`) without touching the first.
 
 ```json
 {
@@ -100,7 +109,6 @@ never populates `computed` on its own.
     "cells": {
       "incidents": {
         "id": "incidents",
-        "kind": "incidents",
         "sources": [
           { "id": "list", "service": "incident-data", "operation": "listIncidents", "contract": "storage-kv/v1" }
         ],
@@ -110,17 +118,20 @@ never populates `computed` on its own.
         "outputs": [
           { "token": "incidentList", "from": "computed.review.incidents", "when": "$exists(computed.review.incidents)" }
         ],
-        "view": {
-          "capability": "fluent:table",
-          "bindings": { "rows": { "from": "review.incidents" } },
-          "region": "list"
+        "potentialViews": {
+          "primary": {
+            "capability": "fluent:table",
+            "bindings": { "rows": { "from": "review.incidents" } },
+            "region": "list"
+          }
         }
       },
       "detail": {
         "id": "detail",
-        "kind": "detail",
         "inputs": [{ "token": "incidentList", "as": "incidents" }],
-        "view": { "capability": "primitive:markdown", "region": "detail" }
+        "potentialViews": {
+          "primary": { "capability": "primitive:markdown", "region": "detail" }
+        }
       }
     },
     "presentation": {
@@ -153,6 +164,15 @@ tool. If an interaction needs its own event and its own behavior, that is a real
 responsibility: author it as a Cell from the start, not as something a recipe introduces partway
 through lowering.
 
+### Interface = a Blueprint's own port surface, for when it is hosted
+
+Top-level `interface` (`inputs`/`outputs`/`events`) is what a *whole Blueprint* exposes when a Cell
+hosts it via `blueprint`, exactly parallel to a Cell's own `inputs`/`outputs`/`events`. Declare
+`interface.inputs` for anything the hosting Cell must supply (missing required inputs are rejected at
+host time); declare `interface.outputs` as `{ token: { from: <state path> } }` so the hosting Cell's own
+outputs can surface a value the hosted Blueprint produced; declare `interface.events` for every event
+name the hosting Cell may raise into it. A Blueprint meant only to run standalone does not need one.
+
 ### compute = the Cell's shared derivation, available to every one of its facets
 
 `compute` is an ordered list of expressions evaluated over the Cell's own `inputs`, settled `sources`,
@@ -175,22 +195,52 @@ re-evaluated at runtime:
 
 - **implementation** — `sources` + `compute` + `behavior`: how the Cell gets and derives its data, and
   how it answers its own events;
-- **projection** — `view`: how the Cell manifests to a renderer, and which slot(s) it occupies (see
+- **projection** — `potentialViews`: the named external manifestations a Cell carries, each one dormant
+  until its own `region` is reachable from the presentation active for that materialization (see
   **Attachment** below).
 
-A representation selects between authored alternatives for one or both seams through a `when`
-predicate over immutable `externalContext` — desktop vs. compact, editable vs. read-only, which
-service backs a source, and so on. It never changes a Cell's ports or event contracts, and mutable
-runtime state is never a materialization input: a new external context produces a new materialization,
-not a runtime switch.
+These two seams are independently selected — not two facets of one choice. A Blueprint's `recipes` lower
+one tier to the next using the *same mechanism applied twice*: a recipe's `representations[]` selects,
+per `when` predicate over immutable `externalContext`, which alternative of a Cell's `potentialViews`
+apply; its `implementationPrograms[]` independently selects, by its own `when` predicates, which
+alternative `sources`/`compute`/`behavior` apply. Both lists are declared once per recipe and compose
+multiplicatively — any representation combined with any implementation program is a valid, real
+materialization — so N representations and M implementation programs give N×M actual outcomes from only
+N+M authored entries. This is the mechanism that lets, say, a headless host, a browser host, and an
+Azure Function host all run the *same* Blueprint (representations vary; sources/behavior may too), while
+a "which stock-quote provider" choice and a "mobile vs. desktop layout" choice stay entirely independent
+of each other. Neither seam is limited to overriding something that already exists — a recipe may just as
+well introduce a Cell's very first source or its very first view; the only thing invariant across every
+tier is a Cell's ports (`inputs`/`outputs`) and its declared event names/payload shapes.
+
+A representation's `views` entry for a Cell is keyed by view name and upserted onto that Cell's
+`potentialViews` — so a representation can add a Cell's first view, add a second named view alongside an
+existing one, or replace one already there, all with the same shape. Mutable runtime state is never a
+materialization input: a new external context produces a new materialization, not a runtime switch.
+
+### A view is dormant until its region is reachable — sources are not
+
+`potentialViews` are like unqueried database views: authored, real, and completely inert until something
+selects them. A Cell's view stays dormant — never rendered, never in the document tree, contributing
+nothing — unless its own `region` names a slot reachable from the presentation active for that
+materialization. This is a *materialization-time* selection, never a runtime one. Naming more than one
+view on the same Cell (e.g. `primary` and `compact`, or `primary` and `nested`) is the ordinary way one
+Cell serves several different presentations — one Cell, one data flow, many potential manifestations,
+only one ever live per slot per materialization.
+
+Do not confuse this with `sources`: a Cell's sources/compute run unconditionally as part of the
+consequence graph regardless of whether any of its views are attached anywhere. A Cell can be a "pure
+data" participant with zero `potentialViews` at all — it still fully participates in data flow, and
+its `behavior.on` handlers still dispatch, addressed directly by Cell id rather than by a compiled view
+node.
 
 ### Components exist only inside a Cell's projection
 
 A button, container, or text block is never itself a data-flow participant — it has no ports of its
-own. It exists only as the Cell's `view`, and every binding or visibility rule on it is scoped entirely
-to the one Cell that owns it: a `view` is one primary component plus, optionally, inert `before`/`after`
-decorations around it. A decoration never carries its own event or its own derivation — the moment a
-piece of content needs either, it is not a decoration, it is its own Cell.
+own. It exists only as one of a Cell's `potentialViews`, and every binding or visibility rule on it is
+scoped entirely to the one Cell that owns it: a named view is one primary component plus, optionally,
+inert `before`/`after` decorations around it. A decoration never carries its own event or its own
+derivation — the moment a piece of content needs either, it is not a decoration, it is its own Cell.
 
 Use capability, props, bindings, and decorations according to the described component contract:
 
@@ -226,27 +276,31 @@ Nothing is ever declared as "containing" something else in a separate table. Ins
 placed says, on itself, which slot it lives in:
 
 - a **slot** that nests inside another slot carries its own parent as `region`, as shown above;
-- a **Cell's view** carries the slot(s) it occupies the same way: `"view": { "region": "catalog-list", ... }`.
+- a **Cell's named view** carries the slot(s) it occupies the same way:
+  `"potentialViews": { "primary": { "region": "catalog-list", ... } }`.
 
-A view's `region` may be an array when the same Cell's projection is meant to render independently in
-more than one slot — the same underlying Cell, instantiated twice, each instance still reading and
-writing through that one Cell's ports and events (the same relationship as one reusable component
-mounted under two different parents on a page).
+A view's `region` may be an array when that same named view is meant to render independently in more
+than one slot — the same underlying Cell, instantiated twice, each instance still reading and writing
+through that one Cell's ports and events (the same relationship as one reusable component mounted under
+two different parents on a page). A Cell with several named `potentialViews` can also attach each one to
+a different region — e.g. `primary` in a form slot and `nested` in a preview slot — so it presents two
+independent manifestations of the same data at once.
 
-Because attachment is self-declared, deletion is always safe: removing a Cell removes its own `region`
-declaration with it; removing a slot removes its own parent declaration with it. Nothing external ever
-needs to be found and edited, and `PREFLIGHT` only needs to confirm every declared `region` resolves to
-a slot, or Cell, that still exists.
+Because attachment is self-declared, deletion is always safe: removing a Cell removes its own
+`potentialViews` (and every `region` they declared) with it; removing a slot removes its own parent
+declaration with it. Nothing external ever needs to be found and edited, and `PREFLIGHT` only needs to
+confirm every declared `region` resolves to a slot, or Cell, that still exists.
 
-### Tiers + recipes select — they never restructure
+### Tiers + recipes select, add, or replace — they never restructure
 
-A tier is an authored representation; a recipe lowers one tier to the next by choosing between
+A tier is an authored representation; a recipe lowers one tier to the next by independently choosing,
+through its `representations[]` and `implementationPrograms[]` (see **two seams** above), between
 authored alternatives for a Cell's two seams. A recipe may:
 
-- select or override a Cell's **view** — capability, props, bindings, visibility, decorations, and
-  which slot(s) its `region` attaches to;
-- select a **contract-compatible implementation** for a Cell — swap the `sources`/`compute`/`behavior`
-  powering an existing Cell id, while its ports and event contracts stay exactly as declared.
+- add, select, or replace one or more of a Cell's named **`potentialViews`** — capability, props,
+  bindings, visibility, decorations, and which slot(s) each named view's `region` attaches to;
+- add, select, or replace a Cell's **implementation** — the `sources`/`compute`/`behavior` powering an
+  existing Cell id, while its ports and event contracts stay exactly as declared.
 
 A recipe never adds a slot, never adds a Cell, and never changes which Cells exist. Generation earns
 no special trust: the terminal Blueprint must pass the same validation as any hand-authored one.
@@ -268,8 +322,8 @@ inline connection details on the Cell itself.
 initial value for every namespace a Cell's `compute`/`outputs`/`behavior` can assign or read;
 `namespaces` lists which top-level state namespaces are valid; `contexts` names any additional
 read-only context stores beyond `externalContext`; `capabilities` and `externals` declare the
-projection-view vocabulary (`view.capability` values and their prop schemas/slots/emitted events)
-available to this Blueprint. Top-level `context` (with an optional `contextFormSpec`) is the schema for
+projection-view vocabulary (`potentialViews.<name>.capability` values and their prop
+schemas/slots/emitted events) available to this Blueprint. Top-level `contextFormSpec` is the schema for
 the immutable `externalContext` a materialization is given — declare its shape here rather than assuming
 callers already know it.
 
@@ -345,7 +399,7 @@ immediate values.
 2. **MODEL** — stable responsibilities, state, ports, and data flow.
 3. **DISCOVER ONCE** — if needed, call `catalog-capabilities` with the accepted capability IDs.
 4. **DESCRIBE ONCE** — call `multiple-capabilities` with all shortlisted IDs; never serialize details.
-5. **COMPOSE** — slots and root, Cells, and each Cell's view and `region` attachment.
+5. **COMPOSE** — slots and root, Cells, and each Cell's named `potentialViews` and `region` attachment.
 6. **LOWER** — tiers, recipes, view/region selection, and permitted implementations.
 7. **PREFLIGHT** — schemas, references, capability subset, cycles, and budgets.
 8. **RETURN** — one complete Blueprint artifact; no commentary.

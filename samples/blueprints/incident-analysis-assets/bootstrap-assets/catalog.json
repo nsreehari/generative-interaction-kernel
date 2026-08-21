@@ -99,19 +99,22 @@
                     "id": "report",
                     "views": {
                       "report": {
-                        "capability": "primitive:markdown",
-                        "bindings": {
-                          "value": {
-                            "from": "report.markdown"
-                          }
+                        "primary": {
+                          "capability": "primitive:markdown",
+                          "bindings": {
+                            "value": {
+                              "from": "report.markdown"
+                            }
+                          },
+                          "region": "report"
                         }
                       }
                     },
                     "presentation": {
-                      "roots": [
+                      "slots": [
                         "report"
                       ],
-                      "composition": {}
+                      "root": "report"
                     }
                   }
                 ],
@@ -150,8 +153,7 @@
             },
             "cells": {
               "report": {
-                "id": "report",
-                "kind": "semantic-report"
+                "id": "report"
               }
             }
           }
