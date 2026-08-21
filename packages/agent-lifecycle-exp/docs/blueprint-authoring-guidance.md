@@ -68,9 +68,10 @@ top-level fields — nothing else is invented:
 - `tiers` / `recipes` — the authored representations and the lowering between them (see **Tiers +
   recipes** below);
 - `cells` — the data-flow graph (see **Cells** above);
-- `presentation` — the named-slot skeleton (see **Presentation** below);
+- `presentation` — the named-slot skeleton, plus an optional closed capability vocabulary (see
+  **Presentation** below);
 - `services` — the declared contracts Cells call through (see **Services** below);
-- `runtime` — declared state, namespaces, and context shape (see **Runtime** below);
+- `runtime` — declared initial state and host-dependency wiring (see **Runtime** below);
 - `metadata` — rarely needed freeform notes with no authoritative meaning. Leave it out unless a real
   need arises.
 
@@ -265,12 +266,15 @@ Use capability, props, bindings, and decorations according to the described comp
 - Where it renders → `region` (see **Attachment** below).
 - Independently meaningful content, with its own event or derivation → its own Cell, not a decoration.
 
-Declare only capabilities actually used and import matching projection views.
+Declare only capabilities actually used and import matching projection views. A Blueprint may
+optionally close this vocabulary down further with `presentation.allowedCapabilities` (see below) —
+when present, referencing anything outside it is a validation error, not just a convention.
 
-### Presentation = a closed set of named slots, nothing more
+### Presentation = a closed set of named slots, plus an optional closed capability vocabulary
 
-The `presentation` section declares only two things: every slot name that exists, and which one is the
-root. It has no knowledge of Cells, and it carries no tree of who contains whom:
+The `presentation` section declares every slot name that exists, which one is the root, and
+optionally — via `allowedCapabilities` — the closed set of capability names any view or decoration in
+this Blueprint may use. It has no knowledge of Cells, and it carries no tree of who contains whom:
 
 ```json
 "presentation": {
@@ -281,9 +285,15 @@ root. It has no knowledge of Cells, and it carries no tree of who contains whom:
     { "id": "catalog-title", "region": "catalog" },
     { "id": "catalog-list", "region": "catalog" }
   ],
-  "root": "studio"
+  "root": "studio",
+  "allowedCapabilities": ["fluent:text", "fluent:list"]
 }
 ```
+
+`allowedCapabilities` is optional and absent by default (any capability name is legal, the ordinary
+case). Declare it only when a Blueprint genuinely needs a closed, enforced vocabulary — for example, a
+Blueprint validating an AI-generated nested Blueprint against a fixed set of capabilities it was told
+it may use.
 
 ### Attachment is self-declared, by whatever is attaching
 
@@ -336,16 +346,17 @@ one-off service declaration directly on a Cell: every source must reference a re
 entry, and referencing an unknown service or operation is rejected at validation time. Declare a
 service once; every Cell that needs it references it by id.
 
-### Runtime = the declared state, namespaces, and context shape
+### Runtime = the declared initial state, plus host-dependency wiring
 
-`runtime` is where a Blueprint declares what actually exists to read and write: `state` seeds the
-initial value for every namespace a Cell's `compute`/`outputs`/`behavior` can assign or read;
-`namespaces` lists which top-level state namespaces are valid; `contexts` names any additional
-read-only context stores beyond `externalContext`; `capabilities` and `externals` declare the
-projection-view vocabulary (`potentialViews.<name>.capability` values and their prop
-schemas/slots/emitted events) available to this Blueprint. Top-level `contextFormSpec` is the schema for
-the immutable `externalContext` a materialization is given — declare its shape here rather than assuming
-callers already know it.
+`runtime.state` is the only thing a Blueprint author actually declares here: the initial value for
+every namespace a Cell's `compute`/`outputs`/`behavior` can assign or read. The namespaces a Blueprint
+has, and the action verbs its `behavior.on` handlers use, are never separately authored — a host derives
+both automatically (namespaces from `state`'s own top-level keys; actions by scanning declared
+`behavior.on` handlers), so there is nothing to keep in sync by hand. `runtime.externals` declares
+host-dependency wiring beyond services — currently `projectionViews` (the projection-view vocabulary
+`potentialViews.<name>.capability` values resolve through) and `effectHandlers`. Top-level
+`contextFormSpec` is the schema for the immutable `externalContext` a materialization is given — declare
+its shape here rather than assuming callers already know it.
 
 ### Structure mode = governed change between generations, never mid-transition
 
@@ -401,8 +412,8 @@ between multiple external effects.
 
 Expressions in one handler read the state snapshot from the start of that handler. A later action in
 the same list must not depend on observing an earlier `assign`; emit a follow-up event when another
-step must observe the committed state. Declare every action family the Blueprint uses in
-`runtime.actions`.
+step must observe the committed state. A host derives the declared action vocabulary automatically by
+scanning every `behavior.on` handler across the Blueprint — there is nothing to separately declare.
 
 Use a Cell source when external data is an input to the Cell's computation or outputs. Use behavior
 actions when an external call is a response to a declared user or system event. When an `invoke`
