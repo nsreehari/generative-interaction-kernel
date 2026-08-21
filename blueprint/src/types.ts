@@ -204,30 +204,6 @@ export interface BlueprintStructurePolicy {
   allowedProgramOperations?: readonly ProgramPatchOperation["op"][];
 }
 
-export type BlueprintAgentLifecycleProfile = "use" | "customize" | "author";
-
-export interface BlueprintAgentLifecycleProfileManifestBase {
-  id: string;
-  version: string;
-  description: string;
-  targetKinds: readonly string[];
-  intentKinds: readonly string[];
-  goals?: readonly string[];
-  constraints?: readonly string[];
-}
-
-export type BlueprintAgentLifecycleProfileManifest = BlueprintAgentLifecycleProfileManifestBase & (
-  | { operationPreset: "standard" | "static-authoring"; operations?: never }
-  | {
-      operationPreset?: never;
-      operations: readonly ("discover" | "describe" | "inspect" | "validate" | "simulate" | "preflight" | "read_in_progress_proposal" | "set_in_progress_proposal")[];
-    }
-);
-
-export interface BlueprintAgentLifecycleDefinition {
-  profiles: Partial<Record<BlueprintAgentLifecycleProfile, BlueprintAgentLifecycleProfileManifest>>;
-}
-
 export interface BlueprintInterfacePort {
   schema?: Record<string, Json>;
   required?: boolean;
@@ -266,7 +242,6 @@ export interface BlueprintDefinition<TRecipe extends LoweringRecipeDefinition = 
   version: string;
   structureMode?: BlueprintStructureMode;
   structurePolicy?: BlueprintStructurePolicy;
-  agentLifecycle?: BlueprintAgentLifecycleDefinition;
   interface?: BlueprintInterfaceDefinition;
   tiers: TierDefinition[];
   recipes: TRecipe[];

@@ -300,3 +300,45 @@ profile family; transports and agent providers are outer adapters.
 - Host deployment topology or durable provider selection.
 - Product-specific interpretation and application of admitted Blueprint proposals.
 - Migration or retirement policy for existing Face packages.
+
+## Amendment (2026-08-21): `agentLifecycle` removed from the canonical Blueprint schema
+
+`BlueprintDefinition.agentLifecycle` (and the `BlueprintAgentLifecycleDefinition`/
+`BlueprintAgentLifecycleProfile`/`BlueprintAgentLifecycleProfileManifest` types, and the
+`blueprint.schema.json` property that validated them) is removed from `@gik/blueprint`. Evidence
+driving this: zero real sample Blueprint ever declared it — not even a Blueprint whose entire
+purpose is exposing an authoring surface to an agent. Its one live reader
+(`createBlueprintAgentLifecycle` in the browser-host sample) only ever built its comparison
+`implementation` manifest by re-reading the *same* Blueprint's own `agentLifecycle` field back out
+(via `createBlueprintLifecycleManifest`), so the "authored profile identity/version must match the
+serving implementation" enforcement this section originally described could never actually observe
+a mismatch in that path — it compared a value to itself. The one place that self-declared a profile
+(the platform's own fixed lowering meta-graph) never had that declaration read by anything, including
+its own tests.
+
+This is a schema-level removal only. `@gik/agent-lifecycle-exp`'s Blueprint-lifecycle-material types
+(`BlueprintLifecycleMaterialSource`, `BlueprintUseSource`, etc.) and binding functions
+(`defineBlueprintLifecycleProfile`, `requireBlueprintLifecycleMaterial`, `useBlueprint`,
+`customizeBlueprint`, `authorBlueprint`) are untouched and keep working exactly as before: they were
+always defined against their own independent, optional, structurally-typed shape
+(`payload.agentLifecycle?.profiles?...`) rather than importing `@gik/blueprint`'s types, so they
+never depended on the field being part of the canonical schema. A host wanting to exercise this
+machinery still supplies an object carrying that material — it simply can no longer be a canonical,
+schema-validated `BlueprintArtifact`.
+
+**`structureMode`/`structurePolicy` were never superseded by `agentLifecycle` and remain the real,
+load-bearing mechanism governing which lifecycle operations apply to a Blueprint** — this amendment
+changes nothing about them:
+
+- `fixed` — only `use` is possible; no structural mutation, agent or host, is ever admitted.
+- `reconfigurable` — accepts a structural patch only from an `authorized` origin (ADR-0018/ADR-0046);
+  the host proposes and applies it.
+- `adaptive` — additionally admits a patch whose every operation is listed in
+  `structurePolicy.allowedBlueprintOperations`; here the agent proposes (via a governed intent) and
+  the host still applies it, never the reverse.
+
+If a future need arises for a Blueprint (or a family of Blueprints) to self-describe richer
+agent-lifecycle material again, it should be re-introduced as an explicitly host-owned association
+(e.g. a registry keyed by Blueprint id, mirroring how credential references are host-owned rather than
+authored inline — ADR-0034-adjacent precedent), not as a field on the portable authored artifact.
+
