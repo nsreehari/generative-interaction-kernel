@@ -77,37 +77,39 @@ describe("portfolio intelligence service declarations", () => {
     expect(expression).toBeTruthy();
 
     for (const semantic of ["simple-markdown", "rich-components"] as const) {
+      const acceptedCapabilities = semantic === "simple-markdown"
+        ? ["primitive:markdown"]
+        : [
+            "semantic:narrative",
+            "semantic:measure-set",
+            "primitive:container",
+            "primitive:chart",
+            "fluent:text",
+            "fluent:list",
+            "fluent:table",
+          ];
+      const authoringBrief = {
+        objective: "Help the investor understand this portfolio snapshot.",
+        sectionMap: { overview: "Orient the user quickly." },
+        positiveCurrency: ["make material concentration immediately clear"],
+        negativeCurrency: ["infer historical performance from a current snapshot"],
+        constraints: ["one coherent experience"],
+        blueprintProfile: {
+          tiers: [
+            { id: "report-semantic", kind: "semantic-report-model" },
+            { id: "runtime-document", kind: "runtime-document" },
+          ],
+          behavior: "inert",
+        },
+      };
       const request = evalSyncJsonata(expression!, {
         input: {
           positions: {},
           summary: { marketValue: 1 },
           investorProfile: null,
           presentationMode: semantic,
-          authoringBrief: {
-            objective: "Help the investor understand this portfolio snapshot.",
-            sectionMap: { overview: "Orient the user quickly." },
-            positiveCurrency: ["make material concentration immediately clear"],
-            negativeCurrency: ["infer historical performance from a current snapshot"],
-            constraints: ["one coherent experience"],
-            blueprintProfile: {
-              tiers: [
-                { id: "report-semantic", kind: "semantic-report-model" },
-                { id: "runtime-document", kind: "runtime-document" },
-              ],
-              behavior: "inert",
-            },
-          },
-          acceptedCapabilities: semantic === "simple-markdown"
-            ? ["primitive:markdown"]
-            : [
-                "semantic:narrative",
-                "semantic:measure-set",
-                "primitive:container",
-                "primitive:chart",
-                "fluent:text",
-                "fluent:list",
-                "fluent:table",
-              ],
+          authoringBrief,
+          acceptedCapabilities,
         },
       }) as Record<string, unknown>;
       const message = String(request.message);
@@ -118,7 +120,13 @@ describe("portfolio intelligence service declarations", () => {
       expect(message.includes('"primitive:chart"')).toBe(semantic === "rich-components");
       expect(message.includes('"primitive:markdown"')).toBe(semantic === "simple-markdown");
       expect(request.instructions).toBeUndefined();
-      expect(request.acceptedCapabilities).toBeUndefined();
+      // `acceptedCapabilities`/`authoringBrief` are deliberately echoed through onto the
+      // transformed request (not just embedded in `message`'s prose) because the response
+      // validator (service-host's validateResponse) binds `$request` to this exact object and
+      // reads `$request.acceptedCapabilities`/`$request.authoringBrief` to police which
+      // capabilities and section slots the generated Blueprint may use.
+      expect(request.acceptedCapabilities).toEqual(acceptedCapabilities);
+      expect(request.authoringBrief).toEqual(authoringBrief);
       expect(message).not.toContain(`"id":"generated-semantic-report"`);
       expect(message).not.toContain("SECTIONS != COMPONENTS");
       expect(message.length).toBeLessThan(2000);
