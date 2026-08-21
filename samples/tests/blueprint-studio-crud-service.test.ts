@@ -322,11 +322,16 @@ describe("Blueprint Studio CRUD service", () => {
     });
     expect(await invoke(host, "deleteDraft", { id: artifact.payload.id })).toMatchObject({
       draftDeleted: true,
-      deleted: true,
-      id: artifact.payload.id,
+      blueprint: {
+        id: artifact.payload.id,
+        artifact: null,
+        draft: null,
+      },
     });
-    expect(await invoke(host, "fetch", { id: artifact.payload.id })).toBeNull();
-    expect((await invoke(host, "list") as { blueprints: Array<{ id: string }> }).blueprints)
-      .not.toContainEqual(expect.objectContaining({ id: artifact.payload.id }));
+    expect(await invoke(host, "fetch", { id: artifact.payload.id })).toMatchObject({
+      id: artifact.payload.id,
+      artifact: null,
+      draft: null,
+    });
   });
 });

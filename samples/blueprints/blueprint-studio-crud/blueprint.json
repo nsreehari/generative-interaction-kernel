@@ -122,12 +122,6 @@
                 "control": { "tool": "readIndexForPromoteDraft" }
               }
             ],
-            "read-index-for-delete-draft-entry": [
-              {
-                "do": "invoke",
-                "control": { "tool": "readIndexForDeleteDraftEntry" }
-              }
-            ],
             "write-blueprint-record": [
               {
                 "do": "invoke",
@@ -161,7 +155,6 @@
           "delete-draft": { "payloadSchema": { "type": "object" } },
           "promote-draft": { "payloadSchema": { "type": "object" } },
           "read-index-for-promote-draft": { "payloadSchema": { "type": "object" } },
-          "read-index-for-delete-draft-entry": { "payloadSchema": { "type": "object" } },
           "write-blueprint-record": { "payloadSchema": { "type": "object" } },
           "delete-blueprint-record": { "payloadSchema": { "type": "object" } },
           "write-blueprint-index": { "payloadSchema": { "type": "object" } }
@@ -185,7 +178,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'ops':[{'op':'set','path':'studioCrud.result','value':{'blueprints':response ? response : []}}]}"
+                "expr": "{'ops':[{'op':'set','path':'studioCrud.result','value':{'blueprints':response ? response : [],'refresh':effect.data.refresh}}]}"
               }
             }
           },
@@ -340,23 +333,7 @@
             "settlement": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($entry := response; $id := $trim(effect.data.id); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : $entry.artifact = null ? {'events':[{'node':'crud-controller','name':'read-index-for-delete-draft-entry','payload':{'id':$id}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$merge([$entry,{'draft':null}]),'result':{'draftDeleted':true,'blueprint':$merge([$entry,{'draft':null}])}}}]})"
-              }
-            }
-          },
-          "readIndexForDeleteDraftEntry": {
-            "operation": "read",
-            "contract": "storage-kv/v1",
-            "request": {
-              "transform": {
-                "kind": "jsonata",
-                "expr": "{'key':'index:blueprints'}"
-              }
-            },
-            "settlement": {
-              "transform": {
-                "kind": "jsonata",
-                "expr": "($id := effect.data.id; $nextIndex := (response ? response : [])[id != $id]; {'events':[{'node':'crud-controller','name':'delete-blueprint-record','payload':{'id':$id,'index':$nextIndex,'result':{'draftDeleted':true,'deleted':true,'id':$id,'blueprints':$nextIndex}}}]})"
+                "expr": "($entry := response; $id := $trim(effect.data.id); $updated := $merge([$entry,{'draft':null}]); $not($exists($entry)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint was not found','id':$id}}]} : $entry.readonly = true ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Repository Blueprints are read-only','id':$id}}]} : $not($exists($entry.draft)) ? {'ops':[{'op':'set','path':'studioCrud.result','value':{'draftDeleted':false,'error':'Blueprint has no draft','id':$id,'blueprint':$entry}}]} : {'events':[{'node':'crud-controller','name':'write-blueprint-record','payload':{'entry':$updated,'result':{'draftDeleted':true,'blueprint':$updated}}}]})"
               }
             }
           },
