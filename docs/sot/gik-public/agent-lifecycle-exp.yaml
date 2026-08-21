@@ -251,15 +251,22 @@ functions:
     purpose: Generate strict provider function metadata directly from authored Blueprint use material and package-owned generic UBX schemas without handlers.
 
 blueprint_integration:
-  authored_contract: BlueprintDefinition.agentLifecycle.profiles
+  authored_contract: >-
+    A structurally-typed `payload.agentLifecycle.profiles` shape (this package's own
+    `BlueprintLifecycleMaterialSource`/`BlueprintUseSource`), supplied independently of
+    `@gik/blueprint`'s canonical `BlueprintDefinition` — that type no longer declares
+    `agentLifecycle` (removed 2026-08-21: no real sample Blueprint ever populated it; see
+    ADR-0048 amendment). A caller wanting to exercise this package's Blueprint-lifecycle
+    binding still supplies an object carrying this material; it can no longer be a canonical,
+    schema-validated `BlueprintArtifact`.
   profile_placement:
     use: Application or runtime Blueprint exposed through UBX.
     customize: Customization meta-Blueprint exposed through CBX.
     author: Authoring or compiler meta-Blueprint exposed through ABX.
   validation: >-
-    Blueprint JSON Schema validates declared profile material and requires every declared profile
-    to select a preset or explicit operation list. A Blueprint may omit lifecycle integration, but
-    lifecycle profile binding rejects a missing required entry.
+    This package's own binding functions require every declared profile to select a preset or
+    explicit operation list, and reject a missing required entry. The canonical Blueprint JSON
+    Schema no longer validates this material, since it is not part of that schema.
 
 exclusions:
   - No MCP wire protocol implementation.

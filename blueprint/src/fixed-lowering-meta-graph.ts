@@ -27,20 +27,6 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
   kind: "lowering-meta-graph",
   version: "1",
   structureMode: "fixed",
-  agentLifecycle: {
-    profiles: {
-      author: {
-        id: "author-blueprint",
-        version: "1.0.0",
-        description: "Author and validate terminal Blueprints through the fixed lowering meta-graph.",
-        targetKinds: ["blueprint", "blueprint-candidate"],
-        intentKinds: ["materialize-blueprint", "validate-blueprint", "propose-blueprint-revision"],
-        operationPreset: "standard",
-        goals: ["Produce a validated terminal Blueprint from authored tiers and recipes."],
-        constraints: ["Lowering does not activate or execute the produced Blueprint."],
-      },
-    },
-  },
   tiers: [{ id: "runtime", kind: "runtime-document" }],
   recipes: [],
   runtime: {
