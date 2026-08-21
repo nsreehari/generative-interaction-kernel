@@ -23,9 +23,7 @@ test("BlueprintController renders and transitions Blueprint-owned in-memory stat
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
     runtime: {
-      namespaces: ["counter"],
       state: { counter: { value: 1 } },
-      capabilities: {},
     },
     cells: {
       root: {
@@ -62,7 +60,7 @@ test("BlueprintController reuses materialized execution with immutable externalC
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",
@@ -117,7 +115,7 @@ test("BlueprintController seeds state on the materialized terminal Blueprint", a
         },
       }],
     }],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: { root: { id: "root" } },
     presentation: { slots: ["root"], root: "root" },
   });
@@ -137,7 +135,7 @@ test("BlueprintController executes ordinary native effects without applying retu
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",
@@ -186,7 +184,7 @@ test("BlueprintController does not retain effects when no native executor is con
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",
@@ -214,7 +212,7 @@ test("BlueprintController retries a failed ordinary effect without applying retu
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",

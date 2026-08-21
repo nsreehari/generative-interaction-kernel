@@ -49,7 +49,7 @@ function structureModeBlueprint(
     } : {}),
     tiers: [{ id: "runtime", kind: "runtime-document" }],
     recipes: [],
-    runtime: { capabilities: {} },
+    runtime: {},
     cells: {
       root: {
         id: "root",

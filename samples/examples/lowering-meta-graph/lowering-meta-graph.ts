@@ -91,7 +91,6 @@ export function compilerBlueprint(): BlueprintArtifact {
     // a Cell's own `state.initial` facet — that field is declared in blueprint/src/types.ts but
     // not consumed anywhere in today's lowering path.
     runtime: {
-      capabilities: {},
       state: {
         agentData: {
           subject: "Acme Robotics Inc.",
@@ -195,7 +194,6 @@ export function compilerBlueprint(): BlueprintArtifact {
               'tiers': [{ 'id': 'runtime', 'kind': 'runtime-document' }],
               'recipes': [],
               'runtime': {
-                'capabilities': {},
                 'state': {
                   'report': {
                     'subject': inputs.subject,

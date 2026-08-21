@@ -625,52 +625,6 @@
       }
     },
     "runtime": {
-      "expression": "jsonata",
-      "namespaces": [
-        "incident"
-      ],
-      "actions": [
-        "assign"
-      ],
-      "capabilities": {
-        "gik:blueprint": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "fluent:button": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "press"
-          ]
-        },
-        "fluent:spinner": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "primitive:form": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "save"
-          ]
-        },
-        "primitive:datetime": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "dataProp": "value"
-        }
-      },
       "externals": {
         "projectionViews": {
           "fluent": {

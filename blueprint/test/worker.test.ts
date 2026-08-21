@@ -251,7 +251,7 @@ test("ordinary invoke execution is acknowledged without applying returned state"
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",
@@ -308,7 +308,7 @@ test("declarative service invoke settlements re-enter durable Blueprint state", 
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",
@@ -372,7 +372,7 @@ test("void invokes are acknowledged without appending settlement receipts", asyn
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: [], state: {}, capabilities: {} },
+    runtime: { state: {} },
     cells: {
       root: {
         id: "root",
@@ -424,7 +424,7 @@ test("duplicate settlement receipts do not replay their follow-up events", async
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: [], state: {}, capabilities: {} },
+    runtime: { state: {} },
     cells: {
       root: {
         id: "root",
@@ -503,9 +503,7 @@ test("durable source state promotes only the latest pending request and rejects 
       },
     },
     runtime: {
-      namespaces: ["work"],
       state: { work: { request: null, result: null } },
-      capabilities: { screen: { propsSchema: { type: "object" } } },
     },
     cells: {
       controls: {

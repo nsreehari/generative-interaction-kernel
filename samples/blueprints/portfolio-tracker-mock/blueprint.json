@@ -26,13 +26,6 @@
     ],
     "recipes": [],
     "runtime": {
-      "expression": "jsonata",
-      "namespaces": [
-        "portfolioMock"
-      ],
-      "actions": [
-        "assign"
-      ],
       "state": {
         "portfolioMock": {
           "result": null

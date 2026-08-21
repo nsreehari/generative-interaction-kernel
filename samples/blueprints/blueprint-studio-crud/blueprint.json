@@ -35,13 +35,6 @@
     ],
     "recipes": [],
     "runtime": {
-      "expression": "jsonata",
-      "namespaces": [
-        "studioCrud"
-      ],
-      "actions": [
-        "invoke"
-      ],
       "state": {
         "studioCrud": {
           "result": null

@@ -26,13 +26,6 @@
     ],
     "recipes": [],
     "runtime": {
-      "expression": "jsonata",
-      "namespaces": [
-        "portfolioAssets"
-      ],
-      "actions": [
-        "invoke"
-      ],
       "state": {
         "portfolioAssets": {
           "result": null

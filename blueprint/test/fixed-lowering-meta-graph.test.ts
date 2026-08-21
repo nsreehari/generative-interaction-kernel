@@ -115,7 +115,7 @@ test("the lowering-recipe schema rejects a headless representation flag", () => 
         representations: [{ id: "worker", headless: true } as never],
         fallback: "worker",
       }],
-      runtime: { namespaces: ["state"], capabilities: {} },
+      runtime: {},
       cells: {
         worker: {
           id: "worker",
@@ -168,7 +168,7 @@ test("representation append merges sparse parent and slot composition", () => {
       ],
       fallback: "extended",
     }],
-    runtime: { namespaces: ["state"], capabilities: {} },
+    runtime: {},
     cells: Object.fromEntries(["root", "heading", "primary", "secondary", "save"].map((id) => [
       id,
       { id, potentialViews: { main: { capability: "ui:text" } } },
@@ -224,7 +224,7 @@ test("a representation decorator uses JSONata to add loading UI around source-ba
       }],
       fallback: "screen",
     }],
-    runtime: { capabilities: {} },
+    runtime: {},
     services: {
       "remote-service": {
         kind: "mock-service",

@@ -128,11 +128,6 @@
       }
     },
     "runtime": {
-      "expression": "jsonata",
-      "namespaces": [
-        "search"
-      ],
-      "capabilities": {},
       "state": {
         "search": {
           "submitted": false,

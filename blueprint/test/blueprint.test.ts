@@ -39,10 +39,7 @@ import {
 } from "../src/index";
 import { settleQueuedCellSourceEffect } from "../src/worker";
 
-const runtime = {
-  version: "test/1",
-  capabilities: {},
-};
+const runtime = {};
 
 function blueprint(id = "test"): BlueprintArtifact {
   return createBlueprint({
@@ -1029,7 +1026,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
-      runtime: { namespaces: ["counter"], contexts: ["shared"], capabilities: {} },
+      runtime: {},
       cells: {
         root: {
           id: "root",
@@ -1075,8 +1072,6 @@ describe("@gik/blueprint", () => {
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
       runtime: {
-        namespaces: ["portfolio"],
-        capabilities: {},
         state: { portfolio: { holdings: initialHoldings } },
       },
       cells: {
@@ -1117,7 +1112,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
-      runtime: { namespaces: ["counter"], capabilities: {}, state: { counter: { value: 1 } } },
+      runtime: { state: { counter: { value: 1 } } },
       cells: {
         counter: {
           id: "counter",
@@ -1202,7 +1197,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
-      runtime: { namespaces: ["counter"], capabilities: {}, state: { counter: { value: 1 } } },
+      runtime: { state: { counter: { value: 1 } } },
       cells: {
         root: {
           id: "root",
@@ -1256,7 +1251,7 @@ describe("@gik/blueprint", () => {
       },
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
-      runtime: { namespaces: [], capabilities: {}, state: {} },
+      runtime: { state: {} },
       cells: {
         root: { id: "root", potentialViews: { primary: { capability: "screen", region: "root" } } },
       },
@@ -1293,7 +1288,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
-      runtime: { namespaces: ["local"], capabilities: {}, state: { local: {} } },
+      runtime: { state: { local: {} } },
       cells: {
         root: {
           id: "root",
@@ -1329,7 +1324,7 @@ describe("@gik/blueprint", () => {
       structureMode: "reconfigurable",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
-      runtime: { capabilities: {}, state: {} },
+      runtime: { state: {} },
       cells: { root: { id: "root", potentialViews: { primary: { capability: "screen", region: "root" } } } },
       presentation: singleSlotPresentation("root"),
     });
@@ -1354,7 +1349,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
-      runtime: { namespaces: ["counter"], capabilities: {}, state: { counter: { value: 1 } } },
+      runtime: { state: { counter: { value: 1 } } },
       cells: {
         root: {
           id: "root",

@@ -73,7 +73,7 @@ function structuralBlueprint(
     } : {}),
     tiers: [{ id: "runtime", kind: "runtime-document" }],
     recipes: [],
-    runtime: { capabilities: {} },
+    runtime: {},
     cells: {
       root: {
         id: "root",
@@ -115,7 +115,7 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
       version: "1",
       tiers: [{ id: "runtime-document", kind: "runtime-document" }],
       recipes: [],
-      runtime: { namespaces: ["example"], capabilities: {} },
+      runtime: {},
       cells: {
           root: {
             id: "root",
@@ -165,8 +165,6 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
       tiers: [{ id: "runtime-document", kind: "runtime-document" }],
       recipes: [],
       runtime: {
-        namespaces: ["example"],
-        capabilities: {},
         state: { example: { ready: true } },
       },
       cells: {
@@ -218,7 +216,7 @@ test("ControlFace drives a projection-free Blueprint but rejects render access",
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], capabilities: {}, state: { counter: { value: 1 } } },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       counter: {
         id: "counter",
@@ -256,8 +254,6 @@ test("ControlFace applies initialSeed from blueprint context", () => {
       tiers: [{ id: "runtime-document", kind: "runtime-document" }],
       recipes: [],
       runtime: {
-        namespaces: ["example"],
-        capabilities: {},
         state: { example: { ready: false, nested: { before: true } } },
       },
       cells: {
@@ -306,7 +302,7 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
       version: "2",
       tiers: [{ id: "runtime-document", kind: "runtime-document" }],
       recipes: [],
-      runtime: { capabilities: {}, state: { child: { count: 1 } } },
+      runtime: { state: { child: { count: 1 } } },
       cells: { root: { id: "root", potentialViews: { primary: { capability: "ui:text", region: "root" } } } },
       presentation: singleSlotPresentation("root"),
     },
@@ -320,7 +316,7 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
       version: "1",
       tiers: [{ id: "runtime-document", kind: "runtime-document" }],
       recipes: [],
-      runtime: { capabilities: {}, state: { parent: { ready: true } } },
+      runtime: { state: { parent: { ready: true } } },
       cells: {
         child: {
           id: "child",

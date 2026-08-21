@@ -30,7 +30,7 @@ test("DurableBlueprintController persists Blueprint state", async () => {
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",
@@ -74,7 +74,7 @@ test("DurableBlueprintController does not persist ordinary native effect results
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",
@@ -126,7 +126,7 @@ test("DurableBlueprintController leaves ordinary effects for an externally owned
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",
@@ -181,7 +181,7 @@ test("DurableBlueprintController refreshes after another controller commits", as
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], state: { counter: { value: 1 } }, capabilities: {} },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",

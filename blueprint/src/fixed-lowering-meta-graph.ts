@@ -31,7 +31,6 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
   tiers: [{ id: "runtime", kind: "runtime-document" }],
   recipes: [],
   runtime: {
-    capabilities: {},
     state: { lowering: {} },
   },
   cells: {
@@ -343,12 +342,6 @@ function declareDecorationCapability(
   const name = capability.slice(separator + 1);
   const runtime = artifact.payload.runtime;
   if (!runtime) throw new Error(`Blueprint '${artifact.payload.id}' has no runtime declaration`);
-  runtime.capabilities = {
-    ...runtime.capabilities,
-    [capability]: runtime.capabilities?.[capability] ?? {
-      propsSchema: { type: "object", additionalProperties: true },
-    },
-  };
   const projectionViews = runtime.externals?.projectionViews ?? {};
   const existing = projectionViews[alias];
   projectionViews[alias] = {

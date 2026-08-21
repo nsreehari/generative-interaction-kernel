@@ -3,7 +3,6 @@ import type {
   ExecutableProgramDefinition,
   ExternalsSpec,
   Json,
-  ProjectedVocabularyManifest,
   ProgramPatch,
   ProgramPatchOperation,
   ServiceDeclaration,
@@ -74,12 +73,6 @@ export interface RepresentationLoweringRecipeDefinition extends LoweringRecipeDe
 }
 
 export interface BlueprintRuntimeDefinition {
-  version?: string;
-  expression?: string;
-  namespaces?: string[];
-  contexts?: string[];
-  actions?: string[];
-  capabilities?: ProjectedVocabularyManifest["capabilities"];
   externals?: Omit<ExternalsSpec, "services">;
   state?: Record<string, Json>;
 }
@@ -181,6 +174,10 @@ export type PresentationSlot = string | PresentationSlotEntry;
 export interface PresentationDefinition {
   slots: readonly PresentationSlot[];
   root: string;
+  /** A closed vocabulary of capability names any view/decoration in this Blueprint may use. Absent
+   * means open -- any capability name is legal, the pre-existing default behavior. Present makes it
+   * a real, validated closed set: referencing anything else is a Blueprint validation error. */
+  allowedCapabilities?: readonly string[];
 }
 
 export type BlueprintStructureMode = "fixed" | "reconfigurable" | "adaptive";

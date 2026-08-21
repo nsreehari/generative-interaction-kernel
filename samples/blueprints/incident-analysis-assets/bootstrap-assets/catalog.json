@@ -1,6 +1,8 @@
 {
   "format": "gik-blueprint-bootstrap-assets/1",
-  "legacyStorageNamespaces": ["samples:incident-analysis:runtime-cache"],
+  "legacyStorageNamespaces": [
+    "samples:incident-analysis:runtime-cache"
+  ],
   "records": [
     {
       "key": "index:sources",
@@ -122,19 +124,6 @@
               }
             ],
             "runtime": {
-              "expression": "jsonata",
-              "namespaces": [
-                "report"
-              ],
-              "actions": [],
-              "capabilities": {
-                "primitive:markdown": {
-                  "propsSchema": {
-                    "type": "object",
-                    "additionalProperties": true
-                  }
-                }
-              },
               "externals": {
                 "projectionViews": {
                   "primitive": {
