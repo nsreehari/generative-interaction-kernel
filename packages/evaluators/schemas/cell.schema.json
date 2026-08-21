@@ -9,15 +9,6 @@
   "properties": {
     "id": { "type": "string", "minLength": 1 },
     "metadata": { "type": "object" },
-    "state": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "initial": { "type": "object" },
-        "schema": { "type": "object" },
-        "persistence": { "enum": ["ephemeral", "checkpointed", "durable"] }
-      }
-    },
     "inputs": {
       "type": "array",
       "items": {

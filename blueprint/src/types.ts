@@ -153,11 +153,6 @@ export type CellBlueprint =
 export interface CellDefinition {
   id: string;
   metadata?: Record<string, Json>;
-  state?: {
-    initial?: Record<string, Json>;
-    schema?: Record<string, Json>;
-    persistence?: "ephemeral" | "checkpointed" | "durable";
-  };
   inputs?: readonly CellInput[];
   systemInputs?: readonly SystemInputToken[];
   sources?: readonly CellSource[];

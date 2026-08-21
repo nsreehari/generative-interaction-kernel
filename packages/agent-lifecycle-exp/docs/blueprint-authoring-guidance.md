@@ -209,9 +209,21 @@ materialization — so N representations and M implementation programs give N×M
 N+M authored entries. This is the mechanism that lets, say, a headless host, a browser host, and an
 Azure Function host all run the *same* Blueprint (representations vary; sources/behavior may too), while
 a "which stock-quote provider" choice and a "mobile vs. desktop layout" choice stay entirely independent
-of each other. Neither seam is limited to overriding something that already exists — a recipe may just as
-well introduce a Cell's very first source or its very first view; the only thing invariant across every
-tier is a Cell's ports (`inputs`/`outputs`) and its declared event names/payload shapes.
+of each other. The only thing invariant across every tier is a Cell's ports (`inputs`/`outputs`) and its
+declared event names/payload shapes — but the two seams are not symmetric in what they may introduce:
+
+- **projection** — a representation may introduce a Cell's very first named view, add another one
+  alongside an existing view, or replace one already there; nothing about a view needs to pre-exist.
+- **implementation** — an implementation program may only *replace* a `sources` entry (or the service it
+  names) that the Cell already declares at authoring time. The compiler enforces this: an override's
+  `{sourceId, contract}` pairs must exactly match the Cell's already-authored `sources`, and a service
+  override's `{operationId, contract}` pairs must exactly match that service's already-authored
+  `operations` — same count, same ids, same contracts, every time. An implementation program can swap
+  *which* service backs a source, or change a service's request/response transforms and config, but it
+  can never give a Cell a source (or a service an operation) that was not already authored on the Cell
+  or in top-level `services`. If a Cell needs a source at all under some external context, author that
+  source (and its backing service) as the baseline at authoring time; implementation programs then only
+  ever choose between concrete backings for it.
 
 A representation's `views` entry for a Cell is keyed by view name and upserted onto that Cell's
 `potentialViews` — so a representation can add a Cell's first view, add a second named view alongside an
@@ -291,16 +303,19 @@ Because attachment is self-declared, deletion is always safe: removing a Cell re
 declaration with it. Nothing external ever needs to be found and edited, and `PREFLIGHT` only needs to
 confirm every declared `region` resolves to a slot, or Cell, that still exists.
 
-### Tiers + recipes select, add, or replace — they never restructure
+### Tiers + recipes select — and, for views only, may add — they never restructure
 
 A tier is an authored representation; a recipe lowers one tier to the next by independently choosing,
 through its `representations[]` and `implementationPrograms[]` (see **two seams** above), between
 authored alternatives for a Cell's two seams. A recipe may:
 
 - add, select, or replace one or more of a Cell's named **`potentialViews`** — capability, props,
-  bindings, visibility, decorations, and which slot(s) each named view's `region` attaches to;
-- add, select, or replace a Cell's **implementation** — the `sources`/`compute`/`behavior` powering an
-  existing Cell id, while its ports and event contracts stay exactly as declared.
+  bindings, visibility, decorations, and which slot(s) each named view's `region` attaches to; a view
+  named here does not need to already exist on the Cell;
+- select or replace a Cell's **implementation** — the `sources`/`compute`/`behavior` powering an existing
+  Cell id, while its ports and event contracts stay exactly as declared. Unlike views, an implementation
+  program cannot introduce a source (or a service operation) the Cell (or `services`) did not already
+  declare at authoring time — see **two seams** above for the exact contract the compiler enforces.
 
 A recipe never adds a slot, never adds a Cell, and never changes which Cells exist. Generation earns
 no special trust: the terminal Blueprint must pass the same validation as any hand-authored one.
@@ -348,9 +363,10 @@ change a Cell's authored identity, ports, or event contracts.
 A Blueprint's real life is a long-lived sequence of transitions, not a single request/response — think
 of a continuously running system fed a stream of events or sensor readings, not a one-shot form submit.
 Each event is one heartbeat: propagate to quiescence, emit effects, commit state, wait for the next
-event. What must survive from heartbeat to heartbeat is exactly what a Cell's `state.persistence`
-(`ephemeral`, `checkpointed`, or `durable`) declares — ephemeral working values reset naturally; anything
-that must outlive a single reflex needs `checkpointed`/`durable` persistence declared explicitly.
+event. What must survive from heartbeat to heartbeat is exactly what lives in `runtime.state` — the
+whole record persists (or is checkpointed by the host) as one indivisible whole between transitions;
+there is no current per-Cell fine-grained persistence tier. A Cell's `sources`/`compute` simply re-run
+against whatever `runtime.state` holds at the start of each heartbeat.
 
 This is also the honest shape of "self-evolving": evolution is never a Cell restructuring itself
 mid-reflex — that is exactly what the Cell-invariance rule above forbids, for the same reason a living
