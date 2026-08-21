@@ -97,7 +97,6 @@
                     "id": "report-analysis.source",
                     "service": "incident-report-refinement",
                     "operation": "analyzeReportBlueprint",
-                    "contract": "incident-report-blueprint/v1",
                     "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
                     "input": {
                       "kind": "jsonata",
@@ -718,7 +717,6 @@
             "id": "analysis-selection.source",
             "service": "incident-sources",
             "operation": "listSourceReports",
-            "contract": "incident-source-list/v1",
             "output": {
               "kind": "jsonata",
               "expr": "response.sources"
@@ -838,7 +836,6 @@
             "id": "report-analysis.source",
             "service": "incident-report-analysis",
             "operation": "analyzeReportBlueprint",
-            "contract": "incident-report-blueprint/v1",
             "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
             "input": {
               "kind": "jsonata",
@@ -927,7 +924,6 @@
             "id": "analysis-context.source-report",
             "service": "incident-sources",
             "operation": "getSourceReport",
-            "contract": "incident-source/v1",
             "when": "$length(inputs.selectedReport) > 0",
             "input": {
               "kind": "jsonata",
@@ -942,7 +938,6 @@
             "id": "analysis-context.saved-report",
             "service": "incident-saved-reports",
             "operation": "getSavedReport",
-            "contract": "saved-report-envelope/v1",
             "when": "$length(inputs.selectedReport) > 0 and $length(inputs.selectedModel) > 0",
             "input": {
               "kind": "jsonata",
@@ -1013,7 +1008,6 @@
             "id": "report-resolution.source",
             "service": "incident-saved-reports",
             "operation": "putSavedReport",
-            "contract": "saved-report-envelope/v1",
             "when": "inputs.analysisReport != null",
             "input": {
               "kind": "jsonata",

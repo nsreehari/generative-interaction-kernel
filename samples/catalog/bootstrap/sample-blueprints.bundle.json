@@ -354,7 +354,6 @@
                 "id": "agent-query-form.source",
                 "service": "assistant",
                 "operation": "discoverAgents",
-                "contract": "ai-agent-list/v1",
                 "output": {
                   "kind": "jsonata",
                   "expr": "response"
@@ -450,7 +449,6 @@
                 "id": "agent-response.source",
                 "service": "assistant",
                 "operation": "askAgent",
-                "contract": "ai-agent-chat/v1",
                 "input": {
                   "kind": "jsonata",
                   "expr": "{'message':$trim(inputs.query.message),'agentName':$trim(inputs.query.agentName),'conversationId':inputs.conversationId = '' ? null : inputs.conversationId}"
@@ -859,7 +857,6 @@
                 "id": "list-blueprints",
                 "service": "blueprint-studio-data",
                 "operation": "listBlueprints",
-                "contract": "blueprint-studio-list/v1",
                 "input": {
                   "kind": "jsonata",
                   "expr": "{'refresh':$exists(inputs.blueprintListRefreshStamp) ? inputs.blueprintListRefreshStamp : 'initial'}"
@@ -1168,7 +1165,6 @@
                 "id": "fetch-blueprint",
                 "service": "blueprint-studio-data",
                 "operation": "fetchBlueprint",
-                "contract": "blueprint-studio-record/v1",
                 "when": "$exists(inputs.selectedBlueprintId) and inputs.selectedBlueprintId != null and inputs.selectedBlueprintId != ''",
                 "input": {
                   "kind": "jsonata",
@@ -2557,7 +2553,6 @@
                         "id": "report-analysis.source",
                         "service": "incident-report-refinement",
                         "operation": "analyzeReportBlueprint",
-                        "contract": "incident-report-blueprint/v1",
                         "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
                         "input": {
                           "kind": "jsonata",
@@ -3178,7 +3173,6 @@
                 "id": "analysis-selection.source",
                 "service": "incident-sources",
                 "operation": "listSourceReports",
-                "contract": "incident-source-list/v1",
                 "output": {
                   "kind": "jsonata",
                   "expr": "response.sources"
@@ -3298,7 +3292,6 @@
                 "id": "report-analysis.source",
                 "service": "incident-report-analysis",
                 "operation": "analyzeReportBlueprint",
-                "contract": "incident-report-blueprint/v1",
                 "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
                 "input": {
                   "kind": "jsonata",
@@ -3387,7 +3380,6 @@
                 "id": "analysis-context.source-report",
                 "service": "incident-sources",
                 "operation": "getSourceReport",
-                "contract": "incident-source/v1",
                 "when": "$length(inputs.selectedReport) > 0",
                 "input": {
                   "kind": "jsonata",
@@ -3402,7 +3394,6 @@
                 "id": "analysis-context.saved-report",
                 "service": "incident-saved-reports",
                 "operation": "getSavedReport",
-                "contract": "saved-report-envelope/v1",
                 "when": "$length(inputs.selectedReport) > 0 and $length(inputs.selectedModel) > 0",
                 "input": {
                   "kind": "jsonata",
@@ -3473,7 +3464,6 @@
                 "id": "report-resolution.source",
                 "service": "incident-saved-reports",
                 "operation": "putSavedReport",
-                "contract": "saved-report-envelope/v1",
                 "when": "inputs.analysisReport != null",
                 "input": {
                   "kind": "jsonata",
@@ -4423,7 +4413,6 @@
                         "id": "portfolio-intelligence.source",
                         "service": "portfolio-intelligence-copilot",
                         "operation": "requestIntelligence",
-                        "contract": "portfolio-intelligence/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                         "input": {
                           "kind": "jsonata",
@@ -4438,7 +4427,6 @@
                         "id": "portfolio-semantic-intelligence.source",
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
-                        "contract": "portfolio-semantic-intelligence/v1",
                         "when": "false",
                         "input": {
                           "kind": "jsonata",
@@ -4494,7 +4482,6 @@
                         "id": "portfolio-intelligence-context.saved-report",
                         "service": "portfolio-saved-reports",
                         "operation": "getSavedReport",
-                        "contract": "saved-portfolio-report-envelope/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                         "input": {
                           "kind": "jsonata",
@@ -4531,7 +4518,6 @@
                         "id": "portfolio-intelligence.source",
                         "service": "portfolio-intelligence",
                         "operation": "requestIntelligence",
-                        "contract": "portfolio-intelligence/v1",
                         "when": "false",
                         "input": {
                           "kind": "jsonata",
@@ -4546,7 +4532,6 @@
                         "id": "portfolio-semantic-intelligence.source",
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
-                        "contract": "portfolio-semantic-intelligence/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
@@ -4581,7 +4566,6 @@
                         "id": "portfolio-intelligence-context.saved-report",
                         "service": "portfolio-saved-reports",
                         "operation": "getSavedReport",
-                        "contract": "saved-portfolio-report-envelope/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                         "input": {
                           "kind": "jsonata",
@@ -4618,7 +4602,6 @@
                         "id": "portfolio-intelligence.source",
                         "service": "portfolio-intelligence",
                         "operation": "requestIntelligence",
-                        "contract": "portfolio-intelligence/v1",
                         "when": "false",
                         "input": {
                           "kind": "jsonata",
@@ -4633,7 +4616,6 @@
                         "id": "portfolio-semantic-intelligence.source",
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
-                        "contract": "portfolio-semantic-intelligence/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
@@ -5080,7 +5062,6 @@
                         "id": "portfolio-intelligence-context.saved-report",
                         "service": "portfolio-saved-reports",
                         "operation": "getSavedReport",
-                        "contract": "saved-portfolio-report-envelope/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                         "input": {
                           "kind": "jsonata",
@@ -5117,7 +5098,6 @@
                         "id": "portfolio-intelligence.source",
                         "service": "portfolio-intelligence",
                         "operation": "requestIntelligence",
-                        "contract": "portfolio-intelligence/v1",
                         "when": "false",
                         "input": {
                           "kind": "jsonata",
@@ -5132,7 +5112,6 @@
                         "id": "portfolio-semantic-intelligence.source",
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
-                        "contract": "portfolio-semantic-intelligence/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
@@ -5167,7 +5146,6 @@
                         "id": "portfolio-intelligence-context.saved-report",
                         "service": "portfolio-saved-reports",
                         "operation": "getSavedReport",
-                        "contract": "saved-portfolio-report-envelope/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                         "input": {
                           "kind": "jsonata",
@@ -5204,7 +5182,6 @@
                         "id": "portfolio-intelligence.source",
                         "service": "portfolio-intelligence",
                         "operation": "requestIntelligence",
-                        "contract": "portfolio-intelligence/v1",
                         "when": "false",
                         "input": {
                           "kind": "jsonata",
@@ -5219,7 +5196,6 @@
                         "id": "portfolio-semantic-intelligence.source",
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
-                        "contract": "portfolio-semantic-intelligence/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
@@ -6408,7 +6384,6 @@
                 "id": "market-prices.source",
                 "service": "portfolio-market-data",
                 "operation": "refreshPrices",
-                "contract": "portfolio-market-quotes/v1",
                 "when": "$count(inputs.holdings.*) > 0",
                 "input": {
                   "kind": "jsonata",
@@ -6495,7 +6470,6 @@
                 "id": "portfolio-intelligence.source",
                 "service": "portfolio-intelligence",
                 "operation": "requestIntelligence",
-                "contract": "portfolio-intelligence/v1",
                 "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                 "input": {
                   "kind": "jsonata",
@@ -6510,7 +6484,6 @@
                 "id": "portfolio-semantic-intelligence.source",
                 "service": "portfolio-semantic-intelligence",
                 "operation": "generateReport",
-                "contract": "portfolio-semantic-intelligence/v1",
                 "when": "false",
                 "input": {
                   "kind": "jsonata",
@@ -6576,7 +6549,6 @@
                 "id": "portfolio-intelligence-context.saved-report",
                 "service": "portfolio-saved-reports",
                 "operation": "getSavedReport",
-                "contract": "saved-portfolio-report-envelope/v1",
                 "when": "false",
                 "input": {
                   "kind": "jsonata",
@@ -6644,7 +6616,6 @@
                 "id": "portfolio-intelligence-resolution.save-report",
                 "service": "portfolio-saved-reports",
                 "operation": "putSavedReport",
-                "contract": "saved-portfolio-report-envelope/v1",
                 "when": "inputs.generatedReport != null",
                 "input": {
                   "kind": "jsonata",
@@ -13065,7 +13036,6 @@
                         "id": "agent-query-form.source",
                         "service": "assistant",
                         "operation": "discoverAgents",
-                        "contract": "ai-agent-list/v1",
                         "output": {
                           "kind": "jsonata",
                           "expr": "response"
@@ -13161,7 +13131,6 @@
                         "id": "agent-response.source",
                         "service": "assistant",
                         "operation": "askAgent",
-                        "contract": "ai-agent-chat/v1",
                         "input": {
                           "kind": "jsonata",
                           "expr": "{'message':$trim(inputs.query.message),'agentName':$trim(inputs.query.agentName),'conversationId':inputs.conversationId = '' ? null : inputs.conversationId}"
@@ -13584,7 +13553,6 @@
                         "id": "list-blueprints",
                         "service": "blueprint-studio-data",
                         "operation": "listBlueprints",
-                        "contract": "blueprint-studio-list/v1",
                         "input": {
                           "kind": "jsonata",
                           "expr": "{'refresh':$exists(inputs.blueprintListRefreshStamp) ? inputs.blueprintListRefreshStamp : 'initial'}"
@@ -13893,7 +13861,6 @@
                         "id": "fetch-blueprint",
                         "service": "blueprint-studio-data",
                         "operation": "fetchBlueprint",
-                        "contract": "blueprint-studio-record/v1",
                         "when": "$exists(inputs.selectedBlueprintId) and inputs.selectedBlueprintId != null and inputs.selectedBlueprintId != ''",
                         "input": {
                           "kind": "jsonata",
@@ -15324,7 +15291,6 @@
                                 "id": "report-analysis.source",
                                 "service": "incident-report-refinement",
                                 "operation": "analyzeReportBlueprint",
-                                "contract": "incident-report-blueprint/v1",
                                 "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
                                 "input": {
                                   "kind": "jsonata",
@@ -15945,7 +15911,6 @@
                         "id": "analysis-selection.source",
                         "service": "incident-sources",
                         "operation": "listSourceReports",
-                        "contract": "incident-source-list/v1",
                         "output": {
                           "kind": "jsonata",
                           "expr": "response.sources"
@@ -16065,7 +16030,6 @@
                         "id": "report-analysis.source",
                         "service": "incident-report-analysis",
                         "operation": "analyzeReportBlueprint",
-                        "contract": "incident-report-blueprint/v1",
                         "when": "inputs.analysisRequest.selectedReport = inputs.selectedReport and inputs.analysisRequest.selectedModel = inputs.selectedModel",
                         "input": {
                           "kind": "jsonata",
@@ -16154,7 +16118,6 @@
                         "id": "analysis-context.source-report",
                         "service": "incident-sources",
                         "operation": "getSourceReport",
-                        "contract": "incident-source/v1",
                         "when": "$length(inputs.selectedReport) > 0",
                         "input": {
                           "kind": "jsonata",
@@ -16169,7 +16132,6 @@
                         "id": "analysis-context.saved-report",
                         "service": "incident-saved-reports",
                         "operation": "getSavedReport",
-                        "contract": "saved-report-envelope/v1",
                         "when": "$length(inputs.selectedReport) > 0 and $length(inputs.selectedModel) > 0",
                         "input": {
                           "kind": "jsonata",
@@ -16240,7 +16202,6 @@
                         "id": "report-resolution.source",
                         "service": "incident-saved-reports",
                         "operation": "putSavedReport",
-                        "contract": "saved-report-envelope/v1",
                         "when": "inputs.analysisReport != null",
                         "input": {
                           "kind": "jsonata",
@@ -17232,7 +17193,6 @@
                                 "id": "portfolio-intelligence.source",
                                 "service": "portfolio-intelligence-copilot",
                                 "operation": "requestIntelligence",
-                                "contract": "portfolio-intelligence/v1",
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                                 "input": {
                                   "kind": "jsonata",
@@ -17247,7 +17207,6 @@
                                 "id": "portfolio-semantic-intelligence.source",
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
-                                "contract": "portfolio-semantic-intelligence/v1",
                                 "when": "false",
                                 "input": {
                                   "kind": "jsonata",
@@ -17303,7 +17262,6 @@
                                 "id": "portfolio-intelligence-context.saved-report",
                                 "service": "portfolio-saved-reports",
                                 "operation": "getSavedReport",
-                                "contract": "saved-portfolio-report-envelope/v1",
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                                 "input": {
                                   "kind": "jsonata",
@@ -17340,7 +17298,6 @@
                                 "id": "portfolio-intelligence.source",
                                 "service": "portfolio-intelligence",
                                 "operation": "requestIntelligence",
-                                "contract": "portfolio-intelligence/v1",
                                 "when": "false",
                                 "input": {
                                   "kind": "jsonata",
@@ -17355,7 +17312,6 @@
                                 "id": "portfolio-semantic-intelligence.source",
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
-                                "contract": "portfolio-semantic-intelligence/v1",
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
@@ -17390,7 +17346,6 @@
                                 "id": "portfolio-intelligence-context.saved-report",
                                 "service": "portfolio-saved-reports",
                                 "operation": "getSavedReport",
-                                "contract": "saved-portfolio-report-envelope/v1",
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                                 "input": {
                                   "kind": "jsonata",
@@ -17427,7 +17382,6 @@
                                 "id": "portfolio-intelligence.source",
                                 "service": "portfolio-intelligence",
                                 "operation": "requestIntelligence",
-                                "contract": "portfolio-intelligence/v1",
                                 "when": "false",
                                 "input": {
                                   "kind": "jsonata",
@@ -17442,7 +17396,6 @@
                                 "id": "portfolio-semantic-intelligence.source",
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
-                                "contract": "portfolio-semantic-intelligence/v1",
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
@@ -17889,7 +17842,6 @@
                                 "id": "portfolio-intelligence-context.saved-report",
                                 "service": "portfolio-saved-reports",
                                 "operation": "getSavedReport",
-                                "contract": "saved-portfolio-report-envelope/v1",
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                                 "input": {
                                   "kind": "jsonata",
@@ -17926,7 +17878,6 @@
                                 "id": "portfolio-intelligence.source",
                                 "service": "portfolio-intelligence",
                                 "operation": "requestIntelligence",
-                                "contract": "portfolio-intelligence/v1",
                                 "when": "false",
                                 "input": {
                                   "kind": "jsonata",
@@ -17941,7 +17892,6 @@
                                 "id": "portfolio-semantic-intelligence.source",
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
-                                "contract": "portfolio-semantic-intelligence/v1",
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
@@ -17976,7 +17926,6 @@
                                 "id": "portfolio-intelligence-context.saved-report",
                                 "service": "portfolio-saved-reports",
                                 "operation": "getSavedReport",
-                                "contract": "saved-portfolio-report-envelope/v1",
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                                 "input": {
                                   "kind": "jsonata",
@@ -18013,7 +17962,6 @@
                                 "id": "portfolio-intelligence.source",
                                 "service": "portfolio-intelligence",
                                 "operation": "requestIntelligence",
-                                "contract": "portfolio-intelligence/v1",
                                 "when": "false",
                                 "input": {
                                   "kind": "jsonata",
@@ -18028,7 +17976,6 @@
                                 "id": "portfolio-semantic-intelligence.source",
                                 "service": "portfolio-semantic-intelligence",
                                 "operation": "generateReport",
-                                "contract": "portfolio-semantic-intelligence/v1",
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
@@ -19217,7 +19164,6 @@
                         "id": "market-prices.source",
                         "service": "portfolio-market-data",
                         "operation": "refreshPrices",
-                        "contract": "portfolio-market-quotes/v1",
                         "when": "$count(inputs.holdings.*) > 0",
                         "input": {
                           "kind": "jsonata",
@@ -19304,7 +19250,6 @@
                         "id": "portfolio-intelligence.source",
                         "service": "portfolio-intelligence",
                         "operation": "requestIntelligence",
-                        "contract": "portfolio-intelligence/v1",
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0",
                         "input": {
                           "kind": "jsonata",
@@ -19319,7 +19264,6 @@
                         "id": "portfolio-semantic-intelligence.source",
                         "service": "portfolio-semantic-intelligence",
                         "operation": "generateReport",
-                        "contract": "portfolio-semantic-intelligence/v1",
                         "when": "false",
                         "input": {
                           "kind": "jsonata",
@@ -19385,7 +19329,6 @@
                         "id": "portfolio-intelligence-context.saved-report",
                         "service": "portfolio-saved-reports",
                         "operation": "getSavedReport",
-                        "contract": "saved-portfolio-report-envelope/v1",
                         "when": "false",
                         "input": {
                           "kind": "jsonata",
@@ -19453,7 +19396,6 @@
                         "id": "portfolio-intelligence-resolution.save-report",
                         "service": "portfolio-saved-reports",
                         "operation": "putSavedReport",
-                        "contract": "saved-portfolio-report-envelope/v1",
                         "when": "inputs.generatedReport != null",
                         "input": {
                           "kind": "jsonata",
@@ -19488,6 +19430,6 @@
       ]
     }
   },
-  "bundleVersion": "9618e69a8492709f",
-  "digest": "sha256:9618e69a8492709fad70b2891287ee7c2b74b62136d322e3484e9ecd3b1ec5dd"
+  "bundleVersion": "961d918dd6895323",
+  "digest": "sha256:961d918dd6895323dad2f115d03c2fe2494272585f436adb933cb71653c13dba"
 }

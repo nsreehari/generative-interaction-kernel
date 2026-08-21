@@ -495,6 +495,13 @@ test("durable source state promotes only the latest pending request and rejects 
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
+    services: {
+      work: {
+        kind: "test-service",
+        version: "1",
+        operations: { run: { operation: "run", contract: "work/v1" } },
+      },
+    },
     runtime: {
       namespaces: ["work"],
       state: { work: { request: null, result: null } },
@@ -517,7 +524,7 @@ test("durable source state promotes only the latest pending request and rejects 
       worker: {
         id: "worker",
         inputs: [{ token: "request", required: true }],
-        sources: [{ id: "worker.source", service: "work", operation: "run", contract: "work/v1" }],
+        sources: [{ id: "worker.source", service: "work", operation: "run" }],
       },
     },
     presentation: singleSlotPresentation("controls"),

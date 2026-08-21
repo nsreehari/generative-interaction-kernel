@@ -339,7 +339,6 @@
             "id": "list-blueprints",
             "service": "blueprint-studio-data",
             "operation": "listBlueprints",
-            "contract": "blueprint-studio-list/v1",
             "input": {
               "kind": "jsonata",
               "expr": "{'refresh':$exists(inputs.blueprintListRefreshStamp) ? inputs.blueprintListRefreshStamp : 'initial'}"
@@ -648,7 +647,6 @@
             "id": "fetch-blueprint",
             "service": "blueprint-studio-data",
             "operation": "fetchBlueprint",
-            "contract": "blueprint-studio-record/v1",
             "when": "$exists(inputs.selectedBlueprintId) and inputs.selectedBlueprintId != null and inputs.selectedBlueprintId != ''",
             "input": {
               "kind": "jsonata",

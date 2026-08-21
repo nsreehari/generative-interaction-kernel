@@ -57,8 +57,10 @@ describe("portfolio intelligence service declarations", () => {
         expect(source).toMatchObject({
           service: "portfolio-semantic-intelligence",
           operation: "generateReport",
-          contract: "portfolio-semantic-intelligence/v1",
         });
+        expect(
+          (service?.operations as Record<string, { contract?: string }> | undefined)?.generateReport?.contract,
+        ).toBe("portfolio-semantic-intelligence/v1");
         expect(source?.input?.expr).toContain(`'presentationMode':'${semantic}'`);
         expect(service?.kind).toBe(`${ai}-agent`);
         expect((service?.config as Record<string, unknown>)?.agent)

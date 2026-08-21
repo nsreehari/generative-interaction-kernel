@@ -7,6 +7,5 @@ export type {
 	NativeServiceDeclaration,
 	ServiceDeclaration,
 	ServiceOperationDeclaration,
-	ServiceRequirement,
 	ServiceScope,
 } from "../../../kernel/src/types";
