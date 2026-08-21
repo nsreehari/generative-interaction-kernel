@@ -126,3 +126,18 @@ deterministically and validates all referenced Cells before executable preparati
 The terminal program contains only the resulting ordered child tree. Blueprint slot names do not
 become component props or renderer-specific insertion points, so equivalent hosts receive the same
 materialized child order without needing component-specific slot behavior.
+
+## Amendment (2026-08-21): presentation is a Cell-agnostic named-slot skeleton; attachment is self-declared
+
+The 2026-08-19 amendment's parent-keyed composition map is superseded. `presentation` is part of the
+authored input to $M(A,C)$, but it now carries no knowledge of Cells at all: `{ slots, root }`, where
+each slot is a bare id or self-declares its own parent slot via `region`. A Cell attaches to one or
+more slots by declaring `region` on its own view — never the reverse, and never through a third
+composition structure. Deleting a Cell or a slot removes its own attachment declaration with it;
+nothing external can be left dangling by an incomplete edit.
+
+A Cell's `region` may name more than one slot. Each named attachment materializes its own independent
+rendered instance of that Cell's projection, all reading and writing through the one same Cell — the
+prior "a Cell may appear at most once" restriction no longer holds. The terminal program still
+contains only the resulting ordered tree; slot names remain caller-authored placement intent, never a
+component prop or renderer-specific insertion point.

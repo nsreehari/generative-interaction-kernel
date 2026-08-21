@@ -12,10 +12,10 @@ function ref(value: string): string {
 }
 
 function waitForValue(controller: DurableBlueprintController, value: number): Promise<void> {
-  if (controller.getTree()?.props.value === value) return Promise.resolve();
+  if (controller.getTree()?.children[0]?.props.value === value) return Promise.resolve();
   return new Promise((resolve) => {
     const unsubscribe = controller.subscribe(() => {
-      if (controller.getTree()?.props.value === value) {
+      if (controller.getTree()?.children[0]?.props.value === value) {
         unsubscribe();
         resolve();
       }
@@ -34,12 +34,14 @@ test("DurableBlueprintController persists Blueprint state", async () => {
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        potentialViews: {
+          primary: { capability: "screen", bindings: { value: { from: "counter.value" } }, region: "root" },
+        },
         events: { increment: { payloadSchema: { type: "object" } } },
         behavior: { on: { increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }] } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   const runtimeRef = ref("durable-counter");
   const provider = createIndexedDbStorage({ databaseName: `gik-react-${crypto.randomUUID()}` });
@@ -52,14 +54,14 @@ test("DurableBlueprintController persists Blueprint state", async () => {
   const worker = createNativeBlueprintWorker({ blueprint, runtime, native: {} });
   await worker.start();
   const first = new DurableBlueprintController(blueprint, { runtime, worker });
-  assert.equal((await first.start()).props.value, 1);
+  assert.equal((await first.start()).children[0]?.props.value, 1);
   const committed = waitForValue(first, 2);
-  assert.equal((await first.emit("root", "increment")).props.value, 1);
+  assert.equal((await first.emit("root--primary--in-root", "increment")).children[0]?.props.value, 1);
   await committed;
-  assert.equal((await first.start()).props.value, 2);
+  assert.equal((await first.start()).children[0]?.props.value, 2);
 
   const reopened = new DurableBlueprintController(blueprint, { runtime, worker });
-  assert.equal((await reopened.start()).props.value, 2);
+  assert.equal((await reopened.start()).children[0]?.props.value, 2);
   first.stop();
   reopened.stop();
   worker.stop();
@@ -76,12 +78,14 @@ test("DurableBlueprintController does not persist ordinary native effect results
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        potentialViews: {
+          primary: { capability: "screen", bindings: { value: { from: "counter.value" } }, region: "root" },
+        },
         events: { save: { payloadSchema: { type: "object" } } },
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   const runtimeRef = ref("durable-effect-counter");
   const provider = createIndexedDbStorage({ databaseName: `gik-react-effect-${crypto.randomUUID()}` });
@@ -105,11 +109,11 @@ test("DurableBlueprintController does not persist ordinary native effect results
   await worker.start();
   const first = new DurableBlueprintController(blueprint, { runtime, worker });
   await first.start();
-  assert.equal((await first.emit("root", "save")).props.value, 1);
+  assert.equal((await first.emit("root--primary--in-root", "save")).children[0]?.props.value, 1);
   await completed;
 
   const reopened = new DurableBlueprintController(blueprint, { runtime, worker });
-  assert.equal((await reopened.start()).props.value, 1);
+  assert.equal((await reopened.start()).children[0]?.props.value, 1);
   first.stop();
   reopened.stop();
   worker.stop();
@@ -126,12 +130,14 @@ test("DurableBlueprintController leaves ordinary effects for an externally owned
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        potentialViews: {
+          primary: { capability: "screen", bindings: { value: { from: "counter.value" } }, region: "root" },
+        },
         events: { save: { payloadSchema: { type: "object" } } },
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   const runtimeRef = ref("remote-worker-counter");
   const provider = createIndexedDbStorage({ databaseName: `gik-react-remote-${crypto.randomUUID()}` });
@@ -143,7 +149,7 @@ test("DurableBlueprintController leaves ordinary effects for an externally owned
   const controller = new DurableBlueprintController(blueprint, { runtime });
 
   await controller.start();
-  assert.equal((await controller.emit("root", "save")).props.value, 1);
+  assert.equal((await controller.emit("root--primary--in-root", "save")).children[0]?.props.value, 1);
 
   let effectCompleted!: () => void;
   const completed = new Promise<void>((resolve) => { effectCompleted = resolve; });
@@ -162,7 +168,7 @@ test("DurableBlueprintController leaves ordinary effects for an externally owned
   await worker.start();
   await completed;
   const reopened = new DurableBlueprintController(blueprint, { runtime });
-  assert.equal((await reopened.start()).props.value, 1);
+  assert.equal((await reopened.start()).children[0]?.props.value, 1);
   controller.stop();
   reopened.stop();
   worker.stop();
@@ -179,12 +185,14 @@ test("DurableBlueprintController refreshes after another controller commits", as
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen", bindings: { value: { from: "counter.value" } } },
+        potentialViews: {
+          primary: { capability: "screen", bindings: { value: { from: "counter.value" } }, region: "root" },
+        },
         events: { increment: { payloadSchema: { type: "object" } } },
         behavior: { on: { increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }] } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   const listeners = new Set<(event: MessageEvent<unknown>) => void>();
   const provider = createIndexedDbStorage({
@@ -213,16 +221,16 @@ test("DurableBlueprintController refreshes after another controller commits", as
   await follower.start();
   const refreshed = new Promise<void>((resolve) => {
     const unsubscribe = follower.subscribe(() => {
-      if (follower.getTree()?.props.value === 2) {
+      if (follower.getTree()?.children[0]?.props.value === 2) {
         unsubscribe();
         resolve();
       }
     });
   });
 
-  await writer.emit("root", "increment");
+  await writer.emit("root--primary--in-root", "increment");
   await refreshed;
-  assert.equal(follower.getTree()?.props.value, 2);
+  assert.equal(follower.getTree()?.children[0]?.props.value, 2);
   writer.stop();
   follower.stop();
   worker.stop();

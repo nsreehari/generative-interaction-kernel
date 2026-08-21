@@ -68,35 +68,40 @@ forms use the same host-scoped nested Blueprint renderer; `gik:blueprint` is not
 component-library projection.
 Artifact assembly remains synchronous so cycle detection and interface admission complete before execution.
 
-## Presentation composition
+## Presentation slots
 
-Blueprint presentation is authored independently from Cell definitions. `roots` select the projected
-entry Cells, while `composition` maps each parent Cell to semantic slots containing ordered child Cell
-ids:
+Blueprint presentation is authored independently from Cell definitions. It is a closed, flat set of
+named `slots` plus a `root` — it carries no knowledge of Cells at all. A slot self-declares its own
+parent slot via `region`; a Cell attaches to one or more slots the identical way, by declaring `region`
+on its own `view`:
 
 ```json
 {
-  "projections": {
-    "presentation": {
-      "roots": ["workspace"],
-      "composition": {
-        "workspace": {
-          "slots": {
-            "navigation": ["catalog"],
-            "content": ["detail"]
-          }
-        }
-      }
-    }
+  "presentation": {
+    "slots": [
+      "workspace",
+      { "id": "navigation", "region": "workspace" },
+      { "id": "content", "region": "workspace" }
+    ],
+    "root": "workspace"
+  },
+  "cells": {
+    "catalog": { "view": { "capability": "...", "region": "navigation" } },
+    "detail": { "view": { "capability": "...", "region": "content" } }
   }
 }
 ```
 
 Slot names express caller-owned placement intent. They are available to representation tiers and
-lowering recipes, but are not component insertion points. Materialization flattens the selected
-composition deterministically into ordinary ordered children, so Cells and component projections do
-not need to understand the slot names. A representation may replace the complete presentation or
-append sparse parent/slot composition; append concatenates children within an existing slot.
+lowering recipes, but are not component insertion points and carry no capability or props of their
+own — visual styling for a region is always a rendering host/theme concern, never Blueprint-authored
+data. Materialization flattens the resolved attachments deterministically into ordinary ordered
+children, so Cells and component projections do not need to understand the slot names. Attachment is
+always self-declared by the thing attaching (a slot's own `region`, or a Cell view's own `region`),
+never a third structure — deleting a Cell or a slot removes its own attachment fact with it. A Cell's
+`region` may name more than one slot, rendering one independent instance per attachment while every
+instance reads and writes through that one Cell. A representation may replace the complete
+presentation or append additional slot entries (`presentationAppend`, a plain array concatenation).
 
 ## Worker hosting
 

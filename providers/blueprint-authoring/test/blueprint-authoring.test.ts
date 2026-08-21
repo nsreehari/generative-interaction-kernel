@@ -13,11 +13,7 @@ function asJson(value: unknown): Json {
 test("summarizeBlueprint exposes the canonical runtime Blueprint", () => {
   const summary = summarizeBlueprint(blueprintStudioBlueprint);
   assert.equal(summary?.id, "blueprint-studio");
-  assert.deepEqual(summary?.recipes, [{
-    id: "studio-domain-to-presentation",
-    from: "studio-domain",
-    to: "studio-presentation",
-  }]);
+  assert.deepEqual(summary?.recipes, []);
 });
 
 test("blueprint authoring registry composes blueprint and recipes from graph outputs", async () => {
@@ -59,9 +55,5 @@ test("artifact-backed authoring mode proposes the blueprint's concrete recipe ch
   const payload = (res?.events?.[0].payload ?? {}) as Record<string, any>;
   assert.equal(payload.blueprint?.id, "blueprint-studio");
   assert.equal(payload.blueprintSeed?.source, "blueprint");
-  assert.deepEqual(payload.recipes?.map(({ id, from, to }: Record<string, unknown>) => ({ id, from, to })), [{
-    id: "studio-domain-to-presentation",
-    from: "studio-domain",
-    to: "studio-presentation",
-  }]);
+  assert.deepEqual(payload.recipes?.map(({ id, from, to }: Record<string, unknown>) => ({ id, from, to })), []);
 });

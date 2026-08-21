@@ -24,7 +24,9 @@ test("app host runs a JSON-portable materialized Blueprint through stateless dur
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen" },
+        potentialViews: {
+          primary: { capability: "screen", region: "root" },
+        },
         behavior: {
           on: {
             increment: [{ do: "assign", target: "counter.value", args: { from: "externalContext.nextValue" } }],
@@ -35,7 +37,7 @@ test("app host runs a JSON-portable materialized Blueprint through stateless dur
         },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: { slots: ["root"], root: "root" },
   });
   const sourceAdapter = createBlueprintDurableTransitionAdapter({
     blueprint,
@@ -52,7 +54,7 @@ test("app host runs a JSON-portable materialized Blueprint through stateless dur
   const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
 
   await runtime.initializeRuntime(refs);
-  await runtime.appendJournal({ ...refs, entry: { node: "root", name: "increment" } });
+  await runtime.appendJournal({ ...refs, entry: { node: "root--primary--in-root", name: "increment" } });
   assert.equal((await runtime.processEngineWake(refs)).status, "committed");
 
   const snapshot = await storage.acquireTransition<Record<string, unknown>, DurableBlueprintSpec, unknown>({

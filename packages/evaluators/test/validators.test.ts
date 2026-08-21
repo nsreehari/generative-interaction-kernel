@@ -334,9 +334,11 @@ test("validateLoweringRecipe validates representation decorator select expressio
 test("Blueprint Cell validation rejects invalid decoration expressions and nested decorations", () => {
   const invalidExpression = runDeclarativeValidators([{ kind: "blueprint-cell" }], {
     id: "remote",
-    view: {
-      capability: "ui:text",
-      before: [{ capability: "fluent:spinner", visibility: "systemInputs[" }],
+    potentialViews: {
+      primary: {
+        capability: "ui:text",
+        before: [{ capability: "fluent:spinner", visibility: "systemInputs[" }],
+      },
     },
   });
   assert.equal(invalidExpression.ok, false);
@@ -345,12 +347,14 @@ test("Blueprint Cell validation rejects invalid decoration expressions and neste
 
   const nested = runDeclarativeValidators([{ kind: "blueprint-cell" }], {
     id: "remote",
-    view: {
-      capability: "ui:text",
-      before: [{
-        capability: "fluent:spinner",
-        before: [{ capability: "ui:text" }],
-      }],
+    potentialViews: {
+      primary: {
+        capability: "ui:text",
+        before: [{
+          capability: "fluent:spinner",
+          before: [{ capability: "ui:text" }],
+        }],
+      },
     },
   });
   assert.equal(nested.ok, false);

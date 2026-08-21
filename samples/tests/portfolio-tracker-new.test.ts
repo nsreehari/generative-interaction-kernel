@@ -51,7 +51,6 @@ test("portfolio-tracker-new declares the canonical Cells and parent report metad
     "portfolio-intelligence",
     "portfolio-intelligence-context",
     "portfolio-intelligence-resolution",
-    "board",
   ]);
   assert.deepEqual(cells["portfolio-holdings"].inputs ?? [], []);
   assert.deepEqual(cells["portfolio-holdings"].outputs, [
@@ -92,8 +91,6 @@ test("portfolio-tracker-new declares the canonical Cells and parent report metad
     { token: "saved-portfolio-report-envelope", as: "savedReportEnvelope", required: true },
     { token: "generated-portfolio-report-envelope", as: "generatedReport", required: false },
   ]);
-  assert.deepEqual(cells.board.inputs ?? [], []);
-  assert.deepEqual(cells.board.outputs ?? [], []);
   assert.ok(blueprint.payload.runtime.capabilities["primitive:datetime"]);
   assert.ok(
     blueprint.payload.runtime.externals.projectionViews.primitive.use.includes("datetime"),
@@ -184,7 +181,7 @@ test("portfolio semantic Generate event starts the gated agent source", async ()
     state: ready.state,
     syncExternal: true,
     events: [{
-      node: "portfolio-intelligence",
+      node: "portfolio-intelligence--primary--in-status",
       name: "press",
       actorId: "portfolio-test",
       payload: {},
@@ -211,7 +208,7 @@ test("portfolio-tracker-new fetches quotes, calculates value, and produces mock 
     state: materialized.payload.initialState,
     syncExternal: true,
     events: [{
-      node: "portfolio-holdings",
+      node: "portfolio-holdings--primary--in-holdings",
       name: "save",
       actorId: "portfolio-test",
       payload: {
@@ -302,7 +299,7 @@ test("portfolio-tracker-new shows each generated spinner while its Cell sources 
   const store = new InMemoryStateModel(unwrap(materialized.payload.vocabulary).namespaces ?? []);
   store.apply(Object.entries(pending.state).map(([path, value]) => ({ op: "set", path, value })));
   const kernel = new Kernel(materialized.payload.vocabulary, materialized.payload.program, { state: store });
-  const spinner = findNode(await kernel.resolve(), "market-prices--before-0");
+  const spinner = findNode(await kernel.resolve(), "market-prices--primary--in-market--before-0");
   assert.equal(spinner?.capability, "fluent:spinner");
   assert.equal(spinner?.visible, true);
 
@@ -321,8 +318,8 @@ test("portfolio-tracker-new shows each generated spinner while its Cell sources 
     state: intelligenceStore,
   });
   const intelligenceTree = await intelligenceKernel.resolve();
-  assert.equal(findNode(intelligenceTree, "market-prices--before-0")?.visible, false);
-  assert.equal(findNode(intelligenceTree, "portfolio-intelligence--before-0")?.visible, true);
+  assert.equal(findNode(intelligenceTree, "market-prices--primary--in-market--before-0")?.visible, false);
+  assert.equal(findNode(intelligenceTree, "portfolio-intelligence--primary--in-intelligence--before-0")?.visible, true);
 });
 
 test("portfolio-tracker-new browser controller publishes its pending spinner tree", async () => {
@@ -337,7 +334,7 @@ test("portfolio-tracker-new browser controller publishes its pending spinner tre
   const spinnerPublished = new Promise<void>((resolve) => {
     const unsubscribe = controller.subscribe(() => {
       const tree = controller.getTree();
-      if (tree && findNode(tree, "market-prices--before-0")?.visible) {
+      if (tree && findNode(tree, "market-prices--primary--in-market--before-0")?.visible) {
         unsubscribe();
         resolve();
       }
@@ -412,7 +409,7 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         );
       }
       assert.equal(
-        terminal.cells?.["portfolio-intelligence"].view?.capability,
+        terminal.cells?.["portfolio-intelligence"].potentialViews?.primary.capability,
         intelligenceModel === "semantic" ? "fluent:button" : "primitive:markdown",
       );
       if (intelligenceModel === "semantic") {
@@ -472,23 +469,23 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           /portfolio\.intelligence/,
         );
         assert.deepEqual(
-          terminal.cells?.["portfolio-intelligence-resolution"].view?.bindings?.blueprint,
+          terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.bindings?.blueprint,
           { from: "portfolio.resolvedIntelligenceEnvelope.report" },
         );
         assert.equal(
-          terminal.cells?.["portfolio-intelligence-resolution"].view?.visibility,
+          terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.visibility,
           "portfolio.resolvedIntelligenceEnvelope.report != null",
         );
         assert.deepEqual(
-          terminal.cells?.["portfolio-intelligence-resolution"].view?.before?.[0]?.bindings?.value,
+          terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.before?.[0]?.bindings?.value,
           { from: "portfolio.resolvedIntelligenceEnvelope.asOf" },
         );
         assert.equal(
-          terminal.cells?.["portfolio-intelligence-resolution"].view?.before?.[0]?.capability,
+          terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.before?.[0]?.capability,
           "primitive:datetime",
         );
         assert.equal(
-          terminal.cells?.["portfolio-intelligence-resolution"].view?.before?.[0]?.visibility,
+          terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.before?.[0]?.visibility,
           "portfolio.resolvedIntelligenceEnvelope.asOf != null",
         );
         assert.deepEqual(
@@ -519,53 +516,53 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         }
       } else {
         assert.deepEqual(
-          terminal.cells?.["portfolio-intelligence"].view?.bindings?.value,
+          terminal.cells?.["portfolio-intelligence"].potentialViews?.primary.bindings?.value,
           { from: "portfolio.intelligence.markdown" },
         );
-        assert.equal(terminal.cells?.["portfolio-intelligence-resolution"].view?.visibility, "false");
+        assert.equal(terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.visibility, "false");
       }
-      assert.equal(terminal.cells?.board.inputs, undefined);
       assert.deepEqual(terminal.cells?.["portfolio-intelligence"].outputs, [{
         token: "generated-portfolio-report-envelope",
         from: "computed.generatedReport",
         when: "$exists(sources.`portfolio-semantic-intelligence.source`)",
       }]);
+      assert.equal(terminal.cells?.["portfolio-value-cell"].potentialViews?.primary.capability, "primitive:chart");
       assert.equal(
-        terminal.cells?.board.view?.props?.variant,
-        view === "desktop" ? "stack" : "column",
-      );
-      assert.equal(terminal.cells?.["portfolio-value-cell"].view?.capability, "primitive:chart");
-      assert.equal(
-        terminal.cells?.["portfolio-value-cell"].view?.props?.variant,
+        terminal.cells?.["portfolio-value-cell"].potentialViews?.primary.props?.variant,
         view === "desktop" ? "standard" : "compact",
       );
       assert.equal(
-        "table" in (terminal.cells?.["portfolio-value-cell"].view?.props?.spec as Record<string, unknown>),
+        "table" in (terminal.cells?.["portfolio-value-cell"].potentialViews?.primary.props?.spec as Record<string, unknown>),
         view === "desktop",
       );
       for (const sourceBackedCellId of ["market-prices", "portfolio-intelligence"]) {
-        assert.deepEqual(terminal.cells?.[sourceBackedCellId].view?.before, [{
+        assert.deepEqual(terminal.cells?.[sourceBackedCellId].potentialViews?.primary.before, [{
           capability: "fluent:spinner",
           props: { label: "Loading" },
           visibility: "systemInputs.numSourcesRunning > 0",
         }]);
       }
-      for (const plainCellId of ["portfolio-holdings", "portfolio-value-cell", "board"]) {
-        assert.equal(terminal.cells?.[plainCellId].view?.before, undefined);
+      for (const plainCellId of ["portfolio-holdings", "portfolio-value-cell"]) {
+        assert.equal(terminal.cells?.[plainCellId].potentialViews?.primary.before, undefined);
       }
       const rootChildren = unwrap(materialized.payload.program).root?.edges?.children ?? [];
-      assert.equal(rootChildren[0]?.id, "portfolio-holdings");
-      assert.equal(rootChildren[1]?.id, "market-prices--decorated");
-      assert.equal(rootChildren[1]?.edges?.children?.[0]?.capability, "fluent:spinner");
+      assert.equal(rootChildren[0]?.id, "holdings");
+      assert.equal(rootChildren[0]?.edges?.children?.[0]?.id, "portfolio-holdings--primary--in-holdings");
+      assert.equal(rootChildren[1]?.id, "market");
+      assert.equal(rootChildren[1]?.edges?.children?.[0]?.id, "market-prices--primary--in-market--decorated");
+      assert.equal(rootChildren[1]?.edges?.children?.[0]?.edges?.children?.[0]?.capability, "fluent:spinner");
       assert.equal(
-        rootChildren[1]?.edges?.children?.[0]?.edges?.gate,
+        rootChildren[1]?.edges?.children?.[0]?.edges?.children?.[0]?.edges?.gate,
         '($count(($lookup(blueprintRunState.cells, "market-prices").sources)[lastRequestedToken != null and lastRequestedToken != lastCompletedToken])) > 0',
       );
       if (intelligenceModel === "semantic") {
-        assert.equal(rootChildren[3]?.id, "portfolio-intelligence--decorated");
-        assert.equal(rootChildren[4]?.id, "portfolio-intelligence-resolution--decorated");
+        assert.equal(rootChildren[3]?.id, "status");
+        assert.equal(rootChildren[3]?.edges?.children?.[0]?.id, "portfolio-intelligence--primary--in-status--decorated");
+        assert.equal(rootChildren[4]?.id, "intelligence");
+        assert.equal(rootChildren[4]?.edges?.children?.[0]?.id, "portfolio-intelligence-resolution--primary--in-intelligence--decorated");
       } else {
-        assert.equal(rootChildren[3]?.id, "portfolio-intelligence--decorated");
+        assert.equal(rootChildren[3]?.id, "intelligence");
+        assert.equal(rootChildren[3]?.edges?.children?.[0]?.id, "portfolio-intelligence--primary--in-intelligence--decorated");
       }
       assert.deepEqual(Object.keys(terminal.cells ?? {}), [
         "portfolio-holdings",
@@ -574,7 +571,6 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         "portfolio-intelligence",
         "portfolio-intelligence-context",
         "portfolio-intelligence-resolution",
-        "board",
       ]);
         }
       }
@@ -620,8 +616,8 @@ test("portfolio semantic presentation defaults to simple Markdown when omitted",
     (terminal.services?.["portfolio-semantic-intelligence"]?.config as Record<string, unknown>)?.agent,
     "Portfolio-Semantic-Intelligence-Agent",
   );
-  assert.equal(terminal.cells?.["portfolio-intelligence"].view?.capability, "fluent:button");
-  assert.equal(terminal.cells?.["portfolio-intelligence-resolution"].view?.capability, "gik:blueprint");
+  assert.equal(terminal.cells?.["portfolio-intelligence"].potentialViews?.primary.capability, "fluent:button");
+  assert.equal(terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.capability, "gik:blueprint");
 });
 
 test("portfolio semantic response contract admits a self-contained report Blueprint", () => {
@@ -643,8 +639,8 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
         to: "runtime-document",
         representations: [{
           id: "report",
-          views: { report: { capability: "primitive:markdown", bindings: { value: { from: "report.markdown" } } } },
-          presentation: { roots: ["report"], composition: {} },
+          views: { report: { primary: { capability: "primitive:markdown", bindings: { value: { from: "report.markdown" } }, region: "report" } } },
+          presentation: { slots: ["report"], root: "report" },
         }],
         fallback: "report",
       }],
@@ -663,7 +659,7 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
           },
         },
       },
-      cells: { report: { id: "report", kind: "semantic-report" } },
+      cells: { report: { id: "report" } },
     },
   };
   const portfolio = resolveSampleBlueprintSource("portfolio-tracker-new");
@@ -693,17 +689,20 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
   assert.equal(report.ok, true, JSON.stringify(report.errors));
 
   const materialized = materializeBlueprint({ blueprint: reportBlueprint });
-  assert.equal(materialized.payload.terminalBlueprint.payload.cells?.report.view?.capability, "primitive:markdown");
+  assert.equal(materialized.payload.terminalBlueprint.payload.cells?.report.potentialViews?.primary.capability, "primitive:markdown");
   assert.equal(materialized.payload.terminalBlueprint.payload.runtime.state?.report.markdown,
     "# Concentration deserves attention\n\nMSFT is the largest supplied position.");
 });
 
 test("portfolio rich semantic admission enforces its capability catalog", () => {
-  const listView = (from: string) => ({
-    capability: "fluent:list",
-    bindings: { items: { from } },
+  const listView = (from: string, region: string) => ({
+    primary: {
+      capability: "fluent:list",
+      bindings: { items: { from } },
+      region,
+    },
   });
-  const cell = (id: string) => ({ id, kind: "semantic-report" });
+  const cell = (id: string) => ({ id });
   const richBlueprint: BlueprintArtifact = {
     gik: "0.1",
     type: "blueprint",
@@ -723,53 +722,56 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
         representations: [{
           id: "rich-report",
           views: {
-            "report-root": { capability: "primitive:container", props: { variant: "column", gap: "m" } },
-            headline: { capability: "fluent:text", bindings: { value: { from: "report.headline" } }, props: { as: "h1", variant: "title", block: true } },
-            summary: { capability: "fluent:text", bindings: { value: { from: "report.summary" } }, props: { block: true } },
+            "report-root": { primary: { capability: "primitive:container", props: { variant: "column", gap: "m" }, region: "report-root" } },
+            headline: { primary: { capability: "fluent:text", bindings: { value: { from: "report.headline" } }, props: { as: "h1", variant: "title", block: true }, region: "overview" } },
+            summary: { primary: { capability: "fluent:text", bindings: { value: { from: "report.summary" } }, props: { block: true }, region: "overview" } },
             allocation: {
-              capability: "primitive:chart",
-              bindings: { points: { from: "report.allocation" } },
-              props: {
-                variant: "standard",
-                spec: {
-                  kind: "bar",
-                  title: "Position market values",
-                  description: "Market value by supplied position",
-                  fields: { label: "ticker", value: "value" },
+              primary: {
+                capability: "primitive:chart",
+                bindings: { points: { from: "report.allocation" } },
+                props: {
+                  variant: "standard",
+                  spec: {
+                    kind: "bar",
+                    title: "Position market values",
+                    description: "Market value by supplied position",
+                    fields: { label: "ticker", value: "value" },
+                  },
                 },
+                region: "composition",
               },
             },
             positions: {
-              capability: "fluent:table",
-              bindings: { rows: { from: "report.positions" } },
-              props: {
-                columns: [
-                  { id: "ticker", label: "Ticker" },
-                  { id: "quantity", label: "Quantity" },
-                  { id: "price", label: "Price" },
-                  { id: "value", label: "Value" },
-                  { id: "gainLoss", label: "Gain/loss" },
-                ],
+              primary: {
+                capability: "fluent:table",
+                bindings: { rows: { from: "report.positions" } },
+                props: {
+                  columns: [
+                    { id: "ticker", label: "Ticker" },
+                    { id: "quantity", label: "Quantity" },
+                    { id: "price", label: "Price" },
+                    { id: "value", label: "Value" },
+                    { id: "gainLoss", label: "Gain/loss" },
+                  ],
+                },
+                region: "composition",
               },
             },
-            facts: listView("report.facts"),
-            judgments: listView("report.judgments"),
-            risks: listView("report.risks"),
-            uncertainties: listView("report.uncertainties"),
+            facts: listView("report.facts", "performance"),
+            judgments: listView("report.judgments", "interpretation"),
+            risks: listView("report.risks", "risks"),
+            uncertainties: listView("report.uncertainties", "risks"),
           },
           presentation: {
-            roots: ["report-root"],
-            composition: {
-              "report-root": {
-                slots: {
-                  overview: ["headline", "summary"],
-                  composition: ["allocation", "positions"],
-                  performance: ["facts"],
-                  risks: ["risks", "uncertainties"],
-                  interpretation: ["judgments"],
-                },
-              },
-            },
+            slots: [
+              "report-root",
+              { id: "overview", region: "report-root" },
+              { id: "composition", region: "report-root" },
+              { id: "performance", region: "report-root" },
+              { id: "risks", region: "report-root" },
+              { id: "interpretation", region: "report-root" },
+            ],
+            root: "report-root",
           },
         }],
         fallback: "rich-report",
@@ -851,17 +853,20 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   assert.equal(runDeclarativeValidators(validators, richBlueprint, validatorOptions).ok, true);
   assert.equal(
     materializeBlueprint({ blueprint: richBlueprint }).payload.terminalBlueprint
-      .payload.cells?.["report-root"].view?.capability,
+      .payload.cells?.["report-root"].potentialViews?.primary.capability,
     "primitive:container",
   );
 
   const semanticComposition = structuredClone(richBlueprint);
   semanticComposition.payload.recipes[0].representations[0].views.facts = {
-    capability: "semantic:narrative",
-    bindings: { sections: { from: "report.facts" } },
-    props: {
-      variant: "briefing",
-      spec: { fields: { id: "id", heading: "heading", body: "body" } },
+    primary: {
+      capability: "semantic:narrative",
+      bindings: { sections: { from: "report.facts" } },
+      props: {
+        variant: "briefing",
+        spec: { fields: { id: "id", heading: "heading", body: "body" } },
+      },
+      region: "performance",
     },
   };
   semanticComposition.payload.runtime.capabilities["semantic:narrative"] = {
@@ -888,7 +893,7 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   forbidden.payload.runtime.capabilities["primitive:alert"] = {
     propsSchema: { type: "object", additionalProperties: true },
   };
-  forbidden.payload.recipes[0].representations[0].views.headline.capability = "primitive:alert";
+  forbidden.payload.recipes[0].representations[0].views.headline.primary.capability = "primitive:alert";
   const report = runDeclarativeValidators(validators, forbidden, validatorOptions);
   assert.equal(report.ok, false);
   assert.equal(
@@ -900,7 +905,7 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   unauthorizedButKnown.payload.runtime.capabilities["primitive:markdown"] = {
     propsSchema: { type: "object", additionalProperties: true },
   };
-  unauthorizedButKnown.payload.recipes[0].representations[0].views.headline.capability = "primitive:markdown";
+  unauthorizedButKnown.payload.recipes[0].representations[0].views.headline.primary.capability = "primitive:markdown";
   const authorizationReport = runDeclarativeValidators(validators, unauthorizedButKnown, validatorOptions);
   assert.equal(authorizationReport.ok, false);
   assert.equal(
@@ -909,8 +914,10 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   );
 
   const missingSection = structuredClone(richBlueprint);
-  delete missingSection.payload.recipes[0].representations[0]
-    .presentation.composition["report-root"].slots.interpretation;
+  missingSection.payload.recipes[0].representations[0].presentation.slots =
+    missingSection.payload.recipes[0].representations[0].presentation.slots.filter(
+      (slot) => (typeof slot === "string" ? slot : slot.id) !== "interpretation",
+    );
   const sectionReport = runDeclarativeValidators(validators, missingSection, validatorOptions);
   assert.equal(sectionReport.ok, false);
   assert.equal(
@@ -929,7 +936,7 @@ test("portfolio-holdings save settles declaratively before host source execution
     state: materialized.payload.initialState,
     syncExternal: true,
     events: [{
-      node: "portfolio-holdings",
+      node: "portfolio-holdings--primary--in-holdings",
       name: "save",
       payload: {
         rows: [
@@ -943,7 +950,7 @@ test("portfolio-holdings save settles declaratively before host source execution
     GOOG: { ticker: "GOOG", quantity: 4, costBasis: 150 },
   });
   assert.equal(
-    result.effects?.some((effect) => effect.kind === "invoke" && effect.node === "portfolio-holdings"),
+    result.effects?.some((effect) => effect.kind === "invoke" && effect.node === "portfolio-holdings--primary--in-holdings"),
     false,
   );
 });

@@ -133,7 +133,7 @@ function createStaticBlueprintAuthorTools(
           return {
             ...report,
             initialState: materialized.payload.initialState,
-            presentation: materialized.payload.terminalBlueprint.payload.projections?.presentation ?? null,
+            presentation: materialized.payload.terminalBlueprint.payload.presentation ?? null,
           };
         } catch (error) {
           return { ...report, valid: false, errors: [error instanceof Error ? error.message : String(error)] };

@@ -1,12 +1,9 @@
-import type { Json, ServiceDeclaration, ServiceRequirement } from "@gik/kernel";
+import type { ServiceDeclaration, ServiceRequirement } from "@gik/kernel";
 import type {
   BlueprintArtifact,
-  BlueprintResource,
   LoweringRecipeDefinition,
   TierDefinition,
 } from "./types";
-
-export type ResourceResolver = (ref: string, name: string) => Json;
 
 export interface ResolvedBlueprintStage<
   TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition,
@@ -23,7 +20,6 @@ export interface ResolvedBlueprint<
   tiersById: Record<string, TierDefinition>;
   recipesById: Record<string, TRecipe>;
   stages: ResolvedBlueprintStage<TRecipe>[];
-  resources: Record<string, Json>;
   services: Record<string, ServiceRequirement | ServiceDeclaration>;
 }
 
@@ -31,7 +27,6 @@ export function resolveBlueprintExecution<
   TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition,
 >(
   artifact: BlueprintArtifact<TRecipe>,
-  resolveResource?: ResourceResolver,
 ): ResolvedBlueprint<TRecipe> {
   const { id, tiers, recipes } = artifact.payload;
   const tiersById = Object.fromEntries(tiers.map((tier) => [tier.id, tier]));
@@ -41,7 +36,7 @@ export function resolveBlueprintExecution<
     if (tiers.length !== 1) {
       throw new Error(`Blueprint '${id}' with no recipes must have exactly one terminal tier; found ${tiers.length}`);
     }
-    return resolvedBlueprint(artifact, tiersById, recipesById, [], resolveResource);
+    return resolvedBlueprint(artifact, tiersById, recipesById, []);
   }
 
   const outgoing = new Map(recipes.map((recipe) => [recipe.from, recipe]));
@@ -67,7 +62,7 @@ export function resolveBlueprintExecution<
   if (stages.length !== recipes.length) {
     throw new Error(`Blueprint '${id}' recipes do not form a single connected chain`);
   }
-  return resolvedBlueprint(artifact, tiersById, recipesById, stages, resolveResource);
+  return resolvedBlueprint(artifact, tiersById, recipesById, stages);
 }
 
 function resolvedBlueprint<TRecipe extends LoweringRecipeDefinition>(
@@ -75,38 +70,12 @@ function resolvedBlueprint<TRecipe extends LoweringRecipeDefinition>(
   tiersById: Record<string, TierDefinition>,
   recipesById: Record<string, TRecipe>,
   stages: ResolvedBlueprintStage<TRecipe>[],
-  resolveResource?: ResourceResolver,
 ): ResolvedBlueprint<TRecipe> {
   return {
     artifact,
     tiersById,
     recipesById,
     stages,
-    resources: resolveResources(artifact, resolveResource),
     services: structuredClone(artifact.payload.services ?? {}),
   };
-}
-
-export function resolveResources(
-  artifact: BlueprintArtifact,
-  resolveResource?: ResourceResolver,
-): Record<string, Json> {
-  const resources: Record<string, Json> = {};
-  for (const [name, resource] of Object.entries(artifact.payload.resources ?? {})) {
-    resources[name] = resolveResourceValue(artifact.payload.id, name, resource, resolveResource);
-  }
-  return resources;
-}
-
-function resolveResourceValue(
-  blueprintId: string,
-  name: string,
-  resource: BlueprintResource,
-  resolveResource?: ResourceResolver,
-): Json {
-  if ("inline" in resource) return resource.inline;
-  if (!resolveResource) {
-    throw new Error(`Blueprint '${blueprintId}' resource '${name}' needs a resolver for $ref '${resource.$ref}'`);
-  }
-  return resolveResource(resource.$ref, name);
 }

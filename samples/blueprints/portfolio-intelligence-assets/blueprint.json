@@ -7,7 +7,10 @@
     "version": "1.0.0",
     "structureMode": "fixed",
     "interface": {
-      "events": ["get-report", "put-report"],
+      "events": [
+        "get-report",
+        "put-report"
+      ],
       "outputs": {
         "result": {
           "from": "portfolioAssets.result",
@@ -15,27 +18,61 @@
         }
       }
     },
-    "tiers": [{ "id": "runtime-document", "kind": "runtime-document" }],
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document"
+      }
+    ],
     "recipes": [],
     "runtime": {
       "expression": "jsonata",
-      "namespaces": ["portfolioAssets"],
-      "actions": ["invoke"],
-      "state": { "portfolioAssets": { "result": null } }
+      "namespaces": [
+        "portfolioAssets"
+      ],
+      "actions": [
+        "invoke"
+      ],
+      "state": {
+        "portfolioAssets": {
+          "result": null
+        }
+      }
     },
     "cells": {
       "asset-controller": {
         "id": "asset-controller",
-        "kind": "portfolio-intelligence-asset-backend",
         "behavior": {
           "on": {
-            "get-report": [{ "do": "invoke", "control": { "tool": "readSavedReport" } }],
-            "put-report": [{ "do": "invoke", "control": { "tool": "writeSavedReport" } }]
+            "get-report": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "readSavedReport"
+                }
+              }
+            ],
+            "put-report": [
+              {
+                "do": "invoke",
+                "control": {
+                  "tool": "writeSavedReport"
+                }
+              }
+            ]
           }
         },
         "events": {
-          "get-report": { "payloadSchema": { "type": "object" } },
-          "put-report": { "payloadSchema": { "type": "object" } }
+          "get-report": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          },
+          "put-report": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       }
     },
@@ -77,7 +114,9 @@
             }
           }
         },
-        "config": { "connection": "blueprint-state" },
+        "config": {
+          "connection": "blueprint-state"
+        },
         "scope": "per-blueprint"
       }
     }

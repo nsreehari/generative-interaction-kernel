@@ -21,6 +21,13 @@ function ref(value: string): string {
   return `b64:${Buffer.from(JSON.stringify({ kind: "memory", value })).toString("base64url")}`;
 }
 
+function singleSlotPresentation(root: string) {
+  return {
+    slots: [root],
+    root,
+  } as const;
+}
+
 test("queued Cell sources transform requests and retain only narrowed responses", async () => {
   const queued = {
     kind: "invoke" as const,
@@ -248,12 +255,12 @@ test("ordinary invoke execution is acknowledged without applying returned state"
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen" },
+        potentialViews: { primary: { capability: "screen", region: "root" } },
         events: { save: { payloadSchema: { type: "object" } } },
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: singleSlotPresentation("root"),
   });
   const runtimeRef = ref("headless-counter");
   const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
@@ -281,7 +288,7 @@ test("ordinary invoke execution is acknowledged without applying returned state"
   });
 
   await runtime.initializeRuntime(refs);
-  await runtime.appendJournal({ ...refs, entry: { node: "root", name: "save" } });
+  await runtime.appendJournal({ ...refs, entry: { node: "root--primary--in-root", name: "save" } });
   await processingRuntime.processEngineWake(refs);
   await processingRuntime.processQueueLaneItem(refs);
   await processingRuntime.processEngineWake(refs);
@@ -305,7 +312,7 @@ test("declarative service invoke settlements re-enter durable Blueprint state", 
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen" },
+        potentialViews: { primary: { capability: "screen", region: "root" } },
         events: { save: { payloadSchema: { type: "object" } } },
         behavior: {
           on: {
@@ -317,7 +324,7 @@ test("declarative service invoke settlements re-enter durable Blueprint state", 
         },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: singleSlotPresentation("root"),
   });
   const runtimeRef = ref("service-counter");
   const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
@@ -345,7 +352,7 @@ test("declarative service invoke settlements re-enter durable Blueprint state", 
   });
 
   await runtime.initializeRuntime(refs);
-  await runtime.appendJournal({ ...refs, entry: { node: "root", name: "save" } });
+  await runtime.appendJournal({ ...refs, entry: { node: "root--primary--in-root", name: "save" } });
   await processingRuntime.processEngineWake(refs);
   await processingRuntime.processQueueLaneItem(refs);
   await processingRuntime.processEngineWake(refs);
@@ -369,12 +376,12 @@ test("void invokes are acknowledged without appending settlement receipts", asyn
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen" },
+        potentialViews: { primary: { capability: "screen", region: "root" } },
         events: { save: { payloadSchema: { type: "object" } } },
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: singleSlotPresentation("root"),
   });
   const runtimeRef = ref("void-effect");
   const refs = { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef };
@@ -402,7 +409,7 @@ test("void invokes are acknowledged without appending settlement receipts", asyn
   });
 
   await runtime.initializeRuntime(refs);
-  await runtime.appendJournal({ ...refs, entry: { node: "root", name: "save" } });
+  await runtime.appendJournal({ ...refs, entry: { node: "root--primary--in-root", name: "save" } });
   await processingRuntime.processEngineWake(refs);
   await processingRuntime.processQueueLaneItem(refs);
   await processingRuntime.processEngineWake(refs);
@@ -421,7 +428,7 @@ test("duplicate settlement receipts do not replay their follow-up events", async
     cells: {
       root: {
         id: "root",
-        view: { capability: "screen" },
+        potentialViews: { primary: { capability: "screen", region: "root" } },
         events: {
           save: { payloadSchema: { type: "object" } },
           resolved: { payloadSchema: { type: "object" } },
@@ -445,13 +452,13 @@ test("duplicate settlement receipts do not replay their follow-up events", async
         },
       },
     },
-    projections: { presentation: { roots: ["root"] } },
+    presentation: singleSlotPresentation("root"),
   });
   const adapter = createBlueprintDurableTransitionAdapter({ blueprint });
   const started = await adapter.transition({
     state: adapter.initialState(),
     spec: adapter.initialSpec(),
-    events: [{ node: "root", name: "save" }],
+    events: [{ node: "root--primary--in-root", name: "save" }],
   });
   const requestEffect = started.effects[0];
   assert.ok(requestEffect?.kind === "request" && requestEffect.effectId);
@@ -496,7 +503,7 @@ test("durable source state promotes only the latest pending request and rejects 
     cells: {
       controls: {
         id: "controls",
-        view: { capability: "screen" },
+        potentialViews: { primary: { capability: "screen", region: "controls" } },
         inputs: [{ token: "work.request", as: "request" }],
         compute: [{ id: "request", expression: "inputs.request", assign: "request" }],
         outputs: [{ token: "request", from: "request" }],
@@ -513,7 +520,7 @@ test("durable source state promotes only the latest pending request and rejects 
         sources: [{ id: "worker.source", service: "work", operation: "run", contract: "work/v1" }],
       },
     },
-    projections: { presentation: { roots: ["controls"] } },
+    presentation: singleSlotPresentation("controls"),
   });
   const adapter = createBlueprintDurableTransitionAdapter({ blueprint });
   const spec = adapter.initialSpec();
@@ -521,7 +528,7 @@ test("durable source state promotes only the latest pending request and rejects 
   const started = await adapter.transition({
     state: adapter.initialState(),
     spec,
-    events: [{ node: "controls", name: "request", payload: { request: { id: "A" } } }],
+    events: [{ node: "controls--primary--in-controls", name: "request", payload: { request: { id: "A" } } }],
   });
   assert.equal(started.effects.length, 1);
   const activeEffect = started.effects[0];
@@ -533,12 +540,12 @@ test("durable source state promotes only the latest pending request and rejects 
   const queuedB = await adapter.transition({
     state: started.state,
     spec,
-    events: [{ node: "controls", name: "request", payload: { request: { id: "B" } } }],
+    events: [{ node: "controls--primary--in-controls", name: "request", payload: { request: { id: "B" } } }],
   });
   const queuedC = await adapter.transition({
     state: queuedB.state,
     spec,
-    events: [{ node: "controls", name: "request", payload: { request: { id: "C" } } }],
+    events: [{ node: "controls--primary--in-controls", name: "request", payload: { request: { id: "C" } } }],
   });
   assert.equal(queuedB.effects.length, 0);
   assert.equal(queuedC.effects.length, 0);

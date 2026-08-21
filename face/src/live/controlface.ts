@@ -92,9 +92,7 @@ export function defineDeclarativeBlueprint(blueprint: BlueprintSource): LoweredB
   if (blueprint.payload.recipes.length > 0 || !blueprint.payload.cells) return undefined;
   const definition = {
     cells: blueprint.payload.cells,
-    ...(blueprint.payload.projections?.presentation
-      ? { projections: { presentation: blueprint.payload.projections.presentation } }
-      : {}),
+    ...(blueprint.payload.presentation ? { presentation: blueprint.payload.presentation } : {}),
   };
   const resolved = loadBlueprint(blueprint);
 

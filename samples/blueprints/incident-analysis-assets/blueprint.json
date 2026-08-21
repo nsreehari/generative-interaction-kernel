@@ -7,7 +7,15 @@
     "version": "1.0.0",
     "structureMode": "fixed",
     "interface": {
-      "events": ["list-sources", "get-source", "list-assets", "get-asset", "put-asset", "delete-asset", "clear-assets"],
+      "events": [
+        "list-sources",
+        "get-source",
+        "list-assets",
+        "get-asset",
+        "put-asset",
+        "delete-asset",
+        "clear-assets"
+      ],
       "outputs": {
         "result": {
           "from": "incidentAssets.result",
@@ -15,11 +23,18 @@
         }
       }
     },
-    "tiers": [{ "id": "runtime-document", "kind": "runtime-document" }],
+    "tiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document"
+      }
+    ],
     "recipes": [],
     "runtime": {
       "expression": "jsonata",
-      "namespaces": ["incidentAssets"],
+      "namespaces": [
+        "incidentAssets"
+      ],
       "actions": [
         "assign",
         "emit",
@@ -27,12 +42,16 @@
         "route",
         "request"
       ],
-      "state": { "incidentAssets": { "result": null, "runtimeAssetKeys": [] } }
+      "state": {
+        "incidentAssets": {
+          "result": null,
+          "runtimeAssetKeys": []
+        }
+      }
     },
     "cells": {
       "asset-controller": {
         "id": "asset-controller",
-        "kind": "incident-asset-backend",
         "behavior": {
           "on": {
             "list-sources": [
@@ -179,38 +198,98 @@
           "readSourceIndex": {
             "operation": "read",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'index:sources'}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':{'sources':response}}]}" } }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'index:sources'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':{'sources':response}}]}"
+              }
+            }
           },
           "readIncidentSource": {
             "operation": "read",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'source:' & effect.data.sourceId}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':response}]}" } }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'source:' & effect.data.sourceId}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':response}]}"
+              }
+            }
           },
           "listRuntimeAssets": {
             "operation": "listKeys",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'prefix':'asset:' & effect.data.source_report_key & '/'}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.runtimeAssetKeys','value':response}],'events':[{'node':'asset-controller','name':'list-seed-assets','payload':effect.data}]}" } }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'prefix':'asset:' & effect.data.source_report_key & '/'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'incidentAssets.runtimeAssetKeys','value':response}],'events':[{'node':'asset-controller','name':'list-seed-assets','payload':effect.data}]}"
+              }
+            }
           },
           "listSeedAssets": {
             "operation": "listKeys",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'prefix':'seed-asset:' & effect.data.source_report_key & '/'}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "($keys := $append(state.incidentAssets.runtimeAssetKeys, response); {'ops':[{'op':'set','path':'incidentAssets.result','value':{'assets':[$keys.($parts := $split($replace($,/^(seed-)?asset:/,''),'/'); {'source_report_key':$parts[0],'analysis_key':$join($parts[[1..$count($parts)-1]],'/')})]}}]})" } }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'prefix':'seed-asset:' & effect.data.source_report_key & '/'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "($keys := $append(state.incidentAssets.runtimeAssetKeys, response); {'ops':[{'op':'set','path':'incidentAssets.result','value':{'assets':[$keys.($parts := $split($replace($,/^(seed-)?asset:/,''),'/'); {'source_report_key':$parts[0],'analysis_key':$join($parts[[1..$count($parts)-1]],'/')})]}}]})"
+              }
+            }
           },
           "readRuntimeAsset": {
             "operation": "read",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "response != null ? {'ops':[{'op':'set','path':'incidentAssets.result','value':response}]} : {'events':[{'node':'asset-controller','name':'get-seed-asset','payload':effect.data}]}" } }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "response != null ? {'ops':[{'op':'set','path':'incidentAssets.result','value':response}]} : {'events':[{'node':'asset-controller','name':'get-seed-asset','payload':effect.data}]}"
+              }
+            }
           },
           "readSeedAsset": {
             "operation": "read",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'seed-asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':response}]}" } }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'seed-asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':response}]}"
+              }
+            }
           },
           "writeIncidentAsset": {
             "operation": "write",
@@ -231,23 +310,55 @@
           "deleteIncidentAsset": {
             "operation": "delete",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':'asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':{'deleted':true}}]}" } }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':'asset:' & effect.data.source_report_key & '/' & effect.data.analysis_key}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':{'deleted':true}}]}"
+              }
+            }
           },
           "listAssetsToClear": {
             "operation": "listKeys",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'prefix':'asset:'}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':{'cleared':$count(response)}}],'events':[response.{'node':'asset-controller','name':'delete-storage-key','payload':{'key':$}}]}" } }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'prefix':'asset:'}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'ops':[{'op':'set','path':'incidentAssets.result','value':{'cleared':$count(response)}}],'events':[response.{'node':'asset-controller','name':'delete-storage-key','payload':{'key':$}}]}"
+              }
+            }
           },
           "deleteStorageKey": {
             "operation": "delete",
             "contract": "storage-kv/v1",
-            "request": { "transform": { "kind": "jsonata", "expr": "{'key':effect.data.key}" } },
-            "settlement": { "transform": { "kind": "jsonata", "expr": "{'outcome':'completed'}" } }
+            "request": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'key':effect.data.key}"
+              }
+            },
+            "settlement": {
+              "transform": {
+                "kind": "jsonata",
+                "expr": "{'outcome':'completed'}"
+              }
+            }
           }
         },
-        "config": { "connection": "blueprint-state" },
+        "config": {
+          "connection": "blueprint-state"
+        },
         "scope": "per-blueprint"
       }
     },

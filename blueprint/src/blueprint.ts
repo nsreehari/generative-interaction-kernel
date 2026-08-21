@@ -100,38 +100,33 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
   for (const [cellId, cell] of Object.entries(cells)) {
     if (cell.id !== cellId) throw new BlueprintValidationError(`Blueprint cell key '${cellId}' does not match id '${cell.id}'`);
   }
-  for (const rootId of blueprint.projections?.presentation?.roots ?? []) {
-    if (!cells[rootId]) throw new BlueprintValidationError(`Blueprint presentation references unknown root '${rootId}'`);
-  }
-  const presentation = blueprint.projections?.presentation;
-  const placedCells = new Set(presentation?.roots ?? []);
-  for (const [parentId, entry] of Object.entries(presentation?.composition ?? {})) {
-    if (!cells[parentId]) throw new BlueprintValidationError(`Blueprint composition references unknown parent '${parentId}'`);
-    for (const [slot, childIds] of Object.entries(entry.slots)) {
-      for (const childId of childIds) {
-        if (!cells[childId]) {
-          throw new BlueprintValidationError(`Blueprint composition slot '${parentId}.${slot}' references unknown Cell '${childId}'`);
+  if (blueprint.presentation) {
+    const slotIds = new Set(blueprint.presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
+    if (!slotIds.has(blueprint.presentation.root)) {
+      throw new BlueprintValidationError(`Blueprint presentation root '${blueprint.presentation.root}' is not a declared slot`);
+    }
+    for (const entry of blueprint.presentation.slots) {
+      const id = typeof entry === "string" ? entry : entry.id;
+      const region = typeof entry === "string" ? undefined : entry.region;
+      if (region !== undefined && !slotIds.has(region)) {
+        throw new BlueprintValidationError(`Blueprint presentation slot '${id}' declares unknown parent region '${region}'`);
+      }
+    }
+    for (const [cellId, cell] of Object.entries(cells)) {
+      for (const [viewName, view] of Object.entries(cell.potentialViews ?? {})) {
+        const cellRegion = view.region;
+        if (cellRegion === undefined) continue;
+        for (const targetSlot of Array.isArray(cellRegion) ? cellRegion : [cellRegion]) {
+          if (!slotIds.has(targetSlot)) {
+            throw new BlueprintValidationError(`Blueprint Cell '${cellId}' view '${viewName}' attaches to unknown region '${targetSlot}'`);
+          }
         }
-        if (placedCells.has(childId)) {
-          throw new BlueprintValidationError(`Blueprint presentation places Cell '${childId}' more than once`);
-        }
-        placedCells.add(childId);
       }
     }
   }
   const composition = analyzeCellComposition(Object.values(cells));
   if (composition.diagnostics.length > 0) {
     throw new BlueprintValidationError(composition.diagnostics.map(({ detail }) => detail).join("; "), composition.diagnostics);
-  }
-  for (const [relationshipId, relationship] of Object.entries(blueprint.relationships ?? {})) {
-    if (!relationship.kind || !Array.isArray(relationship.participants)) {
-      throw new BlueprintValidationError(`Blueprint relationship '${relationshipId}' is incomplete`);
-    }
-    for (const participant of relationship.participants) {
-      if (!cells[participant]) {
-        throw new BlueprintValidationError(`Blueprint relationship '${relationshipId}' references unknown Cell '${participant}'`);
-      }
-    }
   }
 
   const tierIds = new Set<string>();
@@ -221,13 +216,13 @@ export function assembleBlueprint<TRecipe extends LoweringRecipeDefinition = Low
 function validateChildInputs(
   parentBlueprintId: string,
   cellId: string,
-  cell: { view?: { props?: Record<string, unknown>; bindings?: Record<string, unknown> } },
+  cell: { potentialViews?: Record<string, { props?: Record<string, unknown>; bindings?: Record<string, unknown> }> },
   child: BlueprintArtifact,
 ): void {
-  const supplied = new Set([
-    ...Object.keys(cell.view?.props ?? {}),
-    ...Object.keys(cell.view?.bindings ?? {}),
-  ]);
+  const supplied = new Set(Object.values(cell.potentialViews ?? {}).flatMap((view) => [
+    ...Object.keys(view.props ?? {}),
+    ...Object.keys(view.bindings ?? {}),
+  ]));
   const missing = Object.entries(child.payload.interface?.inputs ?? {})
     .filter(([name, port]) => port.required && !supplied.has(name))
     .map(([name]) => name);

@@ -42,8 +42,8 @@ test("sample opener selects representation and implementation from external cont
     { id: "portfolio-presentation", kind: "runtime-document" },
   ]);
   assert.deepEqual(runtime.definition.payload.recipes, []);
-  assert.equal(runtime.definition.payload.cells?.board?.view?.capability, "primitive:container");
-  assert.equal(runtime.definition.payload.cells?.board?.view?.props?.ariaLabel, "Portfolio tracker");
+  assert.equal(runtime.definition.payload.cells?.["portfolio-value-cell"]?.potentialViews?.primary?.capability, "primitive:chart");
+  assert.equal(runtime.definition.payload.cells?.["portfolio-value-cell"]?.potentialViews?.primary?.props?.variant, "compact");
   assert.deepEqual(runtime.definition.payload.services?.["portfolio-market-data"]?.blueprint, {
     $ref: "blueprint:portfolio-tracker-mock@1.0.0",
   });

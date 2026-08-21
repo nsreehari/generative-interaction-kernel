@@ -38,10 +38,11 @@ terminology:
   relationship: A typed connection among Cells. Blueprint validates participants but not kind-specific behavior.
   cell_impact: Static downstream analysis over one compiled Cell topology snapshot.
   exploration: A validated possibility-space snapshot with gated choices and option-driven unlocks.
-  projection: >-
-    A named description of how selected Cells are presented. A Blueprint carries an open map of
-    named projections; the reserved `presentation` entry is the projection consumed by the
-    current declarative lowering.
+  presentation: >-
+    A closed, flat set of named slots plus a root describing how Cells are placed for rendering.
+    A Blueprint carries at most one `presentation`; it has no knowledge of which Cells exist and no
+    tree of containment — every attachment (a slot into its parent slot, a Cell into a slot) is
+    self-declared by the thing attaching.
   rules:
     - Public Blueprint contracts use tiers and lowering recipes.
     - Lowering Cells use fromTier and toTier.
@@ -125,8 +126,7 @@ artifact_contracts:
       resources?: Record<string, BlueprintResource>;
       cells?: Record<string, CellDefinition>;
       relationships?: Record<string, RelationshipDefinition>;
-      projections?: Record<string, ProjectionDefinition | PresentationProjection>
-      & { presentation?: PresentationProjection };
+      presentation?: PresentationDefinition;
       services?: Record<string, ServiceRequirement | ServiceDeclaration>;
       runtime: BlueprintRuntimeDefinition; metadata?: Record<string, Json> }
     guarantees:
@@ -134,7 +134,7 @@ artifact_contracts:
       - runtime is not itself an ExecutableVocabularyManifest; the host supplies the executable vocabulary version and combines declared services with externals.
       - runtime.version is preserved as authored data; this package assigns it no execution semantics.
       - context is preserved as portable authoring data; this package does not merge it into runtime state.
-      - Backend and worker Blueprints do not require a presentation projection.
+      - Backend and worker Blueprints do not require a presentation.
       - A service Blueprint uses the same blueprint:<id>@<version> reference grammar and host registry as a nested Cell Blueprint.
       - Interface output ports may declare from to project one runtime state path as a non-rendered result.
       - The serialized lowering-recipe collection is recipes in version 0.1.
@@ -272,32 +272,34 @@ artifact_contracts:
     guarantees:
       - Every participant references a Cell in the same Blueprint.
       - Relationship-specific configuration remains opaque to Blueprint core.
-  - name: ProjectionDefinition
+  - name: PresentationDefinition
     signature: >-
-      interface ProjectionDefinition { kind: string; participants?: readonly string[];
-      configuration?: Json; metadata?: Record<string, Json> }
+      interface PresentationDefinition { slots: readonly PresentationSlot[]; root: string }
+      type PresentationSlot = string | { id: string; region?: string }
     purpose: >-
-      A generic named projection over a set of Cells. Blueprint core validates its shape but does
-      not interpret it, and the current declarative lowering does not compile named entries other
-      than the reserved `presentation`.
-  - name: PresentationProjection
-    signature: >-
-      interface PresentationProjection { roots: readonly string[];
-      composition?: Readonly<Record<string, {
-      slots: Readonly<Record<string, readonly string[]>> }>> }
+      A closed, flat set of named slots plus a root. Presentation has no knowledge of Cells and no
+      tree of who contains whom — a slot self-declares its own parent slot via `region`, the same
+      mechanism a Cell's own `view.region` uses to attach into a slot.
     guarantees:
-      - Roots, composition parent keys, and ordered slot members reference Cells in the same Blueprint.
-      - A Cell may appear at most once across roots and composition slot arrays.
-      - Parent and slot map declaration order, followed by child array order, deterministically defines projected child order.
-      - Slot names express caller-authored semantic placement intent and are not component capability insertion points.
-      - Components receive ordinary ordered children and do not interpret Blueprint slot names.
+      - Every slot id is unique; root and every declared `region` reference a slot id in the same slots array.
+      - Slot nesting must not cycle.
+      - A Cell attaches to a slot on its own view (`CellView.region`), never inside the presentation structure.
+      - A Cell's `region` may be an array, rendering one independent instance per named slot, all reading and
+        writing through that one Cell — a Cell is no longer restricted to appearing at most once.
+      - Slot declaration order, then Cell declaration order, deterministically defines the projected child
+        order within a slot: nested slot-children always render ahead of any Cell attached directly to that
+        same slot.
+      - Slot names express caller-authored semantic placement intent and are not component capability
+        insertion points; a slot itself carries no capability or props — visual styling for a region is
+        always a rendering host/theme concern, never Blueprint-authored data.
     consumed_by:
-      - When present, the reserved `projections.presentation` entry is the layout the current compiler projects.
-      - composeCellProgram requires at least one root and walks the composition map into the Kernel projection tree.
-      - Representation lowering may replace a presentation or append sparse parent/slot composition;
-        append preserves existing slot order and concatenates ordered children within matching slots.
-      - Without `projections.presentation`, composeCellProgram emits a non-projected Kernel program from
-        Cell event handlers, computations, and source refresh behavior.
+      - When present, the reserved top-level `presentation` entry is the layout the current compiler projects.
+      - composeCellProgram requires a valid root and walks the slot/Cell attachment graph into the Kernel
+        projection tree, emitting one DocNode per (slot, Cell) attachment.
+      - Representation lowering may replace a presentation (`presentation`) or append additional slot entries
+        (`presentationAppend`, a flat array concat — slots are a list, not a nested tree to merge).
+      - Without `presentation`, composeCellProgram emits a non-projected Kernel program from Cell event
+        handlers, computations, and source refresh behavior.
 
 artifact_api:
   - name: createBlueprint
@@ -396,7 +398,7 @@ cell_api:
       topology: ExecutableCellTopology): ExecutableProgramDefinition
     behavior: >-
       Compiles one validated Cell topology into a Kernel executable program. A presentation
-      projection produces a projected program; its absence produces a non-projected program.
+      produces a projected program; its absence produces a non-projected program.
       Compute and source Cells become evaluate-cell extension nodes. Hosted Blueprint outputs
       re-enter through event-triggered graph nodes and use transient signal ports.
       Presentation-free compilation rejects hosted child Blueprint Cells because their current execution
@@ -628,8 +630,10 @@ validation:
     - Full recipe connectivity and the one-tier requirement for recipe-free artifacts are enforced by resolveBlueprintExecution, not validateBlueprintArtifact.
     - Cell keys match Cell ids.
     - Cell composition has no error diagnostics.
-    - Presentation roots, composition parents, and slot members reference known Cells.
-    - Presentation composition rejects duplicate Cell placement.
+    - Presentation slots, declared root, and every `region` reference (on a slot or a Cell view) resolve to a
+      known slot id.
+    - A Cell may attach its `region` to more than one slot; the presentation model imposes no
+      duplicate-placement restriction.
     - Relationship participants reference known Cells.
 
 execution_boundary:
@@ -743,8 +747,8 @@ public_exports:
     - TierDefinition
     - LoweringRecipeDefinition
     - RelationshipDefinition
-    - ProjectionDefinition
-    - PresentationProjection
+    - PresentationDefinition
+    - PresentationSlot
   lowering:
     - BlueprintLowering
     - lowerBlueprint

@@ -216,3 +216,17 @@ merges by parent and slot and concatenates child arrays; array order is authorit
 then projects the selected composition as ordinary ordered children. Component variants and
 representation lowering remain responsible for physical presentation, including context-dependent
 reordering or deliberate omission.
+
+## Amendment (2026-08-21): presentation slots are Cell-agnostic; attachment is self-declared
+
+The 2026-08-19 amendment's parent-keyed `composition` map is superseded. `presentation` is `{ slots,
+root }` — a closed, flat set of named slots plus a root — and it carries no knowledge of Cells at all.
+A slot self-declares its own parent slot via `region`; a Cell attaches to one or more slots the
+identical way, by declaring `region` on its own view. There is no third structure recording who
+contains whom, so deleting a Cell or a slot removes its own attachment fact with it.
+
+A Cell's `region` may name more than one slot, rendering one independent instance per attachment while
+every instance still reads and writes through that one Cell — the prior "a Cell may appear at most
+once" rule is gone. Representation recipes still replace the whole presentation or append additional
+slot entries, but append is now a plain array concatenation rather than a parent/slot merge, since
+slots are a flat list rather than a nested tree.

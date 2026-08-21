@@ -343,9 +343,7 @@ export function prepareBlueprintProgram(
   const resolved = loadBlueprint(blueprint);
   const definition = {
     cells: blueprint.payload.cells,
-    ...(blueprint.payload.projections?.presentation
-      ? { projections: { presentation: blueprint.payload.projections.presentation } }
-      : {}),
+    ...(blueprint.payload.presentation ? { presentation: blueprint.payload.presentation } : {}),
   };
   const vocabulary: ProjectedVocabularyManifest = {
     version: `${blueprint.payload.id}/${blueprint.payload.version}`,

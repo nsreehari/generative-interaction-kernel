@@ -27,9 +27,11 @@
             "cellId": "query-input",
             "cell": {
               "id": "query-input",
-              "kind": "runtime-cell",
-              "view": {
-                "capability": "sample:query-input"
+              "potentialViews": {
+                "primary": {
+                  "capability": "sample:query-input",
+                  "region": "query-input"
+                }
               },
               "events": {
                 "submit": {
@@ -58,12 +60,14 @@
             "cellId": "results",
             "cell": {
               "id": "results",
-              "kind": "runtime-cell",
-              "view": {
-                "capability": "sample:results",
-                "bindings": {
-                  "items": {
-                    "from": "search.results"
+              "potentialViews": {
+                "primary": {
+                  "capability": "sample:results",
+                  "region": "children",
+                  "bindings": {
+                    "items": {
+                      "from": "search.results"
+                    }
                   }
                 }
               }
@@ -74,34 +78,30 @@
             "cellId": "summary",
             "cell": {
               "id": "summary",
-              "kind": "runtime-cell",
-              "view": {
-                "capability": "sample:summary",
-                "bindings": {
-                  "count": {
-                    "expression": "$count(search.results)"
+              "potentialViews": {
+                "primary": {
+                  "capability": "sample:summary",
+                  "region": "children",
+                  "bindings": {
+                    "count": {
+                      "expression": "$count(search.results)"
+                    }
                   }
                 }
               }
             }
           },
           {
-            "op": "setProjection",
-            "projectionId": "presentation",
-            "projection": {
-              "roots": [
-                "query-input"
-              ],
-              "composition": {
-                "query-input": {
-                  "slots": {
-                    "children": [
-                      "results",
-                      "summary"
-                    ]
-                  }
+            "op": "setPresentation",
+            "presentation": {
+              "slots": [
+                "query-input",
+                {
+                  "id": "children",
+                  "region": "query-input"
                 }
-              }
+              ],
+              "root": "query-input"
             }
           }
         ]
@@ -110,21 +110,18 @@
     "cells": {
       "query-input": {
         "id": "query-input",
-        "kind": "intent-cell",
         "metadata": {
           "role": "collect-query"
         }
       },
       "results": {
         "id": "results",
-        "kind": "intent-cell",
         "metadata": {
           "role": "show-results"
         }
       },
       "summary": {
         "id": "summary",
-        "kind": "intent-cell",
         "metadata": {
           "role": "summarize-results"
         }
