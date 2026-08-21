@@ -18,6 +18,7 @@ import type {
   BlueprintRepresentation,
   BlueprintRepresentationDecorator,
   CellDefinition,
+  CellSource,
   RepresentationLoweringRecipeDefinition,
   VocabularyLoweringRecipeDefinition,
 } from "./types";
@@ -382,7 +383,7 @@ function applyCellImplementationOverrides(
   for (const [cellId, override] of Object.entries(program.cells ?? {})) {
     const cell = artifact.payload.cells?.[cellId];
     if (!cell) throw new Error(`Blueprint implementation program '${program.id}' references unknown Cell '${cellId}'`);
-    if (override.sources) assertStableSourceContracts(program.id, cell, override.sources);
+    if (override.sources) assertStableSourceContracts(artifact, program.id, cell, override.sources);
     if (override.behavior) assertDeclaredEventHandlers(program.id, cell, override.behavior);
     if (override.sources) cell.sources = structuredClone(override.sources);
     if (override.compute) cell.compute = structuredClone(override.compute);
@@ -403,13 +404,36 @@ function assertDeclaredEventHandlers(
   }
 }
 
+/** A source's contract is never authored directly -- it is always the resolved operation's
+ * contract from `services`. Stability across an implementation program's override is therefore
+ * checked by resolving both sides against the same services snapshot, not by comparing two
+ * independently authored strings. */
+function resolveSourceContract(
+  artifact: BlueprintArtifact,
+  programId: string,
+  cellId: string,
+  source: CellSource,
+): string {
+  const service = artifact.payload.services?.[source.service];
+  const contract = service?.operations?.[source.operation]?.contract;
+  if (!contract) {
+    throw new Error(
+      `Blueprint implementation program '${programId}' references unresolved operation '${source.operation}' on service '${source.service}' for Cell '${cellId}'`,
+    );
+  }
+  return contract;
+}
+
 function assertStableSourceContracts(
+  artifact: BlueprintArtifact,
   programId: string,
   cell: CellDefinition,
   sources: NonNullable<CellDefinition["sources"]>,
 ): void {
-  const authored = new Map((cell.sources ?? []).map((source) => [source.id, source.contract]));
-  const selected = new Map(sources.map((source) => [source.id, source.contract]));
+  const authored = new Map((cell.sources ?? []).map((source) =>
+    [source.id, resolveSourceContract(artifact, programId, cell.id, source)]));
+  const selected = new Map(sources.map((source) =>
+    [source.id, resolveSourceContract(artifact, programId, cell.id, source)]));
   if (authored.size !== selected.size
     || [...authored].some(([id, contract]) => selected.get(id) !== contract)) {
     throw new Error(`Blueprint implementation program '${programId}' changes source contracts for Cell '${cell.id}'`);

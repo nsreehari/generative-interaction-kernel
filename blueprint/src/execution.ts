@@ -1,4 +1,4 @@
-import type { ServiceDeclaration, ServiceRequirement } from "@gik/kernel";
+import type { ServiceDeclaration } from "@gik/kernel";
 import type {
   BlueprintArtifact,
   LoweringRecipeDefinition,
@@ -20,7 +20,7 @@ export interface ResolvedBlueprint<
   tiersById: Record<string, TierDefinition>;
   recipesById: Record<string, TRecipe>;
   stages: ResolvedBlueprintStage<TRecipe>[];
-  services: Record<string, ServiceRequirement | ServiceDeclaration>;
+  services: Record<string, ServiceDeclaration>;
 }
 
 export function resolveBlueprintExecution<

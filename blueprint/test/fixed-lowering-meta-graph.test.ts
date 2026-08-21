@@ -225,6 +225,19 @@ test("a representation decorator uses JSONata to add loading UI around source-ba
       fallback: "screen",
     }],
     runtime: { capabilities: {} },
+    services: {
+      "remote-service": {
+        kind: "mock-service",
+        version: "1",
+        operations: {
+          read: {
+            operation: "read",
+            contract: "remote/v1",
+            settlement: { transform: { kind: "jsonata", expr: "response" } },
+          },
+        },
+      },
+    },
     cells: {
       board: { id: "board" },
       remote: {
@@ -232,19 +245,8 @@ test("a representation decorator uses JSONata to add loading UI around source-ba
         systemInputs: ["numSourcesRunning"],
         sources: [{
           id: "remote.source",
-          inline: {
-            kind: "mock-service",
-            version: "1",
-            operations: {
-              read: {
-                operation: "read",
-                contract: "remote/v1",
-                settlement: { transform: { kind: "jsonata", expr: "response" } },
-              },
-            },
-          },
+          service: "remote-service",
           operation: "read",
-          contract: "remote/v1",
         }],
       },
       local: { id: "local" },

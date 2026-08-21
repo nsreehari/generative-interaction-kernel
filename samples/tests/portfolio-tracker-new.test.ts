@@ -610,7 +610,11 @@ test("portfolio semantic presentation defaults to simple Markdown when omitted",
 
   assert.equal(source?.service, "portfolio-semantic-intelligence");
   assert.equal(source?.operation, "generateReport");
-  assert.equal(source?.contract, "portfolio-semantic-intelligence/v1");
+  assert.equal(
+    (terminal.services?.["portfolio-semantic-intelligence"]?.operations as
+      Record<string, { contract?: string }> | undefined)?.generateReport?.contract,
+    "portfolio-semantic-intelligence/v1",
+  );
   assert.match(source?.input?.expr ?? "", /'acceptedCapabilities':\['primitive:markdown'\]/);
   assert.equal(
     (terminal.services?.["portfolio-semantic-intelligence"]?.config as Record<string, unknown>)?.agent,

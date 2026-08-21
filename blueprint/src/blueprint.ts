@@ -128,6 +128,17 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
   if (composition.diagnostics.length > 0) {
     throw new BlueprintValidationError(composition.diagnostics.map(({ detail }) => detail).join("; "), composition.diagnostics);
   }
+  for (const [cellId, cell] of Object.entries(cells)) {
+    for (const source of cell.sources ?? []) {
+      const service = blueprint.services?.[source.service];
+      if (!service) {
+        throw new BlueprintValidationError(`Blueprint Cell '${cellId}' source '${source.id}' references unknown service '${source.service}'`);
+      }
+      if (!service.operations?.[source.operation]) {
+        throw new BlueprintValidationError(`Blueprint Cell '${cellId}' source '${source.id}' references unknown operation '${source.operation}' on service '${source.service}'`);
+      }
+    }
+  }
 
   const tierIds = new Set<string>();
   for (const tier of blueprint.tiers) {

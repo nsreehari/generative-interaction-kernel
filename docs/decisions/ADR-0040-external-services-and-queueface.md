@@ -175,3 +175,34 @@ as an explicit, visible fallback; live-to-deterministic fallback is never silent
   provider-owned settlement path.
 - Production Bundle source must not construct service registries, adapters, QueueFaces, or
   credential stores; architecture tests enforce that boundary.
+
+## Amendment (2026-08-21): `ServiceRequirement` removed; `CellSource.contract` derived, not authored; `inline` sources removed
+
+**`ServiceRequirement` is removed** from `kernel/src/types.ts` (`ExternalsSpec.services`), `@gik/blueprint`'s
+`BlueprintDefinition`/`BlueprintImplementationProgram`, and the SOT. This ADR's original Consequences section
+already called it a deprecated migration shape kept only "for backward compatibility" with pre-service-kind
+documents; confirmed via code that it was never actually usable through the real execution path (every host
+blind-casts `services` to `Record<string, ServiceDeclaration>`, and `ServiceHost`'s resolver does
+`declaration.operations[invoke]` -- a Record lookup that always fails against `ServiceRequirement`'s
+`operations: string[]` shape) and zero sample Blueprint ever authored one.
+
+**A Cell source's `contract` is no longer an authored field.** `CellSource`/`ServiceUse` previously restated
+`contract` independently of the service operation it names (`services[service].operations[operation].contract`),
+with nothing anywhere cross-checking the two ever agreed -- not the AJV schema, not `validateCell`, not the
+implementation-program stability checks (`assertStableSourceContracts` only ever compared a Cell's own prior
+`contract` against its override's, never against the actual service). `CellSource.contract` is removed;
+the contract is always resolved by looking up `source.service`/`source.operation` against `services`. This
+closes the duplication rather than adding a cross-check to keep two copies in sync, and `blueprint.ts`'s
+`validateBlueprintArtifact` now rejects a source whose `service`/`operation` doesn't resolve to a real
+`services[...].operations[...]` entry -- the first place a "declared once at Blueprint level, Cells can only
+reference it" invariant is actually enforced for services (an equivalent check does not yet exist for
+`runtime.capabilities`).
+
+**The `inline` escape hatch on `CellSource`/`ServiceUse` is removed.** A Cell source could previously embed a
+complete, one-off `ServiceDeclaration` directly (bypassing the `services` catalog entirely) instead of
+referencing a named entry. It was real and tested, but exercised by exactly one unit test and zero product
+samples, and it created a second, parallel way to reference a service -- a duplication of mechanism, not data.
+Removed rather than kept-but-undocumented: an AJV-schema-legal option is discoverable by any agent reading the
+schema directly regardless of what prose does or doesn't mention, so "keep it working but don't advertise it"
+was not achievable without either breaking real validation or silently diverging the TypeScript types from what
+the schema actually accepts. Every `CellSource` must now reference a named `services[...]` entry.

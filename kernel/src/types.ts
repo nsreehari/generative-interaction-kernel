@@ -615,24 +615,14 @@ export interface BlueprintServiceDeclaration extends ServiceDeclarationBase {
 
 export type ServiceDeclaration = NativeServiceDeclaration | BlueprintServiceDeclaration;
 
-/** @deprecated Migration shape for operation-only manifests created before service kinds. */
-export interface ServiceRequirement {
-  version: string;
-  operations: string[];
-  kind?: string;
-  config?: Json;
-  scope?: ServiceScope;
-}
-
 export type ServiceUse = {
+  /** The named operation to invoke, matching a key in the referenced service's `operations` map.
+   * The operation's `contract` is always resolved from that declaration, never restated here. */
   operation: string;
-  contract: string;
+  service: string;
   /** Overrides the resolved guardrail/output policy for this single call site only. */
   policyOverride?: Partial<ServiceOutputPolicy>;
-} & (
-  | { service: string; inline?: never }
-  | { service?: never; inline: ServiceDeclaration }
-);
+};
 
 export type ServiceSubject =
   | { kind: "cell"; blueprintId: string; cellId: string }
@@ -651,7 +641,7 @@ export interface ExternalsSpec {
   /** Names of effect handlers the host must supply for this bundle's `invoke` actions. */
   effectHandlers?: string[];
   /** Logical service requirements resolved to provider adapters by the outer host. */
-  services?: Record<string, ServiceRequirement | ServiceDeclaration>;
+  services?: Record<string, ServiceDeclaration>;
 }
 
 export interface ProjectedVocabularyManifest {

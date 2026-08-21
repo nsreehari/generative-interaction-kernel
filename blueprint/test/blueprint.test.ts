@@ -86,7 +86,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
-      services: { market: { version: "1", operations: ["quote"] } },
+      services: { market: { kind: "test-service", version: "1", operations: { quote: { operation: "quote", contract: "quote/v1" } } } },
       runtime: {
         ...runtime,
       },
@@ -106,7 +106,6 @@ describe("@gik/blueprint", () => {
         id: "market.quote",
         service: "market",
         operation: "quote",
-        contract: "quote/v1",
         when: "true",
         input: { kind: "jsonata" as const, expr: "{'symbol':inputs.position.symbol}" },
         output: { kind: "jsonata" as const, expr: "response.price" },
@@ -180,7 +179,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       tiers: [{ id: "runtime", kind: "runtime-program" }],
       recipes: [],
-      services: { market: { version: "1", operations: ["quote"] } },
+      services: { market: { kind: "test-service", version: "1", operations: { quote: { operation: "quote", contract: "quote/v1" } } } },
       runtime: {
         ...runtime,
       },
@@ -192,7 +191,6 @@ describe("@gik/blueprint", () => {
             id: "market.quote",
             service: "market",
             operation: "quote",
-            contract: "quote/v1",
             when: "$not($exists(sources.`market.quote`))",
             input: { kind: "jsonata", expr: "{'symbol': inputs.position.symbol}" },
             output: { kind: "jsonata", expr: "response.meta.price" },
@@ -658,6 +656,13 @@ describe("@gik/blueprint", () => {
   it("lowers Cell sources into evaluator nodes and scopes run-state expressions", () => {
     const source = createBlueprint({
       ...blueprint("conditional-source").payload,
+      services: {
+        "market-data": {
+          kind: "test-service",
+          version: "1",
+          operations: { refreshPrices: { operation: "refreshPrices", contract: "quotes/v1" } },
+        },
+      },
       cells: {
         quotes: {
           id: "quotes",
@@ -667,7 +672,6 @@ describe("@gik/blueprint", () => {
             id: "quotes.source",
             service: "market-data",
             operation: "refreshPrices",
-            contract: "quotes/v1",
             when: "inputs.marketMode = 'live'",
           }],
           events: { analyze: { payloadSchema: { type: "object" } } },
@@ -735,7 +739,6 @@ describe("@gik/blueprint", () => {
           id: "analysis.source",
           service: "analysis",
           operation: "analyze",
-          contract: "analysis/v1",
           when: "inputs.report.enabled",
         }],
       },
@@ -1167,10 +1170,17 @@ describe("@gik/blueprint", () => {
   it("lowers headless sources through Cell evaluation and rejects projection-hosted children", () => {
     const artifact = createBlueprint({
       ...blueprint("headless-source").payload,
+      services: {
+        orders: {
+          kind: "test-service",
+          version: "1",
+          operations: { "orders.list": { operation: "orders.list", contract: "orders/v1" } },
+        },
+      },
       cells: {
         source: {
           id: "source",
-          sources: [{ id: "orders", service: "orders", contract: "orders/v1", operation: "orders.list" }],
+          sources: [{ id: "orders", service: "orders", operation: "orders.list" }],
         },
       },
     });

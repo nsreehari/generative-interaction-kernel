@@ -281,7 +281,7 @@ contracts:
     signature: >-
       interface ExternalsSpec { projectionViews?: Record<string, ProjectionViewImport>;
       effectHandlers?: string[];
-      services?: Record<string, ServiceRequirement | ServiceDeclaration> }
+      services?: Record<string, ServiceDeclaration> }
     purpose: Declare host-provided projection, effect, and logical service dependencies.
   - name: ServiceDeclaration
     signature: >-
@@ -299,11 +299,6 @@ contracts:
       settlement: ServiceSettlementStage; failureSettlement?: ServiceSettlementStage;
       onViolation?: GuardrailViolationAction }
     purpose: Declare request, response, settlement, and guardrail behavior for one service operation.
-  - name: ServiceRequirement
-    signature: >-
-      interface ServiceRequirement { version: string; operations: string[]; kind?: string;
-      config?: Json; scope?: ServiceScope }
-    purpose: Deprecated migration shape for operation-only service requirements.
   - name: ServiceOutputPolicy
     signature: >-
       interface ServiceOutputPolicy { guardrails?: readonly GuardrailRule[];

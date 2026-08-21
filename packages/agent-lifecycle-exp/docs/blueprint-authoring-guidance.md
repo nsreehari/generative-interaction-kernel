@@ -95,6 +95,7 @@ later (e.g. `compact`) without touching the first.
     "recipes": [],
     "services": {
       "incident-data": {
+        "kind": "storage-kv",
         "version": "1",
         "operations": {
           "listIncidents": {
@@ -110,7 +111,7 @@ later (e.g. `compact`) without touching the first.
       "incidents": {
         "id": "incidents",
         "sources": [
-          { "id": "list", "service": "incident-data", "operation": "listIncidents", "contract": "storage-kv/v1" }
+          { "id": "list", "service": "incident-data", "operation": "listIncidents" }
         ],
         "compute": [
           { "id": "capture", "expression": "sources.list", "assign": "review.incidents", "dependencies": ["sources.list"] }
@@ -215,15 +216,17 @@ declared event names/payload shapes — but the two seams are not symmetric in w
 - **projection** — a representation may introduce a Cell's very first named view, add another one
   alongside an existing view, or replace one already there; nothing about a view needs to pre-exist.
 - **implementation** — an implementation program may only *replace* a `sources` entry (or the service it
-  names) that the Cell already declares at authoring time. The compiler enforces this: an override's
-  `{sourceId, contract}` pairs must exactly match the Cell's already-authored `sources`, and a service
-  override's `{operationId, contract}` pairs must exactly match that service's already-authored
-  `operations` — same count, same ids, same contracts, every time. An implementation program can swap
-  *which* service backs a source, or change a service's request/response transforms and config, but it
-  can never give a Cell a source (or a service an operation) that was not already authored on the Cell
-  or in top-level `services`. If a Cell needs a source at all under some external context, author that
-  source (and its backing service) as the baseline at authoring time; implementation programs then only
-  ever choose between concrete backings for it.
+  names) that the Cell already declares at authoring time. The compiler enforces this by resolving each
+  source's contract (its named operation's `contract`, in `services`) rather than by comparing an
+  authored value: an override's set of source ids and their *resolved* contracts must exactly match the
+  Cell's already-authored `sources`, and a service override's `{operationId, contract}` pairs must
+  exactly match that service's already-authored `operations` — same count, same ids, same contracts,
+  every time. An implementation program can swap *which* service backs a source, or change a service's
+  request/response transforms and config, but it can never give a Cell a source (or a service an
+  operation) that was not already authored on the Cell or in top-level `services`. If a Cell needs a
+  source at all under some external context, author that source (and its backing service) as the
+  baseline at authoring time; implementation programs then only ever choose between concrete backings
+  for it.
 
 A representation's `views` entry for a Cell is keyed by view name and upserted onto that Cell's
 `potentialViews` — so a representation can add a Cell's first view, add a second named view alongside an
@@ -325,11 +328,13 @@ no special trust: the terminal Blueprint must pass the same validation as any ha
 Top-level `services` maps a service id (e.g. `incident-data`) to its `operations`: a Blueprint-facing
 tool name mapped to a fully declarative pipeline — `operation` (the provider verb), `contract` (the
 wire shape), optional `request`/`response` stages, and a mandatory `settlement`, each stage a JSONata
-`transform` plus optional guardrail `validators`. A Cell's `source` names that same `service` id,
-`operation`, and `contract` directly. An `invoke` names the operations-map key as `control.tool` and,
-only when it depends on that operation's declared settlement, names the owning service as
-`control.serviceRef`. Declare a service once; every Cell that needs it references it by id — never
-inline connection details on the Cell itself.
+`transform` plus optional guardrail `validators`. A Cell's `source` names that same `service` id and
+`operation` — never a `contract`; the source's contract is always the one the named operation declares,
+resolved by the compiler rather than restated by the author. An `invoke` names the operations-map key
+as `control.tool` and the owning service as `control.serviceRef`. There is no way to embed a private,
+one-off service declaration directly on a Cell: every source must reference a real `services[...]`
+entry, and referencing an unknown service or operation is rejected at validation time. Declare a
+service once; every Cell that needs it references it by id.
 
 ### Runtime = the declared state, namespaces, and context shape
 

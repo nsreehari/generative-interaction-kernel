@@ -112,7 +112,10 @@
           "type": "object",
           "additionalProperties": { "$ref": "#/definitions/cellImplementationOverride" }
         },
-        "services": { "type": "object" }
+        "services": {
+          "type": "object",
+          "additionalProperties": { "$ref": "https://genui.dev/schemas/blueprint.schema.json#/definitions/serviceDeclaration" }
+        }
       }
     },
     "cellImplementationOverride": {

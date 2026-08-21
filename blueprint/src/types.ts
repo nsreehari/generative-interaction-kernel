@@ -7,7 +7,6 @@ import type {
   ProgramPatch,
   ProgramPatchOperation,
   ServiceDeclaration,
-  ServiceRequirement,
   ServiceTransform,
   ServiceUse,
 } from "@gik/kernel";
@@ -63,7 +62,7 @@ export interface BlueprintImplementationProgram {
   id: string;
   when?: string;
   cells?: Record<string, CellImplementationOverride>;
-  services?: Record<string, ServiceRequirement | ServiceDeclaration>;
+  services?: Record<string, ServiceDeclaration>;
 }
 
 /** A deterministic tier transition that preserves Cell contracts while lowering representation and inner programs. */
@@ -243,7 +242,7 @@ export interface BlueprintDefinition<TRecipe extends LoweringRecipeDefinition = 
   contextFormSpec?: DeclarativeFormSpec;
   cells?: Record<string, CellDefinition>;
   presentation?: PresentationDefinition;
-  services?: Record<string, ServiceRequirement | ServiceDeclaration>;
+  services?: Record<string, ServiceDeclaration>;
   runtime: BlueprintRuntimeDefinition;
   metadata?: Record<string, Json>;
 }

@@ -13,14 +13,24 @@
           "ai": {
             "type": "string",
             "title": "AI provider",
-            "enum": ["foundry", "copilot"],
-            "enumNames": ["Foundry", "Copilot"]
+            "enum": [
+              "foundry",
+              "copilot"
+            ],
+            "enumNames": [
+              "Foundry",
+              "Copilot"
+            ]
           }
         },
-        "required": ["ai"],
+        "required": [
+          "ai"
+        ],
         "additionalProperties": true
       },
-      "initialValue": { "ai": "foundry" },
+      "initialValue": {
+        "ai": "foundry"
+      },
       "saveLabel": "Apply context",
       "discardLabel": "Discard"
     },
@@ -59,18 +69,31 @@
                           "message": "AI agent returned an invalid chat response",
                           "schema": {
                             "type": "object",
-                            "required": ["conversationId", "responseId", "reply"],
+                            "required": [
+                              "conversationId",
+                              "responseId",
+                              "reply"
+                            ],
                             "properties": {
-                              "conversationId": { "type": "string" },
-                              "responseId": { "type": "string", "minLength": 1 },
-                              "reply": { "type": "string" }
+                              "conversationId": {
+                                "type": "string"
+                              },
+                              "responseId": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "reply": {
+                                "type": "string"
+                              }
                             },
                             "additionalProperties": true
                           }
                         }
                       ]
                     },
-                    "onViolation": { "action": "fail" }
+                    "onViolation": {
+                      "action": "fail"
+                    }
                   },
                   "discoverAgents": {
                     "operation": "discover",
@@ -82,12 +105,17 @@
                           "message": "AI provider returned an invalid agent list",
                           "schema": {
                             "type": "array",
-                            "items": { "type": "string", "minLength": 1 }
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
                           }
                         }
                       ]
                     },
-                    "onViolation": { "action": "fail" }
+                    "onViolation": {
+                      "action": "fail"
+                    }
                   }
                 },
                 "config": {
@@ -277,15 +305,24 @@
     "cells": {
       "agent-query-form": {
         "id": "agent-query-form",
-        "systemInputs": ["numSourcesRunning"],
-        "inputs": [{ "token": "agent.formValue", "as": "request" }],
+        "systemInputs": [
+          "numSourcesRunning"
+        ],
+        "inputs": [
+          {
+            "token": "agent.formValue",
+            "as": "request"
+          }
+        ],
         "sources": [
           {
             "id": "agent-query-form.source",
             "service": "assistant",
             "operation": "discoverAgents",
-            "contract": "ai-agent-list/v1",
-            "output": { "kind": "jsonata", "expr": "response" }
+            "output": {
+              "kind": "jsonata",
+              "expr": "response"
+            }
           }
         ],
         "compute": [
@@ -293,7 +330,9 @@
             "id": "agent-options",
             "expression": "$exists(sources.`agent-query-form.source`) ? [sources.`agent-query-form.source`.{'value':$, 'label':$}] : []",
             "assign": "agent.agentOptions",
-            "dependencies": ["sources.agent-query-form.source"]
+            "dependencies": [
+              "sources.agent-query-form.source"
+            ]
           }
         ],
         "outputs": [
@@ -320,11 +359,16 @@
           "primary": {
             "capability": "primitive:form",
             "region": "query",
-            "before": [{
-              "capability": "fluent:spinner",
-              "props": { "label": "Loading agents", "size": "medium" },
-              "visibility": "systemInputs.numSourcesRunning > 0"
-            }],
+            "before": [
+              {
+                "capability": "fluent:spinner",
+                "props": {
+                  "label": "Loading agents",
+                  "size": "medium"
+                },
+                "visibility": "systemInputs.numSourcesRunning > 0"
+              }
+            ],
             "props": {
               "saveLabel": "Ask",
               "discardLabel": "Discard",
@@ -334,7 +378,9 @@
               "fields": {
                 "expression": "{'properties':{'agentName':{'title':'Agent','type':'string','options':agent.agentOptions,'placeholder':'Choose an agent','span':12},'message':{'title':'Message','type':'string','format':'textarea','rows':5,'minLength':1,'placeholder':'Ask the agent something...','span':12}},'required':['agentName','message']}"
               },
-              "value": { "from": "agent.formValue" }
+              "value": {
+                "from": "agent.formValue"
+              }
             },
             "visibility": "$count(agent.agentOptions) > 0"
           }
@@ -349,22 +395,33 @@
       },
       "agent-response": {
         "id": "agent-response",
-        "systemInputs": ["numSourcesRunning"],
+        "systemInputs": [
+          "numSourcesRunning"
+        ],
         "inputs": [
-          { "token": "ai-agent-query", "as": "query", "required": true },
-          { "token": "agent.conversationId", "as": "conversationId" }
+          {
+            "token": "ai-agent-query",
+            "as": "query",
+            "required": true
+          },
+          {
+            "token": "agent.conversationId",
+            "as": "conversationId"
+          }
         ],
         "sources": [
           {
             "id": "agent-response.source",
             "service": "assistant",
             "operation": "askAgent",
-            "contract": "ai-agent-chat/v1",
             "input": {
               "kind": "jsonata",
               "expr": "{'message':$trim(inputs.query.message),'agentName':$trim(inputs.query.agentName),'conversationId':inputs.conversationId = '' ? null : inputs.conversationId}"
             },
-            "output": { "kind": "jsonata", "expr": "response" }
+            "output": {
+              "kind": "jsonata",
+              "expr": "response"
+            }
           }
         ],
         "compute": [
@@ -372,13 +429,17 @@
             "id": "agent-response-assign",
             "expression": "$exists(sources.`agent-response.source`) ? sources.`agent-response.source`.reply : ''",
             "assign": "agent.reply",
-            "dependencies": ["sources.agent-response.source"]
+            "dependencies": [
+              "sources.agent-response.source"
+            ]
           },
           {
             "id": "agent-conversation-assign",
             "expression": "$exists(sources.`agent-response.source`) ? sources.`agent-response.source`.conversationId : ''",
             "assign": "agent.conversationId",
-            "dependencies": ["sources.agent-response.source"]
+            "dependencies": [
+              "sources.agent-response.source"
+            ]
           }
         ],
         "potentialViews": {
@@ -396,7 +457,9 @@
               }
             ],
             "bindings": {
-              "value": { "from": "agent.reply" }
+              "value": {
+                "from": "agent.reply"
+              }
             }
           }
         }
@@ -405,8 +468,14 @@
     "presentation": {
       "slots": [
         "ai-agent-root",
-        { "id": "query", "region": "ai-agent-root" },
-        { "id": "response", "region": "ai-agent-root" }
+        {
+          "id": "query",
+          "region": "ai-agent-root"
+        },
+        {
+          "id": "response",
+          "region": "ai-agent-root"
+        }
       ],
       "root": "ai-agent-root"
     }

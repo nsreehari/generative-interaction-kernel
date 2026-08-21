@@ -33,23 +33,17 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "operation", "contract"],
-        "additionalProperties": true,
+        "required": ["id", "service", "operation"],
+        "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "service": { "type": "string", "minLength": 1 },
-          "inline": { "type": "object" },
           "operation": { "type": "string", "minLength": 1 },
-          "contract": { "type": "string", "minLength": 1 },
           "policyOverride": { "type": "object" },
           "when": { "type": "string", "minLength": 1 },
           "input": { "$ref": "#/definitions/transform" },
           "output": { "$ref": "#/definitions/transform" }
-        },
-        "oneOf": [
-          { "required": ["service"], "not": { "required": ["inline"] } },
-          { "required": ["inline"], "not": { "required": ["service"] } }
-        ]
+        }
       }
     },
     "compute": {

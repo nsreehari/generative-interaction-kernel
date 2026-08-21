@@ -126,7 +126,7 @@ artifact_contracts:
       cells?: Record<string, CellDefinition>;
       relationships?: Record<string, RelationshipDefinition>;
       presentation?: PresentationDefinition;
-      services?: Record<string, ServiceRequirement | ServiceDeclaration>;
+      services?: Record<string, ServiceDeclaration>;
       runtime: BlueprintRuntimeDefinition; metadata?: Record<string, Json> }
     guarantees:
       - runtime carries the vocabulary fields, initial state, and host dependencies used to open the Blueprint.
@@ -212,10 +212,11 @@ artifact_contracts:
     signature: >-
       interface BlueprintImplementationProgram { id: string; when?: string;
       cells?: Record<string, { sources?; compute?; behavior? }>;
-      services?: Record<string, ServiceRequirement | ServiceDeclaration> }
+      services?: Record<string, ServiceDeclaration> }
     guarantees:
       - Cell overrides are limited to inner-program facets.
-      - Source ids and contracts remain identical to the authored Cell.
+      - A source's contract is never authored -- it is always resolved from the service operation it names, so source ids and their resolved contracts remain identical to the authored Cell.
+      - Every source's service and operation must resolve to a declared entry in services; unresolvable references are rejected at validation time.
       - Replacement service declarations preserve the authored logical operation names and contracts.
   - name: CellDefinition
     purpose: Describe one cohesive participant without making it intrinsically a graph node, workflow step, or visual component.
