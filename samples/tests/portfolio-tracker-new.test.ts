@@ -91,7 +91,6 @@ test("portfolio-tracker-new declares the canonical Cells and parent report metad
     { token: "saved-portfolio-report-envelope", as: "savedReportEnvelope", required: true },
     { token: "generated-portfolio-report-envelope", as: "generatedReport", required: false },
   ]);
-  assert.ok(blueprint.payload.runtime.capabilities["primitive:datetime"]);
   assert.ok(
     blueprint.payload.runtime.externals.projectionViews.primitive.use.includes("datetime"),
   );
@@ -644,15 +643,11 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
         representations: [{
           id: "report",
           views: { report: { primary: { capability: "primitive:markdown", bindings: { value: { from: "report.markdown" } }, region: "report" } } },
-          presentation: { slots: ["report"], root: "report" },
+          presentation: { slots: ["report"], root: "report", allowedCapabilities: ["primitive:markdown"] },
         }],
         fallback: "report",
       }],
       runtime: {
-        expression: "jsonata",
-        namespaces: ["report"],
-        actions: [],
-        capabilities: { "primitive:markdown": { propsSchema: { type: "object", additionalProperties: true } } },
         externals: { projectionViews: { primitive: { from: "primitive", use: ["markdown"] } } },
         state: {
           report: {
@@ -776,21 +771,18 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
               { id: "interpretation", region: "report-root" },
             ],
             root: "report-root",
+            allowedCapabilities: [
+              "primitive:container",
+              "primitive:chart",
+              "fluent:text",
+              "fluent:list",
+              "fluent:table",
+            ],
           },
         }],
         fallback: "rich-report",
       }],
       runtime: {
-        expression: "jsonata",
-        namespaces: ["report"],
-        actions: [],
-        capabilities: {
-          "primitive:container": { propsSchema: { type: "object", additionalProperties: true }, slots: ["children"] },
-          "primitive:chart": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "points" },
-          "fluent:text": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "value" },
-          "fluent:list": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "items" },
-          "fluent:table": { propsSchema: { type: "object", additionalProperties: true }, dataProp: "rows" },
-        },
         externals: {
           projectionViews: {
             primitive: { from: "primitive", use: ["container", "chart"] },
@@ -873,10 +865,7 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
       region: "performance",
     },
   };
-  semanticComposition.payload.runtime.capabilities["semantic:narrative"] = {
-    propsSchema: { type: "object", additionalProperties: true },
-    dataProp: "sections",
-  };
+  semanticComposition.payload.recipes[0].representations[0].presentation.allowedCapabilities.push("semantic:narrative");
   semanticComposition.payload.runtime.externals.projectionViews.semantic = {
     from: "semantic",
     use: ["narrative"],
@@ -894,21 +883,17 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   );
 
   const forbidden = structuredClone(richBlueprint);
-  forbidden.payload.runtime.capabilities["primitive:alert"] = {
-    propsSchema: { type: "object", additionalProperties: true },
-  };
+  forbidden.payload.recipes[0].representations[0].presentation.allowedCapabilities.push("primitive:alert");
   forbidden.payload.recipes[0].representations[0].views.headline.primary.capability = "primitive:alert";
   const report = runDeclarativeValidators(validators, forbidden, validatorOptions);
   assert.equal(report.ok, false);
   assert.equal(
-    report.errors.some((error) => error.code === "semantic-report-capability-catalog"),
+    report.errors.some((error) => error.code === "semantic-report-admission"),
     true,
   );
 
   const unauthorizedButKnown = structuredClone(richBlueprint);
-  unauthorizedButKnown.payload.runtime.capabilities["primitive:markdown"] = {
-    propsSchema: { type: "object", additionalProperties: true },
-  };
+  unauthorizedButKnown.payload.recipes[0].representations[0].presentation.allowedCapabilities.push("primitive:markdown");
   unauthorizedButKnown.payload.recipes[0].representations[0].views.headline.primary.capability = "primitive:markdown";
   const authorizationReport = runDeclarativeValidators(validators, unauthorizedButKnown, validatorOptions);
   assert.equal(authorizationReport.ok, false);

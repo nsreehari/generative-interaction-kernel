@@ -4,6 +4,7 @@ import {
   Kernel,
   unwrap,
   validateJsonValue,
+  type CapabilityDescriptor,
   type Enveloped,
   type ExecutableProgramDefinition,
   type GIKEvent,
@@ -327,6 +328,42 @@ function initialSeed(context?: Record<string, Json>): Record<string, Json> {
     : {};
 }
 
+/** The closed set of top-level state namespaces this Blueprint actually has -- always exactly the
+ * seeded `runtime.state` keys, never separately authored. */
+function deriveNamespaces(state: Record<string, Json> | undefined): string[] {
+  return Object.keys(state ?? {});
+}
+
+/** The distinct `do` verbs this Blueprint's `behavior.on` handlers actually use, scanned rather than
+ * hand-maintained -- nothing ever enforced a separately authored list against this anyway. */
+function deriveActions(cells: Record<string, CellDefinition>): string[] {
+  const actions = new Set<string>();
+  for (const cell of Object.values(cells)) {
+    for (const handlers of Object.values(cell.behavior?.on ?? {})) {
+      for (const action of handlers) actions.add(action.do);
+    }
+  }
+  return [...actions].sort();
+}
+
+/** Every capability name actually referenced by a materialized view or its decorations. The
+ * manifest's `capabilities` map is required scaffolding for the wire format, not a source of
+ * per-capability shape truth (nothing downstream reads its content); the closed-world contract, if
+ * a Blueprint wants one, is `presentation.allowedCapabilities`. */
+function deriveCapabilities(cells: Record<string, CellDefinition>): Record<string, CapabilityDescriptor> {
+  const capabilities: Record<string, CapabilityDescriptor> = {};
+  const record = (capability: string | undefined) => {
+    if (capability) capabilities[capability] ??= {};
+  };
+  for (const cell of Object.values(cells)) {
+    for (const view of Object.values(cell.potentialViews ?? {})) {
+      record(view.capability);
+      for (const decoration of [...(view.before ?? []), ...(view.after ?? [])]) record(decoration.capability);
+    }
+  }
+  return capabilities;
+}
+
 export function prepareBlueprintProgram(
   source: BlueprintArtifact,
   options: PrepareBlueprintProgramOptions = {},
@@ -347,11 +384,9 @@ export function prepareBlueprintProgram(
   };
   const vocabulary: ProjectedVocabularyManifest = {
     version: `${blueprint.payload.id}/${blueprint.payload.version}`,
-    expression: runtime.expression,
-    namespaces: [...new Set([...(runtime.namespaces ?? []), "blueprintRunState"])],
-    contexts: runtime.contexts,
-    actions: runtime.actions,
-    capabilities: structuredClone(runtime.capabilities ?? {}),
+    namespaces: [...new Set([...deriveNamespaces(runtime.state), "blueprintRunState"])],
+    actions: deriveActions(blueprint.payload.cells),
+    capabilities: deriveCapabilities(blueprint.payload.cells),
     externals: {
       ...structuredClone(runtime.externals ?? {}),
       ...(Object.keys(resolved.services).length > 0

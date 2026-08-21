@@ -232,7 +232,7 @@ test("useBlueprint derives authored description and delegates live lifecycle ope
       tiers: [{ id: "runtime", kind: "runtime-document" }],
       cells: { improve: { id: "improve", kind: "command" } },
       services: { refinement: {} },
-      runtime: { actions: ["invoke"], capabilities: { "fluent:button": {} }, namespaces: ["incident1a"] },
+      runtime: {},
     },
   };
   const schemas = {

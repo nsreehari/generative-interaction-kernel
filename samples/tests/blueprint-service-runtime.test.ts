@@ -27,9 +27,6 @@ const backend = {
     tiers: [{ id: "runtime-document", kind: "runtime-document" }],
     recipes: [],
     runtime: {
-      expression: "jsonata",
-      namespaces: ["backend"],
-      actions: ["invoke"],
       state: { backend: { result: null } },
     },
     cells: {

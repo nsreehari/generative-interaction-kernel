@@ -31,17 +31,6 @@
     ],
     "recipes": [],
     "runtime": {
-      "expression": "jsonata",
-      "namespaces": [
-        "incidentAssets"
-      ],
-      "actions": [
-        "assign",
-        "emit",
-        "invoke",
-        "route",
-        "request"
-      ],
       "state": {
         "incidentAssets": {
           "result": null,

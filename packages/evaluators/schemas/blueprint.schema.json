@@ -86,7 +86,13 @@
               "minItems": 1,
               "items": { "$ref": "#/definitions/presentationSlot" }
             },
-            "root": { "type": "string", "minLength": 1 }
+            "root": { "type": "string", "minLength": 1 },
+            "allowedCapabilities": {
+              "description": "A closed vocabulary of capability names any view/decoration in this Blueprint may use. Absent means open; present makes it an enforced closed set.",
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            }
           }
         },
         "contextFormSpec": {
@@ -100,12 +106,6 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "version": { "type": "string", "minLength": 1 },
-            "expression": { "type": "string" },
-            "namespaces": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
-            "contexts": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
-            "actions": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
-            "capabilities": { "type": "object" },
             "externals": { "type": "object" },
             "state": { "type": "object" }
           }

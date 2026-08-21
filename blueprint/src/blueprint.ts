@@ -139,6 +139,19 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
       }
     }
   }
+  const allowedCapabilities = blueprint.presentation?.allowedCapabilities;
+  if (allowedCapabilities) {
+    const allowed = new Set(allowedCapabilities);
+    for (const [cellId, cell] of Object.entries(cells)) {
+      for (const [viewName, view] of Object.entries(cell.potentialViews ?? {})) {
+        for (const capability of [view.capability, ...(view.before ?? []).map((d) => d.capability), ...(view.after ?? []).map((d) => d.capability)]) {
+          if (capability !== undefined && !allowed.has(capability)) {
+            throw new BlueprintValidationError(`Blueprint Cell '${cellId}' view '${viewName}' uses capability '${capability}' not in presentation.allowedCapabilities`);
+          }
+        }
+      }
+    }
+  }
 
   const tierIds = new Set<string>();
   for (const tier of blueprint.tiers) {

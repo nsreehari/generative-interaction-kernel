@@ -20,7 +20,7 @@ test("app host runs a JSON-portable materialized Blueprint through stateless dur
     version: "1",
     tiers: [{ id: "runtime", kind: "runtime-program" }],
     recipes: [],
-    runtime: { namespaces: ["counter"], capabilities: {}, state: { counter: { value: 1 } } },
+    runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
         id: "root",

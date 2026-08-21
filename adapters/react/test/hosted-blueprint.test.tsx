@@ -20,7 +20,7 @@ const child = createBlueprint({
   version: "1.0.0",
   tiers: [{ id: "runtime", kind: "runtime-program" }],
   recipes: [],
-  runtime: { version: "test/1", capabilities: {} },
+  runtime: {},
 });
 
 const context = {

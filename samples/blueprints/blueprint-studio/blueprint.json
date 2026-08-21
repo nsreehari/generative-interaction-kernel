@@ -68,7 +68,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[{'id':'runtime-document','kind':'runtime-document'}],'recipes':[],'runtime':{'expression':'jsonata','namespaces':[],'actions':[],'state':{}},'cells':{}}}})"
+                "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[{'id':'runtime-document','kind':'runtime-document'}],'recipes':[],'runtime':{'state':{}},'cells':{}}}})"
               }
             },
             "settlement": {
@@ -163,103 +163,6 @@
       }
     },
     "runtime": {
-      "expression": "jsonata",
-      "namespaces": [
-        "studio"
-      ],
-      "actions": [
-        "assign",
-        "invoke"
-      ],
-      "capabilities": {
-        "gik:blueprint": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "primitive:container": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "slots": [
-            "children"
-          ]
-        },
-        "primitive:form": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "primitive:markdown": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "primitive:pane-with-trigger": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "slots": [
-            "children"
-          ],
-          "emits": [
-            "openChange"
-          ]
-        },
-        "fluent:list": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "select"
-          ]
-        },
-        "fluent:button": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "press"
-          ]
-        },
-        "fluent:spinner": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "fluent:switch": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "toggle"
-          ]
-        },
-        "fluent:tab-bar": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "emits": [
-            "select"
-          ]
-        },
-        "fluent:text": {
-          "propsSchema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
       "externals": {
         "projectionViews": {
           "fluent": {
