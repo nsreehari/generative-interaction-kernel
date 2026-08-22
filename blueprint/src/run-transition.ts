@@ -29,7 +29,7 @@ import {
 } from "@gik/evaluators";
 import { assembleBlueprint } from "./blueprint";
 import { compileCellTopology } from "./cells";
-import { composeCellProgram } from "./cell-projection";
+import { composeCellProgram, deriveCellEventOwners } from "./cell-projection";
 import { lowerWithFixedMetaGraph } from "./fixed-lowering-meta-graph";
 import { loadBlueprint } from "./resolution";
 import { admitBlueprintPatch, applyBlueprintPatch } from "./structure-patch";
@@ -101,6 +101,11 @@ export interface MaterializedBlueprint {
     readonly vocabulary: Enveloped<ProjectedVocabularyManifest>;
     readonly program: Enveloped<ExecutableProgramDefinition>;
     readonly initialState: Record<string, Json>;
+    /** Every dispatchable event `node` id (a background Cell's own id, or a presented Cell's
+     * generated per-view instance id) mapped to its owning Cell id -- see `deriveCellEventOwners`.
+     * Lets event-contract validation resolve the real Cell regardless of whether the dispatched
+     * node is a presented instance rather than the Cell's own id. */
+    readonly eventNodeOwners: Readonly<Record<string, string>>;
   };
 }
 
@@ -215,12 +220,20 @@ export interface MaterializeBlueprintInput {
   blueprint: BlueprintArtifact;
   externalContext?: ExternalContext;
   resolveBlueprint?: BlueprintReferenceResolver;
+  /** Real capability descriptors (propsSchema/dataProp/emits/slots) keyed by capability name, from
+   * whatever component registry the host actually renders against. Blueprint itself declares no
+   * component catalog and stays decoupled from any concrete registry package -- this is how a host
+   * that has one (e.g. @gik/components' generated registry) restores real per-node prop/event
+   * validation. Unsupplied names fall back to a fully permissive descriptor, matching the same
+   * fallback Kernel's own generateVocabulary() uses for a document's unknown capabilities. */
+  capabilityCatalog?: Record<string, CapabilityDescriptor>;
 }
 
 export interface PrepareBlueprintProgramOptions {
   context?: Record<string, Json>;
   externalContext?: ExternalContext;
   resolveBlueprint?: BlueprintReferenceResolver;
+  capabilityCatalog?: Record<string, CapabilityDescriptor>;
 }
 
 export interface PreparedBlueprintProgram {
@@ -229,6 +242,7 @@ export interface PreparedBlueprintProgram {
   vocabulary: Enveloped<ProjectedVocabularyManifest>;
   program: Enveloped<ExecutableProgramDefinition>;
   initialState: Record<string, Json>;
+  eventNodeOwners: Record<string, string>;
 }
 
 export class BlueprintExternalContextValidationError extends Error {
@@ -328,10 +342,13 @@ function initialSeed(context?: Record<string, Json>): Record<string, Json> {
     : {};
 }
 
-/** The closed set of top-level state namespaces this Blueprint actually has -- always exactly the
- * seeded `runtime.state` keys, never separately authored. */
-function deriveNamespaces(state: Record<string, Json> | undefined): string[] {
-  return Object.keys(state ?? {});
+/** The closed set of top-level state namespaces this Blueprint actually has -- the seeded
+ * `runtime.state` keys, plus any namespace the admitted initial-seed context introduces. Both are
+ * real, admitted sources of initial state (see `initialState`'s own merge below); deriving from only
+ * one of the two would make the vocabulary's declared namespace list disagree with what the Blueprint
+ * actually starts running with. */
+function deriveNamespaces(state: Record<string, Json> | undefined, seed: Record<string, Json>): string[] {
+  return [...new Set([...Object.keys(state ?? {}), ...Object.keys(seed)])];
 }
 
 /** The distinct `do` verbs this Blueprint's `behavior.on` handlers actually use, scanned rather than
@@ -346,14 +363,23 @@ function deriveActions(cells: Record<string, CellDefinition>): string[] {
   return [...actions].sort();
 }
 
-/** Every capability name actually referenced by a materialized view or its decorations. The
- * manifest's `capabilities` map is required scaffolding for the wire format, not a source of
- * per-capability shape truth (nothing downstream reads its content); the closed-world contract, if
- * a Blueprint wants one, is `presentation.allowedCapabilities`. */
-function deriveCapabilities(cells: Record<string, CellDefinition>): Record<string, CapabilityDescriptor> {
+/** A fully permissive descriptor for a capability the caller's catalog doesn't describe -- mirrors
+ * Kernel's own `generateVocabulary`'s `PERMISSIVE` fallback, so an undescribed capability still
+ * validates and renders rather than silently defeating prop/event checks with an empty `{}`. */
+const PERMISSIVE_CAPABILITY_DESCRIPTOR: CapabilityDescriptor = { propsSchema: { type: "object", additionalProperties: true } };
+
+/** Every capability name actually referenced by a materialized view or its decorations, paired with
+ * its real descriptor from the caller-supplied catalog when available. Blueprint itself declares no
+ * component catalog (a host's real registry -- e.g. @gik/components' generated one -- is the source
+ * of truth for propsSchema/dataProp/emits/slots); the closed-world *name* contract, if a Blueprint
+ * wants one, is `presentation.allowedCapabilities`. */
+function deriveCapabilities(
+  cells: Record<string, CellDefinition>,
+  catalog: Record<string, CapabilityDescriptor> | undefined,
+): Record<string, CapabilityDescriptor> {
   const capabilities: Record<string, CapabilityDescriptor> = {};
   const record = (capability: string | undefined) => {
-    if (capability) capabilities[capability] ??= {};
+    if (capability) capabilities[capability] ??= catalog?.[capability] ?? PERMISSIVE_CAPABILITY_DESCRIPTOR;
   };
   for (const cell of Object.values(cells)) {
     for (const view of Object.values(cell.potentialViews ?? {})) {
@@ -382,11 +408,12 @@ export function prepareBlueprintProgram(
     cells: blueprint.payload.cells,
     ...(blueprint.payload.presentation ? { presentation: blueprint.payload.presentation } : {}),
   };
+  const seed = initialSeed(options.context);
   const vocabulary: ProjectedVocabularyManifest = {
     version: `${blueprint.payload.id}/${blueprint.payload.version}`,
-    namespaces: [...new Set([...deriveNamespaces(runtime.state), "blueprintRunState"])],
+    namespaces: [...new Set([...deriveNamespaces(runtime.state, seed), "blueprintRunState"])],
     actions: deriveActions(blueprint.payload.cells),
-    capabilities: deriveCapabilities(blueprint.payload.cells),
+    capabilities: deriveCapabilities(blueprint.payload.cells, options.capabilityCatalog),
     externals: {
       ...structuredClone(runtime.externals ?? {}),
       ...(Object.keys(resolved.services).length > 0
@@ -403,8 +430,9 @@ export function prepareBlueprintProgram(
     externalContext,
     vocabulary: { gik: "0.1", type: "vocabulary", payload: vocabulary },
     program: { gik: "0.1", type: "program", payload: program },
+    eventNodeOwners: deriveCellEventOwners(definition),
     initialState: mergeJsonRecords(
-      mergeJsonRecords(structuredClone(runtime.state ?? {}), initialSeed(options.context)),
+      mergeJsonRecords(structuredClone(runtime.state ?? {}), seed),
       {
         blueprintRunState: {
           cells: Object.fromEntries(Object.entries(blueprint.payload.cells).map(([cellId, cell]) => [cellId, {
@@ -421,6 +449,7 @@ export function materializeBlueprint({
   blueprint,
   externalContext = {},
   resolveBlueprint,
+  capabilityCatalog,
 }: MaterializeBlueprintInput): MaterializedBlueprint {
   if (Object.prototype.hasOwnProperty.call(blueprint.payload.runtime.state ?? {}, "externalContext")) {
     throw new Error(`Blueprint '${blueprint.payload.id}' reserves state namespace 'externalContext' for immutable external context`);
@@ -430,7 +459,7 @@ export function materializeBlueprint({
       throw new Error(`Blueprint '${blueprint.payload.id}' reserves state namespace '${namespace}' for Cell execution state`);
     }
   }
-  const prepared = prepareBlueprintProgram(blueprint, { externalContext, resolveBlueprint });
+  const prepared = prepareBlueprintProgram(blueprint, { externalContext, resolveBlueprint, capabilityCatalog });
   return {
     gik: "0.1",
     type: "materialized-blueprint",
@@ -440,6 +469,7 @@ export function materializeBlueprint({
       vocabulary: structuredClone(prepared.vocabulary),
       program: structuredClone(prepared.program),
       initialState: structuredClone(prepared.initialState),
+      eventNodeOwners: structuredClone(prepared.eventNodeOwners),
     },
   };
 }
@@ -505,6 +535,7 @@ export function createCellGraphNodeExecutor(state: StateModel): GraphNodeExecuto
           sourceInputs,
           ...(source.input ? { sourceInputTransform: source.input } : {}),
           ...(source.output ? { sourceOutputTransform: source.output } : {}),
+          ...(source.acceptanceCriteria ? { sourceAcceptanceCriteria: source.acceptanceCriteria } : {}),
         },
         data: {},
       })),
@@ -585,16 +616,17 @@ export async function runMaterializedTransition({
     completedWithinRun.push(...(patch.completedWithinRun ?? []));
   }
   for (const event of transitionEvents) {
-    const cell = materializedBlueprint.payload.terminalBlueprint.payload.cells?.[event.node];
+    const ownerId = materializedBlueprint.payload.eventNodeOwners?.[event.node] ?? event.node;
+    const cell = materializedBlueprint.payload.terminalBlueprint.payload.cells?.[ownerId];
     const contract = cell?.events?.[event.name];
     if (cell && !contract) {
-      throw new Error(`Cell '${event.node}' received undeclared event '${event.name}'`);
+      throw new Error(`Cell '${ownerId}' received undeclared event '${event.name}'`);
     }
     if (contract) {
       validateJsonValue(
         contract.payloadSchema,
         event.payload ?? {},
-        `Invalid payload for Cell event '${event.node}.${event.name}'`,
+        `Invalid payload for Cell event '${ownerId}.${event.name}'`,
       );
     }
     const patch = await kernel.dispatch(structuredClone(event));

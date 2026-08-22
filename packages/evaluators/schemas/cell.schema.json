@@ -39,7 +39,7 @@
           "id": { "type": "string", "minLength": 1 },
           "service": { "type": "string", "minLength": 1 },
           "operation": { "type": "string", "minLength": 1 },
-          "policyOverride": { "type": "object" },
+          "acceptanceCriteria": { "type": "array" },
           "when": { "type": "string", "minLength": 1 },
           "input": { "$ref": "#/definitions/transform" },
           "output": { "$ref": "#/definitions/transform" }

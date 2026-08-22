@@ -497,18 +497,6 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         );
         if (semantic === "rich-components") {
           assert.equal(
-            semanticOperation?.response?.validators?.some(
-             (validator) => validator.code === "provider-structured-output",
-            ),
-            false,
-          );
-          assert.equal(
-            semanticOperation?.response?.validators?.some(
-             (validator) => validator.code === "semantic-report-admission",
-            ),
-            true,
-          );
-          assert.equal(
             (activeService?.config as Record<string, unknown>)?.responseMode,
             "json",
           );
@@ -818,6 +806,15 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   const portfolio = resolveSampleBlueprintSource("portfolio-tracker-new");
   const validators = portfolio.payload.services?.["portfolio-semantic-intelligence"]
     ?.operations.generateReport.response?.validators ?? [];
+  // The capability-acceptance and section-slot checks live on the calling Cell source's own
+  // acceptanceCriteria (per-usage-site data), not the shared operation's response.validators --
+  // DefaultServiceHost merges both before gating a response, so tests do the same.
+  const richProgram = (portfolio.payload.recipes[1].implementationPrograms ?? [])
+    .find(({ id }) => id === "semantic-rich-components-foundry");
+  const acceptanceCriteria = richProgram?.cells?.["portfolio-intelligence"]?.sources
+    ?.find((source) => source.id === "portfolio-semantic-intelligence.source")
+    ?.acceptanceCriteria ?? [];
+  const allValidators = [...validators, ...acceptanceCriteria];
 
   const validatorOptions = {
     bindings: {
@@ -846,7 +843,7 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
       },
     },
   };
-  assert.equal(runDeclarativeValidators(validators, richBlueprint, validatorOptions).ok, true);
+  assert.equal(runDeclarativeValidators(allValidators, richBlueprint, validatorOptions).ok, true);
   assert.equal(
     materializeBlueprint({ blueprint: richBlueprint }).payload.terminalBlueprint
       .payload.cells?.["report-root"].potentialViews?.primary.capability,
@@ -878,27 +875,27 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   const semanticOptions = structuredClone(validatorOptions);
   semanticOptions.bindings.request.acceptedCapabilities.push("semantic:narrative");
   assert.equal(
-    runDeclarativeValidators(validators, semanticComposition, semanticOptions).ok,
+    runDeclarativeValidators(allValidators, semanticComposition, semanticOptions).ok,
     true,
   );
 
   const forbidden = structuredClone(richBlueprint);
   forbidden.payload.recipes[0].representations[0].presentation.allowedCapabilities.push("primitive:alert");
   forbidden.payload.recipes[0].representations[0].views.headline.primary.capability = "primitive:alert";
-  const report = runDeclarativeValidators(validators, forbidden, validatorOptions);
+  const report = runDeclarativeValidators(allValidators, forbidden, validatorOptions);
   assert.equal(report.ok, false);
   assert.equal(
-    report.errors.some((error) => error.code === "semantic-report-admission"),
+    report.errors.some((error) => error.code === "semantic-report-capability-acceptance"),
     true,
   );
 
   const unauthorizedButKnown = structuredClone(richBlueprint);
   unauthorizedButKnown.payload.recipes[0].representations[0].presentation.allowedCapabilities.push("primitive:markdown");
   unauthorizedButKnown.payload.recipes[0].representations[0].views.headline.primary.capability = "primitive:markdown";
-  const authorizationReport = runDeclarativeValidators(validators, unauthorizedButKnown, validatorOptions);
+  const authorizationReport = runDeclarativeValidators(allValidators, unauthorizedButKnown, validatorOptions);
   assert.equal(authorizationReport.ok, false);
   assert.equal(
-    authorizationReport.errors.some((error) => error.code === "semantic-report-admission"),
+    authorizationReport.errors.some((error) => error.code === "semantic-report-capability-acceptance"),
     true,
   );
 
@@ -907,10 +904,10 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
     missingSection.payload.recipes[0].representations[0].presentation.slots.filter(
       (slot) => (typeof slot === "string" ? slot : slot.id) !== "interpretation",
     );
-  const sectionReport = runDeclarativeValidators(validators, missingSection, validatorOptions);
+  const sectionReport = runDeclarativeValidators(allValidators, missingSection, validatorOptions);
   assert.equal(sectionReport.ok, false);
   assert.equal(
-    sectionReport.errors.some((error) => error.code === "semantic-report-admission"),
+    sectionReport.errors.some((error) => error.code === "semantic-report-section-slots"),
     true,
   );
 });

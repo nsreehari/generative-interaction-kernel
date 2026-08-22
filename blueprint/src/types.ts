@@ -2,6 +2,7 @@ import type {
   Action,
   ExecutableProgramDefinition,
   ExternalsSpec,
+  GuardrailRule,
   Json,
   ProgramPatch,
   ProgramPatchOperation,
@@ -97,6 +98,11 @@ export type CellSource = ServiceUse & {
   when?: string;
   input?: ServiceTransform;
   output?: ServiceTransform;
+  /** Extra guardrails checked against this response, at this usage site, on top of the operation's
+   * own `response.validators` -- gated by the same operation `onViolation` policy (no separate
+   * authority). Runs at host level, right after the operation's own `response.transform`, before
+   * its settlement transform. */
+  acceptanceCriteria?: readonly GuardrailRule[];
 };
 
 export interface CellComputation {

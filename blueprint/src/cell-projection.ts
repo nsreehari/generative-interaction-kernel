@@ -149,6 +149,38 @@ export function composeCellProgram(
   };
 }
 
+/** Maps every id a dispatched event's `node` can carry (a background Cell's own id, or a presented
+ * Cell's generated `<cellId>--<viewName>--in-<slotId>` instance id — the exact ids `composeCellProgram`
+ * attaches `edges.on`/`RuntimeHandler`s to) back to the owning Cell id. Event-contract validation
+ * (undeclared-event rejection, payload schema) must resolve through this map rather than looking a
+ * dispatched `event.node` up directly against `cells`, since a presented Cell's dispatched node id is
+ * never its own Cell id. Mirrors `composeCellProgram`'s own attachment rule so the two can never drift:
+ * a Cell with no presentation, or with no `potentialViews` region reachable from it, owns its own
+ * (background-handler) id; every other reachable `(viewName, slot)` attachment owns its generated id. */
+export function deriveCellEventOwners(definition: CellProjectionDefinition): Record<string, string> {
+  const owners: Record<string, string> = {};
+  const cells = Object.values(definition.cells);
+  if (!definition.presentation) {
+    for (const cell of cells) owners[cell.id] = cell.id;
+    return owners;
+  }
+  const presentedCellIds = new Set<string>();
+  for (const cell of cells) {
+    for (const [viewName, view] of Object.entries(cell.potentialViews ?? {})) {
+      const region = view.region;
+      if (region === undefined) continue;
+      for (const targetSlot of Array.isArray(region) ? region : [region]) {
+        owners[`${cell.id}--${viewName}--in-${targetSlot}`] = cell.id;
+        presentedCellIds.add(cell.id);
+      }
+    }
+  }
+  for (const cell of cells) {
+    if (!presentedCellIds.has(cell.id)) owners[cell.id] = cell.id;
+  }
+  return owners;
+}
+
   function composeCellGraph(topology: ExecutableCellTopology): ProgramGraph | undefined {
   const nodes: ProgramNode[] = topology.cells.flatMap((cell) => {
     const isStateBackedOutputCell = !cell.inputs?.length && !cell.compute?.length && !cell.sources?.length && !cell.blueprint;

@@ -273,6 +273,49 @@ test("runDeclarativeValidators validates every Cell in a Blueprint", () => {
   assert.ok(report.errors.some(({ detail }) => detail.includes("references a value not produced by compute")));
 });
 
+test("blueprint-capability-acceptance rejects capabilities outside the accepted set, across recipe and materialized Cell shapes", () => {
+  const generatedRecipeShapedBlueprint = {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "generated-semantic-report",
+      recipes: [{
+        id: "semantic-report-to-runtime",
+        representations: [{
+          id: "report",
+          views: { report: { main: { capability: "chart:pie", bindings: { value: { from: "report.data" } } } } },
+          presentation: { slots: ["report"], root: "report", allowedCapabilities: ["primitive:markdown"] },
+        }],
+      }],
+    },
+  };
+  const report = runDeclarativeValidators(
+    [{ kind: "blueprint-capability-acceptance", message: "capability not accepted" }],
+    generatedRecipeShapedBlueprint,
+    { bindings: { request: { acceptedCapabilities: ["primitive:markdown"] } } },
+  );
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some(({ detail }) => detail.includes("chart:pie")));
+});
+
+test("blueprint-capability-acceptance accepts a Blueprint whose declared and used capabilities are all accepted", () => {
+  const materializedCellShapedBlueprint = {
+    payload: {
+      cells: {
+        report: { id: "report", potentialViews: { main: { capability: "primitive:markdown" } } },
+      },
+    },
+  };
+  const report = runDeclarativeValidators(
+    [{ kind: "blueprint-capability-acceptance" }],
+    materializedCellShapedBlueprint,
+    { bindings: { request: { acceptedCapabilities: ["primitive:markdown"] } } },
+  );
+
+  assert.equal(report.ok, true);
+});
+
 test("validateTier validates a standalone strict tier definition", () => {
   assert.equal(validateTier({ id: "semantic", kind: "incident-semantic-model" }).ok, true);
 

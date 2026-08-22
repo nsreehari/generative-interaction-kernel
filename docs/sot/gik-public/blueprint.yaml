@@ -209,17 +209,18 @@ artifact_contracts:
       - A source's contract is never authored -- it is always resolved from the service operation it names, so source ids and their resolved contracts remain identical to the authored Cell.
       - Every source's service and operation must resolve to a declared entry in services; unresolvable references are rejected at validation time.
       - Replacement service declarations preserve the authored logical operation names and contracts.
+      - A source's optional acceptanceCriteria (the same GuardrailRule[] vocabulary as an operation's response.validators, plus blueprint-capability-acceptance) is additive to that operation's response.validators and gated by its one onViolation -- never a second policy authority. Enforcement is host-level, right after response.transform and before settlement.transform; materialization and runTransition never read or evaluate it.
   - name: CellDefinition
     purpose: Describe one cohesive participant without making it intrinsically a graph node, workflow step, or visual component.
     facets:
-      - state
       - inputs
       - systemInputs
       - sources
       - compute
       - outputs
+      - events
       - behavior
-      - view
+      - potentialViews
       - child Blueprint
     guarantees:
       - A Cell may be viewless, state-free, service-only, computational, or recursively composed.

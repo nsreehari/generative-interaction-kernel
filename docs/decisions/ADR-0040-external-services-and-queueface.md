@@ -206,3 +206,52 @@ Removed rather than kept-but-undocumented: an AJV-schema-legal option is discove
 schema directly regardless of what prose does or doesn't mention, so "keep it working but don't advertise it"
 was not achievable without either breaking real validation or silently diverging the TypeScript types from what
 the schema actually accepts. Every `CellSource` must now reference a named `services[...]` entry.
+
+## Amendment (2026-08-22): `CellSource.acceptanceCriteria` added; dead `ServiceUse.policyOverride`/`ServiceOutputPolicy` removed
+
+**`CellSource` gains an optional `acceptanceCriteria?: readonly GuardrailRule[]`** -- the same declarative
+guardrail vocabulary an operation's own `response.validators` already uses, additive to it rather than a
+second policy authority. The two are merged and gated by the operation's single `onViolation`; there is no
+separate `onViolation` to author on a source. This exists for exactly one kind of check: one whose condition
+depends on what *this* particular Cell told the provider on this call (e.g. which capabilities it declared
+acceptable), which is call-site data an operation-level validator has no way to see. A check that holds
+regardless of caller (response must be a valid Blueprint, must be inert, must have an exact tier shape)
+still belongs on `response.validators`, authored once and shared by every caller -- `acceptanceCriteria`
+does not duplicate that.
+
+**Enforcement lives in `DefaultServiceHost` (`face/src/services/service-host.ts`), not in `runTransition` or
+the durable queue processor.** A new `responseValidatorsFor(resolved, effect)` merges
+`resolved.operation.response?.validators` with `effect.control.sourceAcceptanceCriteria` and both call sites
+(the initial `adapter.execute` and the guardrail retry loop in `validateResponse`) use the merged set. This
+runs at exactly the same point `response.validators` already ran: after the operation's own
+`response.transform`, before its `settlement.transform`. `blueprint/src/run-transition.ts` only lowers
+`source.acceptanceCriteria` into `effect.control.sourceAcceptanceCriteria` -- it never reads or evaluates it;
+materialization and the Blueprint queue processor (`blueprint/src/worker.ts`) are unaffected.
+
+**A new evaluator-owned `GuardrailRule` kind, `blueprint-capability-acceptance`,** was added to
+`packages/evaluators/src/validators.ts` for the recurring "does this generated Blueprint only use
+capabilities it was told it could use" check. It reads an accepted-capabilities array from the validated
+request (`acceptedField`, default `"acceptedCapabilities"`) and compares it against every capability the
+value declares or uses (`presentation.allowedCapabilities` plus every view/decorator `capability`, walking
+both a materialized `cells[*].potentialViews` shape and an un-lowered `recipes[*].representations[*]` shape).
+This replaces ~750 characters of hand-rolled JSONata duplicated three times in `portfolio-tracker-new` with a
+single reusable kind, authored per source as a short reference (`{"kind": "blueprint-capability-acceptance"}`)
+rather than restated logic.
+
+**Dead `ServiceUse.policyOverride`/`ServiceOutputPolicy` are removed** from `kernel/src/types.ts`. Both had
+zero consumers anywhere in the repo, and `ServiceOutputPolicy`'s own doc comment described exactly the
+"call-site override" precedence layer this ADR's Alternatives section already rejected ("Guardrail policy
+split across kind defaults, declaration policy, and call-site overrides... The Blueprint operation owns one
+explicit policy"). `acceptanceCriteria` does not reopen that rejection: it adds checks, it does not add a
+second authority over the violation *action*, which remains solely the operation's `onViolation`.
+
+**`portfolio-tracker-new`'s three duplicated capability/section-slot checks were moved off `response.validators`
+onto the four active Cell sources that actually call `portfolio-semantic-intelligence.generateReport`,** each
+now declaring `acceptanceCriteria: [{kind: "blueprint-capability-acceptance"}, {kind: "jsonata", ...section
+slots...}]`; each operation's `response.validators` keeps only the caller-invariant tier/inertness/no-services
+check under its existing `semantic-report-admission` code. Fixed along the way: the sample's embedded
+artifactScaffold prompt template authored `views` as `Record<cellId, CellPotentialView>` (one level) instead
+of the real `Record<cellId, Record<viewName, CellPotentialView>>` (two levels) -- confirmed schema-invalid via
+a live `materializeBlueprint` call (`views/report/capability must be object`), so the very shape the prompt
+taught an agent to produce would have failed the sample's own Blueprint-shape validator.
+

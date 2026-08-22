@@ -102,6 +102,23 @@ interface BlueprintDeclarativeValidator {
   node?: string;
 }
 
+/** Checks that every capability a generated child Blueprint declares/uses (its own
+ * `presentation.allowedCapabilities`, plus every view/decorator `capability` it references, across
+ * both authored `cells[*].potentialViews` and un-lowered `recipes[*].representations[*].views`) is
+ * a subset of an accepted-capabilities list read from the validated request's own input -- the
+ * declarative form of the "generated Blueprint may only use capabilities it was told it could use"
+ * check, reusable across any source that authors such a request field. */
+interface BlueprintCapabilityAcceptanceDeclarativeValidator {
+  kind: "blueprint-capability-acceptance";
+  /** Key read from the `request` binding holding the accepted capability list. Defaults to
+   * `"acceptedCapabilities"`. */
+  acceptedField?: string;
+  message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
+}
+
 type DeclarativeValidator =
   | JsonataDeclarativeValidator
   | AjvSchemaDeclarativeValidator
@@ -110,7 +127,8 @@ type DeclarativeValidator =
   | BlueprintCellDeclarativeValidator
   | BlueprintTierDeclarativeValidator
   | BlueprintLoweringRecipeDeclarativeValidator
-  | BlueprintDeclarativeValidator;
+  | BlueprintDeclarativeValidator
+  | BlueprintCapabilityAcceptanceDeclarativeValidator;
 
 export type DeclarativeValidatorInput =
   | [string, string?]
@@ -121,7 +139,9 @@ export type DeclarativeValidatorInput =
   | { kind: "blueprint-cell"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "blueprint-tier"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "blueprint-lowering-recipe"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
-  | { kind: "blueprint"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string };
+  | { kind: "blueprint"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "blueprint-capability-acceptance"; acceptedField?: string; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string };
+
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
@@ -255,6 +275,16 @@ function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
         });
         continue;
       }
+      if (candidate.kind === "blueprint-capability-acceptance") {
+        out.push({
+          kind: "blueprint-capability-acceptance",
+          ...(typeof candidate.acceptedField === "string" ? { acceptedField: candidate.acceptedField } : {}),
+          message: typeof candidate.message === "string" ? candidate.message : "Blueprint uses a capability outside the accepted set",
+          level: candidate.level === "warning" ? "warning" : "error",
+          ...issueMetadata(candidate),
+        });
+        continue;
+      }
       if (
         candidate.kind === "blueprint-cell" ||
         candidate.kind === "blueprint-tier" ||
@@ -381,6 +411,21 @@ export function runDeclarativeValidators(
       continue;
     }
 
+    if (validator.kind === "blueprint-capability-acceptance") {
+      const acceptedField = validator.acceptedField ?? "acceptedCapabilities";
+      const request = options.bindings?.request;
+      const acceptedRaw = request && typeof request === "object" && !Array.isArray(request)
+        ? (request as Record<string, JsonValue>)[acceptedField]
+        : undefined;
+      const accepted = new Set(Array.isArray(acceptedRaw) ? acceptedRaw.filter((entry) => typeof entry === "string") : []);
+      const used = [...new Set(collectBlueprintCapabilities(value))];
+      const violations = used.filter((capability) => !accepted.has(capability));
+      if (violations.length > 0) {
+        pushIssue(validator, `${validator.message}: ${violations.join(", ")}`);
+      }
+      continue;
+    }
+
     if (validator.kind === "jsonata") {
       let ok = false;
       try {
@@ -430,6 +475,69 @@ export function runDeclarativeValidators(
     }
   }
   return { ok: errors.length === 0, errors, warnings };
+}
+
+/** Every `capability` a Blueprint (enveloped or bare) declares or uses, across both an already
+ * materialized shape (`payload.cells[*].potentialViews`) and an un-lowered recipe shape
+ * (`payload.recipes[*].representations[*]`), so the same check works regardless of which tier a
+ * generated Blueprint document happens to be authored at. */
+function collectBlueprintCapabilities(value: JsonValue): string[] {
+  const out: string[] = [];
+  const addDecoration = (decoration: unknown): void => {
+    if (decoration && typeof decoration === "object" && typeof (decoration as { capability?: unknown }).capability === "string") {
+      out.push((decoration as { capability: string }).capability);
+    }
+  };
+  const addView = (view: unknown): void => {
+    if (!view || typeof view !== "object") return;
+    const v = view as { capability?: unknown; before?: unknown; after?: unknown };
+    if (typeof v.capability === "string") out.push(v.capability);
+    for (const decoration of Array.isArray(v.before) ? v.before : []) addDecoration(decoration);
+    for (const decoration of Array.isArray(v.after) ? v.after : []) addDecoration(decoration);
+  };
+  const record = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, JsonValue> : {};
+  const payload = record.payload && typeof record.payload === "object" && !Array.isArray(record.payload)
+    ? record.payload as Record<string, JsonValue>
+    : record;
+
+  const cells = payload.cells && typeof payload.cells === "object" && !Array.isArray(payload.cells)
+    ? payload.cells as Record<string, JsonValue>
+    : {};
+  for (const cell of Object.values(cells)) {
+    if (!cell || typeof cell !== "object") continue;
+    const potentialViews = (cell as { potentialViews?: unknown }).potentialViews;
+    if (potentialViews && typeof potentialViews === "object") {
+      for (const view of Object.values(potentialViews as Record<string, unknown>)) addView(view);
+    }
+  }
+
+  const recipes = Array.isArray(payload.recipes) ? payload.recipes : [];
+  for (const recipe of recipes) {
+    if (!recipe || typeof recipe !== "object") continue;
+    const representations = (recipe as { representations?: unknown }).representations;
+    for (const representation of Array.isArray(representations) ? representations : []) {
+      if (!representation || typeof representation !== "object") continue;
+      const rep = representation as { views?: unknown; presentation?: unknown; decorators?: unknown };
+      const allowedCapabilities = rep.presentation && typeof rep.presentation === "object"
+        ? (rep.presentation as { allowedCapabilities?: unknown }).allowedCapabilities
+        : undefined;
+      for (const capability of Array.isArray(allowedCapabilities) ? allowedCapabilities : []) {
+        if (typeof capability === "string") out.push(capability);
+      }
+      if (rep.views && typeof rep.views === "object") {
+        for (const cellViews of Object.values(rep.views as Record<string, unknown>)) {
+          if (!cellViews || typeof cellViews !== "object") continue;
+          for (const view of Object.values(cellViews as Record<string, unknown>)) addView(view);
+        }
+      }
+      for (const decorator of Array.isArray(rep.decorators) ? rep.decorators : []) {
+        if (!decorator || typeof decorator !== "object") continue;
+        addDecoration((decorator as { before?: unknown }).before);
+        addDecoration((decorator as { after?: unknown }).after);
+      }
+    }
+  }
+  return out;
 }
 
 function validateLoweringRecipeSemantics(value: JsonValue): DeclarativeValidationResult["errors"] {

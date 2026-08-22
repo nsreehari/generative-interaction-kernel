@@ -783,12 +783,25 @@
                     "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                     "input": {
                       "kind": "jsonata",
-                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                     },
                     "output": {
                       "kind": "jsonata",
                       "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
-                    }
+                    },
+                    "acceptanceCriteria": [
+                      {
+                        "kind": "blueprint-capability-acceptance",
+                        "message": "Semantic portfolio report uses a capability outside its accepted set",
+                        "code": "semantic-report-capability-acceptance"
+                      },
+                      {
+                        "kind": "jsonata",
+                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
+                        "message": "Semantic portfolio report is missing a required section slot",
+                        "code": "semantic-report-section-slots"
+                      }
+                    ]
                   }
                 ],
                 "compute": [
@@ -867,12 +880,25 @@
                     "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                     "input": {
                       "kind": "jsonata",
-                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                     },
                     "output": {
                       "kind": "jsonata",
                       "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
-                    }
+                    },
+                    "acceptanceCriteria": [
+                      {
+                        "kind": "blueprint-capability-acceptance",
+                        "message": "Semantic portfolio report uses a capability outside its accepted set",
+                        "code": "semantic-report-capability-acceptance"
+                      },
+                      {
+                        "kind": "jsonata",
+                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
+                        "message": "Semantic portfolio report is missing a required section slot",
+                        "code": "semantic-report-section-slots"
+                      }
+                    ]
                   }
                 ],
                 "compute": [
@@ -1219,8 +1245,8 @@
                         },
                         {
                           "kind": "jsonata",
-                          "expr": "($accepted := $request.acceptedCapabilities; $declared := data.payload.recipes.representations.presentation.allowedCapabilities; $viewCapabilities := data.payload.recipes.representations.views.*.*.capability; $used := $distinct($append($declared,$viewCapabilities)); $sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($used[$not($ in $accepted)]) = 0 and $count($sectionSlots[$not($ in $slotNames)]) = 0 and $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
-                          "message": "Semantic portfolio report violates its capability, section, tier, or inertness policy",
+                          "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
+                          "message": "Semantic portfolio report violates its tier or inertness policy",
                           "code": "semantic-report-admission"
                         }
                       ]
@@ -1315,7 +1341,20 @@
                     "output": {
                       "kind": "jsonata",
                       "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':$string(inputs.refreshGeneration)}"
-                    }
+                    },
+                    "acceptanceCriteria": [
+                      {
+                        "kind": "blueprint-capability-acceptance",
+                        "message": "Semantic portfolio report uses a capability outside its accepted set",
+                        "code": "semantic-report-capability-acceptance"
+                      },
+                      {
+                        "kind": "jsonata",
+                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
+                        "message": "Semantic portfolio report is missing a required section slot",
+                        "code": "semantic-report-section-slots"
+                      }
+                    ]
                   }
                 ],
                 "compute": [
@@ -1399,7 +1438,20 @@
                     "output": {
                       "kind": "jsonata",
                       "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':$string(inputs.refreshGeneration)}"
-                    }
+                    },
+                    "acceptanceCriteria": [
+                      {
+                        "kind": "blueprint-capability-acceptance",
+                        "message": "Semantic portfolio report uses a capability outside its accepted set",
+                        "code": "semantic-report-capability-acceptance"
+                      },
+                      {
+                        "kind": "jsonata",
+                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
+                        "message": "Semantic portfolio report is missing a required section slot",
+                        "code": "semantic-report-section-slots"
+                      }
+                    ]
                   }
                 ],
                 "compute": [
@@ -1746,8 +1798,8 @@
                         },
                         {
                           "kind": "jsonata",
-                          "expr": "($accepted := $request.acceptedCapabilities; $declared := data.payload.recipes.representations.presentation.allowedCapabilities; $viewCapabilities := data.payload.recipes.representations.views.*.*.capability; $used := $distinct($append($declared,$viewCapabilities)); $sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($used[$not($ in $accepted)]) = 0 and $count($sectionSlots[$not($ in $slotNames)]) = 0 and $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
-                          "message": "Semantic portfolio report violates its capability, section, tier, or inertness policy",
+                          "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
+                          "message": "Semantic portfolio report violates its tier or inertness policy",
                           "code": "semantic-report-admission"
                         }
                       ]
@@ -2240,8 +2292,8 @@
                 },
                 {
                   "kind": "jsonata",
-                  "expr": "($accepted := $request.acceptedCapabilities; $declared := data.payload.recipes.representations.presentation.allowedCapabilities; $viewCapabilities := data.payload.recipes.representations.views.*.*.capability; $used := $distinct($append($declared,$viewCapabilities)); $sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($used[$not($ in $accepted)]) = 0 and $count($sectionSlots[$not($ in $slotNames)]) = 0 and $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
-                  "message": "Semantic portfolio report violates its capability, section, tier, or inertness policy",
+                  "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
+                  "message": "Semantic portfolio report violates its tier or inertness policy",
                   "code": "semantic-report-admission"
                 }
               ]

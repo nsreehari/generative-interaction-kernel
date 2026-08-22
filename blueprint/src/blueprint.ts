@@ -240,13 +240,21 @@ export function assembleBlueprint<TRecipe extends LoweringRecipeDefinition = Low
 function validateChildInputs(
   parentBlueprintId: string,
   cellId: string,
-  cell: { potentialViews?: Record<string, { props?: Record<string, unknown>; bindings?: Record<string, unknown> }> },
+  cell: { potentialViews?: Record<string, { region?: unknown; props?: Record<string, unknown>; bindings?: Record<string, unknown> }> },
   child: BlueprintArtifact,
 ): void {
-  const supplied = new Set(Object.values(cell.potentialViews ?? {}).flatMap((view) => [
-    ...Object.keys(view.props ?? {}),
-    ...Object.keys(view.bindings ?? {}),
-  ]));
+  // A view with no `region` at all is unconditionally dormant (CellPotentialView's own contract:
+  // "dormant -- never materialized -- unless its own `region` resolves..."). Such a view's
+  // props/bindings can never actually reach the hosted child at runtime, so they must not count as
+  // supplying a required input. (This does not yet exclude a view whose `region` names a slot that
+  // happens to be unreachable from the active presentation's root -- that requires validating after
+  // representation lowering, tracked separately.)
+  const supplied = new Set(Object.values(cell.potentialViews ?? {})
+    .filter((view) => view.region !== undefined)
+    .flatMap((view) => [
+      ...Object.keys(view.props ?? {}),
+      ...Object.keys(view.bindings ?? {}),
+    ]));
   const missing = Object.entries(child.payload.interface?.inputs ?? {})
     .filter(([name, port]) => port.required && !supplied.has(name))
     .map(([name]) => name);

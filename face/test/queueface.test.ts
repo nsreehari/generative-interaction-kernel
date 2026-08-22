@@ -329,6 +329,52 @@ test("host response validators can enforce trusted request constraints", async (
   assert.match(record?.error ?? "", /response ticker must match the request/);
 });
 
+test("host merges a Cell source's acceptanceCriteria with the operation's own response validators", async () => {
+  const host = createHost(async () => ({ output: { ticker: "AAPL" } }), {
+    response: {
+      validators: [{ kind: "jsonata", expr: "data.ticker != null", message: "response must include a ticker" }],
+    },
+  });
+  const sourceEffect = {
+    ...effect,
+    control: {
+      ...effect.control,
+      sourceAcceptanceCriteria: [{
+        kind: "jsonata" as const,
+        expr: "data.ticker = 'MSFT'",
+        message: "ticker must match the accepted source",
+      }],
+    },
+  };
+
+  await assert.rejects(() => host.invoke(sourceEffect), /ticker must match the accepted source/);
+});
+
+test("a Cell source's acceptanceCriteria retries under the operation's own onViolation policy", async () => {
+  let calls = 0;
+  const host = createHost(async (): Promise<ServiceExecutionResult> => {
+    calls += 1;
+    return { output: { capabilities: calls < 2 ? ["extra:capability"] : ["primitive:markdown"] } };
+  }, {
+    onViolation: { action: "retry", maxAttempts: 5 },
+  }, { maxGuardrailAttempts: 2 });
+  const sourceEffect = {
+    ...effect,
+    control: {
+      ...effect.control,
+      sourceAcceptanceCriteria: [{
+        kind: "jsonata" as const,
+        expr: "$count(data.capabilities[$not($ in ['primitive:markdown'])]) = 0",
+        message: "capability not accepted",
+      }],
+    },
+  };
+
+  await host.invoke(sourceEffect);
+  assert.equal(calls, 2);
+  assert.equal((await host.listRequests())[0]?.guardrailAttempts, 1);
+});
+
 test("host dead-letters queued transport failures at the configured limit", async () => {
   const host = createHost(async () => { throw new Error("provider unavailable"); }, { mode: "queued" }, { maxAttempts: 2 });
   const queue = new QueueFace(host);

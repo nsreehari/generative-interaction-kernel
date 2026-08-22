@@ -299,11 +299,6 @@ contracts:
       settlement: ServiceSettlementStage; failureSettlement?: ServiceSettlementStage;
       onViolation?: GuardrailViolationAction }
     purpose: Declare request, response, settlement, and guardrail behavior for one service operation.
-  - name: ServiceOutputPolicy
-    signature: >-
-      interface ServiceOutputPolicy { guardrails?: readonly GuardrailRule[];
-      onViolation?: GuardrailViolationAction }
-    purpose: Declare validation and settlement policy for service output.
   - name: HeadlessVocabularyManifest
     signature: >-
       type HeadlessVocabularyManifest =

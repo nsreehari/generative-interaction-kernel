@@ -2,6 +2,7 @@ import { runDeclarativeValidators } from "../../../packages/evaluators/src/index
 import type {
   ExpressionProvider,
   BlueprintServiceDeclaration,
+  GuardrailRule,
   Json,
   NativeServiceDeclaration,
   OrchestratorEffect,
@@ -399,7 +400,7 @@ export class DefaultServiceHost implements ServiceHost {
       const result = await adapter.execute(running.request, {
         signal: controller.signal,
         effect,
-        responseValidators: resolved.operation.response?.validators,
+        responseValidators: this.responseValidatorsFor(resolved, effect),
         agentTools: this.agentTools,
       });
       return await this.validateResponse(running, result, resolved, effect, adapter, controller);
@@ -425,6 +426,14 @@ export class DefaultServiceHost implements ServiceHost {
     }
   }
 
+  /** The operation's own `response.validators`, plus any per-usage-site `CellSource.acceptanceCriteria`
+   * the invoking Cell declared -- additive checks, gated by the same operation `onViolation` (there is
+   * no separate acceptance-criteria policy authority). */
+  private responseValidatorsFor(resolved: ResolvedOperation, effect: OrchestratorEffect): readonly GuardrailRule[] {
+    const cellAcceptanceCriteria = effect.kind === "invoke" ? effect.control.sourceAcceptanceCriteria : undefined;
+    return [...(resolved.operation.response?.validators ?? []), ...(cellAcceptanceCriteria ?? [])];
+  }
+
   private async validateResponse(
     running: ServiceRequestRecord,
     result: ServiceExecutionResult,
@@ -437,8 +446,8 @@ export class DefaultServiceHost implements ServiceHost {
       ? await this.evaluate(resolved.operation.response.transform.expr, { response: result.output, effect })
       : result.output;
     const transformed = { ...result, output: response };
-    const validators = resolved.operation.response?.validators;
-    if (!validators?.length) return this.complete(running, transformed);
+    const validators = this.responseValidatorsFor(resolved, effect);
+    if (!validators.length) return this.complete(running, transformed);
     const report = runDeclarativeValidators(validators, response ?? null, {
       bindings: { request: running.request.input ?? null },
     });
