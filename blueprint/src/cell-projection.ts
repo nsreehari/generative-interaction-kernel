@@ -183,10 +183,24 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
 
   function composeCellGraph(topology: ExecutableCellTopology): ProgramGraph | undefined {
   const nodes: ProgramNode[] = topology.cells.flatMap((cell) => {
-    const isStateBackedOutputCell = !cell.inputs?.length && !cell.compute?.length && !cell.sources?.length && !cell.blueprint;
-    const outputStateInputs = isStateBackedOutputCell
-      ? Object.fromEntries((cell.outputs ?? []).map(({ token, from }) => [`__output_${token}`, from ?? token]))
-      : {};
+    // A state-backed output reads a bare state path this Cell's own `compute` did NOT just produce in
+    // this same evaluation -- e.g. a Cell whose own event handler assigns a state path and simply
+    // republishes it (nothing about that path depends on this Cell's other declared inputs/compute/
+    // sources). Such an output must be wired as its own implicit graph input keyed on that same path,
+    // or the node never re-evaluates -- and so never republishes the token -- when an unrelated action
+    // changes that path. This applies per-output, regardless of whether the Cell also has unrelated
+    // inputs/compute/sources of its own. A `computed.<path>` prefix, or a bare path this Cell's own
+    // `compute` assigns to, both reference a value this same evaluation already produces fresh --
+    // neither needs (or should get) the implicit-input treatment.
+    const computeAssignedPaths = new Set((cell.compute ?? []).map(({ assign }) => assign));
+    const isStateBackedOutput = ({ from, token }: { from?: string; token: string }): boolean => {
+      const path = from ?? token;
+      return !path.startsWith("computed.") && !computeAssignedPaths.has(path);
+    };
+    const stateBackedOutputs = (cell.outputs ?? []).filter(isStateBackedOutput);
+    const outputStateInputs = Object.fromEntries(
+      stateBackedOutputs.map(({ token, from }) => [`__output_${token}`, from ?? token]),
+    );
     const declaredInputs = Object.fromEntries((cell.inputs ?? []).map((input) => [
         input.as ?? input.token,
         input.required === false
@@ -215,12 +229,12 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
             name: "evaluate-cell",
             config: {
               ...structuredClone(cell),
-              ...(isStateBackedOutputCell && cell.outputs?.length
+              ...(stateBackedOutputs.length > 0
                 ? {
-                    outputs: cell.outputs.map((output) => ({
-                      ...output,
-                      from: `inputs.__output_${output.token}`,
-                    })),
+                    outputs: (cell.outputs ?? []).map((output) =>
+                      isStateBackedOutput(output)
+                        ? { ...output, from: `inputs.__output_${output.token}` }
+                        : output),
                   }
                 : {}),
             } as unknown as Json,

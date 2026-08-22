@@ -290,10 +290,6 @@
                 "args": {
                   "from": "$event.values[0]"
                 }
-              },
-              {
-                "do": "emit",
-                "event": "refresh"
               }
             ]
           }
@@ -371,13 +367,6 @@
         "behavior": {
           "on": {
             "save": [
-              {
-                "do": "assign",
-                "target": "studio.selectedBlueprintId",
-                "args": {
-                  "from": "$event.values.id"
-                }
-              },
               {
                 "do": "invoke",
                 "guard": "$not($exists($event.values.cloneFrom)) or $event.values.cloneFrom = ''",
