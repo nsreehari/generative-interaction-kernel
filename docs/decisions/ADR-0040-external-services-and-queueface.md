@@ -255,3 +255,29 @@ of the real `Record<cellId, Record<viewName, CellPotentialView>>` (two levels) -
 a live `materializeBlueprint` call (`views/report/capability must be object`), so the very shape the prompt
 taught an agent to produce would have failed the sample's own Blueprint-shape validator.
 
+## Amendment (2026-08-24): `GuardrailRule` entries are now structurally schema-validated wherever authored
+
+**A malformed `acceptanceCriteria`/`response.validators`/`request.validators` entry used to pass
+authoring-time validation silently and then no-op forever at runtime, with zero diagnostic.** Every
+consuming JSON Schema (`cell.schema.json`'s `sources[*].acceptanceCriteria`, `blueprint.schema.json`'s
+`serviceOperationDeclaration.request`/`.response`) only ever typed the field as a bare `{"type":"array"}` or
+left the whole containing stage as an untyped `{"type":"object"}` -- individual rule shapes were never
+checked. `normalizeDeclarativeValidators` (`packages/evaluators/src/validators.ts`), the function every
+`GuardrailRule[]` array is actually normalized through before evaluation, silently drops (rather than
+rejects or reports) any entry that doesn't match one of the known discriminated shapes -- a reasonable
+runtime posture (never crash mid-transition on bad data), but with nothing upstream ever having verified the
+shape at authoring time, a typo'd `kind` silently turned an intended guardrail into a permanent no-op.
+
+**Fixed by extending `ui-form.schema.json`'s existing `validator` definition** (already the discriminated
+`oneOf` schema backing `contextFormSpec.fields.validators`, and already covering every `GuardrailRule` kind
+except `blueprint-capability-acceptance`, which is now added) into the one canonical, shared structural
+schema for the whole `GuardrailRule` vocabulary, and `$ref`-ing it from `cell.schema.json`'s
+`acceptanceCriteria` and from a new `blueprint.schema.json#/definitions/serviceDataStage` used by
+`serviceOperationDeclaration.request`/`.response`. `settlement`/`failureSettlement`/`onViolation` are
+untouched (they carry no `GuardrailRule[]`, only a `transform`/a `GuardrailViolationAction`, neither part of
+this finding), and `request`/`response`'s other fields (`transform`, `validatorInput`) remain intentionally
+open, matching this ADR's existing "provider-specific content stays open" stance -- only the fixed,
+provider-independent `validators` shape is now enforced. A regression test asserting rejection of a
+malformed rule and acceptance of a well-formed one lives in `blueprint/test/blueprint.test.ts`.
+
+

@@ -372,7 +372,14 @@ const PERMISSIVE_CAPABILITY_DESCRIPTOR: CapabilityDescriptor = { propsSchema: { 
  * its real descriptor from the caller-supplied catalog when available. Blueprint itself declares no
  * component catalog (a host's real registry -- e.g. @gik/components' generated one -- is the source
  * of truth for propsSchema/dataProp/emits/slots); the closed-world *name* contract, if a Blueprint
- * wants one, is `presentation.allowedCapabilities`. */
+ * wants one, is `presentation.allowedCapabilities`.
+ *
+ * `catalog` (materializeBlueprint's `capabilityCatalog` option) is deliberately optional and no
+ * current host wires one in: not passing it is not a defect to fix here. Every capability simply
+ * falls back to PERMISSIVE_CAPABILITY_DESCRIPTOR, same as an uncataloged capability would. Supplying
+ * a real catalog is a host's own admitted-capabilities decision -- like its choice of credentials,
+ * providers, and endpoints -- made only if that host wants Kernel-level prop/emit-shape enforcement
+ * beyond whatever it already does at its own render layer. */
 function deriveCapabilities(
   cells: Record<string, CellDefinition>,
   catalog: Record<string, CapabilityDescriptor> | undefined,

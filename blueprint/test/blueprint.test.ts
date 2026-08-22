@@ -925,6 +925,60 @@ describe("@gik/blueprint", () => {
     expect(() => validateBlueprintArtifact(artifact)).toThrow("unknown tier 'domain'");
   });
 
+  it("rejects a malformed CellSource.acceptanceCriteria rule at authoring-validation time", () => {
+    // A typo'd "kind" ("knd") makes this entry match none of the discriminated GuardrailRule
+    // branches; without item-shape validation this used to pass schema validation and then
+    // silently no-op forever inside normalizeDeclarativeValidators, with zero diagnostic.
+    const build = () => createBlueprint({
+      ...blueprint("malformed-acceptance-criteria").payload,
+      services: {
+        "market-data": {
+          kind: "test-service",
+          version: "1",
+          operations: { refreshPrices: { operation: "refreshPrices", contract: "quotes/v1" } },
+        },
+      },
+      cells: {
+        quotes: {
+          id: "quotes",
+          sources: [{
+            id: "quotes.source",
+            service: "market-data",
+            operation: "refreshPrices",
+            acceptanceCriteria: [{ knd: "jsonata", expr: "true" }] as never,
+          }],
+        },
+      },
+    });
+    expect(build).toThrow(/acceptanceCriteria/);
+  });
+
+
+  it("accepts a well-formed CellSource.acceptanceCriteria rule", () => {
+    const artifact = createBlueprint({
+      ...blueprint("well-formed-acceptance-criteria").payload,
+      services: {
+        "market-data": {
+          kind: "test-service",
+          version: "1",
+          operations: { refreshPrices: { operation: "refreshPrices", contract: "quotes/v1" } },
+        },
+      },
+      cells: {
+        quotes: {
+          id: "quotes",
+          sources: [{
+            id: "quotes.source",
+            service: "market-data",
+            operation: "refreshPrices",
+            acceptanceCriteria: [{ kind: "jsonata", expr: "true" }],
+          }],
+        },
+      },
+    });
+    expect(() => validateBlueprintArtifact(artifact)).not.toThrow();
+  });
+
   it("uses tier terminology for Lowering Cells", () => {
     expect(defineLoweringCell({
       id: "domain-to-runtime",
@@ -1246,6 +1300,42 @@ describe("@gik/blueprint", () => {
 
     expect(result.state.studio).toEqual({ selectedId: "child-1" });
     expect(result.state.loadedFor).toEqual("child-1");
+  });
+
+  it("excludes all four Cell-scoped read roots and the Cell's own compute-assign targets from state-backed-output wiring", () => {
+    // A focused unit test on composeCellGraph's isStateBackedOutput exclusion list itself: an output
+    // reading `computed.`/`inputs.`/`sources.`/`systemInputs.` (the evaluator's own Cell-scoped read
+    // namespaces), or reading this same Cell's own `compute[].assign` target verbatim, must never get
+    // the implicit `__output_<token>` state-backed-input treatment -- only a genuine bare state path
+    // needs it to stay fresh across unrelated actions.
+    const cells = {
+      probe: {
+        id: "probe",
+        inputs: [{ token: "state.someInput", as: "myInput" }],
+        systemInputs: ["numSourcesRunning"],
+        sources: [{ id: "s1", service: "svc", operation: "op" }],
+        compute: [{ id: "c1", expression: "1", assign: "myComputed" }],
+        outputs: [
+          { token: "outFromComputed", from: "computed.myComputed" },
+          { token: "outFromInputs", from: "inputs.myInput" },
+          { token: "outFromSources", from: "sources.s1.someField" },
+          { token: "outFromSystemInputs", from: "systemInputs.numSourcesRunning" },
+          { token: "outFromComputeAssign", from: "myComputed" },
+          { token: "outFromBareState", from: "some.bare.state.path" },
+        ],
+      },
+    };
+
+    const program = composeCellProgram({ cells }, compileCellTopology("shell", cells));
+
+    const node = program.graph?.nodes.find((candidate) => candidate.id === "probe-evaluate");
+    const inputKeys = Object.keys(node?.inputs ?? {});
+    expect(inputKeys).not.toContain("__output_outFromComputed");
+    expect(inputKeys).not.toContain("__output_outFromInputs");
+    expect(inputKeys).not.toContain("__output_outFromSources");
+    expect(inputKeys).not.toContain("__output_outFromSystemInputs");
+    expect(inputKeys).not.toContain("__output_outFromComputeAssign");
+    expect(node?.inputs).toMatchObject({ __output_outFromBareState: "some.bare.state.path" });
   });
 
   it("materializes and executes a Blueprint without a presentation projection", async () => {

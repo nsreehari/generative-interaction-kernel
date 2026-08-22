@@ -88,6 +88,7 @@
       }
     },
     "validator": {
+      "description": "The canonical structural schema for @gik/kernel's `GuardrailRule` vocabulary -- shared verbatim (by cross-file $ref) with cell.schema.json's `sources[*].acceptanceCriteria` and blueprint.schema.json's `request`/`response` operation validators, so a malformed rule is rejected at authoring-time everywhere this vocabulary is used, not just here.",
       "oneOf": [
         {
           "type": "array",
@@ -177,6 +178,19 @@
             "kind": {
               "enum": ["blueprint-cell", "blueprint-tier", "blueprint-lowering-recipe", "blueprint"]
             },
+            "message": { "type": "string" },
+            "level": { "enum": ["error", "warning"] },
+            "code": { "type": "string" },
+            "node": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "blueprint-capability-acceptance" },
+            "acceptedField": { "type": "string", "minLength": 1 },
             "message": { "type": "string" },
             "level": { "enum": ["error", "warning"] },
             "code": { "type": "string" },

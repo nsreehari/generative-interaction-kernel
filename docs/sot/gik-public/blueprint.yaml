@@ -377,17 +377,19 @@ cell_api:
       produces a projected program; its absence produces a non-projected program.
       Compute and source Cells become evaluate-cell extension nodes. Hosted Blueprint outputs
       re-enter through event-triggered graph nodes and use transient signal ports.
-      Presentation-free compilation rejects hosted child Blueprint Cells because their current execution
-      requires a projection host. CellProjectionDefinition is structural input to this function
-      and is not separately exported from the package entrypoint.
+      Hosting another Blueprint (`blueprint`) is an ordinary data-flow-owning Cell property, never
+      dependent on presentation: every hosting Cell always gets a discoverable node -- built from
+      that Cell's own `inputs` ports -- whether or not this Blueprint has any presentation at all,
+      or whether that one Cell has a reachable view of its own. CellProjectionDefinition is
+      structural input to this function and is not separately exported from the package entrypoint.
   - name: composeCellDocument
     status: deprecated alias of composeCellProgram
 
 transition_api:
   - name: materializeBlueprint
     signature: >-
-      materializeBlueprint({ blueprint, externalContext?, resolveBlueprint? }):
-      MaterializedBlueprint
+      materializeBlueprint({ blueprint, externalContext?, resolveBlueprint?,
+      capabilityCatalog? }): MaterializedBlueprint
     behavior:
       - Clones the immutable external context snapshot.
       - Assembles the authored Blueprint.
@@ -398,6 +400,19 @@ transition_api:
       - Prepares terminal vocabulary, executable program, and initial state from the emitted recipe-free Blueprint.
       - Emits a non-projected program when the terminal Blueprint has Cells but no presentation projection.
       - Reserves externalContext as a read-only runtime namespace.
+      - >-
+        capabilityCatalog is an optional, host-supplied Record<capability, CapabilityDescriptor> used
+        to populate the vocabulary manifest's capabilities entries; when a referenced capability is
+        absent from it (including when the whole option is omitted), that capability gets a
+        permissive placeholder descriptor instead ({propsSchema:{type:object,additionalProperties:true}}),
+        which the Kernel's own prop-shape validation (validateProgramDefinition) then trivially
+        satisfies for every prop. @gik/blueprint deliberately declares no component catalog of its
+        own and does not depend on @gik/components -- supplying a real one (e.g. @gik/components'
+        own generated componentCapabilities) is a host's deliberate choice to opt into stronger
+        Kernel-level prop/emit-shape enforcement, exactly like a host's other admitted-capability
+        decisions (credentials, providers, endpoints); it is not required for a Blueprint to author
+        or execute correctly. The Blueprint-facing closed-world capability *name* contract, if a
+        Blueprint wants one, remains presentation.allowedCapabilities, independent of this option.
   - name: runMaterializedTransition
     signature: >-
       runMaterializedTransition({ state, materializedBlueprint, events,
