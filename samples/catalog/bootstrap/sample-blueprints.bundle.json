@@ -765,10 +765,6 @@
                     "args": {
                       "from": "$event.values[0]"
                     }
-                  },
-                  {
-                    "do": "emit",
-                    "event": "refresh"
                   }
                 ]
               }
@@ -846,13 +842,6 @@
             "behavior": {
               "on": {
                 "save": [
-                  {
-                    "do": "assign",
-                    "target": "studio.selectedBlueprintId",
-                    "args": {
-                      "from": "$event.values.id"
-                    }
-                  },
                   {
                     "do": "invoke",
                     "guard": "$not($exists($event.values.cloneFrom)) or $event.values.cloneFrom = ''",
@@ -13054,10 +13043,6 @@
                             "args": {
                               "from": "$event.values[0]"
                             }
-                          },
-                          {
-                            "do": "emit",
-                            "event": "refresh"
                           }
                         ]
                       }
@@ -13135,13 +13120,6 @@
                     "behavior": {
                       "on": {
                         "save": [
-                          {
-                            "do": "assign",
-                            "target": "studio.selectedBlueprintId",
-                            "args": {
-                              "from": "$event.values.id"
-                            }
-                          },
                           {
                             "do": "invoke",
                             "guard": "$not($exists($event.values.cloneFrom)) or $event.values.cloneFrom = ''",
@@ -18629,6 +18607,6 @@
       ]
     }
   },
-  "bundleVersion": "fc44c22767903036",
-  "digest": "sha256:fc44c227679030361243663deb56ca70f69946d585267c880d55257e270a57f1"
+  "bundleVersion": "27d3d529236b0b95",
+  "digest": "sha256:27d3d529236b0b95b90a17cb9fd4173ebdec999fb8cd0f37fc90656cad98bad1"
 }

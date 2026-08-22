@@ -1127,6 +1127,54 @@ describe("@gik/blueprint", () => {
     expect(artifact.payload.cells?.holdings.inputs).toBeUndefined();
   });
 
+  it("republishes a state-backed output even when its Cell also has other declared inputs/compute/sources", async () => {
+    // Mirrors the real blueprint-studio shape exactly: a "list" Cell that both computes something
+    // from its own inputs AND republishes a *namespaced* state path (not the bare token name) its
+    // own `select` handler assigns, consumed downstream by a Cell whose input depends on that
+    // republished token.
+    const artifact = createBlueprint({
+      id: "cross-cutting-state-backed-output",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { state: { list: { refreshStamp: "initial" }, studio: { selectedId: null } } },
+      cells: {
+        list: {
+          id: "list",
+          inputs: [{ token: "list.refreshStamp", as: "refreshStamp" }],
+          compute: [{ id: "echo", expression: "inputs.refreshStamp", assign: "list.lastRefresh", dependencies: ["inputs.refreshStamp"] }],
+          outputs: [
+            { token: "lastRefresh", from: "computed.list.lastRefresh" },
+            { token: "selectedId", from: "studio.selectedId" },
+          ],
+          events: { select: { payloadSchema: { type: "object" } } },
+          behavior: {
+            on: {
+              select: [{ do: "assign", target: "studio.selectedId", args: { from: "$event.id" } }],
+            },
+          },
+        },
+        detail: {
+          id: "detail",
+          inputs: [{ token: "selectedId", as: "selectedId", required: false }],
+          outputs: [{ token: "loadedFor", from: "computed.detail.loadedFor" }],
+          compute: [{ id: "loaded", expression: "inputs.selectedId", assign: "detail.loadedFor", dependencies: ["inputs.selectedId"] }],
+        },
+      },
+    });
+    const materialized = materializeBlueprint({ blueprint: artifact });
+
+    const result = await runMaterializedTransition({
+      materializedBlueprint: materialized,
+      state: materialized.payload.initialState,
+      events: [{ node: "list", name: "select", payload: { id: "child-1" } }],
+    });
+
+    expect(result.state.studio).toEqual({ selectedId: "child-1" });
+    expect(result.state.loadedFor).toEqual("child-1");
+  });
+
   it("materializes and executes a Blueprint without a presentation projection", async () => {
     const artifact = createBlueprint({
       id: "headless-counter",
