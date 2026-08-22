@@ -253,6 +253,9 @@ export interface InvokeControl {
   sourceInputs?: Record<string, Json>;
   sourceInputTransform?: ServiceTransform;
   sourceOutputTransform?: ServiceTransform;
+  /** Extra per-usage-site guardrails a Cell source declares on top of the operation's own
+   * `response.validators`, gated by the same operation `onViolation` policy. */
+  sourceAcceptanceCriteria?: readonly GuardrailRule[];
 }
 
 export interface RouteControl {
@@ -500,8 +503,10 @@ export type GuardrailLevel = "error" | "warning";
 /** A single declarative guardrail rule authored as data. Mirrors the `@gik/evaluators` declarative
  * validator shape (the same engine already used for authored-input validation) so a Blueprint
  * author uses one vocabulary for both. `jsonata` evaluates a boolean expression, `ajv-schema`
- * checks shape against a JSON Schema, `typedef` checks the basic JS type, and the Blueprint kinds
- * apply the evaluator-owned structural and semantic validators. */
+ * checks shape against a JSON Schema, `typedef` checks the basic JS type, the Blueprint kinds apply
+ * the evaluator-owned structural and semantic validators, and `blueprint-capability-acceptance`
+ * checks a value's declared/used capabilities against an accepted-capabilities list read from the
+ * request. */
 export type GuardrailRule =
   | readonly [string, string?]
   | {
@@ -535,6 +540,16 @@ export type GuardrailRule =
       level?: GuardrailLevel;
       code?: string;
       node?: string;
+    }
+  | {
+      kind: "blueprint-capability-acceptance";
+      /** Key read from the `request` binding holding the accepted capability list. Defaults to
+       * `"acceptedCapabilities"`. */
+      acceptedField?: string;
+      message?: string;
+      level?: GuardrailLevel;
+      code?: string;
+      node?: string;
     };
 
 /** What the service host does when a response fails one or more `"error"`-level guardrails.
@@ -545,15 +560,6 @@ export type GuardrailViolationAction =
   | { action: "retry"; maxAttempts?: number }
   | { action: "correction-prompt"; maxAttempts?: number }
   | { action: "fallback" };
-
-/** A Blueprint- or kind-authored output policy: the guardrails a service response must satisfy and
- * what to do when it doesn't. Resolved per operation, most-specific wins: a `ServiceUse.policyOverride`
- * beats a `ServiceDeclaration.operationPolicies` entry, which beats a service kind's own
- * `defaultOutputPolicy`. */
-export interface ServiceOutputPolicy {
-  guardrails?: readonly GuardrailRule[];
-  onViolation?: GuardrailViolationAction;
-}
 
 export interface ServiceTransform {
   kind: "jsonata";
@@ -620,8 +626,6 @@ export type ServiceUse = {
    * The operation's `contract` is always resolved from that declaration, never restated here. */
   operation: string;
   service: string;
-  /** Overrides the resolved guardrail/output policy for this single call site only. */
-  policyOverride?: Partial<ServiceOutputPolicy>;
 };
 
 export type ServiceSubject =

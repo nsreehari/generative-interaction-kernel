@@ -26,6 +26,7 @@ import {
   materializeBlueprint,
   parseBlueprintJson,
   parseBlueprintReference,
+  prepareBlueprintProgram,
   readHostedBlueprintDeclaration,
   resolveHostedBlueprint,
   runMaterializedTransition,
@@ -470,7 +471,7 @@ describe("@gik/blueprint", () => {
       cells: {
         child: {
           id: "child",
-          potentialViews: { primary: { capability: "host:hosted-blueprint" } },
+          potentialViews: { primary: { capability: "host:hosted-blueprint", region: "root" } },
           blueprint: { $ref: "blueprint:child" },
         },
       },
@@ -479,6 +480,27 @@ describe("@gik/blueprint", () => {
     expect(() => assembleBlueprint(parent, () => child)).toThrow("missing required child input(s): report");
     parent.payload.cells!.child.potentialViews!.primary.bindings = { report: { from: "source.report" } };
     expect(assembleBlueprint(parent, () => child).payload.cells?.child.blueprint).toHaveProperty("inline");
+  });
+
+  it("does not let an unconditionally dormant (regionless) view satisfy a required child Blueprint input", () => {
+    const child = createBlueprint({
+      ...blueprint("child").payload,
+      interface: { inputs: { report: { required: true, schema: { type: "string" } } } },
+    });
+    const parent = createBlueprint({
+      ...blueprint("parent").payload,
+      cells: {
+        child: {
+          id: "child",
+          // No `region` at all: this view can never attach/materialize under any representation, so
+          // its binding must not count as supplying the child's required input.
+          potentialViews: { primary: { capability: "host:hosted-blueprint", bindings: { report: { from: "source.report" } } } },
+          blueprint: { $ref: "blueprint:child" },
+        },
+      },
+    });
+
+    expect(() => assembleBlueprint(parent, () => child)).toThrow("missing required child input(s): report");
   });
 
   it("preserves a child Blueprint declaration in its lowered presentation node", () => {
@@ -1225,6 +1247,105 @@ describe("@gik/blueprint", () => {
       events: [{ node: "root--primary--in-root", name: "increment" }],
     });
     expect(result.state).toEqual({ counter: { value: 2 }, ...runState({ root: [] }) });
+  });
+
+  it("derives a permissive capability descriptor by default, and a caller-supplied catalog's real descriptor when given", () => {
+    const artifact = createBlueprint({
+      id: "capability-descriptor-check",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { state: {} },
+      cells: {
+        root: { id: "root", potentialViews: { primary: { capability: "custom:widget", region: "root" } } },
+      },
+      presentation: singleSlotPresentation("root"),
+    });
+
+    const withoutCatalog = unwrap(materializeBlueprint({ blueprint: artifact }).payload.vocabulary);
+    expect(withoutCatalog.capabilities["custom:widget"]).toEqual({
+      propsSchema: { type: "object", additionalProperties: true },
+    });
+
+    const withCatalog = unwrap(materializeBlueprint({
+      blueprint: artifact,
+      capabilityCatalog: {
+        "custom:widget": {
+          propsSchema: { type: "object", required: ["label"], properties: { label: { type: "string" } } },
+          dataProp: "label",
+          emits: ["click"],
+        },
+      },
+    }).payload.vocabulary);
+    expect(withCatalog.capabilities["custom:widget"]).toEqual({
+      propsSchema: { type: "object", required: ["label"], properties: { label: { type: "string" } } },
+      dataProp: "label",
+      emits: ["click"],
+    });
+  });
+
+  it("derives namespaces from the admitted initial-seed context, not only from runtime.state", () => {
+    const artifact = createBlueprint({
+      id: "namespace-seed-check",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { state: { counter: { value: 1 } } },
+      cells: {
+        root: { id: "root", potentialViews: { primary: { capability: "screen", region: "root" } } },
+      },
+      presentation: singleSlotPresentation("root"),
+    });
+
+    const withoutSeed = unwrap(prepareBlueprintProgram(artifact).vocabulary);
+    expect(withoutSeed.namespaces).toEqual(["counter", "blueprintRunState"]);
+
+    const prepared = prepareBlueprintProgram(artifact, {
+      context: { initialSeed: { session: { userId: "u1" } } },
+    });
+    expect(unwrap(prepared.vocabulary).namespaces).toEqual(["counter", "session", "blueprintRunState"]);
+    expect(prepared.initialState.session).toEqual({ userId: "u1" });
+  });
+
+  it("validates a presented Cell's dispatched event against its own declared contract, not a generated-node-id lookup", async () => {
+    const artifact = createBlueprint({
+      id: "presented-event-contract",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { state: { counter: { value: 1 } } },
+      cells: {
+        root: {
+          id: "root",
+          potentialViews: { primary: { capability: "screen", region: "root" } },
+          events: { increment: { payloadSchema: { type: "object", required: ["amount"], properties: { amount: { type: "number" } } } } },
+          behavior: {
+            on: {
+              increment: [{ do: "assign", target: "counter.value", args: { from: "$event.amount" } }],
+            },
+          },
+        },
+      },
+      presentation: singleSlotPresentation("root"),
+    });
+    const materialized = materializeBlueprint({ blueprint: artifact });
+    // The dispatched node id is the generated presented-view instance, never the Cell's own id.
+    expect(materialized.payload.eventNodeOwners["root--primary--in-root"]).toEqual("root");
+
+    await expect(runMaterializedTransition({
+      materializedBlueprint: materialized,
+      state: materialized.payload.initialState,
+      events: [{ node: "root--primary--in-root", name: "refresh" }],
+    })).rejects.toThrow("Cell 'root' received undeclared event 'refresh'");
+
+    await expect(runMaterializedTransition({
+      materializedBlueprint: materialized,
+      state: materialized.payload.initialState,
+      events: [{ node: "root--primary--in-root", name: "increment", payload: { amount: "not-a-number" } }],
+    })).rejects.toThrow(/Invalid payload for Cell event 'root\.increment'/);
   });
 
   it("applies Blueprint context defaults and rejects invalid external context", () => {

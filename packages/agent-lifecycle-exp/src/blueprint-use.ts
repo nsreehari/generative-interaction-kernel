@@ -25,14 +25,17 @@ export interface BlueprintUseSource extends BlueprintLifecycleMaterialSource {
       readonly id?: string;
       readonly inputs?: readonly unknown[];
       readonly outputs?: readonly unknown[];
-      readonly behavior?: unknown;
+      readonly behavior?: { readonly on?: Readonly<Record<string, readonly { readonly do?: string }[]>> };
       readonly sources?: readonly unknown[];
+      readonly potentialViews?: Readonly<Record<string, { readonly capability?: string }>>;
     }>>;
     readonly services?: Readonly<Record<string, unknown>>;
+    readonly presentation?: {
+      readonly allowedCapabilities?: readonly string[];
+    };
     readonly runtime?: {
-      readonly actions?: readonly string[];
-      readonly capabilities?: Readonly<Record<string, unknown>>;
-      readonly namespaces?: readonly string[];
+      readonly externals?: unknown;
+      readonly state?: Readonly<Record<string, unknown>>;
     };
   };
 }
@@ -174,6 +177,36 @@ export function authorBlueprint<TDiscover = unknown, TTarget = unknown, TIntent 
   return defineBlueprintLifecycleProfile(options.blueprint, "author", "author_blueprint", ops).tools;
 }
 
+/** Mirrors `@gik/blueprint`'s own runtime derivation (namespaces = the declared runtime state's own
+ * keys; actions = every verb a Cell's `behavior.on` handlers invoke) without importing that package --
+ * this package is deliberately decoupled from `@gik/blueprint`'s types, so a Blueprint is described
+ * from whatever shape it structurally carries. */
+function deriveNamespaces(state: Readonly<Record<string, unknown>> | undefined): string[] {
+  return Object.keys(state ?? {});
+}
+
+function deriveActions(cells: BlueprintUseSource["payload"]["cells"]): string[] {
+  const actions = new Set<string>();
+  for (const cell of Object.values(cells ?? {})) {
+    for (const list of Object.values(cell.behavior?.on ?? {})) {
+      for (const action of list ?? []) {
+        if (action?.do) actions.add(action.do);
+      }
+    }
+  }
+  return [...actions];
+}
+
+function deriveUsedCapabilities(cells: BlueprintUseSource["payload"]["cells"]): string[] {
+  const capabilities = new Set<string>();
+  for (const cell of Object.values(cells ?? {})) {
+    for (const view of Object.values(cell.potentialViews ?? {})) {
+      if (view?.capability) capabilities.add(view.capability);
+    }
+  }
+  return [...capabilities];
+}
+
 export function describeBlueprint(
   blueprint: BlueprintUseSource,
   profile: BlueprintLifecycleProfileKind = "use",
@@ -208,12 +241,10 @@ export function describeBlueprint(
     })),
     services: Object.keys(payload.services ?? {}),
     runtime: {
-      actions: payload.runtime?.actions ?? [],
-      capabilities: Object.entries(payload.runtime?.capabilities ?? {}).map(([id, declaration]) => ({
-        id,
-        ...(declaration && typeof declaration === "object" ? declaration : {}),
-      })),
-      namespaces: payload.runtime?.namespaces ?? [],
+      actions: deriveActions(payload.cells),
+      // The closed set when the Blueprint declares one; otherwise whatever capabilities it actually uses.
+      capabilities: payload.presentation?.allowedCapabilities ?? deriveUsedCapabilities(payload.cells),
+      namespaces: deriveNamespaces(payload.runtime?.state),
     },
   };
 }

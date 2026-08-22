@@ -60,8 +60,6 @@ top-level fields — nothing else is invented:
 - `id`, `kind`, `version` — identity;
 - `structureMode` / `structurePolicy` — whether and how the authored document may ever change (see
   **Structure mode** below);
-- `agentLifecycle` — which agent operations (`author`/`customize`/`use`) this Blueprint exposes, and to
-  which target/intent kinds;
 - `interface` — this Blueprint's own port surface, for when it is hosted inside another Blueprint (see
   **Interface** below);
 - `contextFormSpec` — the schema for the immutable `externalContext` a materialization expects;
@@ -345,6 +343,27 @@ as `control.tool` and the owning service as `control.serviceRef`. There is no wa
 one-off service declaration directly on a Cell: every source must reference a real `services[...]`
 entry, and referencing an unknown service or operation is rejected at validation time. Declare a
 service once; every Cell that needs it references it by id.
+
+### CellSource.acceptanceCriteria = per-usage-site guardrails, additive to the operation's own
+
+A `source`'s `acceptanceCriteria` reuses the same `GuardrailRule[]` vocabulary as the operation's own
+`response.validators`, plus `blueprint-capability-acceptance`: it checks every capability a response
+declares or uses (`presentation.allowedCapabilities` plus every view/decorator `capability`, across
+both a materialized `cells[*].potentialViews` shape and an un-lowered `recipes[*].representations[*]`
+shape) against an accepted-capabilities list read from the request (`acceptedField`, default
+`"acceptedCapabilities"`).
+
+Put a check on the operation's `response.validators` when it holds no matter which Cell calls it
+(always a valid Blueprint, always inert, always this tier shape). Put it on a source's own
+`acceptanceCriteria` when it depends on what *this* call told the provider (which capabilities/sections
+it said were acceptable) — that data is call-site-specific and cannot live at the operation level. This
+matters most when a source's response is itself a generated Blueprint, since the accepted set is
+usually computed by that Cell's own `input` transform and varies by caller.
+
+`acceptanceCriteria` is additive, never a second policy authority: it merges with `response.validators`
+and both are gated by the operation's one `onViolation` — there is no separate `onViolation` to author
+on a source. Enforcement is host-level, right after `response.transform` and before
+`settlement.transform` — materialization/`runTransition` never reads or evaluates it.
 
 ### Runtime = the declared initial state, plus host-dependency wiring
 

@@ -9,6 +9,7 @@ import {
   type AgentProposalDraft,
   type AgentTargetRef,
   type AgentToolExecutionContext,
+  type BlueprintUseSource,
 } from "@gik/agent-lifecycle-exp";
 import { materializeBlueprint, validateBlueprintForAuthoring, type BlueprintArtifact } from "@gik/blueprint";
 import {
@@ -34,6 +35,14 @@ type AuthorProposal = AgentProposal<AuthorAction>;
 
 export type UseProposal = AgentProposal<UseAction>;
 
+/** `@gik/agent-lifecycle-exp` deliberately describes a Blueprint via its own independent,
+ * structurally-typed `BlueprintUseSource` shape rather than importing `@gik/blueprint`'s canonical
+ * type -- `agentLifecycle` is an optional extension that Blueprint's own schema does not (and need
+ * not) declare. This is a type-only view, not a runtime transform. */
+function lifecycleSource(runtime: BlueprintRuntime): BlueprintUseSource {
+  return runtime.definition as unknown as BlueprintUseSource;
+}
+
 function targetMatches(runtime: BlueprintRuntime, candidate: AgentTargetRef | undefined): boolean {
   return candidate?.id === runtime.blueprintId && candidate?.instanceId === runtime.instanceId;
 }
@@ -51,7 +60,7 @@ function createStaticBlueprintAuthorTools(
   runtime: BlueprintRuntime,
   store: BlueprintProposalStore<AuthorProposal>,
 ) {
-  const authored = runtime.definition.payload.agentLifecycle?.profiles?.author;
+  const authored = lifecycleSource(runtime).payload.agentLifecycle?.profiles?.author;
   if (!authored) throw new Error("Blueprint does not declare an author lifecycle profile");
   const target: AgentTargetRef = {
     kind: "blueprint-authoring-workspace",
@@ -121,7 +130,7 @@ function createStaticBlueprintAuthorTools(
     },
   });
   const tools = authorBlueprint({
-    blueprint: runtime.definition,
+    blueprint: lifecycleSource(runtime),
     schemas: BLUEPRINT_STATIC_AUTHOR_SCHEMAS,
     host: {
       validate,
@@ -178,7 +187,7 @@ function createStaticBlueprintAuthorTools(
 }
 
 function createBlueprintAuthorTools(runtime: BlueprintRuntime, store: BlueprintProposalStore<AuthorProposal>) {
-  const authored = runtime.definition.payload.agentLifecycle?.profiles?.author;
+  const authored = lifecycleSource(runtime).payload.agentLifecycle?.profiles?.author;
   if (!authored) return undefined;
   const operations = resolveLifecycleProfileOperations(authored);
   if (operations.length !== STATIC_AUTHORING_OPERATIONS.length
@@ -193,7 +202,7 @@ export function createBlueprintAgentLifecycle(
   state: StateModel,
   options: BlueprintAgentLifecycleOptions = {},
 ) {
-  const authored = runtime.definition.payload.agentLifecycle?.profiles?.use;
+  const authored = lifecycleSource(runtime).payload.agentLifecycle?.profiles?.use;
   const authorStore = options.authorProposalStore ?? createInMemoryBlueprintProposalStore<AuthorProposal>();
   const authorLifecycle = createBlueprintAuthorTools(runtime, authorStore);
   const authorTools = authorLifecycle?.tools ?? [];
@@ -272,7 +281,7 @@ export function createBlueprintAgentLifecycle(
     return { ok: errors.length === 0, errors };
   };
   const tools = useBlueprint({
-    blueprint: runtime.definition,
+    blueprint: lifecycleSource(runtime),
     schemas: BLUEPRINT_USE_SCHEMAS,
     host: {
       discover: () => ({ targets: [target] }),

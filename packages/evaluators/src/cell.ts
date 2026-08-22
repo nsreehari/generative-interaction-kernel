@@ -3,6 +3,7 @@ import {
   getPath,
   jsonataExpressionAst,
   type BlueprintRunState,
+  type GuardrailRule,
   type Json,
   type PatchOp,
   type ServiceTransform,
@@ -28,6 +29,7 @@ export type EvaluatorCellSource = ServiceUse & {
   when?: string;
   input?: ServiceTransform;
   output?: ServiceTransform;
+  acceptanceCriteria?: readonly GuardrailRule[];
 };
 
 export interface EvaluatorCellComputation {
