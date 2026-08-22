@@ -100,6 +100,47 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
   for (const [cellId, cell] of Object.entries(cells)) {
     if (cell.id !== cellId) throw new BlueprintValidationError(`Blueprint cell key '${cellId}' does not match id '${cell.id}'`);
   }
+  // A hosted child's own inputs/outputs/events are its stable interface -- invariant across every one
+  // of the child's own tiers, exactly like a Cell's own ports. Whether the *hosting* Cell actually
+  // supplies what that interface requires is a property of this Blueprint's own wiring, not of the
+  // child in isolation -- no amount of validating the child alone can ever catch a parent forgetting
+  // to bind a required input. This check only applies once this Blueprint has no more lowering ahead
+  // of it (`recipes.length === 0`): a representation may still introduce a hosting Cell's very first
+  // view, or replace one already there, so checking against a still-pre-lowering shape can both
+  // false-reject (the authored baseline lacks it, but the representation that will be selected adds
+  // it) and false-accept (the authored baseline has it, but the selected representation replaces the
+  // view with one that does not). Gating on `recipes.length === 0` means this always resolves to
+  // exactly one check, against the actually-final shape: immediately for an already-terminal
+  // Blueprint (authored with no recipes, or a nested hosted child not yet reached its own lowering
+  // pass), and via the re-validation `fixed-lowering-meta-graph.ts`'s `emit-blueprint` step performs
+  // on the terminal artifact (whose `recipes` it forces to `[]` first) once lowering has run. A
+  // `{ $ref }` declaration not yet resolved to an inline child carries no interface to check against
+  // and is skipped here regardless.
+  if (blueprint.recipes.length === 0) {
+    for (const [cellId, cell] of Object.entries(cells)) {
+      const hosted = cell.blueprint;
+      if (!hosted || !("inline" in hosted) || !hosted.inline) continue;
+      const child = hosted.inline;
+      // A view with no `region` at all is unconditionally dormant (CellPotentialView's own contract:
+      // "dormant -- never materialized -- unless its own `region` resolves..."). Such a view's
+      // props/bindings can never actually reach the hosted child at runtime, so they must not count
+      // as supplying a required input.
+      const supplied = new Set(Object.values(cell.potentialViews ?? {})
+        .filter((view) => view.region !== undefined)
+        .flatMap((view) => [
+          ...Object.keys(view.props ?? {}),
+          ...Object.keys(view.bindings ?? {}),
+        ]));
+      const missing = Object.entries(child.payload.interface?.inputs ?? {})
+        .filter(([name, port]) => port.required && !supplied.has(name))
+        .map(([name]) => name);
+      if (missing.length > 0) {
+        throw new BlueprintValidationError(
+          `Blueprint Cell '${cellId}' in '${blueprint.id}' is missing required child input(s): ${missing.join(", ")}`,
+        );
+      }
+    }
+  }
   if (blueprint.presentation) {
     const slotIds = new Set(blueprint.presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
     if (!slotIds.has(blueprint.presentation.root)) {
@@ -222,47 +263,19 @@ export function assembleBlueprint<TRecipe extends LoweringRecipeDefinition = Low
         if (typeof ref !== "string") continue;
         if (!resolveReference) throw new BlueprintValidationError(`Blueprint Cell '${cellId}' has unresolved reference '${ref}'`);
         const assembledChild = assemble(resolveReference(ref, { parentBlueprintId: blueprint.payload.id, cellId }));
-        validateChildInputs(blueprint.payload.id, cellId, cell, assembledChild);
         cell.blueprint = { inline: assembledChild };
       } else {
         const assembledChild = assemble(child.inline as BlueprintArtifact<TRecipe>);
-        validateChildInputs(blueprint.payload.id, cellId, cell, assembledChild);
         cell.blueprint = { inline: assembledChild };
       }
     }
     active.delete(blueprint.payload.id);
+    // Every embedded child is now inline, so this same validateBlueprintArtifact call already checks
+    // hosted-child input satisfaction (among everything else) at this level -- no separate call needed.
     validateBlueprintArtifact(assembled);
     return assembled;
   };
   return assemble(source);
-}
-
-function validateChildInputs(
-  parentBlueprintId: string,
-  cellId: string,
-  cell: { potentialViews?: Record<string, { region?: unknown; props?: Record<string, unknown>; bindings?: Record<string, unknown> }> },
-  child: BlueprintArtifact,
-): void {
-  // A view with no `region` at all is unconditionally dormant (CellPotentialView's own contract:
-  // "dormant -- never materialized -- unless its own `region` resolves..."). Such a view's
-  // props/bindings can never actually reach the hosted child at runtime, so they must not count as
-  // supplying a required input. (This does not yet exclude a view whose `region` names a slot that
-  // happens to be unreachable from the active presentation's root -- that requires validating after
-  // representation lowering, tracked separately.)
-  const supplied = new Set(Object.values(cell.potentialViews ?? {})
-    .filter((view) => view.region !== undefined)
-    .flatMap((view) => [
-      ...Object.keys(view.props ?? {}),
-      ...Object.keys(view.bindings ?? {}),
-    ]));
-  const missing = Object.entries(child.payload.interface?.inputs ?? {})
-    .filter(([name, port]) => port.required && !supplied.has(name))
-    .map(([name]) => name);
-  if (missing.length > 0) {
-    throw new BlueprintValidationError(
-      `Blueprint Cell '${cellId}' in '${parentBlueprintId}' is missing required child input(s): ${missing.join(", ")}`,
-    );
-  }
 }
 
 export function lowerBlueprint<Out extends ExecutableProgramDefinition>(

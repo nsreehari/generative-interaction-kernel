@@ -168,8 +168,10 @@ through lowering.
 
 Top-level `interface` (`inputs`/`outputs`/`events`) is what a *whole Blueprint* exposes when a Cell
 hosts it via `blueprint`, exactly parallel to a Cell's own `inputs`/`outputs`/`events`. Declare
-`interface.inputs` for anything the hosting Cell must supply (missing required inputs are rejected at
-host time); declare `interface.outputs` as `{ token: { from: <state path> } }` so the hosting Cell's own
+`interface.inputs` for anything the hosting Cell must supply — a missing required input is rejected by
+Blueprint validation itself, checked against the hosting Cell's actual terminal (post-lowering) view,
+not the pre-lowering authored one, since a representation may still introduce, replace, or remove the
+view that supplies it; declare `interface.outputs` as `{ token: { from: <state path> } }` so the hosting Cell's own
 outputs can surface a value the hosted Blueprint produced; declare `interface.events` for every event
 name the hosting Cell may raise into it. A Blueprint meant only to run standalone does not need one.
 

@@ -162,3 +162,39 @@ fixed-lowering meta-graph compiler Cell ids (`resolve-stage`, `apply-vocabulary-
 are unchanged — `apply-vocabulary-patch` is an internal compiler-plane Cell id, not a recipe-authoring
 surface, and its operation (`apply-lowering-chain`) already applied whichever recipe kind a stage
 carried; it now only ever receives representation recipes.
+
+## Amendment (2026-08-23): re-check hosted-child inputs against the terminal, not the pre-lowering, Cell shape
+
+Hosted-child required-input satisfaction (a hosting Cell's attached views must supply every entry a
+hosted child's own `interface.inputs` marks `required`) was checked exactly once, by a private
+`validateChildInputs` helper called only from `assembleBlueprint`, against the Cell's *authored*
+`potentialViews` — strictly before any representation lowering ever ran. Since a representation may
+introduce a hosting Cell's very first named view, add one alongside an existing view, or replace one
+already there, this ordering meant the check could be wrong in either direction: rejecting a Blueprint
+whose only supplying view a representation was about to add, or accepting one whose supplying view a
+representation was about to replace with one that no longer supplies it. It also meant
+`validateBlueprintForAuthoring` — the agent-facing "validate this Blueprint" surface, which never calls
+`assembleBlueprint` — never performed this check at all for a directly inlined hosted child, in
+contradiction of the standing invariant that hosted-child inputs, like the terminal Kernel program
+itself, must be validated before the artifact receives execution authority.
+
+Folded the check into `validateBlueprintArtifact` itself, gated on `blueprint.recipes.length === 0` —
+i.e. it only ever runs once this Blueprint has no more lowering ahead of it. This resolves to exactly
+one evaluation against the actually-final Cell shape: immediately, for an already-terminal Blueprint
+(authored with no recipes, or a nested hosted child not yet reached its own separate lowering pass);
+or via the terminal re-validation `emit-blueprint` already performs on the lowered artifact (whose
+`recipes` it forces to `[]` before validating). `assembleBlueprint`'s own explicit calls to the old
+helper were removed — its existing `validateBlueprintArtifact(assembled)` call, run immediately after
+every child is embedded inline, now performs the same check for free. Verified both failure directions
+with dedicated regression tests: a representation stripping a previously-satisfying binding is now
+rejected at the terminal stage; a representation supplying a hosting Cell's only view is no longer
+falsely rejected pre-lowering.
+
+Separately confirmed (not itself a change): a nested hosted child's own tiers/recipes are never lowered
+by the outer `lowerWithFixedMetaGraph` call — `assembleBlueprint` only resolves references and embeds
+each child inline, unlowered. A hosted child is compiled as an opaque graph leaf whose rendered view
+carries the unlowered child artifact as a prop; a host-driven `HostedBlueprintReconciler` later mounts
+it by running it through its own fully independent `materializeBlueprint` call (its own assemble, its
+own lowering, its own Kernel instance), bridging outputs back to the parent via a synthetic event. This
+is deliberate — the same compiler-Kernel/application-Kernel separation this ADR already establishes,
+applied again at the parent/child Blueprint boundary — not a gap.
