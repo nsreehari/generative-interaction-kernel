@@ -166,7 +166,7 @@
       ]
     },
     "serviceOperationDeclaration": {
-      "description": "One named operation inside a service's `operations` map. Only the provider-native `operation` name and `contract` id are structurally required; request/response/settlement/subject/onViolation are left open (provider-specific transforms, validators, and policy content).",
+      "description": "One named operation inside a service's `operations` map. Only the provider-native `operation` name and `contract` id are structurally required; request/response/settlement/subject/onViolation are otherwise left open (provider-specific transforms and policy content) except each stage's own `validators`, which is always the shared GuardrailRule vocabulary and is structurally validated here regardless of provider.",
       "type": "object",
       "required": ["operation", "contract"],
       "additionalProperties": false,
@@ -175,11 +175,20 @@
         "contract": { "type": "string", "minLength": 1 },
         "mode": { "enum": ["immediate", "queued"] },
         "subject": { "type": "object" },
-        "request": { "type": "object" },
-        "response": { "type": "object" },
+        "request": { "$ref": "#/definitions/serviceDataStage" },
+        "response": { "$ref": "#/definitions/serviceDataStage" },
         "settlement": { "type": "object" },
         "failureSettlement": { "type": "object" },
         "onViolation": { "type": "object" }
+      }
+    },
+    "serviceDataStage": {
+      "type": "object",
+      "properties": {
+        "validators": {
+          "type": "array",
+          "items": { "$ref": "https://gik.dev/schemas/ui-form.schema.json#/definitions/validator" }
+        }
       }
     }
   }
