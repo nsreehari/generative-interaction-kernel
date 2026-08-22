@@ -273,6 +273,13 @@ Use capability, props, bindings, and decorations according to the described comp
 - Where it renders → `region` (see **Attachment** below).
 - Independently meaningful content, with its own event or derivation → its own Cell, not a decoration.
 
+"Its own Cell, not a decoration" answers *whether* content needs its own identity — not *where its
+view then renders*. A capability node's internal structure (a dialog's body, a tab's active panel)
+exposes no named region another Cell's view can target today: only a shared, Cell-agnostic `region`
+lets views sit next to each other, always as flat siblings, never one nested inside another's own
+rendered boundary. Treat a child needed *inside* another capability's body as an open platform
+question, not something `region`/decorations/"own Cell" already solves.
+
 Declare only capabilities actually used and import matching projection views. A Blueprint may
 optionally close this vocabulary down further with `presentation.allowedCapabilities` (see below) —
 when present, referencing anything outside it is a validation error, not just a convention.
