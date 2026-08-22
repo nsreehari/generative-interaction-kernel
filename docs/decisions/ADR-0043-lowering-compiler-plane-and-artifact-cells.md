@@ -138,3 +138,27 @@ restricted to a synchronous expression provider and output-only graphs: asynchro
 state operations, effects, events, and program mutations are rejected. Rich agent, service, or
 approval compiler pipelines continue to use the asynchronous compiler-host path and are not part of
 portable synchronous materialization.
+
+## Amendment (2026-08-22): remove VocabularyLoweringRecipeDefinition as a lowering recipe kind
+
+`VocabularyLoweringRecipeDefinition` (a recipe carrying a raw `BlueprintPatch` — `addCell`/
+`replaceCell`/`removeCell`/`setPresentation`) applied that patch directly via `applyBlueprintPatch`
+from `applyLoweringRecipe`, entirely bypassing `admitBlueprintPatch`'s `structureMode` gate. This
+contradicted the Cell-identity invariant this same ADR and the authoring guidance already state:
+`addCell`/`replaceCell`/`removeCell` is a governance-gated edit to the *authored* Blueprint, admitted
+only under `reconfigurable`/`adaptive` structure mode via `admitBlueprintPatch` — never a lowering-time
+tool, and a recipe must never add, remove, or restructure which Cells exist. The recipe kind had zero
+real product consumers (only a quarantined `samples/blueprints/half-baked/` sample and one test
+fixture, both excluded from the build/test paths already).
+
+Removed `VocabularyLoweringRecipeDefinition` and its handling entirely; `RepresentationLoweringRecipeDefinition`
+is now the sole lowering recipe kind (`blueprint/src/types.ts`, `lowering-recipe.schema.json`,
+`applyLoweringRecipe` in `fixed-lowering-meta-graph.ts`). This does not affect the separate runtime
+patch path — `admitBlueprintPatch`/`admitAdaptiveProgramPatch`/`applyBlueprintPatch` in
+`structure-patch.ts`, and `applyBlueprintPatches` in `run-transition.ts` — which remains the only way a
+`reconfigurable`/`adaptive` Blueprint's Cell effects/behavior may propose `addCell`/`replaceCell`/
+`removeCell`, still fully gated by `structureMode` and origin authorization exactly as before. The three
+fixed-lowering meta-graph compiler Cell ids (`resolve-stage`, `apply-vocabulary-patch`, `emit-blueprint`)
+are unchanged — `apply-vocabulary-patch` is an internal compiler-plane Cell id, not a recipe-authoring
+surface, and its operation (`apply-lowering-chain`) already applied whichever recipe kind a stage
+carried; it now only ever receives representation recipes.
