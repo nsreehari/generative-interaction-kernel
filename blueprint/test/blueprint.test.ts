@@ -503,6 +503,81 @@ describe("@gik/blueprint", () => {
     expect(() => assembleBlueprint(parent, () => child)).toThrow("missing required child input(s): report");
   });
 
+  it("re-checks required child Blueprint inputs against the terminal (post-lowering) view, not the pre-lowering baseline", () => {
+    const hostedChild = () => createBlueprint({
+      id: "child",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { state: {} },
+      cells: {},
+      presentation: singleSlotPresentation("root"),
+      interface: { inputs: { report: { required: true, schema: { type: "string" } } } },
+    });
+
+    // The authored baseline satisfies the check, but the representation that actually gets selected
+    // replaces the hosting Cell's view with one that drops the binding -- this must be caught at the
+    // terminal stage even though it passed at authoring time.
+    const strippedByRepresentation = createBlueprint({
+      id: "parent",
+      kind: "intent-blueprint",
+      version: "1",
+      tiers: [{ id: "intent", kind: "interaction-intent" }, { id: "runtime", kind: "runtime-program" }],
+      recipes: [{
+        id: "intent-to-runtime",
+        from: "intent",
+        to: "runtime",
+        representations: [{
+          id: "default",
+          views: { host: { primary: { capability: "host:hosted-blueprint", region: "root" } } },
+        }],
+        fallback: "default",
+      }],
+      runtime: { state: {} },
+      cells: {
+        host: {
+          id: "host",
+          potentialViews: {
+            primary: { capability: "host:hosted-blueprint", region: "root", bindings: { report: { from: "source.report" } } },
+          },
+          blueprint: { inline: hostedChild() },
+        },
+      },
+      presentation: singleSlotPresentation("root"),
+    });
+    expect(() => materializeBlueprint({ blueprint: strippedByRepresentation }))
+      .toThrow("missing required child input(s): report");
+
+    // A representation may introduce a hosting Cell's very first named view -- the authored baseline
+    // has none at all, and only the selected representation supplies the binding. This must NOT be
+    // rejected at authoring/assembly time, since lowering has not run yet.
+    const suppliedOnlyByRepresentation = createBlueprint({
+      id: "parent",
+      kind: "intent-blueprint",
+      version: "1",
+      tiers: [{ id: "intent", kind: "interaction-intent" }, { id: "runtime", kind: "runtime-program" }],
+      recipes: [{
+        id: "intent-to-runtime",
+        from: "intent",
+        to: "runtime",
+        representations: [{
+          id: "default",
+          views: {
+            host: { primary: { capability: "host:hosted-blueprint", region: "root", bindings: { report: { from: "source.report" } } } },
+          },
+        }],
+        fallback: "default",
+      }],
+      runtime: { state: {} },
+      cells: {
+        host: { id: "host", blueprint: { inline: hostedChild() } },
+      },
+      presentation: singleSlotPresentation("root"),
+    });
+    expect(() => materializeBlueprint({ blueprint: suppliedOnlyByRepresentation })).not.toThrow();
+  });
+
   it("preserves a child Blueprint declaration in its lowered presentation node", () => {
     const parent = createBlueprint({
       ...blueprint("parent").payload,

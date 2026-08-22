@@ -228,7 +228,9 @@ artifact_contracts:
       type CellBlueprint = { $ref: string | CellViewBinding; inline?: never }
       | { inline: BlueprintArtifact; $ref?: never }
     guarantees:
-      - A literal $ref is recursively assembled and its required child inputs are validated before lowering.
+      - A literal $ref is recursively assembled; its required child inputs are validated by
+        validateBlueprintArtifact once this Blueprint has no more lowering ahead of it (its own
+        recipes are empty), never against a still-pre-lowering Cell shape.
       - A bound $ref uses the same from-or-expression grammar as Cell view bindings.
       - Lowering shapes a bound reference into the reserved hostedBlueprint declaration consumed by the runtime host.
       - Runtime mounting fails closed if a binding reaches the host without resolving to a string reference.
@@ -274,6 +276,14 @@ artifact_api:
   - name: validateBlueprintArtifact
     signature: "validateBlueprintArtifact(value: unknown): asserts value is BlueprintArtifact"
     throws: BlueprintValidationError
+    guarantees:
+      - For every Cell whose `blueprint` is an inline hosted child, checks that Cell's attached
+        (region-bearing) potentialViews props/bindings satisfy every required entry of the child's
+        own interface.inputs -- but only once this Blueprint's own `recipes` is empty, since a
+        representation may still introduce, replace, or remove the view supplying that binding. This
+        makes the check resolve to exactly one point in time: immediately for an already-terminal
+        Blueprint, and via the terminal re-validation the fixed lowering meta-graph's emit-blueprint
+        Cell performs once a Blueprint with recipes has been lowered.
   - name: parseBlueprintJson
     signature: "parseBlueprintJson(text: string): BlueprintArtifact"
     behavior: Parses JSON and validates the artifact.
