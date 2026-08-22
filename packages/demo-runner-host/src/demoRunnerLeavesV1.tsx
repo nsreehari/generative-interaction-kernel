@@ -168,7 +168,7 @@ function LoweredBlueprintLeaf({ node }: ProjectionViewProps) {
         <div className={styles.field}><strong>External context</strong><span>{JSON.stringify(materialized.payload.externalContext)}</span></div>
       </div>
       <div className={styles.stageList} aria-label="Lowered cells">
-        {cells.map(([id, cell]) => <article key={id} className={styles.stage}><strong>{id}</strong><span>{cell.kind}</span><pre className={styles.code}>{JSON.stringify(cell, null, 2)}</pre></article>)}
+        {cells.map(([id, cell]) => <article key={id} className={styles.stage}><strong>{id}</strong><pre className={styles.code}>{JSON.stringify(cell, null, 2)}</pre></article>)}
       </div>
       <details><summary>Lowered program</summary><pre className={styles.code}>{JSON.stringify(program, null, 2)}</pre></details>
     </section>

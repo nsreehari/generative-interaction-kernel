@@ -189,13 +189,16 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
     // sources). Such an output must be wired as its own implicit graph input keyed on that same path,
     // or the node never re-evaluates -- and so never republishes the token -- when an unrelated action
     // changes that path. This applies per-output, regardless of whether the Cell also has unrelated
-    // inputs/compute/sources of its own. A `computed.<path>` prefix, or a bare path this Cell's own
-    // `compute` assigns to, both reference a value this same evaluation already produces fresh --
-    // neither needs (or should get) the implicit-input treatment.
+    // inputs/compute/sources of its own. A bare path prefixed `computed.`, `inputs.`, `sources.`, or
+    // `systemInputs.` -- the evaluator's own Cell-scoped read namespaces (see evaluateCell's
+    // sourceContext) -- or one of this same Cell's own `compute[].assign` targets, all reference a
+    // value already kept fresh by this Cell's own other wiring; none of them need (or should get) the
+    // implicit-input treatment.
     const computeAssignedPaths = new Set((cell.compute ?? []).map(({ assign }) => assign));
+    const CELL_SCOPED_READ_ROOTS = ["computed.", "inputs.", "sources.", "systemInputs."];
     const isStateBackedOutput = ({ from, token }: { from?: string; token: string }): boolean => {
       const path = from ?? token;
-      return !path.startsWith("computed.") && !computeAssignedPaths.has(path);
+      return !CELL_SCOPED_READ_ROOTS.some((root) => path.startsWith(root)) && !computeAssignedPaths.has(path);
     };
     const stateBackedOutputs = (cell.outputs ?? []).filter(isStateBackedOutput);
     const outputStateInputs = Object.fromEntries(

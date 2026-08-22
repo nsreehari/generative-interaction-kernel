@@ -61,12 +61,13 @@ test("describe returns only requested Blueprint authoring contracts", async () =
     async () => tool.handler({ kind: "capability", capabilities: ["primitive:form"] }),
     /Unsupported describe kind 'capability'/,
   );
+  const properties = tool.inputSchema.properties as Record<string, unknown> | undefined;
   assert.deepEqual(
-    (tool.inputSchema.properties?.kind as { enum?: unknown }).enum,
+    (properties?.kind as { enum?: unknown } | undefined)?.enum,
     ["catalog-capabilities", "multiple-capabilities"],
   );
   assert.equal(
-    "uniqueItems" in (tool.inputSchema.properties?.capabilities as Record<string, unknown>),
+    "uniqueItems" in (properties?.capabilities as Record<string, unknown>),
     false,
   );
 });
