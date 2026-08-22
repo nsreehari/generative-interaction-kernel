@@ -56,8 +56,9 @@ test("coaches the semantic portfolio agent without assigning sections to compone
   );
   // TODO: revisit this budget -- it was raised from 8_000 to 30_000 to unblock the
   // sources/services and potentialViews model rewrites, then to 32_000 for the
-  // CellSource.acceptanceCriteria addition; provisioning should be re-tightened.
-  assert.ok(instructions.length < 32_000, `Provisioned instructions grew to ${instructions.length} characters`);
+  // CellSource.acceptanceCriteria addition, then to 33_000 for the headless-hosting
+  // correction; provisioning should be re-tightened.
+  assert.ok(instructions.length < 33_000, `Provisioned instructions grew to ${instructions.length} characters`);
 });
 
 test("provisions the capability catalog required by the Copilot describe tool", () => {

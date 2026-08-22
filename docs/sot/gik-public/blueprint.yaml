@@ -229,8 +229,10 @@ artifact_contracts:
       | { inline: BlueprintArtifact; $ref?: never }
     guarantees:
       - A literal $ref is recursively assembled; its required child inputs are validated by
-        validateBlueprintArtifact once this Blueprint has no more lowering ahead of it (its own
-        recipes are empty), never against a still-pre-lowering Cell shape.
+        validateBlueprintArtifact against the hosting Cell's own declared inputs ports, unconditionally
+        (never gated on lowering stage, since ports never change across lowering) and never dependent
+        on potentialViews/region/presentation, since hosting is a data-flow property exactly like
+        sources or compute.
       - A bound $ref uses the same from-or-expression grammar as Cell view bindings.
       - Lowering shapes a bound reference into the reserved hostedBlueprint declaration consumed by the runtime host.
       - Runtime mounting fails closed if a binding reaches the host without resolving to a string reference.
@@ -265,7 +267,9 @@ artifact_contracts:
       - Representation lowering may replace a presentation (`presentation`) or append additional slot entries
         (`presentationAppend`, a flat array concat — slots are a list, not a nested tree to merge).
       - Without `presentation`, composeCellProgram emits a non-projected Kernel program from Cell event
-        handlers, computations, and source refresh behavior.
+        handlers, computations, and source refresh behavior -- except that any Cell hosting another
+        Blueprint (`blueprint`) still gets a minimal, discoverable root built from that Cell's own
+        `inputs` ports, since hosting is a data-flow property and must never depend on presentation.
 
 artifact_api:
   - name: createBlueprint
@@ -277,13 +281,11 @@ artifact_api:
     signature: "validateBlueprintArtifact(value: unknown): asserts value is BlueprintArtifact"
     throws: BlueprintValidationError
     guarantees:
-      - For every Cell whose `blueprint` is an inline hosted child, checks that Cell's attached
-        (region-bearing) potentialViews props/bindings satisfy every required entry of the child's
-        own interface.inputs -- but only once this Blueprint's own `recipes` is empty, since a
-        representation may still introduce, replace, or remove the view supplying that binding. This
-        makes the check resolve to exactly one point in time: immediately for an already-terminal
-        Blueprint, and via the terminal re-validation the fixed lowering meta-graph's emit-blueprint
-        Cell performs once a Blueprint with recipes has been lowered.
+      - For every Cell whose `blueprint` is an inline hosted child, checks that Cell's own declared
+        `inputs` ports satisfy every required entry of the child's own `interface.inputs` --
+        unconditionally, since a Cell's ports never change across lowering. Never depends on
+        potentialViews/bindings/region/presentation, which are an entirely separate, optional concern
+        from data flow; hosting works exactly like sources or compute.
   - name: parseBlueprintJson
     signature: "parseBlueprintJson(text: string): BlueprintArtifact"
     behavior: Parses JSON and validates the artifact.

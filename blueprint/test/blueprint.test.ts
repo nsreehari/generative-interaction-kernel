@@ -461,7 +461,7 @@ describe("@gik/blueprint", () => {
     );
   });
 
-  it("requires parent cells to bind required child Blueprint inputs", () => {
+  it("requires the hosting Cell's own declared inputs to satisfy a required child Blueprint input", () => {
     const child = createBlueprint({
       ...blueprint("child").payload,
       interface: { inputs: { report: { required: true, schema: { type: "string" } } } },
@@ -471,18 +471,20 @@ describe("@gik/blueprint", () => {
       cells: {
         child: {
           id: "child",
-          potentialViews: { primary: { capability: "host:hosted-blueprint", region: "root" } },
           blueprint: { $ref: "blueprint:child" },
         },
       },
     });
 
+    // Hosting is one of a Cell's own ordinary data-flow-owning properties, exactly like sources or
+    // compute -- a hosted child's required inputs are supplied by the hosting Cell's own declared
+    // `inputs` ports, unconditional of presentation, region, or any potentialViews at all.
     expect(() => assembleBlueprint(parent, () => child)).toThrow("missing required child input(s): report");
-    parent.payload.cells!.child.potentialViews!.primary.bindings = { report: { from: "source.report" } };
+    parent.payload.cells!.child.inputs = [{ token: "source.report", as: "report", required: true }];
     expect(assembleBlueprint(parent, () => child).payload.cells?.child.blueprint).toHaveProperty("inline");
   });
 
-  it("does not let an unconditionally dormant (regionless) view satisfy a required child Blueprint input", () => {
+  it("does not let presentation-only view props/bindings satisfy a required child Blueprint input", () => {
     const child = createBlueprint({
       ...blueprint("child").payload,
       interface: { inputs: { report: { required: true, schema: { type: "string" } } } },
@@ -492,18 +494,20 @@ describe("@gik/blueprint", () => {
       cells: {
         child: {
           id: "child",
-          // No `region` at all: this view can never attach/materialize under any representation, so
-          // its binding must not count as supplying the child's required input.
-          potentialViews: { primary: { capability: "host:hosted-blueprint", bindings: { report: { from: "source.report" } } } },
+          // Presentation (potentialViews/region/bindings) is an entirely separate, optional concern
+          // from data flow -- a view supplying "report" must never count as satisfying the child's
+          // required input; only the hosting Cell's own `inputs` ports may.
+          potentialViews: { primary: { capability: "host:hosted-blueprint", region: "root", bindings: { report: { from: "source.report" } } } },
           blueprint: { $ref: "blueprint:child" },
         },
       },
+      presentation: singleSlotPresentation("root"),
     });
 
     expect(() => assembleBlueprint(parent, () => child)).toThrow("missing required child input(s): report");
   });
 
-  it("re-checks required child Blueprint inputs against the terminal (post-lowering) view, not the pre-lowering baseline", () => {
+  it("validates required child Blueprint inputs unconditionally of presentation and lowering stage", () => {
     const hostedChild = () => createBlueprint({
       id: "child",
       kind: "runtime-blueprint",
@@ -512,47 +516,40 @@ describe("@gik/blueprint", () => {
       recipes: [],
       runtime: { state: {} },
       cells: {},
-      presentation: singleSlotPresentation("root"),
       interface: { inputs: { report: { required: true, schema: { type: "string" } } } },
     });
 
-    // The authored baseline satisfies the check, but the representation that actually gets selected
-    // replaces the hosting Cell's view with one that drops the binding -- this must be caught at the
-    // terminal stage even though it passed at authoring time.
-    const strippedByRepresentation = createBlueprint({
+    // A Cell's ports (inputs/outputs) never change across lowering -- the one invariant every tier
+    // shares -- so this check needs no "wait until terminal" gating at all: it is accurate the moment
+    // a Cell is authored, with or without any presentation, and with or without pending recipes.
+    expect(() => createBlueprint({
       id: "parent",
-      kind: "intent-blueprint",
+      kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "intent", kind: "interaction-intent" }, { id: "runtime", kind: "runtime-program" }],
-      recipes: [{
-        id: "intent-to-runtime",
-        from: "intent",
-        to: "runtime",
-        representations: [{
-          id: "default",
-          views: { host: { primary: { capability: "host:hosted-blueprint", region: "root" } } },
-        }],
-        fallback: "default",
-      }],
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
       runtime: { state: {} },
+      cells: { host: { id: "host", blueprint: { inline: hostedChild() } } },
+    })).toThrow("missing required child input(s): report");
+
+    const suppliedHeadless = createBlueprint({
+      id: "parent",
+      kind: "runtime-blueprint",
+      version: "1",
+      tiers: [{ id: "runtime", kind: "runtime-program" }],
+      recipes: [],
+      runtime: { state: { source: { report: "hello" } } },
       cells: {
         host: {
           id: "host",
-          potentialViews: {
-            primary: { capability: "host:hosted-blueprint", region: "root", bindings: { report: { from: "source.report" } } },
-          },
+          inputs: [{ token: "source.report", as: "report", required: true }],
           blueprint: { inline: hostedChild() },
         },
       },
-      presentation: singleSlotPresentation("root"),
     });
-    expect(() => materializeBlueprint({ blueprint: strippedByRepresentation }))
-      .toThrow("missing required child input(s): report");
+    expect(() => materializeBlueprint({ blueprint: suppliedHeadless })).not.toThrow();
 
-    // A representation may introduce a hosting Cell's very first named view -- the authored baseline
-    // has none at all, and only the selected representation supplies the binding. This must NOT be
-    // rejected at authoring/assembly time, since lowering has not run yet.
-    const suppliedOnlyByRepresentation = createBlueprint({
+    const suppliedBeforeLowering = createBlueprint({
       id: "parent",
       kind: "intent-blueprint",
       version: "1",
@@ -561,21 +558,21 @@ describe("@gik/blueprint", () => {
         id: "intent-to-runtime",
         from: "intent",
         to: "runtime",
-        representations: [{
-          id: "default",
-          views: {
-            host: { primary: { capability: "host:hosted-blueprint", region: "root", bindings: { report: { from: "source.report" } } } },
-          },
-        }],
+        representations: [{ id: "default", views: {} }],
         fallback: "default",
       }],
-      runtime: { state: {} },
+      runtime: { state: { source: { report: "hello" } } },
       cells: {
-        host: { id: "host", blueprint: { inline: hostedChild() } },
+        host: {
+          id: "host",
+          inputs: [{ token: "source.report", as: "report", required: true }],
+          blueprint: { inline: hostedChild() },
+        },
       },
-      presentation: singleSlotPresentation("root"),
     });
-    expect(() => materializeBlueprint({ blueprint: suppliedOnlyByRepresentation })).not.toThrow();
+    // Confirmed directly against validateBlueprintArtifact (unlike materializeBlueprint, no successful
+    // lowering/presentation is required to prove the check itself is already satisfied pre-lowering).
+    expect(() => validateBlueprintArtifact(suppliedBeforeLowering)).not.toThrow();
   });
 
   it("preserves a child Blueprint declaration in its lowered presentation node", () => {
@@ -1308,7 +1305,7 @@ describe("@gik/blueprint", () => {
     });
   });
 
-  it("lowers headless sources through Cell evaluation and rejects projection-hosted children", () => {
+  it("lowers headless sources through Cell evaluation and supports headless-hosted children", () => {
     const artifact = createBlueprint({
       ...blueprint("headless-source").payload,
       services: {
@@ -1330,10 +1327,15 @@ describe("@gik/blueprint", () => {
       operation: { kind: "extension", name: "evaluate-cell" },
     });
 
+    // Hosting another Blueprint is one of a Cell's own ordinary data-flow-owning properties -- it
+    // must never require this Blueprint to have any presentation at all, exactly like sources/compute
+    // never do. Presentation-less hosting still compiles to a resolvable, discoverable root.
     artifact.payload.cells!.source.blueprint = { inline: blueprint("child") };
-    expect(() => materializeBlueprint({ blueprint: artifact })).toThrow(
-      "Blueprint 'headless-source' without a presentation cannot host child Blueprint Cell 'source'",
-    );
+    const materialized = materializeBlueprint({ blueprint: artifact });
+    expect(unwrap(materialized.payload.program).root).toMatchObject({
+      capability: BLUEPRINT_CAPABILITY,
+      id: "source",
+    });
   });
 
   it("materializes deterministically into a portable value and runs the trusted fast path", async () => {
