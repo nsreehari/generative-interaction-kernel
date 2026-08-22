@@ -100,47 +100,6 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
   for (const [cellId, cell] of Object.entries(cells)) {
     if (cell.id !== cellId) throw new BlueprintValidationError(`Blueprint cell key '${cellId}' does not match id '${cell.id}'`);
   }
-  // A hosted child's own inputs/outputs/events are its stable interface -- invariant across every one
-  // of the child's own tiers, exactly like a Cell's own ports. Whether the *hosting* Cell actually
-  // supplies what that interface requires is a property of this Blueprint's own wiring, not of the
-  // child in isolation -- no amount of validating the child alone can ever catch a parent forgetting
-  // to bind a required input. This check only applies once this Blueprint has no more lowering ahead
-  // of it (`recipes.length === 0`): a representation may still introduce a hosting Cell's very first
-  // view, or replace one already there, so checking against a still-pre-lowering shape can both
-  // false-reject (the authored baseline lacks it, but the representation that will be selected adds
-  // it) and false-accept (the authored baseline has it, but the selected representation replaces the
-  // view with one that does not). Gating on `recipes.length === 0` means this always resolves to
-  // exactly one check, against the actually-final shape: immediately for an already-terminal
-  // Blueprint (authored with no recipes, or a nested hosted child not yet reached its own lowering
-  // pass), and via the re-validation `fixed-lowering-meta-graph.ts`'s `emit-blueprint` step performs
-  // on the terminal artifact (whose `recipes` it forces to `[]` first) once lowering has run. A
-  // `{ $ref }` declaration not yet resolved to an inline child carries no interface to check against
-  // and is skipped here regardless.
-  if (blueprint.recipes.length === 0) {
-    for (const [cellId, cell] of Object.entries(cells)) {
-      const hosted = cell.blueprint;
-      if (!hosted || !("inline" in hosted) || !hosted.inline) continue;
-      const child = hosted.inline;
-      // A view with no `region` at all is unconditionally dormant (CellPotentialView's own contract:
-      // "dormant -- never materialized -- unless its own `region` resolves..."). Such a view's
-      // props/bindings can never actually reach the hosted child at runtime, so they must not count
-      // as supplying a required input.
-      const supplied = new Set(Object.values(cell.potentialViews ?? {})
-        .filter((view) => view.region !== undefined)
-        .flatMap((view) => [
-          ...Object.keys(view.props ?? {}),
-          ...Object.keys(view.bindings ?? {}),
-        ]));
-      const missing = Object.entries(child.payload.interface?.inputs ?? {})
-        .filter(([name, port]) => port.required && !supplied.has(name))
-        .map(([name]) => name);
-      if (missing.length > 0) {
-        throw new BlueprintValidationError(
-          `Blueprint Cell '${cellId}' in '${blueprint.id}' is missing required child input(s): ${missing.join(", ")}`,
-        );
-      }
-    }
-  }
   if (blueprint.presentation) {
     const slotIds = new Set(blueprint.presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
     if (!slotIds.has(blueprint.presentation.root)) {
@@ -163,6 +122,30 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
           }
         }
       }
+    }
+  }
+  // `blueprint` (hosting another Blueprint) is one of a Cell's own ordinary data-flow-owning
+  // properties -- listed alongside ports/sources/compute/behavior, not alongside `potentialViews` --
+  // and its declared outputs "surface as this Cell's own outputs, exactly like any other Cell". A
+  // hosted child's required `interface.inputs` are therefore supplied the same way any other Cell
+  // consumes state: through this Cell's own declared `inputs` ports (by `input.as ?? input.token`
+  // name), never through `potentialViews`/bindings/region/presentation. Presentation is a fully
+  // independent, optional concern -- whether (and how) a Cell's data happens to also render is never
+  // allowed to gate whether its data flow (including hosting) functions. Because a Cell's ports never
+  // change across lowering (the one invariant every tier shares), this check needs no "wait until
+  // terminal" gating: it is accurate at every validation call, always.
+  for (const [cellId, cell] of Object.entries(cells)) {
+    const hosted = cell.blueprint;
+    if (!hosted || !("inline" in hosted) || !hosted.inline) continue;
+    const child = hosted.inline;
+    const supplied = new Set((cell.inputs ?? []).map((input) => input.as ?? input.token));
+    const missing = Object.entries(child.payload.interface?.inputs ?? {})
+      .filter(([name, port]) => port.required && !supplied.has(name))
+      .map(([name]) => name);
+    if (missing.length > 0) {
+      throw new BlueprintValidationError(
+        `Blueprint Cell '${cellId}' in '${blueprint.id}' is missing required child input(s): ${missing.join(", ")}`,
+      );
     }
   }
   const composition = analyzeCellComposition(Object.values(cells));

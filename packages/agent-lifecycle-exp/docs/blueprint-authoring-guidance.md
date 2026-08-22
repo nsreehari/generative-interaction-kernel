@@ -154,7 +154,10 @@ layout (`summary`, `evidence`, `risks`, `actions` — never `left-column`, `head
 - **events + behavior** — declared event ingress (`events`) and the actions that answer each one
   (`behavior.on`, detailed under **Events + behavior** below);
 - **hosting** — nest another Blueprint via `blueprint` (`$ref` to a registered id, or `inline`); its
-  declared outputs surface as this Cell's own outputs, exactly like any other Cell.
+  declared outputs surface as this Cell's own outputs, exactly like any other Cell. Hosting is a
+  data-flow property, not a projection one — never dependent on `potentialViews`, `region`, or this
+  Blueprint having any `presentation` at all; a hosted child's required `interface.inputs` are supplied
+  by this Cell's own `inputs` ports (see **Interface** below).
 
 A Cell's identity, ports, and event contracts are invariant across every tier: no tier or recipe may
 add, remove, replace, or rename a Cell. `addCell`/`replaceCell`/`removeCell` (a `BlueprintPatch`) is a
@@ -168,12 +171,16 @@ through lowering.
 
 Top-level `interface` (`inputs`/`outputs`/`events`) is what a *whole Blueprint* exposes when a Cell
 hosts it via `blueprint`, exactly parallel to a Cell's own `inputs`/`outputs`/`events`. Declare
-`interface.inputs` for anything the hosting Cell must supply — a missing required input is rejected by
-Blueprint validation itself, checked against the hosting Cell's actual terminal (post-lowering) view,
-not the pre-lowering authored one, since a representation may still introduce, replace, or remove the
-view that supplies it; declare `interface.outputs` as `{ token: { from: <state path> } }` so the hosting Cell's own
-outputs can surface a value the hosted Blueprint produced; declare `interface.events` for every event
-name the hosting Cell may raise into it. A Blueprint meant only to run standalone does not need one.
+`interface.inputs` for anything the hosting Cell must supply — supplied by that Cell's own `inputs`
+ports (state-path reads, by `input.as ?? input.token` name), never by potentialViews/bindings/region,
+which are a separate, optional concern from data flow. A missing required input is rejected
+unconditionally by Blueprint validation itself — no "wait until terminal" gating, since a Cell's ports
+never change across lowering (the one invariant every tier shares), and no presentation dependency,
+since hosting works exactly like sources/compute: unconditionally, regardless of whether this
+Blueprint (or this Cell) has any presentation at all. Declare `interface.outputs` as
+`{ token: { from: <state path> } }` so the hosting Cell's own outputs can surface a value the hosted
+Blueprint produced; declare `interface.events` for every event name the hosting Cell may raise into it.
+A Blueprint meant only to run standalone does not need one.
 
 ### compute = the Cell's shared derivation, available to every one of its facets
 
@@ -272,9 +279,12 @@ when present, referencing anything outside it is a validation error, not just a 
 
 ### Presentation = a closed set of named slots, plus an optional closed capability vocabulary
 
-The `presentation` section declares every slot name that exists, which one is the root, and
-optionally — via `allowedCapabilities` — the closed set of capability names any view or decoration in
-this Blueprint may use. It has no knowledge of Cells, and it carries no tree of who contains whom:
+`presentation` is entirely optional at the whole-Blueprint level — a Blueprint that never renders, or
+that only hosts others purely for their data, needs none; its Cells still fully participate in data
+flow regardless. When present, the `presentation` section declares every slot name that exists, which
+one is the root, and optionally — via `allowedCapabilities` — the closed set of capability names any
+view or decoration in this Blueprint may use. It has no knowledge of Cells, and it carries no tree of
+who contains whom:
 
 ```json
 "presentation": {

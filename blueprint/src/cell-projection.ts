@@ -27,6 +27,33 @@ export interface CellProjectionDefinition {
 
 export const HOSTED_BLUEPRINT_OUTPUT_EVENT = "gik-hosted-blueprint-output";
 
+/** Reserved, "gik-"-prefixed internal ids/names never available to authors (matching
+ * `HOSTED_BLUEPRINT_OUTPUT_EVENT`'s own reserved-name convention), used to synthesize a discoverable
+ * node for a hosted-Blueprint Cell that has no reachable presented view of its own -- whether because
+ * this Blueprint has no `presentation` at all, or because this one Cell just isn't attached anywhere. */
+const HEADLESS_HOSTED_CELLS_ROOT_ID = "gik-headless-hosted-cells";
+
+/** A hosted Blueprint's required `interface.inputs` are supplied by the hosting Cell's own declared
+ * `inputs` ports -- the same ordinary data-flow mechanism every Cell already uses to read state,
+ * unconditional of whether that Cell has (or is reachable through) any presented view at all.
+ * `hosting` is one of a Cell's own data-flow-owning properties (ports, sources, compute, behavior,
+ * hosting), not a projection/`potentialViews` concern, so it must never depend on presentation. */
+function hostedCellInputReads(cell: CellDefinition): Record<string, string> {
+  return Object.fromEntries((cell.inputs ?? []).map((input) => [input.as ?? input.token, input.token]));
+}
+
+/** Build the minimal, presentation-free node that lets the runtime discover and mount a hosted
+ * Blueprint Cell regardless of whether it (or this Blueprint) has any human-facing presentation. */
+function compileHeadlessHostedCellInstance(cell: CellDefinition): DocNode {
+  const read = hostedCellInputReads(cell);
+  return {
+    capability: BLUEPRINT_CAPABILITY,
+    id: cell.id,
+    props: { hostedBlueprint: JSON.parse(JSON.stringify(cell.blueprint)) as Json },
+    ...(Object.keys(read).length > 0 ? { edges: { read } } : {}),
+  };
+}
+
 /** Compile a Blueprint's optional presentation into the executable Kernel program. Presentation is a
  * closed set of named slots (self-declared nesting via each slot's own `region`) plus a root. A Cell
  * carries zero, one, or many named `potentialViews`; each one independently self-declares which
@@ -42,15 +69,29 @@ export function composeCellProgram(
   const presentation = definition.presentation;
   const graph = composeCellGraph(topology);
   if (!presentation) {
-    const hostedCell = topology.cells.find((cell) => cell.blueprint);
-    if (hostedCell) {
-      throw new Error(`Blueprint '${topology.id}' without a presentation cannot host child Blueprint Cell '${hostedCell.id}'`);
-    }
     const handlers: RuntimeHandler[] = topology.cells.flatMap((cell) => {
       const events = cellEvents(cell);
       return Object.keys(events).length > 0 ? [{ id: cell.id, on: events }] : [];
     });
+    // Presentation is entirely optional and orthogonal to data flow -- but a Cell that hosts another
+    // Blueprint still needs *some* discoverable node, regardless, so the runtime can find and mount
+    // it (see HEADLESS_HOSTED_CELLS_ROOT_ID / compileHeadlessHostedCellInstance above).
+    const hostedCells = topology.cells.filter((cell) => cell.blueprint);
+    if (hostedCells.length === 0) {
+      return {
+        ...(graph ? { graph } : {}),
+        ...(handlers.length > 0 ? { handlers } : {}),
+      };
+    }
+    const root: DocNode = hostedCells.length === 1
+      ? compileHeadlessHostedCellInstance(hostedCells[0])
+      : {
+          capability: PRESENTATION_FRAGMENT_CAPABILITY,
+          id: HEADLESS_HOSTED_CELLS_ROOT_ID,
+          edges: { children: hostedCells.map(compileHeadlessHostedCellInstance) },
+        };
     return {
+      root,
       ...(graph ? { graph } : {}),
       ...(handlers.length > 0 ? { handlers } : {}),
     };
@@ -142,8 +183,19 @@ export function composeCellProgram(
     const events = cellEvents(cell);
     return Object.keys(events).length > 0 ? [{ id: cell.id, on: events }] : [];
   });
+  // A hosted-Blueprint Cell not reachable through any presented view of its own (this Blueprint has a
+  // presentation, but this one Cell just isn't attached anywhere in it) still needs a discoverable
+  // node, exactly like the fully presentation-less case above.
+  const headlessHostedCells = backgroundCells.filter((cell) => cell.blueprint);
+  const projectedRoot: DocNode = headlessHostedCells.length === 0
+    ? root
+    : {
+        capability: PRESENTATION_FRAGMENT_CAPABILITY,
+        id: HEADLESS_HOSTED_CELLS_ROOT_ID,
+        edges: { children: [root, ...headlessHostedCells.map(compileHeadlessHostedCellInstance)] },
+      };
   return {
-    root,
+    root: projectedRoot,
     ...(graph ? { graph } : {}),
     ...(handlers.length > 0 ? { handlers } : {}),
   };
@@ -310,8 +362,9 @@ function toProgramNode(cell: CellDefinition, view: CellPotentialView, nodeId: st
     ? { ...viewProps, hostedBlueprint: JSON.parse(JSON.stringify(cell.blueprint)) as Json }
     : viewProps;
   const events = cellEvents(cell);
+  const read = { ...(cell.blueprint ? hostedCellInputReads(cell) : {}), ...Object.fromEntries(directBindings) };
   const edges = {
-    ...(directBindings.length > 0 ? { read: Object.fromEntries(directBindings) } : {}),
+    ...(Object.keys(read).length > 0 ? { read } : {}),
     ...(expressionBindings.length > 0 || blueprintBinding ? {
       readExpr: {
         ...Object.fromEntries(expressionBindings),

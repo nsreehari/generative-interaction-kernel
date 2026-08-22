@@ -198,3 +198,45 @@ it by running it through its own fully independent `materializeBlueprint` call (
 own lowering, its own Kernel instance), bridging outputs back to the parent via a synthetic event. This
 is deliberate — the same compiler-Kernel/application-Kernel separation this ADR already establishes,
 applied again at the parent/child Blueprint boundary — not a gap.
+
+## Amendment (2026-08-23): hosting is a data-flow property, never dependent on presentation — supersedes the prior amendment's mechanism
+
+The prior amendment (immediately above) checked hosted-child required inputs against a hosting Cell's
+*view* (`potentialViews` props/bindings), gated on that view's `region` resolving through the active
+`presentation`. That mechanism, and the pre-existing `composeCellProgram` throw it lived alongside
+(`'Blueprint '${id}' without a presentation cannot host child Blueprint Cell ...'`), both made the same
+category error the authoring guidance already warns against for `sources`/`compute`: they let a
+presentation-only concept (a view, its region, whether that region is reachable) gate whether a Cell's
+own data flow — hosting, explicitly one of a Cell's ordinary data-flow-owning properties alongside
+ports/sources/compute/behavior, described as working "exactly like any other Cell" — actually
+functions. `presentation` is, and was always documented as, entirely optional at the whole-Blueprint
+level; nothing about hosting a child Blueprint may ever require it.
+
+Corrected the mechanism, replacing the prior amendment's view-based one entirely:
+
+- `validateBlueprintArtifact` now checks a hosted child's required `interface.inputs` against the
+  hosting Cell's own declared `inputs` ports (`input.as ?? input.token`) — never `potentialViews`,
+  never `region`, never presentation reachability. Since a Cell's ports never change across lowering
+  (the one invariant every tier shares), this check needs no "wait until terminal"/`recipes.length`
+  gating at all: it is accurate at every validation call, unconditionally.
+- `composeCellProgram` no longer rejects a presentation-less Blueprint that hosts a child. Every Cell
+  with `blueprint` set now always gets a discoverable node — built from that Cell's own `inputs` ports,
+  reusing the same `edges.read` mechanism as any other bound prop — regardless of whether this
+  Blueprint has a `presentation` at all, or whether that one Cell has a reachable view of its own. This
+  reuses the existing `HostedBlueprintReconciler`/`HOSTED_BLUEPRINT_OUTPUT_EVENT` discovery and
+  output-bridging mechanism unchanged (both already keyed on the bare Cell id), so a host's existing
+  `program.root !== undefined` gate for subscribing to the tree now naturally also covers headless
+  hosting with zero host-side changes needed.
+- A *presented* hosting Cell's view may still carry visibility, decorations, and its own unrelated
+  props — but the hosted child's own inputs are now sourced solely from `cell.inputs`, for both
+  presented and headless hosting alike, so validation and runtime behavior can never diverge by
+  presentation state.
+
+Confirmed via exhaustive repository search that no real product sample authors a Cell's own `blueprint`
+field directly (mechanism A) at all — every real sample dynamically binds a `gik:blueprint`-capability
+*view* prop to a Blueprint-shaped value computed as data (mechanism B, e.g.
+`samples/blueprints/incident-analysis-new-shell`'s `report-resolution` Cell). Mechanism B is
+inherently presentation-native (it is a rendering-time selection of what a view currently renders) and
+is unaffected by this amendment; only mechanism A (`CellDefinition.blueprint`, the ordinary
+data-flow-owning hosting property this ADR and the authoring guidance describe) was ever wrongly
+coupled to presentation, and is what this amendment corrects.
