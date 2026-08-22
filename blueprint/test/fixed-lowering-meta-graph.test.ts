@@ -9,11 +9,10 @@ import {
   materializeBlueprint,
   parseBlueprintJson,
   runFixedLoweringMetaGraph,
-  type VocabularyLoweringRecipeDefinition,
   type RepresentationLoweringRecipeDefinition,
 } from "../src/index";
 
-const sampleUrl = new URL("./fixtures/vocabulary-lowering.blueprint.json", import.meta.url);
+const sampleUrl = new URL("./fixtures/representation-lowering.blueprint.json", import.meta.url);
 
 test("the package owns one fixed three-Cell lowering meta-graph", () => {
   const metaGraph = fixedLoweringMetaGraphBlueprint();
@@ -26,8 +25,8 @@ test("the package owns one fixed three-Cell lowering meta-graph", () => {
   ]);
 });
 
-test("the fixed meta-graph lowers the two-tier vocabulary recipe to an executable terminal Blueprint", () => {
-  const authored = parseBlueprintJson<VocabularyLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
+test("the fixed meta-graph lowers the two-tier representation recipe to an executable terminal Blueprint", () => {
+  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
   const authoredSnapshot = structuredClone(authored);
   const terminal = lowerWithFixedMetaGraph(authored);
   const materialized = materializeBlueprint({ blueprint: authored });
@@ -45,7 +44,7 @@ test("the fixed meta-graph lowers the two-tier vocabulary recipe to an executabl
 });
 
 test("lowering executes all fixed compiler Cells through Kernel token flow", () => {
-  const authored = parseBlueprintJson<VocabularyLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
+  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
 
   const result = runFixedLoweringMetaGraph(authored);
 
@@ -61,7 +60,7 @@ test("lowering executes all fixed compiler Cells through Kernel token flow", () 
 });
 
 test("the same fixed meta-graph folds an arbitrary ordered tier chain", () => {
-  const authored = parseBlueprintJson<VocabularyLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
+  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
   const [recipe] = authored.payload.recipes;
   authored.payload.tiers.splice(1, 0, { id: "presentation", kind: "presentation-model" });
   authored.payload.recipes = [
@@ -69,13 +68,19 @@ test("the same fixed meta-graph folds an arbitrary ordered tier chain", () => {
       id: "intent-to-presentation",
       from: "intent",
       to: "presentation",
-      patch: recipe.patch.slice(0, 2),
+      representations: recipe.representations,
+      fallback: recipe.fallback,
     },
     {
       id: "presentation-to-runtime",
       from: "presentation",
       to: "runtime",
-      patch: recipe.patch.slice(2),
+      // No further view/presentation change is needed at this stage -- an empty pass-through
+      // representation carries forward whatever presentation the prior stage already produced.
+      representations: [{ id: "pass-through" }],
+      fallback: "pass-through",
+      implementationPrograms: recipe.implementationPrograms,
+      implementationFallback: recipe.implementationFallback,
     },
   ];
 
@@ -91,13 +96,13 @@ test("the same fixed meta-graph folds an arbitrary ordered tier chain", () => {
   });
 });
 
-test("materialization rejects a recipe without deterministic vocabulary operations", () => {
-  const authored = parseBlueprintJson(readFileSync(sampleUrl, "utf8"));
-  delete (authored.payload.recipes[0] as Partial<VocabularyLoweringRecipeDefinition>).patch;
+test("materialization rejects a representation recipe missing its required representations", () => {
+  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
+  delete (authored.payload.recipes[0] as Partial<RepresentationLoweringRecipeDefinition>).representations;
 
   assert.throws(
     () => materializeBlueprint({ blueprint: authored }),
-    /must have required property 'patch'/,
+    /must have required property 'representations'/,
   );
 });
 

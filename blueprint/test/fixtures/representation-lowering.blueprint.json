@@ -2,7 +2,7 @@
   "gik": "0.1",
   "type": "blueprint",
   "payload": {
-    "id": "vocabulary-lowering",
+    "id": "representation-lowering",
     "kind": "intent-blueprint",
     "version": "1",
     "structureMode": "fixed",
@@ -21,46 +21,17 @@
         "id": "intent-to-runtime",
         "from": "intent",
         "to": "runtime",
-        "patch": [
+        "representations": [
           {
-            "op": "replaceCell",
-            "cellId": "query-input",
-            "cell": {
-              "id": "query-input",
-              "potentialViews": {
+            "id": "default",
+            "views": {
+              "query-input": {
                 "primary": {
                   "capability": "sample:query-input",
                   "region": "query-input"
                 }
               },
-              "events": {
-                "submit": {
-                  "payloadSchema": {
-                    "type": "object"
-                  }
-                }
-              },
-              "behavior": {
-                "on": {
-                  "submit": [
-                    {
-                      "do": "assign",
-                      "target": "search.submitted",
-                      "args": {
-                        "value": true
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "op": "replaceCell",
-            "cellId": "results",
-            "cell": {
-              "id": "results",
-              "potentialViews": {
+              "results": {
                 "primary": {
                   "capability": "sample:results",
                   "region": "children",
@@ -70,15 +41,8 @@
                     }
                   }
                 }
-              }
-            }
-          },
-          {
-            "op": "replaceCell",
-            "cellId": "summary",
-            "cell": {
-              "id": "summary",
-              "potentialViews": {
+              },
+              "summary": {
                 "primary": {
                   "capability": "sample:summary",
                   "region": "children",
@@ -89,10 +53,7 @@
                   }
                 }
               }
-            }
-          },
-          {
-            "op": "setPresentation",
+            },
             "presentation": {
               "slots": [
                 "query-input",
@@ -104,7 +65,31 @@
               "root": "query-input"
             }
           }
-        ]
+        ],
+        "fallback": "default",
+        "implementationPrograms": [
+          {
+            "id": "default",
+            "cells": {
+              "query-input": {
+                "behavior": {
+                  "on": {
+                    "submit": [
+                      {
+                        "do": "assign",
+                        "target": "search.submitted",
+                        "args": {
+                          "value": true
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "implementationFallback": "default"
       }
     ],
     "cells": {
@@ -112,6 +97,13 @@
         "id": "query-input",
         "metadata": {
           "role": "collect-query"
+        },
+        "events": {
+          "submit": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
         }
       },
       "results": {

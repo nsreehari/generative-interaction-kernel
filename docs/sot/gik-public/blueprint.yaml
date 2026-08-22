@@ -154,18 +154,6 @@ artifact_contracts:
       Serialized recipes may carry additional declarative properties. Callers represent a
       stronger recipe dialect by extending LoweringRecipeDefinition through BlueprintArtifact's
       generic recipe parameter.
-  - name: VocabularyLoweringRecipeDefinition
-    signature: >-
-      interface VocabularyLoweringRecipeDefinition extends LoweringRecipeDefinition {
-      patch: BlueprintPatch }
-    purpose: >-
-      Express one deterministic tier transition with existing Cell, relationship, and projection
-      vocabulary rather than selecting a tier-pair-specific compiler.
-    guarantees:
-      - May select a contract-compatible Cell implementation program from immutable external context.
-      - May vary source mode, service or provider binding, computation, and internal execution details.
-      - Must preserve Cell identity, semantic responsibility, input and output contracts, and logical data-flow role.
-      - Must not add, remove, merge, split, replace, or route around a Cell to express an implementation variant.
   - name: RepresentationLoweringRecipeDefinition
     signature: >-
       interface RepresentationLoweringRecipeDefinition extends LoweringRecipeDefinition {

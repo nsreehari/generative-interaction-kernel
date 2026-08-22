@@ -157,10 +157,10 @@ layout (`summary`, `evidence`, `risks`, `actions` — never `left-column`, `head
   declared outputs surface as this Cell's own outputs, exactly like any other Cell.
 
 A Cell's identity, ports, and event contracts are invariant across every tier: no tier or recipe may
-add, remove, replace, or rename a Cell. `addCell`/`replaceCell`/`removeCell`
-(`VocabularyLoweringRecipeDefinition`'s `BlueprintPatch`) is a governance-gated edit to the *authored*
-Blueprint itself, admitted only under `reconfigurable`/`adaptive` structure mode — never a lowering-time
-tool. If an interaction needs its own event and its own behavior, that is a real data-flow
+add, remove, replace, or rename a Cell. `addCell`/`replaceCell`/`removeCell` (a `BlueprintPatch`) is a
+governance-gated edit to the *authored* Blueprint itself, admitted only under `reconfigurable`/`adaptive`
+structure mode via `admitBlueprintPatch` — never a lowering-time tool, and never something a recipe
+carries. If an interaction needs its own event and its own behavior, that is a real data-flow
 responsibility: author it as a Cell from the start, not as something a recipe introduces partway
 through lowering.
 

@@ -10,17 +10,14 @@ import {
 } from "@gik/kernel";
 import { createBlueprint, validateBlueprintArtifact } from "./blueprint";
 import { resolveBlueprintExecution } from "./execution";
-import { applyBlueprintPatch } from "./structure-patch";
 import type {
   BlueprintArtifact,
   BlueprintImplementationProgram,
-  BlueprintPatch,
   BlueprintRepresentation,
   BlueprintRepresentationDecorator,
   CellDefinition,
   CellSource,
   RepresentationLoweringRecipeDefinition,
-  VocabularyLoweringRecipeDefinition,
 } from "./types";
 
 const FIXED_LOWERING_META_GRAPH = createBlueprint({
@@ -212,15 +209,7 @@ function applyLoweringRecipe(
   recipe: ReturnType<typeof resolveBlueprintExecution>["stages"][number]["recipe"],
   externalContext: Readonly<Record<string, Json>>,
 ): BlueprintArtifact {
-  const representationRecipe = recipe as Partial<RepresentationLoweringRecipeDefinition>;
-  if (Array.isArray(representationRecipe.representations)) {
-    return applyRepresentationRecipe(artifact, representationRecipe as RepresentationLoweringRecipeDefinition, externalContext);
-  }
-  const patch = (recipe as Partial<VocabularyLoweringRecipeDefinition>).patch as BlueprintPatch | undefined;
-  if (!Array.isArray(patch) || patch.length === 0) {
-    throw new Error(`Blueprint lowering recipe '${recipe.id}' requires a non-empty vocabulary patch`);
-  }
-  return applyBlueprintPatch(artifact, patch);
+  return applyRepresentationRecipe(artifact, recipe as RepresentationLoweringRecipeDefinition, externalContext);
 }
 
 function applyRepresentationRecipe(

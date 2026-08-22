@@ -409,32 +409,32 @@ test("standalone recipe validation does not own Blueprint tier references", () =
     id: "semantic-to-runtime",
     from: "not-in-a-blueprint",
     to: "also-not-in-a-blueprint",
-    patch: [{ op: "removeCell", cellId: "legacy" }],
+    representations: [{ id: "default" }],
+    fallback: "default",
   });
 
   assert.equal(report.ok, true);
 });
 
-test("validateLoweringRecipe rejects unknown recipe fields and mixed variants", () => {
+test("validateLoweringRecipe rejects unknown recipe fields", () => {
   const unknown = validateLoweringRecipe({
     id: "semantic-to-runtime",
     from: "semantic",
     to: "runtime",
-    patch: [{ op: "removeCell", cellId: "legacy" }],
+    representations: [{ id: "desktop" }],
+    fallback: "desktop",
     executor: "parallel-engine",
   });
   assert.equal(unknown.ok, false);
   assert.ok(unknown.errors.some(({ detail }) => detail.includes("additional properties")));
 
-  const mixed = validateLoweringRecipe({
+  const legacyPatch = validateLoweringRecipe({
     id: "semantic-to-runtime",
     from: "semantic",
     to: "runtime",
     patch: [{ op: "removeCell", cellId: "legacy" }],
-    representations: [{ id: "desktop" }],
-    fallback: "desktop",
   });
-  assert.equal(mixed.ok, false);
+  assert.equal(legacyPatch.ok, false);
 });
 
 test("Blueprint validation composes recipe-local semantic validation", () => {

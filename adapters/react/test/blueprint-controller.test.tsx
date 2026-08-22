@@ -104,16 +104,15 @@ test("BlueprintController seeds state on the materialized terminal Blueprint", a
       id: "intent-to-runtime",
       from: "intent",
       to: "runtime",
-      patch: [{
-        op: "replaceCell",
-        cellId: "root",
-        cell: {
-          id: "root",
-          potentialViews: {
+      representations: [{
+        id: "default",
+        views: {
+          root: {
             primary: { capability: "screen", bindings: { value: { from: "counter.value" } }, region: "root" },
           },
         },
       }],
+      fallback: "default",
     }],
     runtime: { state: { counter: { value: 1 } } },
     cells: { root: { id: "root" } },
