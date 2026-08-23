@@ -1,18 +1,25 @@
 import assert from "node:assert/strict";
+import React from "react";
 import { test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createBlueprint } from "@gik/blueprint";
-import type { Json, ResolvedNode } from "@gik/kernel";
+import TestRenderer, { act } from "react-test-renderer";
+import { createBlueprint, materializeBlueprint } from "@gik/blueprint";
+import { Kernel, ValidationError, type CapabilityDescriptor, type Json, type ResolvedNode } from "@gik/kernel";
 import {
   readHostedBlueprintDeclaration,
   readBlueprintNodeDeclaration,
   resolveHostedBlueprint,
   type ReactBlueprintHostRegistry,
 } from "../src/primitives/hosted-blueprint";
-import { createHostedBlueprintProjection } from "../src/primitives/blueprint-host";
+import {
+  createHostedBlueprintProjection,
+  type BlueprintHostProps,
+} from "../src/primitives/blueprint-host";
 import { bundleFromJson } from "../src/primitives/bundle";
 import { buildBundleRegistry } from "../src/primitives/registry";
+import { buildCapabilityCatalogFromExternals } from "../src/registry";
 import { renderNode } from "../src/render";
+import type { CapabilityDescriptorResolver } from "../src/registry";
 
 const child = createBlueprint({
   id: "analysis",
@@ -146,4 +153,141 @@ test("renders nothing while a hosted Blueprint binding is empty", () => {
 
     assert.equal(markup, "");
   }
+});
+
+// review-r1 reassessment: createHostedBlueprintProjection is the single shared factory behind both
+// in-memory BlueprintHost and DurableBlueprintHost's nested rendering. A hosted child must inherit
+// resolveCapabilityDescriptors so it builds its OWN capabilityCatalog from its OWN runtime.externals
+// (never a reuse of the parent's already-filtered catalog) -- this is the exact mechanism Blueprint
+// Studio's Preview tab relies on when it renders the previewed Blueprint via gik:blueprint.
+
+const strictLabelDescriptors: Record<string, CapabilityDescriptor> = {
+  label: {
+    propsSchema: {
+      type: "object",
+      properties: { value: { type: "string" } },
+      required: ["value"],
+      additionalProperties: false,
+    },
+  },
+};
+
+function resolveStrictDescriptors(from: string): Record<string, CapabilityDescriptor> | undefined {
+  return from === "strict" ? strictLabelDescriptors : undefined;
+}
+
+function nestedChildBlueprint(labelProps: Record<string, Json>) {
+  return createBlueprint({
+    id: "nested-preview",
+    kind: "runtime-blueprint",
+    version: "1.0.0",
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
+    recipes: [],
+    runtime: {
+      externals: { projectionViews: { strict: { from: "strict", use: ["label"] } } },
+      state: {},
+    },
+    cells: {
+      label: {
+        id: "label",
+        potentialViews: {
+          primary: { capability: "strict:label", props: labelProps, region: "root" },
+        },
+      },
+    },
+    presentation: { slots: ["root"], root: "root" },
+  });
+}
+
+function hostedBlueprintNode(childBlueprint: ReturnType<typeof nestedChildBlueprint>): ResolvedNode {
+  return {
+    id: "preview-slot",
+    capability: "gik:blueprint",
+    visible: true,
+    fallback: false,
+    props: { blueprint: childBlueprint as unknown as Json },
+    children: [],
+  } as ResolvedNode;
+}
+
+test("threads resolveCapabilityDescriptors into a hosted child's own BlueprintHostProps", async () => {
+  let capturedProps: BlueprintHostProps | undefined;
+  const resolveCapabilityDescriptors: CapabilityDescriptorResolver = resolveStrictDescriptors;
+  const HostedBlueprint = createHostedBlueprintProjection({
+    parentBlueprintId: "shell",
+    parentInstanceId: "shell:case-7",
+    contexts: {},
+    resolveCapabilityDescriptors,
+    renderHostedBlueprint: (props) => {
+      capturedProps = props;
+      return <div data-captured />;
+    },
+  });
+  const node = hostedBlueprintNode(nestedChildBlueprint({ value: "Blueprint Studio" }));
+
+  await act(async () => {
+    TestRenderer.create(<HostedBlueprint node={node} emit={() => undefined}>{null}</HostedBlueprint>);
+  });
+
+  assert.equal(capturedProps?.resolveCapabilityDescriptors, resolveCapabilityDescriptors);
+  assert.equal(capturedProps?.blueprint, node.props.blueprint);
+});
+
+test("a hosted child's own catalog (built from the threaded resolver) rejects an invalid capability prop", async () => {
+  let capturedProps: BlueprintHostProps | undefined;
+  const HostedBlueprint = createHostedBlueprintProjection({
+    parentBlueprintId: "shell",
+    parentInstanceId: "shell:case-7",
+    contexts: {},
+    resolveCapabilityDescriptors: resolveStrictDescriptors,
+    renderHostedBlueprint: (props) => {
+      capturedProps = props;
+      return <div data-captured />;
+    },
+  });
+  const invalidNode = hostedBlueprintNode(nestedChildBlueprint({ bogus: true }));
+
+  await act(async () => {
+    TestRenderer.create(<HostedBlueprint node={invalidNode} emit={() => undefined}>{null}</HostedBlueprint>);
+  });
+
+  // This is exactly what the child's own BlueprintHost does with what it received: build its own
+  // catalog from its own runtime.externals using the inherited resolver, then materialize with it.
+  assert.ok(capturedProps?.resolveCapabilityDescriptors);
+  const childBlueprint = capturedProps!.blueprint;
+  const childCatalog = buildCapabilityCatalogFromExternals(
+    childBlueprint.payload.runtime?.externals,
+    capturedProps!.resolveCapabilityDescriptors!,
+  );
+  assert.deepEqual(Object.keys(childCatalog), ["strict:label"]);
+
+  const materialized = materializeBlueprint({ blueprint: childBlueprint, capabilityCatalog: childCatalog });
+  assert.throws(() => new Kernel(materialized.payload.vocabulary, materialized.payload.program), ValidationError);
+});
+
+test("a hosted child's own catalog (built from the threaded resolver) still passes a well-formed capability prop", async () => {
+  let capturedProps: BlueprintHostProps | undefined;
+  const HostedBlueprint = createHostedBlueprintProjection({
+    parentBlueprintId: "shell",
+    parentInstanceId: "shell:case-7",
+    contexts: {},
+    resolveCapabilityDescriptors: resolveStrictDescriptors,
+    renderHostedBlueprint: (props) => {
+      capturedProps = props;
+      return <div data-captured />;
+    },
+  });
+  const validNode = hostedBlueprintNode(nestedChildBlueprint({ value: "Blueprint Studio" }));
+
+  await act(async () => {
+    TestRenderer.create(<HostedBlueprint node={validNode} emit={() => undefined}>{null}</HostedBlueprint>);
+  });
+
+  const childBlueprint = capturedProps!.blueprint;
+  const childCatalog = buildCapabilityCatalogFromExternals(
+    childBlueprint.payload.runtime?.externals,
+    capturedProps!.resolveCapabilityDescriptors!,
+  );
+  const materialized = materializeBlueprint({ blueprint: childBlueprint, capabilityCatalog: childCatalog });
+  assert.doesNotThrow(() => new Kernel(materialized.payload.vocabulary, materialized.payload.program));
 });
