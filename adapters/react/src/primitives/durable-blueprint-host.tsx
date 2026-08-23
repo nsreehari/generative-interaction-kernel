@@ -15,6 +15,7 @@ import { bundleFromJson } from "./bundle";
 import { BundleRegistryProvider, createBundleRegistry } from "./bundle-registry";
 import { BundleCompositionHost, type CompositionOrganism } from "./bundle-composition-host";
 import type { ProviderResolver } from "../registry";
+import { buildCapabilityCatalogFromExternals } from "../registry";
 import {
   BLUEPRINT_HOST_PROVIDER,
   BlueprintHostRegistryProvider,
@@ -36,6 +37,7 @@ export function BlueprintHost({
   runtime,
   worker,
   resolveLeavesProvider,
+  resolveCapabilityDescriptors,
   native,
   companions = EMPTY_COMPANIONS,
   contexts = EMPTY_CONTEXTS,
@@ -65,6 +67,9 @@ export function BlueprintHost({
           parentInstanceId: instanceId,
         });
       },
+      ...(resolveCapabilityDescriptors
+        ? { capabilityCatalog: buildCapabilityCatalogFromExternals(blueprint.payload.runtime?.externals, resolveCapabilityDescriptors) }
+        : {}),
     });
     if (!context) return materialized;
     const initialState = prepareBlueprintProgram(materialized.payload.terminalBlueprint, { context }).initialState;
@@ -72,7 +77,7 @@ export function BlueprintHost({
       ...materialized,
       payload: { ...materialized.payload, initialState: structuredClone(initialState) },
     };
-  }, [blueprint, blueprintRegistry, context, externalContext, instanceId, materializedBlueprint]);
+  }, [blueprint, blueprintRegistry, context, externalContext, instanceId, materializedBlueprint, resolveCapabilityDescriptors]);
   const payload = prepared.payload;
   const bundle = React.useMemo(
     () => bundleFromJson({
@@ -180,8 +185,11 @@ function NestedDurableBlueprintHost({
           parentInstanceId: String(props.primaryInstanceId),
         });
       },
+      ...(props.resolveCapabilityDescriptors
+        ? { capabilityCatalog: buildCapabilityCatalogFromExternals(props.blueprint.payload.runtime?.externals, props.resolveCapabilityDescriptors) }
+        : {}),
     }),
-    [props.blueprint, props.blueprintRegistry, props.externalContext, props.primaryInstanceId],
+    [props.blueprint, props.blueprintRegistry, props.externalContext, props.primaryInstanceId, props.resolveCapabilityDescriptors],
   );
   const worker = React.useMemo(
     () => createNativeBlueprintWorker({

@@ -341,7 +341,6 @@ function providedTokens(cell: CellDefinition): string[] {
 }
 
 function toProgramNode(cell: CellDefinition, view: CellPotentialView, nodeId: string): DocNode {
-  const source = cell.sources?.[0];
   const blueprintReference = cell.blueprint && "$ref" in cell.blueprint ? cell.blueprint.$ref : undefined;
   const blueprintBinding = blueprintReference && typeof blueprintReference !== "string" ? blueprintReference : undefined;
   const directBindings = Object.entries(view.bindings ?? {})
@@ -350,14 +349,7 @@ function toProgramNode(cell: CellDefinition, view: CellPotentialView, nodeId: st
   const expressionBindings = Object.entries(view.bindings ?? {})
     .filter(([, binding]) => binding.expression !== undefined)
     .map(([prop, binding]) => [prop, scopeCellExpression(binding.expression!, cell)] as const);
-  const viewProps = source
-    ? {
-        ...structuredClone(view.props ?? {}),
-        externalSource: { refreshEvent: "refresh" },
-      }
-    : view.props
-      ? structuredClone(view.props)
-      : undefined;
+  const viewProps = view.props ? structuredClone(view.props) : undefined;
   const props = cell.blueprint && !blueprintBinding
     ? { ...viewProps, hostedBlueprint: JSON.parse(JSON.stringify(cell.blueprint)) as Json }
     : viewProps;

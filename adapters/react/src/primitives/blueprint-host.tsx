@@ -11,7 +11,12 @@ import {
 import { unwrap, type Enveloped, type ExecutableProgramDefinition, type Json } from "@gik/kernel";
 import { BlueprintController } from "../blueprint-controller";
 import type { BlueprintControllerOptions } from "../blueprint-controller";
-import type { ProjectionView, ProviderResolver } from "../registry";
+import {
+  buildCapabilityCatalogFromExternals,
+  type CapabilityDescriptorResolver,
+  type ProjectionView,
+  type ProviderResolver,
+} from "../registry";
 import { bundleFromJson, type BundleNative } from "./bundle";
 import {
   BundleRegistryProvider,
@@ -43,6 +48,10 @@ const EMPTY_CONTEXTS: BundleContextBindings = {};
 export interface BlueprintHostProps {
   blueprint: BlueprintArtifact;
   resolveLeavesProvider?: ProviderResolver;
+  /** Resolves a component provider's real capability descriptors for terminal prop/event-contract
+   * validation, the descriptor-side counterpart of `resolveLeavesProvider`. Optional -- omitting it
+   * keeps every capability on the permissive fallback descriptor, exactly as today. */
+  resolveCapabilityDescriptors?: CapabilityDescriptorResolver;
   native?: BundleNative;
   companions?: CompositionOrganism[];
   contexts?: BundleContextBindings;
@@ -62,6 +71,7 @@ export interface BlueprintHostProps {
 export function BlueprintHost({
   blueprint,
   resolveLeavesProvider,
+  resolveCapabilityDescriptors,
   native,
   companions = EMPTY_COMPANIONS,
   contexts = EMPTY_CONTEXTS,
@@ -89,8 +99,11 @@ export function BlueprintHost({
         ...childContext,
         parentInstanceId,
       }),
+      ...(resolveCapabilityDescriptors
+        ? { capabilityCatalog: buildCapabilityCatalogFromExternals(blueprint.payload.runtime?.externals, resolveCapabilityDescriptors) }
+        : {}),
     }),
-    [blueprint, externalContext, blueprintRegistry, parentInstanceId],
+    [blueprint, externalContext, blueprintRegistry, parentInstanceId, resolveCapabilityDescriptors],
   );
   const prepared = React.useMemo(
     () => context

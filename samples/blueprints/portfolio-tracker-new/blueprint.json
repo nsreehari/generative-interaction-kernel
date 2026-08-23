@@ -225,21 +225,16 @@
                 "primary": {
                   "capability": "primitive:editable-table",
                   "props": {
-                    "label": "Holdings",
-                    "columns": [
-                      {
-                        "key": "ticker",
-                        "label": "Ticker"
-                      },
-                      {
-                        "key": "quantity",
-                        "label": "Quantity"
-                      },
-                      {
-                        "key": "costBasis",
-                        "label": "Cost basis"
+                    "ariaLabel": "Holdings",
+                    "spec": {
+                      "schema": {
+                        "properties": {
+                          "ticker": { "title": "Ticker" },
+                          "quantity": { "title": "Quantity", "type": "number" },
+                          "costBasis": { "title": "Cost basis", "type": "number" }
+                        }
                       }
-                    ]
+                    }
                   },
                   "bindings": {
                     "rows": {

@@ -5,10 +5,13 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import { createElement } from "react";
-import type { ProjectionViewImport } from "@gik/kernel";
+import type { CapabilityDescriptor, ProjectionViewImport } from "@gik/kernel";
 import {
+  buildCapabilityCatalogFromExternals,
+  buildCapabilityCatalogFromImports,
   buildRegistryFromImports,
   splitCapabilityRef,
+  type CapabilityDescriptorMap,
   type ProjectionView,
   type ProviderMap,
 } from "../src/registry";
@@ -88,4 +91,51 @@ test("reserved structural views resolve without weakening vocabulary imports", (
 
   assert.equal(reg.get("gik:blueprint"), A);
   assert.equal(reg.get("ui:list"), undefined);
+});
+
+// --- Capability-descriptor resolution: the descriptor-side counterpart of the above -----------
+
+const listDescriptor: CapabilityDescriptor = { propsSchema: { type: "object" }, emits: [] };
+const tableDescriptor: CapabilityDescriptor = { propsSchema: { type: "object" }, emits: ["select"] };
+const regionEditorDescriptor: CapabilityDescriptor = { propsSchema: { type: "object" }, emits: [] };
+const descriptorCatalog: CapabilityDescriptorMap = { list: listDescriptor, table: tableDescriptor };
+const descriptorWorkbench: CapabilityDescriptorMap = { regionEditor: regionEditorDescriptor };
+const resolveDescriptors = (from: string): CapabilityDescriptorMap | undefined =>
+  from === "catalog" ? descriptorCatalog : from === "workbench" ? descriptorWorkbench : undefined;
+
+test("buildCapabilityCatalogFromImports resolves alias:name through the same imports a view registry uses", () => {
+  const imports: Record<string, ProjectionViewImport> = {
+    ui: { from: "catalog" },
+    wb: { from: "workbench" },
+  };
+  const catalog = buildCapabilityCatalogFromImports(imports, resolveDescriptors);
+  assert.deepEqual(catalog, {
+    "ui:list": listDescriptor,
+    "ui:table": tableDescriptor,
+    "wb:regionEditor": regionEditorDescriptor,
+  });
+});
+
+test("buildCapabilityCatalogFromImports honors a `use` whitelist and omits unresolved providers/imports", () => {
+  const imports: Record<string, ProjectionViewImport> = {
+    ui: { from: "catalog", use: ["list"] },
+    wb: { from: "unregistered-provider" },
+  };
+  const catalog: CapabilityDescriptorMap = buildCapabilityCatalogFromImports(imports, resolveDescriptors);
+  assert.equal(catalog["ui:table"], undefined);
+  assert.equal(catalog["wb:regionEditor"], undefined);
+  assert.deepEqual(catalog, { "ui:list": listDescriptor });
+});
+
+test("buildCapabilityCatalogFromImports with no imports produces an empty catalog", () => {
+  assert.deepEqual(buildCapabilityCatalogFromImports(undefined, resolveDescriptors), {});
+});
+
+test("buildCapabilityCatalogFromExternals reads externals.projectionViews the same way materializeBlueprint's option expects", () => {
+  const catalog = buildCapabilityCatalogFromExternals(
+    { projectionViews: { ui: { from: "catalog" } } },
+    resolveDescriptors,
+  );
+  assert.deepEqual(catalog, { "ui:list": listDescriptor, "ui:table": tableDescriptor });
+  assert.deepEqual(buildCapabilityCatalogFromExternals(undefined, resolveDescriptors), {});
 });

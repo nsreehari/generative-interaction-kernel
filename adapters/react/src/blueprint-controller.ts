@@ -12,6 +12,7 @@ import { DurableBlueprintController } from "./durable-blueprint-controller";
 import { createNativeBlueprintWorker } from "./durable-blueprint-worker";
 import type { BundleNative } from "./primitives/bundle";
 import type { BundleContextBindings } from "./primitives/bundle-registry";
+import { buildCapabilityCatalogFromExternals, type CapabilityDescriptorResolver } from "./registry";
 import type { GenUISource } from "./useGenUI";
 
 export interface BlueprintControllerOptions {
@@ -22,6 +23,10 @@ export interface BlueprintControllerOptions {
   contexts?: BundleContextBindings;
   native?: BundleNative;
   onTransition?: NonNullable<ConstructorParameters<typeof DurableBlueprintController>[1]["onTransition"]>;
+  /** Resolves a component provider's real capability descriptors for terminal prop/event-contract
+   * validation, the descriptor-side counterpart of a projection-view provider resolver. Ignored
+   * when `materializedBlueprint` is already supplied (materialization already happened). */
+  resolveCapabilityDescriptors?: CapabilityDescriptorResolver;
 }
 
 function memoryRef(value: string): string {
@@ -38,6 +43,9 @@ export class BlueprintController implements GenUISource {
     const materialized = options.materializedBlueprint ?? materializeBlueprint({
       blueprint,
       externalContext: options.externalContext,
+      ...(options.resolveCapabilityDescriptors
+        ? { capabilityCatalog: buildCapabilityCatalogFromExternals(blueprint.payload.runtime?.externals, options.resolveCapabilityDescriptors) }
+        : {}),
     });
     const initialState = options.context
       ? prepareBlueprintProgram(materialized.payload.terminalBlueprint, { context: options.context }).initialState

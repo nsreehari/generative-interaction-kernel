@@ -3798,21 +3798,24 @@
                     "primary": {
                       "capability": "primitive:editable-table",
                       "props": {
-                        "label": "Holdings",
-                        "columns": [
-                          {
-                            "key": "ticker",
-                            "label": "Ticker"
-                          },
-                          {
-                            "key": "quantity",
-                            "label": "Quantity"
-                          },
-                          {
-                            "key": "costBasis",
-                            "label": "Cost basis"
+                        "ariaLabel": "Holdings",
+                        "spec": {
+                          "schema": {
+                            "properties": {
+                              "ticker": {
+                                "title": "Ticker"
+                              },
+                              "quantity": {
+                                "title": "Quantity",
+                                "type": "number"
+                              },
+                              "costBasis": {
+                                "title": "Cost basis",
+                                "type": "number"
+                              }
+                            }
                           }
-                        ]
+                        }
                       },
                       "bindings": {
                         "rows": {
@@ -16210,21 +16213,24 @@
                             "primary": {
                               "capability": "primitive:editable-table",
                               "props": {
-                                "label": "Holdings",
-                                "columns": [
-                                  {
-                                    "key": "ticker",
-                                    "label": "Ticker"
-                                  },
-                                  {
-                                    "key": "quantity",
-                                    "label": "Quantity"
-                                  },
-                                  {
-                                    "key": "costBasis",
-                                    "label": "Cost basis"
+                                "ariaLabel": "Holdings",
+                                "spec": {
+                                  "schema": {
+                                    "properties": {
+                                      "ticker": {
+                                        "title": "Ticker"
+                                      },
+                                      "quantity": {
+                                        "title": "Quantity",
+                                        "type": "number"
+                                      },
+                                      "costBasis": {
+                                        "title": "Cost basis",
+                                        "type": "number"
+                                      }
+                                    }
                                   }
-                                ]
+                                }
                               },
                               "bindings": {
                                 "rows": {
@@ -18707,6 +18713,6 @@
       ]
     }
   },
-  "bundleVersion": "6adffe92fd4386f3",
-  "digest": "sha256:6adffe92fd4386f309c0af3c2a001812226190f8263d6210411728e397c436b2"
+  "bundleVersion": "d58b53417a657502",
+  "digest": "sha256:d58b53417a657502f8d207ea43977fbc96f78a2642d4436385d0eb7f8b92f4bc"
 }

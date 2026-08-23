@@ -65,6 +65,7 @@ blueprint_host:
       - blueprint
     composition:
       - resolveLeavesProvider
+      - resolveCapabilityDescriptors
       - native
       - companions
       - contexts
