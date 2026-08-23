@@ -143,12 +143,13 @@ export function BlueprintHost({
       parentBlueprintId: blueprintId,
       parentInstanceId: primaryInstanceIdResolved,
       resolveLeavesProvider,
+      resolveCapabilityDescriptors,
       contexts,
       fileServices,
       onTransition,
       renderHostedBlueprintLoading,
     }),
-    [blueprintRegistry, blueprintId, primaryInstanceIdResolved, resolveLeavesProvider, contexts, fileServices, onTransition, renderHostedBlueprintLoading],
+    [blueprintRegistry, blueprintId, primaryInstanceIdResolved, resolveLeavesProvider, resolveCapabilityDescriptors, contexts, fileServices, onTransition, renderHostedBlueprintLoading],
   );
   const PresentationFragment = React.useMemo<ProjectionView>(
     () => ({ children }) => React.createElement(React.Fragment, null, children),
@@ -198,6 +199,7 @@ export function createHostedBlueprintProjection({
   parentBlueprintId,
   parentInstanceId,
   resolveLeavesProvider,
+  resolveCapabilityDescriptors,
   contexts,
   fileServices,
   onTransition,
@@ -208,6 +210,10 @@ export function createHostedBlueprintProjection({
   parentBlueprintId: string;
   parentInstanceId: string;
   resolveLeavesProvider?: ProviderResolver;
+  /** Threaded to every hosted child's own `BlueprintHostProps` so it materializes its OWN
+   * capabilityCatalog from its OWN runtime.externals -- never a reuse of the parent's
+   * already-filtered catalog, since a child Blueprint may import different aliases/providers. */
+  resolveCapabilityDescriptors?: CapabilityDescriptorResolver;
   contexts: BundleContextBindings;
   fileServices?: GenUIFileServices;
   onTransition?: BlueprintControllerOptions["onTransition"];
@@ -287,6 +293,7 @@ export function createHostedBlueprintProjection({
       native: resolution.native,
       blueprintRegistry: registry,
       resolveLeavesProvider,
+      resolveCapabilityDescriptors,
       contexts,
       fileServices,
       context: { initialSeed: inputs },

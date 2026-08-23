@@ -109,6 +109,7 @@ export function BlueprintHost({
       parentBlueprintId: blueprintId,
       parentInstanceId: instanceId,
       resolveLeavesProvider,
+      resolveCapabilityDescriptors,
       contexts,
       fileServices,
       onTransition,
@@ -121,7 +122,7 @@ export function BlueprintHost({
         />
       ),
     }),
-    [blueprintRegistry, blueprintId, instanceId, resolveLeavesProvider, contexts, fileServices, onTransition, renderHostedBlueprintLoading, runtime],
+    [blueprintRegistry, blueprintId, instanceId, resolveLeavesProvider, resolveCapabilityDescriptors, contexts, fileServices, onTransition, renderHostedBlueprintLoading, runtime],
   );
   const PresentationFragment = React.useMemo(
     () => ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
