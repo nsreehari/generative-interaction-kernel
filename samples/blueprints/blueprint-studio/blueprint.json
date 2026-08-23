@@ -209,6 +209,26 @@
     "cells": {
       "blueprint-studio": {
         "id": "blueprint-studio",
+        "events": {
+          "select": {
+            "payloadSchema": {
+              "type": "object"
+            }
+          }
+        },
+        "behavior": {
+          "on": {
+            "select": [
+              {
+                "do": "assign",
+                "target": "studio.activeTab",
+                "args": {
+                  "from": "$event.value"
+                }
+              }
+            ]
+          }
+        },
         "potentialViews": {
           "primary": {
             "capability": "fluent:text",
@@ -219,6 +239,23 @@
               "block": true
             },
             "region": "studio-header"
+          },
+          "workspaceTabs": {
+            "capability": "fluent:tab-bar",
+            "props": {
+              "tabs": [
+                { "value": "overview", "headerLabel": "Overview" },
+                { "value": "blueprint-json", "headerLabel": "Blueprint JSON" },
+                { "value": "preview", "headerLabel": "Preview" }
+              ]
+            },
+            "bindings": {
+              "active": {
+                "from": "studio.activeTab"
+              }
+            },
+            "visibility": "studio.selected != null",
+            "region": "workspace-tabs"
           }
         }
       },
@@ -448,14 +485,14 @@
                 "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], inputs.blueprintList[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], inputs.blueprintList[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
               }
             },
-            "before": [
+            "wrap": [
               {
-                "capability": "fluent:text",
+                "capability": "primitive:pane-with-trigger",
                 "props": {
-                  "value": "Create or clone a draft",
-                  "as": "h3",
-                  "variant": "subtitle",
-                  "block": true
+                  "variant": "dialog-modal",
+                  "title": "New Blueprint",
+                  "triggerLabel": "New Blueprint",
+                  "closeLabel": "Close"
                 }
               }
             ],
@@ -726,7 +763,7 @@
                 "expression": "studio.blueprintJsonVersion != 'draft' or studio.selected.draft = null"
               }
             },
-            "visibility": "studio.selected != null and (studio.selected.artifact != null or studio.selected.draft != null)",
+            "visibility": "studio.selected != null and (studio.selected.artifact != null or studio.selected.draft != null) and studio.activeTab = 'blueprint-json'",
             "before": [
               {
                 "capability": "fluent:text",
@@ -740,7 +777,7 @@
                     "expression": "studio.selected ? studio.selected.id : 'Select a Blueprint'"
                   }
                 },
-                "visibility": "studio.selected != null"
+                "visibility": "studio.selected != null and studio.activeTab = 'overview'"
               },
               {
                 "capability": "primitive:markdown",
@@ -749,7 +786,7 @@
                     "from": "studio.overviewMarkdown"
                   }
                 },
-                "visibility": "studio.selected != null"
+                "visibility": "studio.selected != null and studio.activeTab = 'overview'"
               }
             ],
             "region": "workspace-editor"
@@ -807,7 +844,7 @@
               "label": "Promote draft",
               "appearance": "primary"
             },
-            "visibility": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null",
+            "visibility": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null and studio.activeTab = 'preview'",
             "before": [
               {
                 "capability": "fluent:text",
@@ -821,7 +858,7 @@
                     "expression": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null ? 'Draft preview' : 'Published preview'"
                   }
                 },
-                "visibility": "studio.selected != null"
+                "visibility": "studio.selected != null and studio.activeTab = 'preview'"
               }
             ],
             "after": [
@@ -841,7 +878,7 @@
                     "expression": "true"
                   }
                 },
-                "visibility": "(studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null and studio.selected.draft.artifact.payload.contextFormSpec != null) or (studio.blueprintPreviewVersion != 'draft' and studio.previewContextFormSpec != null)"
+                "visibility": "studio.activeTab = 'preview' and ((studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null and studio.selected.draft.artifact.payload.contextFormSpec != null) or (studio.blueprintPreviewVersion != 'draft' and studio.previewContextFormSpec != null))"
               },
               {
                 "capability": "gik:blueprint",
@@ -856,7 +893,7 @@
                     "expression": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null ? studio.selected.draft.ref & ':' & studio.selected.draft.revision & ':' & $string(studio.draftPreviewExternalContext) : studio.selectedBlueprintRef & ':' & $string(studio.previewExternalContext)"
                   }
                 },
-                "visibility": "(studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null) or (studio.blueprintPreviewVersion != 'draft' and studio.selected.artifact != null)"
+                "visibility": "studio.activeTab = 'preview' and ((studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null) or (studio.blueprintPreviewVersion != 'draft' and studio.selected.artifact != null))"
               }
             ],
             "region": "workspace-preview"
@@ -886,6 +923,10 @@
         {
           "id": "workspace",
           "region": "studio"
+        },
+        {
+          "id": "workspace-tabs",
+          "region": "workspace"
         },
         {
           "id": "workspace-editor",

@@ -391,7 +391,7 @@ function deriveCapabilities(
   for (const cell of Object.values(cells)) {
     for (const view of Object.values(cell.potentialViews ?? {})) {
       record(view.capability);
-      for (const decoration of [...(view.before ?? []), ...(view.after ?? [])]) record(decoration.capability);
+      for (const decoration of [...(view.before ?? []), ...(view.after ?? []), ...(view.wrap ?? [])]) record(decoration.capability);
     }
   }
   return capabilities;
