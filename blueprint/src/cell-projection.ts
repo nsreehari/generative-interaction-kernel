@@ -159,9 +159,11 @@ export function composeCellProgram(
       attachment.kind === "slot"
         ? compileSlot(attachment.id, [...ancestors, slotId])
         : compileCellInstance(attachment.cell, attachment.viewName, attachment.view, slotId));
+    const layout = presentation.layout?.[slotId];
     return {
       capability: PRESENTATION_FRAGMENT_CAPABILITY,
       id: slotId,
+      ...(layout ? { props: { layout: layout as unknown as Json } } : {}),
       ...(children.length > 0 ? { edges: { children } } : {}),
     };
   };

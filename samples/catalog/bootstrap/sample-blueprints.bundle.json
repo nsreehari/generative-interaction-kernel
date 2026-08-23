@@ -469,7 +469,13 @@
               "region": "ai-agent-root"
             }
           ],
-          "root": "ai-agent-root"
+          "root": "ai-agent-root",
+          "layout": {
+            "ai-agent-root": {
+              "direction": "column",
+              "gap": "l"
+            }
+          }
         }
       }
     },
@@ -1393,8 +1399,12 @@
               "region": "studio"
             },
             {
-              "id": "catalog",
+              "id": "studio-body",
               "region": "studio"
+            },
+            {
+              "id": "catalog",
+              "region": "studio-body"
             },
             {
               "id": "catalog-list",
@@ -1406,7 +1416,7 @@
             },
             {
               "id": "workspace",
-              "region": "studio"
+              "region": "studio-body"
             },
             {
               "id": "workspace-tabs",
@@ -1425,7 +1435,26 @@
               "region": "workspace"
             }
           ],
-          "root": "studio"
+          "root": "studio",
+          "layout": {
+            "studio": {
+              "direction": "column",
+              "gap": "m"
+            },
+            "studio-body": {
+              "direction": "row",
+              "gap": "l",
+              "align": "stretch"
+            },
+            "catalog": {
+              "direction": "column",
+              "gap": "s"
+            },
+            "workspace": {
+              "direction": "column",
+              "gap": "m"
+            }
+          }
         }
       }
     },
@@ -3352,7 +3381,13 @@
           "slots": [
             "shell"
           ],
-          "root": "shell"
+          "root": "shell",
+          "layout": {
+            "shell": {
+              "direction": "column",
+              "gap": "l"
+            }
+          }
         },
         "metadata": {
           "compositionPattern": "external-model-selected-analysis-with-nested-report"
@@ -3957,7 +3992,15 @@
                       "region": "board"
                     }
                   ],
-                  "root": "board"
+                  "root": "board",
+                  "layout": {
+                    "board": {
+                      "direction": "row",
+                      "gap": "l",
+                      "align": "start",
+                      "wrap": true
+                    }
+                  }
                 }
               },
               {
@@ -3992,6 +4035,34 @@
                         }
                       },
                       "region": "valuation"
+                    }
+                  }
+                },
+                "presentation": {
+                  "slots": [
+                    "board",
+                    {
+                      "id": "holdings",
+                      "region": "board"
+                    },
+                    {
+                      "id": "market",
+                      "region": "board"
+                    },
+                    {
+                      "id": "valuation",
+                      "region": "board"
+                    },
+                    {
+                      "id": "intelligence",
+                      "region": "board"
+                    }
+                  ],
+                  "root": "board",
+                  "layout": {
+                    "board": {
+                      "direction": "column",
+                      "gap": "m"
                     }
                   }
                 }
@@ -4111,7 +4182,15 @@
                       "region": "board"
                     }
                   ],
-                  "root": "board"
+                  "root": "board",
+                  "layout": {
+                    "board": {
+                      "direction": "row",
+                      "gap": "l",
+                      "align": "start",
+                      "wrap": true
+                    }
+                  }
                 }
               },
               {
@@ -4217,7 +4296,13 @@
                       "region": "board"
                     }
                   ],
-                  "root": "board"
+                  "root": "board",
+                  "layout": {
+                    "board": {
+                      "direction": "column",
+                      "gap": "m"
+                    }
+                  }
                 }
               }
             ],
@@ -4359,7 +4444,7 @@
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
@@ -4456,7 +4541,7 @@
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
@@ -12786,7 +12871,13 @@
                       "region": "ai-agent-root"
                     }
                   ],
-                  "root": "ai-agent-root"
+                  "root": "ai-agent-root",
+                  "layout": {
+                    "ai-agent-root": {
+                      "direction": "column",
+                      "gap": "l"
+                    }
+                  }
                 }
               }
             },
@@ -13724,8 +13815,12 @@
                       "region": "studio"
                     },
                     {
-                      "id": "catalog",
+                      "id": "studio-body",
                       "region": "studio"
+                    },
+                    {
+                      "id": "catalog",
+                      "region": "studio-body"
                     },
                     {
                       "id": "catalog-list",
@@ -13737,7 +13832,7 @@
                     },
                     {
                       "id": "workspace",
-                      "region": "studio"
+                      "region": "studio-body"
                     },
                     {
                       "id": "workspace-tabs",
@@ -13756,7 +13851,26 @@
                       "region": "workspace"
                     }
                   ],
-                  "root": "studio"
+                  "root": "studio",
+                  "layout": {
+                    "studio": {
+                      "direction": "column",
+                      "gap": "m"
+                    },
+                    "studio-body": {
+                      "direction": "row",
+                      "gap": "l",
+                      "align": "stretch"
+                    },
+                    "catalog": {
+                      "direction": "column",
+                      "gap": "s"
+                    },
+                    "workspace": {
+                      "direction": "column",
+                      "gap": "m"
+                    }
+                  }
                 }
               }
             },
@@ -15725,7 +15839,13 @@
                   "slots": [
                     "shell"
                   ],
-                  "root": "shell"
+                  "root": "shell",
+                  "layout": {
+                    "shell": {
+                      "direction": "column",
+                      "gap": "l"
+                    }
+                  }
                 },
                 "metadata": {
                   "compositionPattern": "external-model-selected-analysis-with-nested-report"
@@ -16372,7 +16492,15 @@
                               "region": "board"
                             }
                           ],
-                          "root": "board"
+                          "root": "board",
+                          "layout": {
+                            "board": {
+                              "direction": "row",
+                              "gap": "l",
+                              "align": "start",
+                              "wrap": true
+                            }
+                          }
                         }
                       },
                       {
@@ -16407,6 +16535,34 @@
                                 }
                               },
                               "region": "valuation"
+                            }
+                          }
+                        },
+                        "presentation": {
+                          "slots": [
+                            "board",
+                            {
+                              "id": "holdings",
+                              "region": "board"
+                            },
+                            {
+                              "id": "market",
+                              "region": "board"
+                            },
+                            {
+                              "id": "valuation",
+                              "region": "board"
+                            },
+                            {
+                              "id": "intelligence",
+                              "region": "board"
+                            }
+                          ],
+                          "root": "board",
+                          "layout": {
+                            "board": {
+                              "direction": "column",
+                              "gap": "m"
                             }
                           }
                         }
@@ -16526,7 +16682,15 @@
                               "region": "board"
                             }
                           ],
-                          "root": "board"
+                          "root": "board",
+                          "layout": {
+                            "board": {
+                              "direction": "row",
+                              "gap": "l",
+                              "align": "start",
+                              "wrap": true
+                            }
+                          }
                         }
                       },
                       {
@@ -16632,7 +16796,13 @@
                               "region": "board"
                             }
                           ],
-                          "root": "board"
+                          "root": "board",
+                          "layout": {
+                            "board": {
+                              "direction": "column",
+                              "gap": "m"
+                            }
+                          }
                         }
                       }
                     ],
@@ -16774,7 +16944,7 @@
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
@@ -16871,7 +17041,7 @@
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report','kind':'semantic-report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
@@ -18713,6 +18883,6 @@
       ]
     }
   },
-  "bundleVersion": "d58b53417a657502",
-  "digest": "sha256:d58b53417a657502f8d207ea43977fbc96f78a2642d4436385d0eb7f8b92f4bc"
+  "bundleVersion": "3f339e6f2b71ae1d",
+  "digest": "sha256:3f339e6f2b71ae1d7ab2d2878a11cc68d381a15bf26ac1312df7b00c4e5366d8"
 }

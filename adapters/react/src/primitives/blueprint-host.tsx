@@ -39,6 +39,7 @@ import {
   resolveHostedBlueprint,
   type ReactBlueprintHostRegistry,
 } from "./hosted-blueprint";
+import { PresentationFragmentView } from "./presentation-fragment";
 
 export { validateBlueprintArtifact, type BlueprintArtifact };
 
@@ -151,10 +152,7 @@ export function BlueprintHost({
     }),
     [blueprintRegistry, blueprintId, primaryInstanceIdResolved, resolveLeavesProvider, resolveCapabilityDescriptors, contexts, fileServices, onTransition, renderHostedBlueprintLoading],
   );
-  const PresentationFragment = React.useMemo<ProjectionView>(
-    () => ({ children }) => React.createElement(React.Fragment, null, children),
-    [],
-  );
+  const PresentationFragment = PresentationFragmentView;
   const hostResolveProvider = React.useMemo<ProviderResolver>(
     () => (from) => from === BLUEPRINT_HOST_PROVIDER
       ? {

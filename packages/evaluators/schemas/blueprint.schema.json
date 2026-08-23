@@ -92,6 +92,11 @@
               "type": "array",
               "items": { "type": "string", "minLength": 1 },
               "uniqueItems": true
+            },
+            "layout": {
+              "description": "Optional arrangement for named slots' own children, keyed by slot id. A slot absent from this map renders as a plain Fragment (no DOM wrapper, no arrangement).",
+              "type": "object",
+              "additionalProperties": { "$ref": "#/definitions/presentationSlotLayout" }
             }
           }
         },
@@ -128,6 +133,17 @@
           }
         }
       ]
+    },
+    "presentationSlotLayout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "direction": { "enum": ["row", "row-reverse", "column", "column-reverse"] },
+        "gap": { "enum": ["none", "xs", "s", "m", "l", "xl"] },
+        "align": { "enum": ["stretch", "start", "center", "end", "baseline"] },
+        "justify": { "enum": ["start", "center", "end", "space-between", "space-around", "space-evenly"] },
+        "wrap": { "type": "boolean" }
+      }
     },
     "interfacePort": {
       "type": "object",

@@ -175,6 +175,24 @@ export interface PresentationSlotEntry {
 
 export type PresentationSlot = string | PresentationSlotEntry;
 
+export type PresentationLayoutDirection = "row" | "row-reverse" | "column" | "column-reverse";
+export type PresentationLayoutGap = "none" | "xs" | "s" | "m" | "l" | "xl";
+export type PresentationLayoutAlign = "stretch" | "start" | "center" | "end" | "baseline";
+export type PresentationLayoutJustify = "start" | "center" | "end" | "space-between" | "space-around" | "space-evenly";
+
+/** How one named slot arranges its own attached children -- a pure rendering/arrangement concern,
+ * orthogonal to `region` (which declares *whether* something attaches, not how the result looks).
+ * Absent (the default) renders exactly as before this field existed: a bare Fragment, no DOM
+ * wrapper, no arrangement -- children simply stack as whatever block layout their host page already
+ * has. */
+export interface PresentationSlotLayout {
+  direction?: PresentationLayoutDirection;
+  gap?: PresentationLayoutGap;
+  align?: PresentationLayoutAlign;
+  justify?: PresentationLayoutJustify;
+  wrap?: boolean;
+}
+
 /** The whole presentation is a closed, flat set of named slots plus a root. It has no knowledge of
  * Cells and no tree of who contains whom — every attachment (slot-in-slot, or Cell-into-slot via
  * `CellView.region`) is self-declared on the thing attaching. */
@@ -185,7 +203,14 @@ export interface PresentationDefinition {
    * means open -- any capability name is legal, the pre-existing default behavior. Present makes it
    * a real, validated closed set: referencing anything else is a Blueprint validation error. */
   allowedCapabilities?: readonly string[];
+  /** Optional layout for named slots' own children, keyed by slot id. A slot absent from this map
+   * keeps rendering as a plain Fragment, exactly as before this field existed. Layout is a rendering
+   * concern about one slot's own children, kept as one flat, easy-to-scan map here rather than
+   * spread across individual slot entries (which stay minimal either way) or duplicated per Cell
+   * view -- symmetric with `allowedCapabilities` already being a flat, presentation-wide field. */
+  layout?: Record<string, PresentationSlotLayout>;
 }
+
 
 export type BlueprintStructureMode = "fixed" | "reconfigurable" | "adaptive";
 
