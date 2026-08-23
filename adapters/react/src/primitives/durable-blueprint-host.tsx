@@ -22,6 +22,7 @@ import {
   BLUEPRINT_CAPABILITY,
   PRESENTATION_FRAGMENT_CAPABILITY,
 } from "./hosted-blueprint";
+import { PresentationFragmentView } from "./presentation-fragment";
 
 const EMPTY_COMPANIONS: CompositionOrganism[] = [];
 const EMPTY_CONTEXTS = {};
@@ -124,10 +125,7 @@ export function BlueprintHost({
     }),
     [blueprintRegistry, blueprintId, instanceId, resolveLeavesProvider, resolveCapabilityDescriptors, contexts, fileServices, onTransition, renderHostedBlueprintLoading, runtime],
   );
-  const PresentationFragment = React.useMemo(
-    () => ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-    [],
-  );
+  const PresentationFragment = PresentationFragmentView;
   const hostResolveProvider = React.useMemo<ProviderResolver>(
     () => (from) => from === BLUEPRINT_HOST_PROVIDER
       ? {

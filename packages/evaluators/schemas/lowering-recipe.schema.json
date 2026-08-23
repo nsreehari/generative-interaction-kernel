@@ -123,6 +123,13 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "uniqueItems": true
+        },
+        "layout": {
+          "description": "Optional arrangement for named slots' own children, keyed by slot id.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "https://genui.dev/schemas/blueprint.schema.json#/definitions/presentationSlotLayout"
+          }
         }
       }
     },

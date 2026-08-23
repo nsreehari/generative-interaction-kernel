@@ -1015,7 +1015,10 @@
       "slots": [
         "shell"
       ],
-      "root": "shell"
+      "root": "shell",
+      "layout": {
+        "shell": { "direction": "column", "gap": "l" }
+      }
     },
     "metadata": {
       "compositionPattern": "external-model-selected-analysis-with-nested-report"

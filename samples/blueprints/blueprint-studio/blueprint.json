@@ -909,8 +909,12 @@
           "region": "studio"
         },
         {
-          "id": "catalog",
+          "id": "studio-body",
           "region": "studio"
+        },
+        {
+          "id": "catalog",
+          "region": "studio-body"
         },
         {
           "id": "catalog-list",
@@ -922,7 +926,7 @@
         },
         {
           "id": "workspace",
-          "region": "studio"
+          "region": "studio-body"
         },
         {
           "id": "workspace-tabs",
@@ -941,7 +945,13 @@
           "region": "workspace"
         }
       ],
-      "root": "studio"
+      "root": "studio",
+      "layout": {
+        "studio": { "direction": "column", "gap": "m" },
+        "studio-body": { "direction": "row", "gap": "l", "align": "stretch" },
+        "catalog": { "direction": "column", "gap": "s" },
+        "workspace": { "direction": "column", "gap": "m" }
+      }
     }
   }
 }

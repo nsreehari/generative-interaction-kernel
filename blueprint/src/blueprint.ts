@@ -123,6 +123,11 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
         }
       }
     }
+    for (const slotId of Object.keys(blueprint.presentation.layout ?? {})) {
+      if (!slotIds.has(slotId)) {
+        throw new BlueprintValidationError(`Blueprint presentation.layout references unknown slot '${slotId}'`);
+      }
+    }
   }
   // `blueprint` (hosting another Blueprint) is one of a Cell's own ordinary data-flow-owning
   // properties -- listed alongside ports/sources/compute/behavior, not alongside `potentialViews` --

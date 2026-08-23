@@ -434,7 +434,10 @@
           "region": "ai-agent-root"
         }
       ],
-      "root": "ai-agent-root"
+      "root": "ai-agent-root",
+      "layout": {
+        "ai-agent-root": { "direction": "column", "gap": "l" }
+      }
     }
   }
 }
