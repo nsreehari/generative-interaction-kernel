@@ -261,28 +261,37 @@ node.
 
 A button, container, or text block is never itself a data-flow participant — it has no ports of its
 own. It exists only as one of a Cell's `potentialViews`, and every binding or visibility rule on it is
-scoped entirely to the one Cell that owns it: a named view is one primary component plus, optionally,
-inert `before`/`after` decorations around it. A decoration never carries its own event or its own
-derivation — the moment a piece of content needs either, it is not a decoration, it is its own Cell.
+scoped entirely to the one Cell that owns it: a named view is one primary component, optionally
+`wrap`-ped in nesting layers, plus optionally flanked by inert `before`/`after` decorations. A
+decoration never carries its own event or its own derivation — the moment a piece of content needs
+either, it is not a decoration, it is its own Cell.
 
-Use capability, props, bindings, and decorations according to the described component contract:
+Use capability, props, bindings, decorations, and wrap according to the described component contract:
 
 - Intrinsic content → props.
 - State-backed content → bindings.
-- Surrounding presentation → decorations (`before`/`after`).
+- Surrounding presentation, as flat siblings → decorations (`before`/`after`).
+- Structural nesting inside the primary's own rendered boundary (a dialog's body, a card's frame) →
+  `wrap`.
 - Where it renders → `region` (see **Attachment** below).
-- Independently meaningful content, with its own event or derivation → its own Cell, not a decoration.
+- Independently meaningful content, with its own event or derivation → its own Cell, not a decoration
+  or a wrap layer.
 
-"Its own Cell, not a decoration" answers *whether* content needs its own identity — not *where its
-view then renders*. A capability node's internal structure (a dialog's body, a tab's active panel)
-exposes no named region another Cell's view can target today: only a shared, Cell-agnostic `region`
-lets views sit next to each other, always as flat siblings, never one nested inside another's own
-rendered boundary. Treat a child needed *inside* another capability's body as an open platform
-question, not something `region`/decorations/"own Cell" already solves.
+"Its own Cell, not a decoration" still answers *whether* content needs its own identity — a wrap layer
+is exactly as inert as `before`/`after` (no event, no derivation of its own); it only changes *where*
+the primary renders relative to it. `wrap: [{ capability: "fluent:dialog", props: { title: "..." } }]`
+makes the primary (e.g. a `primitive:form` Cell whose own `save` event already routes through this same
+Cell's `behavior.on`) a genuine child in the dialog's own rendered component tree — not a sibling
+somewhere else that merely looks nearby. Layers nest outermost-first when more than one is declared.
+One real behavior difference from `before`/`after`: a wrap layer's own `visibility` gates its whole
+subtree, so hiding it hides the primary too — that is usually exactly the intended effect (the primary
+only exists to be that layer's content), but it is worth remembering it is not the sibling-independent
+gating `before`/`after` have.
 
 Declare only capabilities actually used and import matching projection views. A Blueprint may
 optionally close this vocabulary down further with `presentation.allowedCapabilities` (see below) —
-when present, referencing anything outside it is a validation error, not just a convention.
+when present, referencing anything outside it is a validation error, not just a convention, and this
+applies equally to `wrap`/`before`/`after` capabilities, not just the primary.
 
 ### Presentation = a closed set of named slots, plus an optional closed capability vocabulary
 

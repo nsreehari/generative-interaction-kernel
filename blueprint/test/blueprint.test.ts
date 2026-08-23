@@ -882,6 +882,104 @@ describe("@gik/blueprint", () => {
     expect(program.graph?.ports).toEqual({ analysis_report: { mode: "signal" } });
   });
 
+  it("wraps a view's primary capability with one nesting layer, a genuine child in the rendered tree", () => {
+    const cells = {
+      createBlueprint: {
+        id: "createBlueprint",
+        events: { save: { payloadSchema: { type: "object" } } },
+        behavior: { on: { save: [{ do: "assign", target: "studio.saved", args: { value: true } }] } },
+        potentialViews: {
+          primary: {
+            capability: "primitive:form",
+            props: { fields: { properties: { id: { type: "string" } } } },
+            wrap: [{ capability: "fluent:dialog", props: { title: "Create Blueprint" } }],
+            region: "studio",
+          },
+        },
+      },
+    };
+
+    const program = composeCellProgram({
+      cells,
+      presentation: singleSlotPresentation("studio"),
+    }, compileCellTopology("shell", cells));
+
+    expect(program.root).toEqual({
+      capability: "gik:presentation-fragment",
+      id: "studio",
+      edges: {
+        children: [{
+          capability: "fluent:dialog",
+          id: "createBlueprint--primary--in-studio--wrap-0",
+          props: { title: "Create Blueprint" },
+          edges: {
+            children: [{
+              capability: "primitive:form",
+              id: "createBlueprint--primary--in-studio",
+              props: { fields: { properties: { id: { type: "string" } } } },
+              edges: { on: { save: [{ do: "assign", target: "studio.saved", args: { value: true } }] } },
+            }],
+          },
+        }],
+      },
+    });
+  });
+
+  it("nests multiple wrap layers outermost-first and keeps before/after flanking the wrapped result", () => {
+    const cells = {
+      createBlueprint: {
+        id: "createBlueprint",
+        potentialViews: {
+          primary: {
+            capability: "primitive:form",
+            wrap: [{ capability: "fluent:dialog" }, { capability: "fluent:panel" }],
+            before: [{ capability: "fluent:text", props: { value: "Create" } }],
+            region: "studio",
+          },
+        },
+      },
+    };
+
+    const program = composeCellProgram({
+      cells,
+      presentation: singleSlotPresentation("studio"),
+    }, compileCellTopology("shell", cells));
+
+    const decorated = (program.root as { edges?: { children?: unknown[] } }).edges?.children?.[0] as {
+      id: string;
+      edges: { children: [unknown, { capability: string; id: string; edges: { children: [{ capability: string; id: string; edges: { children: [{ capability: string; id: string }] } }] } }] };
+    };
+    expect(decorated.id).toBe("createBlueprint--primary--in-studio--decorated");
+    const [beforeNode, wrapped] = decorated.edges.children;
+    expect(beforeNode).toMatchObject({ capability: "fluent:text", props: { value: "Create" } });
+    expect(wrapped.capability).toBe("fluent:dialog");
+    expect(wrapped.id).toBe("createBlueprint--primary--in-studio--wrap-0");
+    const panel = wrapped.edges.children[0];
+    expect(panel.capability).toBe("fluent:panel");
+    expect(panel.id).toBe("createBlueprint--primary--in-studio--wrap-1");
+    expect(panel.edges.children[0]).toMatchObject({ capability: "primitive:form", id: "createBlueprint--primary--in-studio" });
+  });
+
+  it("rejects a wrap capability outside presentation.allowedCapabilities", () => {
+    const build = () => createBlueprint({
+      ...blueprint("wrap-capability-guard").payload,
+      cells: {
+        createBlueprint: {
+          id: "createBlueprint",
+          potentialViews: {
+            primary: {
+              capability: "primitive:form",
+              wrap: [{ capability: "fluent:dialog" }],
+              region: "studio",
+            },
+          },
+        },
+      },
+      presentation: { slots: ["studio"], root: "studio", allowedCapabilities: ["primitive:form"] },
+    });
+    expect(build).toThrow("uses capability 'fluent:dialog' not in presentation.allowedCapabilities");
+  });
+
   it("parses and formats canonical hosted Blueprint references", () => {
     expect(parseBlueprintReference("blueprint:incident-report-explorer-2@1.0.0")).toEqual({
       scheme: "blueprint",

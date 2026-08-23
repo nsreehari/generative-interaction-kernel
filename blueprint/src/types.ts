@@ -134,6 +134,12 @@ export interface CellPotentialView extends Omit<CellViewDecoration, "capability"
   capability?: string;
   before?: readonly CellViewDecoration[];
   after?: readonly CellViewDecoration[];
+  /** Layers this view's primary capability nests inside, outermost first (the primary is always
+   * innermost) — e.g. `[{capability:"fluent:dialog",...}]` makes the primary render as that
+   * dialog's own body, a genuine child in its rendered component tree, not a flat sibling the way
+   * `before`/`after` are. Unlike `before`/`after`, a `wrap` layer's own `visibility` gates its
+   * whole subtree: hiding a wrap layer hides everything it wraps, including the primary. */
+  wrap?: readonly CellViewDecoration[];
   /** Which presentation slot(s) this view attaches to. An array renders one independent instance
    * per slot, all reading/writing through this same Cell. */
   region?: string | readonly string[];

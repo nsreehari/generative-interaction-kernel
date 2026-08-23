@@ -230,3 +230,46 @@ every instance still reads and writes through that one Cell — the prior "a Cel
 once" rule is gone. Representation recipes still replace the whole presentation or append additional
 slot entries, but append is now a plain array concatenation rather than a parent/slot merge, since
 slots are a flat list rather than a nested tree.
+
+## Amendment (2026-08-23): a view's primary capability may be nested inside `wrap` layers, not only flanked by `before`/`after`
+
+**Presentation slot nesting only ever nests inert fragment wrapper nodes, never a specific capability's
+own rendered children.** Confirmed by tracing the full pipeline: a nested slot's compiled fragment is a
+sibling of whatever else attaches to the same parent slot (`compileSlot` in `cell-projection.ts`), and
+`adapters/react`'s slot fragment renders as a bare `React.Fragment` pass-through with no relationship to
+any other node's own component. Meanwhile a capability component like `FluentDialog` only ever receives
+`children` from its *own* node's `edges.children`, which `toProgramNode` previously populated only from
+that same view's `before`/`after` decorations. So a dialog-hosts-a-form composition, where the form
+needs its own event, had no expressible answer: `before`/`after` are correctly inert (no event), and the
+"own-Cell" rule for anything needing an event produced two independent Cells with no way to make one's
+rendered view a structural child of the other's — exactly the anti-pattern
+`.github/agents/gik-purpose-reviewer.agent.md`'s own invariant warns against ("presentation must not
+manufacture Cells merely to express wrappers, dialogs, forms, tabs, panels... must still be expressive
+enough for complete product experiences").
+
+**The actual gap was narrower than it first appeared.** It was never about crossing Cell boundaries: a
+form Cell whose `primary` view *is* `primitive:form` already routes its own `save`/`submit` event
+through that same Cell's `behavior.on` today (e.g. `blueprint-studio`'s create-Blueprint Cell). The only
+missing piece was letting that same view's primary capability nest inside another capability's own
+rendered boundary — a purely presentational relationship, entirely within one Cell's one named view.
+
+**`CellPotentialView` gains an optional `wrap?: readonly CellViewDecoration[]`,** the identical shape
+`before`/`after` already use, ordered outermost-first. `toProgramNode` folds it around the primary
+node right-to-left, each layer's `edges.children` holding the next one in — the primary is always
+innermost, unchanged (same `edges.on = cellEvents(cell)` as always, since nothing about its own node
+changes). `before`/`after` then flank the fully wrapped result exactly as they would the bare primary,
+so all three compose freely. `presentation.allowedCapabilities` enforcement in
+`validateBlueprintArtifact` was extended to scan `wrap` capabilities alongside the primary and
+`before`/`after`, closing what would otherwise have been a silent bypass of that closed vocabulary.
+
+One real, deliberate behavior difference from `before`/`after`: a wrap layer's own `visibility` gates
+its whole subtree (the Kernel's `resolveNode`/the renderer's `renderNode` both return before recursing
+into an invisible node's children), so hiding a wrap layer hides the wrapped primary too. This is the
+common intended case (the primary only exists to be that layer's content) but is worth stating
+explicitly since `before`/`after` visibility is independent and sibling-scoped by contrast.
+
+**No change was needed anywhere in `kernel/src/interpret.ts`, `adapters/react/src/render.tsx`, or any
+component in `packages/components`** (including `FluentDialog` itself) — the mechanism produces an
+ordinary nested `DocNode`, and both the Kernel's already-generic child-walking and `FluentDialog`'s
+existing `{children}` consumption already handle it. That is the entire reason this stayed a small,
+`@gik/blueprint`-internal compiler/schema/type change.
