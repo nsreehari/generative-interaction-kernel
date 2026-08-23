@@ -17,9 +17,11 @@ import {
   BundleHost,
   SharedContextStore,
   bundleFromJson,
+  buildCapabilityCatalogFromExternals,
   type BlueprintController,
   type BundleContextBindings,
   type BundleNative,
+  type CapabilityDescriptorResolver,
   type GenUIFileServices,
   type GenUISource,
   type OrganismBridge,
@@ -47,6 +49,9 @@ export interface DemoRunnerDocument {
 export interface DemoTargetHostProps {
   blueprint: BlueprintArtifact;
   resolveLeavesProvider?: ProviderResolver;
+  /** Resolves a component provider's real capability descriptors for terminal prop/event-contract
+   * validation, the descriptor-side counterpart of `resolveLeavesProvider`. */
+  resolveCapabilityDescriptors?: CapabilityDescriptorResolver;
   native?: BundleNative;
   contexts?: BundleContextBindings;
   fileServices?: GenUIFileServices;
@@ -92,6 +97,7 @@ export function GikDemoBlueprintHost({
   HostComponent,
   blueprint,
   resolveLeavesProvider,
+  resolveCapabilityDescriptors,
   native,
   contexts = EMPTY_CONTEXTS,
   fileServices,
@@ -106,10 +112,10 @@ export function GikDemoBlueprintHost({
 }: GikDemoBlueprintHostProps): React.ReactElement {
   const enabled = React.useMemo(demoEnabled, []);
   if (!enabled || !scenariosJson) {
-    return <ResolvedTargetHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} blueprintRegistry={blueprintRegistry} />;
+    return <ResolvedTargetHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} resolveCapabilityDescriptors={resolveCapabilityDescriptors} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} blueprintRegistry={blueprintRegistry} />;
   }
 
-  return <ActiveDemoHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} scenariosJson={scenariosJson} blueprintRegistry={blueprintRegistry} />;
+  return <ActiveDemoHost HostComponent={HostComponent} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} resolveCapabilityDescriptors={resolveCapabilityDescriptors} native={native} resolveNative={resolveNative} contexts={contexts} fileServices={fileServices} primaryInstanceId={primaryInstanceId} className={className} style={style} externalContext={externalContext} context={context} scenariosJson={scenariosJson} blueprintRegistry={blueprintRegistry} />;
 }
 
 function ResolvedTargetHost({
@@ -131,8 +137,11 @@ function ResolvedTargetHost({
           parentInstanceId,
         });
       },
+      ...(props.resolveCapabilityDescriptors
+        ? { capabilityCatalog: buildCapabilityCatalogFromExternals(props.blueprint.payload.runtime?.externals, props.resolveCapabilityDescriptors) }
+        : {}),
     }),
-    [parentInstanceId, props.blueprint, props.blueprintRegistry, props.externalContext],
+    [parentInstanceId, props.blueprint, props.blueprintRegistry, props.externalContext, props.resolveCapabilityDescriptors],
   );
   const resolvedNative = React.useMemo(
     () => resolveNative?.(materialized) ?? props.native,
@@ -145,6 +154,7 @@ function ActiveDemoHost({
   HostComponent,
   blueprint,
   resolveLeavesProvider,
+  resolveCapabilityDescriptors,
   native,
   contexts = EMPTY_CONTEXTS,
   fileServices,
@@ -176,8 +186,11 @@ function ActiveDemoHost({
           parentInstanceId: `${blueprint.payload.id}:${primaryInstanceId ?? "demo"}:${targetEpoch}`,
         });
       },
+      ...(resolveCapabilityDescriptors
+        ? { capabilityCatalog: buildCapabilityCatalogFromExternals(blueprint.payload.runtime?.externals, resolveCapabilityDescriptors) }
+        : {}),
     }),
-    [blueprint, blueprintRegistry, externalContextState, primaryInstanceId, targetEpoch],
+    [blueprint, blueprintRegistry, externalContextState, primaryInstanceId, targetEpoch, resolveCapabilityDescriptors],
   );
   const resolvedNative = React.useMemo(
     () => resolveNative?.(materializedBlueprint) ?? native,
@@ -305,7 +318,7 @@ function ActiveDemoHost({
 
   return (
     <GikToolingShell runnerVisible inspectorVisible>
-      <HostComponent key={resolvedPrimaryInstanceId} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} native={resolvedNative} contexts={mergedContexts} fileServices={fileServices} primaryBridge={primaryBridge} primaryInstanceId={resolvedPrimaryInstanceId} className={className} style={style} externalContext={externalContextState} context={context} onTransition={onTransition} blueprintRegistry={blueprintRegistry} />
+      <HostComponent key={resolvedPrimaryInstanceId} blueprint={blueprint} resolveLeavesProvider={resolveLeavesProvider} resolveCapabilityDescriptors={resolveCapabilityDescriptors} native={resolvedNative} contexts={mergedContexts} fileServices={fileServices} primaryBridge={primaryBridge} primaryInstanceId={resolvedPrimaryInstanceId} className={className} style={style} externalContext={externalContextState} context={context} onTransition={onTransition} blueprintRegistry={blueprintRegistry} />
       <BundleHost bundle={toolingBundle} resolveProvider={resolveLeavesProvider} contexts={mergedContexts} fileServices={fileServices} />
     </GikToolingShell>
   );

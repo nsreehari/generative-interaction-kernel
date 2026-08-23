@@ -9,7 +9,7 @@ import {
   prepareBlueprintProgram,
   type ExternalContext,
 } from "@gik/blueprint";
-import { BlueprintHost as InMemoryBlueprintHost } from "@gik/react";
+import { BlueprintHost as InMemoryBlueprintHost, buildCapabilityCatalogFromExternals, type CapabilityDescriptorResolver, type ProviderResolver } from "@gik/react";
 import { BlueprintHost as DurableBlueprintHost, createNativeBlueprintWorker } from "@gik/react/durable";
 import { createIndexedDbProvider } from "@gik/durable-runtime/storage/indexed-db";
 import { createDurableRuntime } from "@gik/durable-runtime";
@@ -21,7 +21,7 @@ import {
 } from "@gik/blueprint-agent-host";
 import type { UseProposal } from "./runtime/blueprint-agent-lifecycle";
 import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
-import { resolveProjectionViews } from "./runtime/provider-registry";
+import { resolveCapabilityDescriptors, resolveProjectionViews } from "./runtime/provider-registry";
 import {
   canonicalizeHostUrl,
   readHostQuery,
@@ -57,6 +57,7 @@ export function Host(): React.ReactElement {
       externalContext={query.externalContext}
       HostComponent={HostComponent}
       resolveLeavesProvider={resolveProjectionViews}
+      resolveCapabilityDescriptors={resolveCapabilityDescriptors}
     />
   );
 }
@@ -124,6 +125,9 @@ function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
           parentInstanceId,
         });
       },
+      ...(props.resolveCapabilityDescriptors
+        ? { capabilityCatalog: buildCapabilityCatalogFromExternals(props.blueprint.payload.runtime?.externals, props.resolveCapabilityDescriptors) }
+        : {}),
     });
     if (!props.context) return materialized;
     const initialState = prepareBlueprintProgram(materialized.payload.terminalBlueprint, {
@@ -133,7 +137,7 @@ function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
       ...materialized,
       payload: { ...materialized.payload, initialState: structuredClone(initialState) },
     };
-  }, [blueprintId, props.blueprint, props.blueprintRegistry, props.context, props.externalContext, props.primaryInstanceId]);
+  }, [blueprintId, props.blueprint, props.blueprintRegistry, props.context, props.externalContext, props.primaryInstanceId, props.resolveCapabilityDescriptors]);
   const runtime = React.useMemo(() => {
     const identity = JSON.stringify({
       blueprintId,
@@ -176,12 +180,14 @@ function HostView({
   externalContext,
   HostComponent,
   resolveLeavesProvider,
+  resolveCapabilityDescriptors,
 }: {
   targetId: string;
   durableEnabled: boolean;
   externalContext?: ExternalContext;
   HostComponent: React.ComponentType<DemoTargetHostProps>;
-  resolveLeavesProvider: (from: string) => ReturnType<typeof resolveProjectionViews>;
+  resolveLeavesProvider: ProviderResolver;
+  resolveCapabilityDescriptors: CapabilityDescriptorResolver;
 }): React.ReactElement {
   const id = targetId;
   const blueprintStorageRootInstanceId = `${id}:default`;
@@ -235,6 +241,7 @@ function HostView({
           })}
         scenariosJson={demoRunnerDocument}
         resolveLeavesProvider={resolveLeavesProvider}
+        resolveCapabilityDescriptors={resolveCapabilityDescriptors}
         blueprintRegistry={hostedBlueprintRegistry}
         style={embeddedHostStyle}
       />
