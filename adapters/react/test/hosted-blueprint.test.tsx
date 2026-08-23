@@ -4,6 +4,7 @@ import { test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import TestRenderer, { act } from "react-test-renderer";
 import { createBlueprint, materializeBlueprint } from "@gik/blueprint";
+import { createMemoryStorage } from "@gik/durable-runtime/storage/memory";
 import { Kernel, ValidationError, type CapabilityDescriptor, type Json, type ResolvedNode } from "@gik/kernel";
 import {
   readHostedBlueprintDeclaration,
@@ -15,6 +16,8 @@ import {
   createHostedBlueprintProjection,
   type BlueprintHostProps,
 } from "../src/primitives/blueprint-host";
+import { createNativeBlueprintWorker } from "../src/durable-blueprint-worker";
+import { BlueprintHost as DurableBlueprintHost } from "../src/primitives/durable-blueprint-host";
 import { bundleFromJson } from "../src/primitives/bundle";
 import { buildBundleRegistry } from "../src/primitives/registry";
 import { buildCapabilityCatalogFromExternals } from "../src/registry";
@@ -210,6 +213,51 @@ function hostedBlueprintNode(childBlueprint: ReturnType<typeof nestedChildBluepr
   } as ResolvedNode;
 }
 
+function memoryRef(value: string): string {
+  return `b64:${Buffer.from(JSON.stringify({ kind: "memory", value })).toString("base64url")}`;
+}
+
+function durableRuntime() {
+  const id = crypto.randomUUID();
+  const runtimeRef = memoryRef(`hosted-blueprint:${id}`);
+  return {
+    runtimeId: `hosted-blueprint:${id}`,
+    providers: { memory: createMemoryStorage() },
+    refs: { stateRef: runtimeRef, journalRef: runtimeRef, effectsQueueRef: runtimeRef },
+  };
+}
+
+function durableParentBlueprint(childBlueprint: ReturnType<typeof nestedChildBlueprint>) {
+  return createBlueprint({
+    id: "durable-shell",
+    kind: "runtime-blueprint",
+    version: "1.0.0",
+    tiers: [{ id: "runtime", kind: "runtime-program" }],
+    recipes: [],
+    runtime: { state: {} },
+    cells: {
+      preview: {
+        id: "preview",
+        blueprint: { inline: childBlueprint },
+        potentialViews: {
+          primary: { capability: "gik:blueprint", region: "root" },
+        },
+      },
+    },
+    presentation: { slots: ["root"], root: "root" },
+  });
+}
+
+async function waitFor(predicate: () => boolean, timeoutMs = 3_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() >= deadline) throw new Error("Timed out waiting for durable hosted Blueprint");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  }
+}
+
 test("threads resolveCapabilityDescriptors into a hosted child's own BlueprintHostProps", async () => {
   let capturedProps: BlueprintHostProps | undefined;
   const resolveCapabilityDescriptors: CapabilityDescriptorResolver = resolveStrictDescriptors;
@@ -291,3 +339,38 @@ test("a hosted child's own catalog (built from the threaded resolver) still pass
   const materialized = materializeBlueprint({ blueprint: childBlueprint, capabilityCatalog: childCatalog });
   assert.doesNotThrow(() => new Kernel(materialized.payload.vocabulary, materialized.payload.program));
 });
+
+test("a durable hosted child builds its own capability catalog from the inherited resolver", async () => {
+  const validBlueprint = durableParentBlueprint(nestedChildBlueprint({ value: "Blueprint Studio" }));
+  const validRuntime = durableRuntime();
+  const validWorker = createNativeBlueprintWorker({
+    blueprint: validBlueprint,
+    runtime: validRuntime,
+    native: {},
+  });
+  const resolvedProviders: string[] = [];
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+
+  await act(async () => {
+    renderer = TestRenderer.create(
+      <DurableBlueprintHost
+        blueprint={validBlueprint}
+        runtime={validRuntime}
+        worker={validWorker}
+        resolveCapabilityDescriptors={(from) => {
+          resolvedProviders.push(from);
+          return resolveStrictDescriptors(from);
+        }}
+      />,
+    );
+  });
+  try {
+    await waitFor(() => resolvedProviders.includes("strict")).catch((error) => {
+      throw new Error(
+        `${String(error)}; rendered=${JSON.stringify(renderer?.toJSON())}; providers=${resolvedProviders.join(",")}`,
+      );
+    });
+  } finally {
+    await act(async () => renderer?.unmount());
+  }
+}, 10_000);
