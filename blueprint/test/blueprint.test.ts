@@ -1077,6 +1077,65 @@ describe("@gik/blueprint", () => {
     expect(() => validateBlueprintArtifact(artifact)).not.toThrow();
   });
 
+  it("rejects a malformed service operation response.validators rule at authoring-validation time", () => {
+    // Same shared GuardrailRule schema, exercised at the service-declaration path this time
+    // (services.<id>.operations.<id>.response.validators) rather than a Cell source's own
+    // acceptanceCriteria -- a typo'd "kind" ("knd") should be rejected here too, not just there.
+    const build = () => createBlueprint({
+      ...blueprint("malformed-service-response-validators").payload,
+      services: {
+        "market-data": {
+          kind: "test-service",
+          version: "1",
+          operations: {
+            refreshPrices: {
+              operation: "refreshPrices",
+              contract: "quotes/v1",
+              response: {
+                validators: [{ knd: "jsonata", expr: "true" }] as never,
+              },
+            },
+          },
+        },
+      },
+      cells: {
+        quotes: {
+          id: "quotes",
+          sources: [{ id: "quotes.source", service: "market-data", operation: "refreshPrices" }],
+        },
+      },
+    });
+    expect(build).toThrow(/validators/);
+  });
+
+  it("accepts a well-formed service operation response.validators rule", () => {
+    const artifact = createBlueprint({
+      ...blueprint("well-formed-service-response-validators").payload,
+      services: {
+        "market-data": {
+          kind: "test-service",
+          version: "1",
+          operations: {
+            refreshPrices: {
+              operation: "refreshPrices",
+              contract: "quotes/v1",
+              response: {
+                validators: [{ kind: "jsonata", expr: "true" }],
+              },
+            },
+          },
+        },
+      },
+      cells: {
+        quotes: {
+          id: "quotes",
+          sources: [{ id: "quotes.source", service: "market-data", operation: "refreshPrices" }],
+        },
+      },
+    });
+    expect(() => validateBlueprintArtifact(artifact)).not.toThrow();
+  });
+
   it("uses tier terminology for Lowering Cells", () => {
     expect(defineLoweringCell({
       id: "domain-to-runtime",
