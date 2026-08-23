@@ -94,15 +94,19 @@ views without a distinct user outcome.
 
 ## Platform-gap protocol
 
-`wrap` (ADR-0038, 2026-08-23 amendment) lets one Cell's own primary capability
-nest inside static wrapping chrome authored on that same view (e.g. a dialog
-body hosting that Cell's own form) -- do not report that shape as a gap.
-A materially different need -- several *separate* Cells' own views all
-required as children of one shared container capability (e.g. each tab's
-panel is its own Cell) -- is not solved by `wrap`, which only nests one view's
-own primary. If the accepted grammar still cannot express the required
-composition, do not create presentation Cells, hidden component props,
-imperative host wiring, or Blueprint-specific TypeScript. Return:
+Two composition shapes that used to look like gaps are already solved, so do
+not report either as one: `wrap` (ADR-0038, 2026-08-23 amendment) lets one
+Cell's own primary capability nest inside static wrapping chrome authored on
+that same view (e.g. a dialog body hosting that Cell's own form). Separately,
+several independent Cells switching visibility together (e.g. tabs/panels,
+each panel its own Cell) needs no container-owned children mechanism at all:
+each panel Cell attaches its own `region` to its own dedicated slot and gates
+its own `visibility` against the same shared state the tab-strip Cell's
+`select` event writes -- self-declared, inside-out, exactly like every other
+presentation attachment; only the active one ever renders. If the accepted
+grammar still cannot express the required composition, do not create
+presentation Cells, hidden component props, imperative host wiring, or
+Blueprint-specific TypeScript. Return:
 
 ```text
 Required composition
