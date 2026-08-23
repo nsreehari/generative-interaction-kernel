@@ -216,6 +216,11 @@ Each layer exports a `*ComponentAuthoringTools` convenience catalog for its comp
 These are ACX authoring tools, not live AX runtime tools. The package does not create
 `copilot-instructions.md`, `SKILL.md`, or other host-specific agent customization files.
 
+The root entry point also exports `componentViews`, `componentDefinitions`, and
+`componentCapabilities` — each an aggregate merging the fluent, primitive, semantic, security, and
+software registries of the same name. Use them when a host wants one combined registry across every
+layer instead of registering each layer separately.
+
 ## Variants
 
 `variant` is an optional top-level rendering prop with a closed component-specific string enum. An
