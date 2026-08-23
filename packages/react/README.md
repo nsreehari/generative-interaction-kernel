@@ -54,6 +54,62 @@ instance and Cell identity, while reusing the configured durable provider.
 | `@gik/react` | React rendering and ephemeral in-memory Blueprint hosting |
 | `@gik/react/durable` | Durable or remotely executed Blueprint hosting |
 
+## Exported API
+
+### `@gik/react`
+
+`@gik/react` exports the in-memory `BlueprintHost`, `BlueprintHostProps`, `BlueprintController`,
+`BlueprintControllerOptions`, and the registry helpers used to resolve imported projection views and
+capability descriptors.
+The root entrypoint also re-exports the package's broader rendering and composition modules; the
+items below are the Blueprint-hosting and capability-resolution exports most consumers import
+directly.
+
+`BlueprintHostProps` includes:
+
+- required: `blueprint`
+- optional composition inputs: `resolveLeavesProvider`, `resolveCapabilityDescriptors`, `native`,
+  `companions`, `contexts`, `fileServices`, `primaryBridge`, `primaryInstanceId`, `className`,
+  `style`, `externalContext`
+- optional host-specific inputs: `context` (deprecated initial-state seed compatibility),
+  `onTransition`, `blueprintRegistry`, `renderHostedBlueprintLoading`
+
+`BlueprintController` is constructed as `new BlueprintController(blueprint, options?)`. The exported
+`BlueprintControllerOptions` type includes `externalContext`, `materializedBlueprint`, `context`
+(deprecated), `contexts`, `native`, `onTransition`, and `resolveCapabilityDescriptors`. The class
+exposes a readonly `worker` plus `getTree()`, `getState()`, `subscribe()`, `start()`, `emit()`,
+`resync()`, `settle()`, and `stop()`.
+
+Registry and capability helpers exported from `@gik/react`:
+
+- `splitCapabilityRef(ref)` parses an `alias:name` capability reference and returns `{ alias, name }`
+  or `null`
+- `buildRegistryFromImports(imports, resolveProvider, fallback)` builds a `ComponentRegistry` from
+  imported projection-view providers and respects import `use` allowlists
+- `buildCapabilityCatalogFromImports(imports, resolveDescriptors)` builds a flat
+  `alias:name -> CapabilityDescriptor` catalog from imported projection-view descriptors
+- `buildCapabilityCatalogFromExternals(externals, resolveDescriptors)` does the same starting from
+  `runtime.externals.projectionViews`
+- `ProviderResolver` resolves a provider name to a projection-view map
+- `CapabilityDescriptorResolver` resolves a provider name to a capability-descriptor map
+
+### `@gik/react/durable`
+
+`@gik/react/durable` exports a durable `BlueprintHost`, its `BlueprintHostProps` type, and
+`createNativeBlueprintWorker`.
+
+The durable `BlueprintHostProps` type extends the root host props and adds:
+
+- required: `runtime`
+- optional: `worker`, `materializedBlueprint`
+
+`runtime` is a `DurableBlueprintRuntimeOptions` value with `runtimeId`, `providers`, and `refs`.
+`worker` is optional; when present, the durable host starts it on mount and stops it on unmount.
+
+`createNativeBlueprintWorker({ blueprint, runtime, native, ... })` creates a `BlueprintWorker` for
+the durable entrypoint. Its options also accept `externalContext`, `materializedBlueprint`,
+`contexts`, `subscribe`, and `onError`.
+
 See the [project documentation](https://github.com/nsreehari/generative-interaction-kernel/tree/master/docs)
 for architecture and protocol contracts.
 

@@ -120,3 +120,58 @@ factories are available from:
 
 Workers are asynchronous and placement-neutral. Wake notifications are hints, leases arbitrate
 ownership, and effect outcomes return through the journal before changing Blueprint state.
+
+## Exported API
+
+### Artifact and validation
+
+- `createBlueprint(definition)` clones a `BlueprintDefinition`, wraps it in the `BlueprintArtifact`
+  envelope (`gik: "0.1"`, `type: "blueprint"`), validates it, and returns the validated artifact.
+- `validateBlueprintArtifact(value)` asserts that a value is a `BlueprintArtifact`. Validation covers
+  the envelope, Blueprint identity and runtime declaration, tier and recipe shape, Cell key/id
+  agreement, service-operation references, presentation slot references,
+  `presentation.allowedCapabilities`, and required `interface.inputs` for inline hosted child
+  Blueprints.
+
+### Materialization and transition
+
+- `materializeBlueprint({ blueprint, externalContext?, resolveBlueprint?, capabilityCatalog? })`
+  assembles child Blueprint references, validates external context, applies authored lowering recipes
+  when present, and returns a portable `MaterializedBlueprint`.
+- `MaterializedBlueprint` carries the terminal `BlueprintArtifact`, cloned immutable
+  `externalContext`, derived vocabulary, compiled program, initial state, and `eventNodeOwners`.
+- `capabilityCatalog` is optional. It lets a host supply real `CapabilityDescriptor` entries keyed by
+  capability name. When the option is omitted, or a referenced capability is missing from it,
+  materialization falls back to a permissive descriptor with
+  `propsSchema: { type: "object", additionalProperties: true }`.
+- `runMaterializedTransition({ state, materializedBlueprint, events, syncExternal?, contexts?,
+  createOrchestrator?, sourceSettlements?, requestSettlements?, serviceSettlements? })` runs a
+  transition from the portable materialization without reassembling or recompiling the authored
+  source. It makes `externalContext.*` readable through a reserved read-only namespace, applies
+  settlements and ordered events, validates declared event payload schemas, and returns updated
+  mutable local `state` plus any `effects`, `completedWithinRun`, and interface `outputs`.
+
+### Program composition
+
+- `composeCellProgram({ cells, presentation? }, topology)` is exported from the package entrypoint. It
+  compiles a validated `ExecutableCellTopology` into an `@gik/kernel`
+  `ExecutableProgramDefinition`.
+- With a `presentation`, it projects Cells into the declared slot graph. Without a `presentation`, it
+  still emits handlers, computation/source graph nodes, and discoverable hosted-Blueprint nodes.
+- A `CellPotentialView`'s `before` and `after` decorations render as sibling fragments around the
+  primary node. `wrap` decorations nest the primary node inside successive decoration layers,
+  outermost first.
+
+### Core authored contracts
+
+- `BlueprintArtifact` is the portable authored envelope. Its `payload` is a `BlueprintDefinition`.
+- `CellDefinition` is the authored unit for inputs, system inputs, sources, compute steps, outputs,
+  event contracts, behavior, optional `potentialViews`, and optional hosted `blueprint`.
+- `CellViewDecoration` is the reusable decoration shape: `capability`, optional `props`, optional
+  `bindings`, and optional `visibility`.
+- `CellPotentialView` adds optional `capability`, `region`, `before`, `after`, and `wrap`. A view is
+  dormant unless its own `region` attaches to a slot reachable from the active presentation root; if
+  `region` is an array, one independent instance is rendered per named slot.
+- `PresentationDefinition` is a closed, flat set of `slots` plus a `root`. Slot entries
+  self-declare nesting with `region`. `allowedCapabilities` is optional; when present, every
+  capability used by Cell views and view decorations must appear in it.
