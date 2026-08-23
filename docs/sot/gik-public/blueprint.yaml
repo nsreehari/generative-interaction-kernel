@@ -187,6 +187,12 @@ artifact_contracts:
       - Executable preparation emits decorations and the original Cell inside a presentation fragment.
       - Generated node ids are stable and derived from the original Cell id, position, and order.
       - Runtime bindings and visibility are scoped to the original matched Cell's cellRunState.
+      - The identical shape is reused for a CellPotentialView's optional `wrap` array (outermost
+        first): each layer nests the next as its own `edges.children` rather than sitting beside it
+        as `before`/`after` do, so it renders as a genuine child in that layer's own component tree.
+        A wrap layer stays exactly as inert as `before`/`after` (no event, no derivation of its own);
+        the one real difference is that its own `visibility` gates its whole subtree, including the
+        wrapped primary, unlike `before`/`after`'s independent, sibling-scoped visibility.
   - name: BlueprintImplementationProgram
     signature: >-
       interface BlueprintImplementationProgram { id: string; when?: string;
@@ -380,7 +386,10 @@ cell_api:
       Hosting another Blueprint (`blueprint`) is an ordinary data-flow-owning Cell property, never
       dependent on presentation: every hosting Cell always gets a discoverable node -- built from
       that Cell's own `inputs` ports -- whether or not this Blueprint has any presentation at all,
-      or whether that one Cell has a reachable view of its own. CellProjectionDefinition is
+      or whether that one Cell has a reachable view of its own. A view's `wrap` layers (outermost
+      first) nest its primary capability's node as a genuine child inside each successive layer's own
+      `edges.children`, unlike `before`/`after`, which stay flat siblings; `before`/`after` then flank
+      the fully wrapped result exactly as they would the bare primary. CellProjectionDefinition is
       structural input to this function and is not separately exported from the package entrypoint.
   - name: composeCellDocument
     status: deprecated alias of composeCellProgram

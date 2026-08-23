@@ -386,11 +386,15 @@ function toProgramNode(cell: CellDefinition, view: CellPotentialView, nodeId: st
     toDecorationNode(decoration, `${nodeId}--before-${index}`, cell));
   const after = (view.after ?? []).map((decoration, index) =>
     toDecorationNode(decoration, `${nodeId}--after-${index}`, cell));
-  if (before.length === 0 && after.length === 0) return cellNode;
+  const wrapped = (view.wrap ?? []).reduceRight(
+    (inner, decoration, index) => toWrapNode(decoration, `${nodeId}--wrap-${index}`, cell, inner),
+    cellNode,
+  );
+  if (before.length === 0 && after.length === 0) return wrapped;
   return {
     capability: PRESENTATION_FRAGMENT_CAPABILITY,
     id: `${nodeId}--decorated`,
-    edges: { children: [...before, cellNode, ...after] },
+    edges: { children: [...before, wrapped, ...after] },
   };
 }
 
@@ -413,6 +417,15 @@ function toDecorationNode(view: CellViewDecoration, id: string, cell: CellDefini
     ...(Object.keys(edges).length > 0 ? { edges } : {}),
   };
 }
+
+/** Builds one `wrap` layer: the same read/readExpr/gate construction a `toDecorationNode` sibling
+ * decoration gets, plus `edges.children: [inner]` -- the one thing that actually distinguishes
+ * wrapping from flanking. `inner` is either the primary Cell's own node or the next layer in. */
+function toWrapNode(view: CellViewDecoration, id: string, cell: CellDefinition, inner: DocNode): DocNode {
+  const node = toDecorationNode(view, id, cell);
+  return { ...node, edges: { ...(node.edges ?? {}), children: [inner] } };
+}
+
 
 function cellEvents(cell: CellDefinition): Record<string, Action[]> {
   const handlers = cell.behavior?.on ?? {};

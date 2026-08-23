@@ -35,7 +35,7 @@ schema or a component's incidental implementation behavior as authority.
 You may author or change:
 
 - named `Cell.potentialViews`;
-- view capabilities, props, bindings, visibility, decorations, and regions;
+- view capabilities, props, bindings, visibility, decorations (`before`/`after`/`wrap`), and regions;
 - Cell-agnostic presentation slots, root, and allowed capability vocabulary;
 - presentation-focused data-driven scenarios when explicitly requested.
 
@@ -77,7 +77,9 @@ surgically and preserve every semantic field owned by `gik-cell-author`.
    batch where tooling supports it.
 4. Author the smallest set of named views that fully serves the product.
 5. Use intrinsic props for authored content, bindings for state-backed content,
-   and decorations only for inert surrounding presentation.
+   decorations (`before`/`after`) only for inert flanking presentation, and
+   `wrap` only when the primary must render as a genuine structural child inside
+   another capability's own boundary (e.g. a dialog's body) rather than beside it.
 6. Author Cell-agnostic slots for product organization and verify reachability
    from the root.
 7. Check loading, empty, failure, readonly, editor, action, and preview states
@@ -92,10 +94,15 @@ views without a distinct user outcome.
 
 ## Platform-gap protocol
 
-If the accepted grammar cannot express required composition such as
-dialog-to-form or tabs-to-panels, do not create presentation Cells, hidden
-component props, imperative host wiring, or Blueprint-specific TypeScript.
-Return:
+`wrap` (ADR-0038, 2026-08-23 amendment) lets one Cell's own primary capability
+nest inside static wrapping chrome authored on that same view (e.g. a dialog
+body hosting that Cell's own form) -- do not report that shape as a gap.
+A materially different need -- several *separate* Cells' own views all
+required as children of one shared container capability (e.g. each tab's
+panel is its own Cell) -- is not solved by `wrap`, which only nests one view's
+own primary. If the accepted grammar still cannot express the required
+composition, do not create presentation Cells, hidden component props,
+imperative host wiring, or Blueprint-specific TypeScript. Return:
 
 ```text
 Required composition

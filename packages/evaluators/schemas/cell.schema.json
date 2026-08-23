@@ -183,6 +183,12 @@
           "minItems": 1,
           "items": { "$ref": "#/definitions/viewDecoration" }
         },
+        "wrap": {
+          "description": "Layers this view's primary capability nests inside, outermost first (the primary is always innermost) -- a genuine child in the rendered tree, unlike the flat before/after siblings.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/viewDecoration" }
+        },
         "region": {
           "description": "Which presentation slot(s) this view attaches to. An array renders one independent instance per slot, all through this same Cell.",
           "oneOf": [

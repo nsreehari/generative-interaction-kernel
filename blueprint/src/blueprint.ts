@@ -168,7 +168,7 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
     const allowed = new Set(allowedCapabilities);
     for (const [cellId, cell] of Object.entries(cells)) {
       for (const [viewName, view] of Object.entries(cell.potentialViews ?? {})) {
-        for (const capability of [view.capability, ...(view.before ?? []).map((d) => d.capability), ...(view.after ?? []).map((d) => d.capability)]) {
+        for (const capability of [view.capability, ...(view.before ?? []).map((d) => d.capability), ...(view.after ?? []).map((d) => d.capability), ...(view.wrap ?? []).map((d) => d.capability)]) {
           if (capability !== undefined && !allowed.has(capability)) {
             throw new BlueprintValidationError(`Blueprint Cell '${cellId}' view '${viewName}' uses capability '${capability}' not in presentation.allowedCapabilities`);
           }
