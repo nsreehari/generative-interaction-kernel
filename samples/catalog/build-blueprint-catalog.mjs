@@ -13,7 +13,7 @@ const demoScenarios = {};
 const bootstrapAssets = {};
 const blueprintDirectory = resolve(samplesDirectory, "blueprints");
 const artifactIds = (await readdir(blueprintDirectory, { withFileTypes: true }))
-  .filter((entry) => entry.isDirectory() && entry.name !== "half-baked")
+  .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .sort();
 
