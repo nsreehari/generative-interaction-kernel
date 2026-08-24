@@ -11,7 +11,7 @@
     "type": { "const": "blueprint" },
     "payload": {
       "type": "object",
-      "required": ["id", "kind", "version", "tiers", "recipes", "runtime"],
+      "required": ["id", "kind", "version", "serviceTiers", "serviceRecipes", "projectionTiers", "projectionRecipes", "runtime"],
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "minLength": 1 },
@@ -62,14 +62,27 @@
             }
           }
         },
-        "tiers": {
+        "serviceTiers": {
+          "description": "The service (implementation) axis' authored tiers, resolved independently of the projection axis.",
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "https://genui.dev/schemas/tier.schema.json" }
         },
-        "recipes": {
+        "serviceRecipes": {
+          "description": "The service axis' tier transitions. Empty means the axis declares exactly one terminal tier.",
           "type": "array",
-          "items": { "$ref": "https://genui.dev/schemas/lowering-recipe.schema.json#/definitions/loweringRecipe" }
+          "items": { "$ref": "https://genui.dev/schemas/lowering-recipe.schema.json#/definitions/serviceRecipe" }
+        },
+        "projectionTiers": {
+          "description": "The projection (presentation) axis' authored tiers, resolved independently of the service axis.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "https://genui.dev/schemas/tier.schema.json" }
+        },
+        "projectionRecipes": {
+          "description": "The projection axis' tier transitions. Empty means the axis declares exactly one terminal tier.",
+          "type": "array",
+          "items": { "$ref": "https://genui.dev/schemas/lowering-recipe.schema.json#/definitions/projectionRecipe" }
         },
         "cells": {
           "type": "object",

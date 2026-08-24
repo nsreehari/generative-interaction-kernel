@@ -89,7 +89,7 @@ export interface BlueprintReconfigurationResult {
  * lowering implementation.
  */
 export function defineDeclarativeBlueprint(blueprint: BlueprintSource): LoweredBlueprint | undefined {
-  if (blueprint.payload.recipes.length > 0 || !blueprint.payload.cells) return undefined;
+  if (blueprint.payload.serviceRecipes.length > 0 || blueprint.payload.projectionRecipes.length > 0 || !blueprint.payload.cells) return undefined;
   const definition = {
     cells: blueprint.payload.cells,
     ...(blueprint.payload.presentation ? { presentation: blueprint.payload.presentation } : {}),

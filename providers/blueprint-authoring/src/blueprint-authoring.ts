@@ -14,8 +14,10 @@ export interface BlueprintSeedSummary {
   id: string;
   kind: string;
   version: string;
-  tiers: Array<{ id: string; kind: string }>;
-  recipes: Array<{ id: string; from: string; to: string }>;
+  serviceTiers: Array<{ id: string; kind: string }>;
+  serviceRecipes: Array<{ id: string; from: string; to: string }>;
+  projectionTiers: Array<{ id: string; kind: string }>;
+  projectionRecipes: Array<{ id: string; from: string; to: string }>;
 }
 
 export const blueprintAuthoringFlow: StepFlowConfig = {
@@ -103,17 +105,17 @@ export function createBlueprintAuthoringRegistry(): FlowRegistry {
 export function summarizeBlueprint(value: unknown): BlueprintSeedSummary | null {
   const blueprint = asBlueprint(value);
   if (!blueprint) return null;
+  const tier = (entry: { id: string; kind: string }) => ({ id: entry.id, kind: entry.kind });
+  const stage = (entry: { id: string; from: string; to: string }) => ({ id: entry.id, from: entry.from, to: entry.to });
   return {
     source: "blueprint",
     id: blueprint.payload.id,
     kind: blueprint.payload.kind,
     version: blueprint.payload.version,
-    tiers: blueprint.payload.tiers.map((tier) => ({ id: tier.id, kind: tier.kind })),
-    recipes: blueprint.payload.recipes.map((recipe) => ({
-      id: recipe.id,
-      from: recipe.from,
-      to: recipe.to,
-    })),
+    serviceTiers: blueprint.payload.serviceTiers.map(tier),
+    serviceRecipes: blueprint.payload.serviceRecipes.map(stage),
+    projectionTiers: blueprint.payload.projectionTiers.map(tier),
+    projectionRecipes: blueprint.payload.projectionRecipes.map(stage),
   };
 }
 
@@ -148,8 +150,10 @@ function buildArtifactBackedBlueprint(blueprintSeed: BlueprintSeedSummary, graph
     kind: blueprintSeed.kind,
     version: blueprintSeed.version,
     source: blueprintSeed.source,
-    tiers: blueprintSeed.tiers,
-    declaredRecipes: blueprintSeed.recipes,
+    serviceTiers: blueprintSeed.serviceTiers,
+    declaredServiceRecipes: blueprintSeed.serviceRecipes,
+    projectionTiers: blueprintSeed.projectionTiers,
+    declaredProjectionRecipes: blueprintSeed.projectionRecipes,
     signals: graphDigest,
   };
 }
@@ -162,8 +166,13 @@ function buildRecipeSuggestions(
   const triggered = asStringArray(graphDigest.triggered);
   const unlocked = asStringArray(graphDigest.unlocked);
   if (blueprintSeed) {
-    return blueprintSeed.recipes.map((recipe, index) => ({
+    const declared = [
+      ...blueprintSeed.serviceRecipes.map((recipe) => ({ recipe, axis: "service" as const })),
+      ...blueprintSeed.projectionRecipes.map((recipe) => ({ recipe, axis: "projection" as const })),
+    ];
+    return declared.map(({ recipe, axis }, index) => ({
       id: recipe.id,
+      axis,
       from: recipe.from,
       to: recipe.to,
       source: "declared-blueprint",
@@ -205,8 +214,8 @@ function buildNotes(blueprintSeed: BlueprintSeedSummary | null): string[] {
     "StepOrchestrator turns those graph outputs into a resumable authoring plan.",
   ];
   if (blueprintSeed) {
-    notes.push(blueprintSeed.recipes.length > 0
-      ? "The plan starts from a declared blueprint and proposes the concrete recipe chain it already carries."
+    notes.push(blueprintSeed.serviceRecipes.length + blueprintSeed.projectionRecipes.length > 0
+      ? "The plan starts from a declared blueprint and proposes the concrete service and projection recipe chains it already carries."
       : "The plan starts from a declared terminal Blueprint and does not invent a recipe chain.");
   }
   return notes;

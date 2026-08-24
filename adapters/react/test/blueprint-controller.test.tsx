@@ -20,8 +20,10 @@ test("BlueprintController renders and transitions Blueprint-owned in-memory stat
     id: "counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: {
       state: { counter: { value: 1 } },
     },
@@ -58,8 +60,10 @@ test("BlueprintController reuses materialized execution with immutable externalC
     id: "external-context",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
@@ -96,11 +100,13 @@ test("BlueprintController seeds state on the materialized terminal Blueprint", a
     id: "lowered-counter",
     kind: "intent-blueprint",
     version: "1",
-    tiers: [
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [
       { id: "intent", kind: "interaction-intent" },
       { id: "runtime", kind: "runtime-program" },
     ],
-    recipes: [{
+    projectionRecipes: [{
       id: "intent-to-runtime",
       from: "intent",
       to: "runtime",
@@ -132,8 +138,10 @@ test("BlueprintController executes ordinary native effects without applying retu
     id: "worker-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
@@ -181,8 +189,10 @@ test("BlueprintController does not retain effects when no native executor is con
     id: "no-native-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
@@ -209,8 +219,10 @@ test("BlueprintController retries a failed ordinary effect without applying retu
     id: "retry-worker-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {

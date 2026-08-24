@@ -28,8 +28,10 @@ test("DurableBlueprintController persists Blueprint state", async () => {
     id: "durable-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
@@ -72,8 +74,10 @@ test("DurableBlueprintController does not persist ordinary native effect results
     id: "durable-effect-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
@@ -124,8 +128,10 @@ test("DurableBlueprintController leaves ordinary effects for an externally owned
     id: "remote-worker-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
@@ -179,8 +185,10 @@ test("DurableBlueprintController refreshes after another controller commits", as
     id: "durable-shared-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {

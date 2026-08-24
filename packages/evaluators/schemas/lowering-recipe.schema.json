@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://genui.dev/schemas/lowering-recipe.schema.json",
   "title": "GIK Lowering Recipe",
+  "description": "The two independent lowering-recipe dialects. A projection recipe owns representations + fallback; a service recipe owns implementationPrograms + implementationFallback. There is no combined recipe.",
   "type": "object",
   "required": ["gik", "type", "payload"],
   "additionalProperties": false,
@@ -9,14 +10,15 @@
     "gik": { "const": "0.1" },
     "type": { "const": "lowering-recipe" },
     "payload": {
-      "$ref": "#/definitions/loweringRecipe"
+      "oneOf": [
+        { "$ref": "#/definitions/serviceRecipe" },
+        { "$ref": "#/definitions/projectionRecipe" }
+      ]
     }
   },
   "definitions": {
-    "loweringRecipe": {
-      "$ref": "#/definitions/representationRecipe"
-    },
-    "representationRecipe": {
+    "projectionRecipe": {
+      "description": "One projection-axis tier transition: selects named potential views and the presentation skeleton.",
       "type": "object",
       "required": ["id", "from", "to", "representations", "fallback"],
       "additionalProperties": false,
@@ -30,6 +32,18 @@
           "items": { "$ref": "#/definitions/representation" }
         },
         "fallback": { "type": "string", "minLength": 1 },
+        "metadata": { "type": "object" }
+      }
+    },
+    "serviceRecipe": {
+      "description": "One service-axis tier transition: selects the contract-compatible Cell implementation seam (sources, compute, behavior, and service declarations).",
+      "type": "object",
+      "required": ["id", "from", "to", "implementationPrograms", "implementationFallback"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
         "implementationPrograms": {
           "type": "array",
           "minItems": 1,

@@ -6,13 +6,20 @@
     "kind": "blueprint-studio",
     "version": "1.0.0",
     "structureMode": "fixed",
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document"
       }
     ],
-    "recipes": [],
+    "serviceRecipes": [],
+    "projectionTiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document"
+      }
+    ],
+    "projectionRecipes": [],
     "services": {
       "blueprint-studio-data": {
         "blueprint": {
@@ -68,7 +75,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','tiers':[{'id':'runtime-document','kind':'runtime-document'}],'recipes':[],'runtime':{'state':{}},'cells':{}}}})"
+                "expr": "($id := $trim(input.values.id); {'id':$id,'blueprint':{'gik':'0.1','type':'blueprint','payload':{'id':$id,'kind':input.values.kind,'version':input.values.version,'structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[],'runtime':{'state':{}},'cells':{}}}})"
               }
             },
             "settlement": {
@@ -608,7 +615,7 @@
           },
           {
             "id": "selected-blueprint-overview",
-            "expression": "($bp := sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Tiers:** ' & $join($bp.artifact.payload.tiers.id, ', ') & '\\n- **Recipes:** ' & $string($count($bp.artifact.payload.recipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
+            "expression": "($bp := sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Service tiers:** ' & $join($bp.artifact.payload.serviceTiers.id, ', ') & '\\n- **Service recipes:** ' & $string($count($bp.artifact.payload.serviceRecipes)) & '\\n- **Projection tiers:** ' & $join($bp.artifact.payload.projectionTiers.id, ', ') & '\\n- **Projection recipes:** ' & $string($count($bp.artifact.payload.projectionRecipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
             "assign": "studio.overviewMarkdown",
             "dependencies": [
               "sources.fetch-blueprint"

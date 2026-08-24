@@ -58,7 +58,8 @@ const BlueprintPreview: ProjectionView = ({ node }) => {
 
   const payload = result.blueprint.payload;
   const execution = resolveBlueprintExecution(result.blueprint);
-  const livePreviewable = execution.stages.length === 0
+  const livePreviewable = execution.service.stages.length === 0
+    && execution.projection.stages.length === 0
     && Object.keys(payload.cells ?? {}).length > 0
     && (payload.projections?.presentation?.roots.length ?? 0) === 1;
   if (reference && !resolution) return <p className="gx-note">Loading Blueprint preview...</p>;

@@ -3,6 +3,10 @@
 Blueprint-authoring provider engine for the **Generative Interaction Kernel**. Builds an authoring
 registry and summarizes canonical blueprints for authoring workflows.
 
+`summarizeBlueprint` exposes the four canonical lowering collections:
+`serviceTiers`, `serviceRecipes`, `projectionTiers`, and `projectionRecipes`.
+It does not emit the removed combined `tiers` or `recipes` fields.
+
 ```bash
 npm install @gik/provider-blueprint-authoring
 ```

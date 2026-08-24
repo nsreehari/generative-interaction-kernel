@@ -6,7 +6,7 @@
     "kind": "intent-blueprint",
     "version": "1",
     "structureMode": "fixed",
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "intent",
         "kind": "interaction-intent"
@@ -16,7 +16,47 @@
         "kind": "runtime-document"
       }
     ],
-    "recipes": [
+    "serviceRecipes": [
+      {
+        "id": "intent-to-runtime",
+        "from": "intent",
+        "to": "runtime",
+        "implementationPrograms": [
+          {
+            "id": "default",
+            "cells": {
+              "query-input": {
+                "behavior": {
+                  "on": {
+                    "submit": [
+                      {
+                        "do": "assign",
+                        "target": "search.submitted",
+                        "args": {
+                          "value": true
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "implementationFallback": "default"
+      }
+    ],
+    "projectionTiers": [
+      {
+        "id": "intent",
+        "kind": "interaction-intent"
+      },
+      {
+        "id": "runtime",
+        "kind": "runtime-document"
+      }
+    ],
+    "projectionRecipes": [
       {
         "id": "intent-to-runtime",
         "from": "intent",
@@ -66,30 +106,7 @@
             }
           }
         ],
-        "fallback": "default",
-        "implementationPrograms": [
-          {
-            "id": "default",
-            "cells": {
-              "query-input": {
-                "behavior": {
-                  "on": {
-                    "submit": [
-                      {
-                        "do": "assign",
-                        "target": "search.submitted",
-                        "args": {
-                          "value": true
-                        }
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "implementationFallback": "default"
+        "fallback": "default"
       }
     ],
     "cells": {

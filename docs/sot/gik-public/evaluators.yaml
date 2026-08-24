@@ -23,7 +23,7 @@ api_policy:
     - JSONata evaluation functions and step contracts.
     - JSONata expression validation.
     - Declarative validation dispatch.
-    - Cell, Tier, lowering-recipe, and Blueprint validation.
+    - Cell, Tier, service-recipe, projection-recipe, and Blueprint validation.
     - Canonical JSON schemas published under @gik/evaluators/schemas/*.
 
 architecture:
@@ -228,16 +228,22 @@ validator_kinds:
   blueprint_tier:
     accepted_form: "{ kind: blueprint-tier, message?, level?, code?, node? }"
     behavior: Validates one standalone strict Tier definition.
-  blueprint_lowering_recipe:
-    accepted_form: "{ kind: blueprint-lowering-recipe, message?, level?, code?, node? }"
+  blueprint_service_recipe:
+    accepted_form: "{ kind: blueprint-service-recipe, message?, level?, code?, node? }"
     behavior:
-      - Validates one strict vocabulary-patch or representation recipe variant.
+      - Validates one strict service-axis recipe (implementationPrograms + implementationFallback).
+      - Validates local fallback, uniqueness, and JSONata-expression invariants.
+      - Does not validate whether from and to reference tiers in a containing Blueprint.
+  blueprint_projection_recipe:
+    accepted_form: "{ kind: blueprint-projection-recipe, message?, level?, code?, node? }"
+    behavior:
+      - Validates one strict projection-axis recipe (representations + fallback).
       - Validates local fallback, inheritance, uniqueness, and JSONata-expression invariants.
       - Does not validate whether from and to reference tiers in a containing Blueprint.
   blueprint:
     accepted_form: "{ kind: blueprint, message?, level?, code?, node? }"
     behavior:
-      - Validates the canonical Blueprint schema and every embedded Cell and recipe.
+      - Validates the canonical Blueprint schema and every embedded Cell, service recipe, and projection recipe.
       - Leaves cross-object references, chain connectivity, and composition policy to @gik/blueprint.
 
 validation_api:
@@ -264,10 +270,10 @@ specialized_validation_api:
   functions:
     - "validateCell(value: unknown): CellValidationResult"
     - "validateTier(value: JsonValue): DeclarativeValidationResult"
-    - "validateRecipe(value: JsonValue): DeclarativeValidationResult"
-    - "validateLoweringRecipe(value: JsonValue): DeclarativeValidationResult"
+    - "validateServiceRecipe(value: JsonValue): DeclarativeValidationResult"
+    - "validateProjectionRecipe(value: JsonValue): DeclarativeValidationResult"
   ownership:
-    - validateRecipe is the concise public alias of validateLoweringRecipe.
+    - The pre-split validateRecipe/validateLoweringRecipe aliases are removed; each axis has its own precise function.
     - Tier and recipe validation is standalone and contains no Blueprint graph context.
 
 schema_assets:
@@ -308,8 +314,8 @@ public_exports:
     - runDeclarativeValidators
     - validateCell
     - validateTier
-    - validateRecipe
-    - validateLoweringRecipe
+    - validateServiceRecipe
+    - validateProjectionRecipe
     - evaluateCell
     - isSystemInputToken
     - resolveSystemInputs

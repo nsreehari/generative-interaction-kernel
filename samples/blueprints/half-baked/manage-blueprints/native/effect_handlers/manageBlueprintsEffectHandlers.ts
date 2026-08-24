@@ -79,20 +79,32 @@ function validate(value: unknown): ValidationResult {
       warnings: "",
       blueprint,
       inspection: {
-        tiers: blueprint.payload.tiers.map((tier) => ({
+        serviceTiers: blueprint.payload.serviceTiers.map((tier) => ({
           id: tier.id,
           kind: tier.kind,
           description: tier.description ?? "",
         })),
-        recipes: report.execution.stages.map((stage, index) => ({
+        projectionTiers: blueprint.payload.projectionTiers.map((tier) => ({
+          id: tier.id,
+          kind: tier.kind,
+          description: tier.description ?? "",
+        })),
+        serviceRecipes: report.execution.service.stages.map((stage, index) => ({
           order: index + 1,
           id: stage.id,
           from: stage.from,
           to: stage.to,
         })),
-        terminalTier: report.execution.terminalTier,
+        projectionRecipes: report.execution.projection.stages.map((stage, index) => ({
+          order: index + 1,
+          id: stage.id,
+          from: stage.from,
+          to: stage.to,
+        })),
+        terminalServiceTier: report.execution.service.terminalTier,
+        terminalProjectionTier: report.execution.projection.terminalTier,
         executionStatus: report.execution.status,
-        executionReason: report.execution.stages.length > 0
+        executionReason: report.execution.status === "lowering-required"
           ? "This authored Blueprint requires a dialect-owned lowering implementation before runtime execution."
           : "This Blueprint contains a terminal runtime definition.",
       },
@@ -137,13 +149,23 @@ function validationState(result: ValidationResult): JsonRecord {
 }
 
 function inspectionState(result: ValidationResult): Json {
-  return result.inspection ?? { tiers: [], recipes: [], terminalTier: "", executionStatus: "invalid", executionReason: "" };
+  return result.inspection ?? {
+    serviceTiers: [],
+    projectionTiers: [],
+    serviceRecipes: [],
+    projectionRecipes: [],
+    terminalServiceTier: "",
+    terminalProjectionTier: "",
+    executionStatus: "invalid",
+    executionReason: "",
+  };
 }
 
 function blueprintDetails(blueprint: BlueprintArtifact): JsonRecord {
   const report = validateBlueprintForAuthoring(blueprint);
   const previewable = report.valid
-    && report.execution.stages.length === 0
+    && report.execution.service.stages.length === 0
+    && report.execution.projection.stages.length === 0
     && Object.keys(blueprint.payload.cells ?? {}).length > 0
     && (blueprint.payload.projections?.presentation?.roots.length ?? 0) === 1;
   return {
@@ -185,8 +207,9 @@ function selectedState(entry: CatalogEntry): JsonRecord {
     readonly: entry.readonly,
     version: payload.version,
     structureMode: payload.structureMode ?? "fixed",
-    tiers: payload.tiers.map((tier) => tier.id).join(", "),
-    recipeCount: payload.recipes.length,
+    serviceTiers: payload.serviceTiers.map((tier) => tier.id).join(", "),
+    projectionTiers: payload.projectionTiers.map((tier) => tier.id).join(", "),
+    recipeCount: payload.serviceRecipes.length + payload.projectionRecipes.length,
     ...blueprintDetails(entry.blueprint),
   };
 }
@@ -229,8 +252,10 @@ function portableStarterBlueprint(): BlueprintArtifact {
       kind: "runtime-blueprint",
       version: "1.0.0",
       structureMode: "fixed",
-      tiers: [{ id: "runtime-document", kind: "runtime-document" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionRecipes: [],
       runtime: { version: "local-blueprint/1.0", capabilities: {}, state: {} },
     },
   });
@@ -271,8 +296,9 @@ function draftOps(id: string, blueprint: BlueprintArtifact, status: string) {
       readonly: false,
       version: identified.payload.version,
       structureMode: identified.payload.structureMode ?? "fixed",
-      tiers: identified.payload.tiers.map((tier) => tier.id).join(", "),
-      recipeCount: identified.payload.recipes.length,
+      serviceTiers: identified.payload.serviceTiers.map((tier) => tier.id).join(", "),
+      projectionTiers: identified.payload.projectionTiers.map((tier) => tier.id).join(", "),
+      recipeCount: identified.payload.serviceRecipes.length + identified.payload.projectionRecipes.length,
       ...blueprintDetails(identified),
     }),
     setOp("manageBlueprints.tab", "draft"),
@@ -506,7 +532,7 @@ export const manageBlueprintsEffects: EffectHandlerMap = {
       ops: [
         ...catalogOps(catalog.entries, catalog.errors),
         setOp("manageBlueprints.selectedId", ""),
-        setOp("manageBlueprints.selected", { id: "", source: "", sourceLabel: "", readonly: true, version: "", structureMode: "fixed", tiers: "", recipeCount: 0 }),
+        setOp("manageBlueprints.selected", { id: "", source: "", sourceLabel: "", readonly: true, version: "", structureMode: "fixed", serviceTiers: "", projectionTiers: "", recipeCount: 0 }),
         setOp("manageBlueprints.editor", { id: "", blueprintText: "", formValue: {}, persisted: true, status: `Deleted local blueprint ${id}.`, error: "" }),
         setOp("manageBlueprints.validation", { valid: false, previewable: false, summary: "Not validated.", errors: "", warnings: "" }),
         setOp("manageBlueprints.previewBlueprint", null),
