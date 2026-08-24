@@ -101,10 +101,40 @@ test("portfolio-tracker-new declares the canonical Cells and parent report metad
     { id: "portfolio-presentation", kind: "runtime-document" },
   ]);
   assert.deepEqual(blueprint.payload.projectionTiers, [
-    { id: "portfolio-logic", kind: "portfolio-domain", capabilities: [] },
-    { id: "portfolio-market", kind: "portfolio-domain", capabilities: [] },
+    {
+      id: "portfolio-logic",
+      kind: "portfolio-domain",
+      capabilities: [
+        "portfolio:holdings",
+        "portfolio:market-prices",
+        "portfolio:valuation",
+        "portfolio:intelligence",
+        "portfolio:intelligence-context",
+        "portfolio:intelligence-resolution",
+      ],
+    },
+    {
+      id: "portfolio-market",
+      kind: "portfolio-domain",
+      capabilities: [
+        "portfolio-market:holdings",
+        "portfolio-market:prices",
+        "portfolio-market:valuation",
+        "portfolio-market:intelligence",
+        "portfolio-market:intelligence-context",
+        "portfolio-market:intelligence-resolution",
+      ],
+    },
     { id: "portfolio-presentation", kind: "runtime-document", capabilities: [] },
   ]);
+  assert.equal(
+    cells["portfolio-holdings"].potentialViews?.primary.capability,
+    "portfolio:holdings",
+  );
+  assert.equal(
+    cells["market-prices"].potentialViews?.primary.capability,
+    "portfolio:market-prices",
+  );
   const composition = analyzeCellComposition(Object.values(cells));
   assert.deepEqual(composition.externalInputs, ["portfolio.intelligenceRefreshGeneration"]);
   assert.deepEqual(composition.diagnostics, []);

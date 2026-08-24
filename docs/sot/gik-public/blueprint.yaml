@@ -167,6 +167,9 @@ artifact_contracts:
     guarantees:
       - capabilities are Blueprint-local projection symbols available at this stage.
       - Each capability name is owned by exactly one projection tier in a Blueprint.
+      - On a nonterminal projection axis, source-tier capability names should represent authored
+        Cell intent and must be replaced or removed by every selected recipe path before that tier is
+        passed; exact host capabilities are reserved for intentional terminal/pass-through use.
       - semantic, primitive, Fluent, and domain component namespaces have no implicit tier ordering.
   - name: LoweringRecipeDefinition
     signature: >-

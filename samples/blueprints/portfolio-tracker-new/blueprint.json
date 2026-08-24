@@ -1557,12 +1557,26 @@
       {
         "id": "portfolio-logic",
         "kind": "portfolio-domain",
-        "capabilities": []
+        "capabilities": [
+          "portfolio:holdings",
+          "portfolio:market-prices",
+          "portfolio:valuation",
+          "portfolio:intelligence",
+          "portfolio:intelligence-context",
+          "portfolio:intelligence-resolution"
+        ]
       },
       {
         "id": "portfolio-market",
         "kind": "portfolio-domain",
-        "capabilities": []
+        "capabilities": [
+          "portfolio-market:holdings",
+          "portfolio-market:prices",
+          "portfolio-market:valuation",
+          "portfolio-market:intelligence",
+          "portfolio-market:intelligence-context",
+          "portfolio-market:intelligence-resolution"
+        ]
       },
       {
         "id": "portfolio-presentation",
@@ -1599,6 +1613,42 @@
                 }
               ],
               "root": "board"
+            },
+            "views": {
+              "portfolio-holdings": {
+                "primary": {
+                  "capability": "portfolio-market:holdings",
+                  "region": "holdings"
+                }
+              },
+              "market-prices": {
+                "primary": {
+                  "capability": "portfolio-market:prices",
+                  "region": "market"
+                }
+              },
+              "portfolio-value-cell": {
+                "primary": {
+                  "capability": "portfolio-market:valuation",
+                  "region": "valuation"
+                }
+              },
+              "portfolio-intelligence": {
+                "primary": {
+                  "capability": "portfolio-market:intelligence",
+                  "region": "intelligence"
+                }
+              },
+              "portfolio-intelligence-context": {
+                "primary": {
+                  "capability": "portfolio-market:intelligence-context"
+                }
+              },
+              "portfolio-intelligence-resolution": {
+                "primary": {
+                  "capability": "portfolio-market:intelligence-resolution"
+                }
+              }
             }
           }
         ],
@@ -2783,6 +2833,12 @@
               }
             ]
           }
+        },
+        "potentialViews": {
+          "primary": {
+            "capability": "portfolio:holdings",
+            "region": "holdings"
+          }
         }
       },
       "market-prices": {
@@ -2826,7 +2882,13 @@
               "sources.market-prices.source"
             ]
           }
-        ]
+        ],
+        "potentialViews": {
+          "primary": {
+            "capability": "portfolio:market-prices",
+            "region": "market"
+          }
+        }
       },
       "portfolio-value-cell": {
         "id": "portfolio-value-cell",
@@ -2855,7 +2917,13 @@
               "portfolio.stockQuotes"
             ]
           }
-        ]
+        ],
+        "potentialViews": {
+          "primary": {
+            "capability": "portfolio:valuation",
+            "region": "valuation"
+          }
+        }
       },
       "portfolio-intelligence": {
         "id": "portfolio-intelligence",
@@ -2948,6 +3016,12 @@
               "type": "object"
             }
           }
+        },
+        "potentialViews": {
+          "primary": {
+            "capability": "portfolio:intelligence",
+            "region": "intelligence"
+          }
         }
       },
       "portfolio-intelligence-context": {
@@ -3003,7 +3077,12 @@
             "token": "saved-portfolio-report-envelope",
             "from": "computed.savedReportEnvelope"
           }
-        ]
+        ],
+        "potentialViews": {
+          "primary": {
+            "capability": "portfolio:intelligence-context"
+          }
+        }
       },
       "portfolio-intelligence-resolution": {
         "id": "portfolio-intelligence-resolution",
@@ -3054,7 +3133,12 @@
               "sources.portfolio-intelligence-resolution.save-report"
             ]
           }
-        ]
+        ],
+        "potentialViews": {
+          "primary": {
+            "capability": "portfolio:intelligence-resolution"
+          }
+        }
       }
     },
     "presentation": {
@@ -3083,6 +3167,12 @@
       ],
       "root": "board",
       "allowedCapabilities": [
+        {
+          "tier": "portfolio-logic"
+        },
+        {
+          "tier": "portfolio-market"
+        },
         "fluent:button",
         "fluent:spinner",
         "fluent:table",

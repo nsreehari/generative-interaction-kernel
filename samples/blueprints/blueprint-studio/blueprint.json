@@ -257,14 +257,25 @@
             "props": {
               "value": "Blueprint Studio",
               "as": "h1",
-              "variant": "subtitle",
+              "variant": "title",
               "block": true
             },
+            "after": [
+              {
+                "capability": "fluent:text",
+                "props": {
+                  "value": "Browse, inspect, edit, and preview governed Blueprints.",
+                  "variant": "caption",
+                  "block": true
+                }
+              }
+            ],
             "region": "studio-header"
           },
           "workspaceTabs": {
             "capability": "fluent:tab-bar",
             "props": {
+              "ariaLabel": "Blueprint workspace views",
               "tabs": [
                 {
                   "value": "overview",
@@ -287,6 +298,26 @@
             },
             "visibility": "studio.selected != null",
             "region": "workspace-tabs"
+          },
+          "emptyState": {
+            "capability": "fluent:text",
+            "props": {
+              "value": "Select a Blueprint",
+              "as": "h2",
+              "variant": "subtitle",
+              "block": true
+            },
+            "visibility": "studio.selected = null",
+            "after": [
+              {
+                "capability": "primitive:markdown",
+                "props": {
+                  "value": "Choose a Blueprint from the catalog to review its overview, edit its JSON draft, preview it in the browser, or create a new draft."
+                },
+                "visibility": "studio.selected = null"
+              }
+            ],
+            "region": "workspace-editor"
           }
         }
       },
@@ -396,12 +427,31 @@
                 }
               },
               {
+                "capability": "fluent:text",
+                "props": {
+                  "value": "Select a Blueprint to inspect it, or start a new draft.",
+                  "variant": "caption",
+                  "block": true
+                }
+              },
+              {
                 "capability": "fluent:spinner",
                 "props": {
                   "label": "Loading Blueprints",
                   "size": "medium"
                 },
                 "visibility": "systemInputs.numSourcesRunning > 0"
+              }
+            ],
+            "after": [
+              {
+                "capability": "fluent:text",
+                "props": {
+                  "value": "No Blueprints are available yet. Create a new draft to get started.",
+                  "variant": "caption",
+                  "block": true
+                },
+                "visibility": "systemInputs.numSourcesRunning = 0 and $count(studio.blueprintOptions) = 0"
               }
             ],
             "region": "catalog-list"
@@ -534,6 +584,7 @@
                   "variant": "dialog-modal",
                   "title": "New Blueprint",
                   "triggerLabel": "New Blueprint",
+                  "triggerAppearance": "primary",
                   "closeLabel": "Close"
                 }
               }
@@ -590,9 +641,10 @@
           "primary": {
             "capability": "fluent:button",
             "props": {
-              "label": "Delete Blueprint"
+              "label": "Delete Blueprint",
+              "appearance": "subtle"
             },
-            "visibility": "studio.selected != null and studio.selected.readonly = false",
+            "visibility": "studio.selected != null and studio.selected.readonly = false and studio.activeTab != 'preview'",
             "region": "workspace-actions"
           }
         }
@@ -891,7 +943,7 @@
               {
                 "capability": "fluent:text",
                 "props": {
-                  "as": "h3",
+                  "as": "h2",
                   "variant": "subtitle",
                   "block": true
                 },
@@ -959,11 +1011,11 @@
           "region": "studio-body"
         },
         {
-          "id": "catalog-list",
+          "id": "catalog-actions",
           "region": "catalog"
         },
         {
-          "id": "catalog-actions",
+          "id": "catalog-list",
           "region": "catalog"
         },
         {
