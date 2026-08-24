@@ -32,11 +32,12 @@ test("the fixed meta-graph lowers both two-tier axes to an executable terminal B
 
   assert.deepEqual(terminal.payload.serviceTiers, [{ id: "runtime", kind: "runtime-document" }]);
   assert.deepEqual(terminal.payload.serviceRecipes, []);
-  assert.deepEqual(terminal.payload.projectionTiers, [{ id: "runtime", kind: "runtime-document" }]);
+  assert.deepEqual(terminal.payload.projectionTiers, [{ id: "runtime", kind: "runtime-document", capabilities: [] }]);
   assert.deepEqual(terminal.payload.projectionRecipes, []);
   assert.deepEqual(terminal.payload.presentation, {
     slots: ["query-input", { id: "children", region: "query-input" }],
     root: "query-input",
+    allowedCapabilities: ["sample:query-input", "sample:results", "sample:summary"],
   });
   // The service axis selected the implementation seam; the projection axis selected the views.
   assert.deepEqual(
@@ -68,7 +69,11 @@ test("lowering executes all fixed compiler Cells through Kernel token flow", () 
 test("the same fixed meta-graph folds an arbitrary ordered tier chain on each axis", () => {
   const authored = parseBlueprintJson(readFileSync(sampleUrl, "utf8"));
   const [projectionRecipe] = authored.payload.projectionRecipes;
-  authored.payload.projectionTiers.splice(1, 0, { id: "presentation", kind: "presentation-model" });
+  authored.payload.projectionTiers.splice(1, 0, {
+    id: "presentation",
+    kind: "presentation-model",
+    capabilities: [],
+  });
   authored.payload.projectionRecipes = [
     {
       id: "intent-to-presentation",
@@ -95,13 +100,14 @@ test("the same fixed meta-graph folds an arbitrary ordered tier chain on each ax
     { id: "runtime", kind: "runtime-document" },
   ]);
   assert.deepEqual(materialized.payload.terminalBlueprint.payload.projectionTiers, [
-    { id: "runtime", kind: "runtime-document" },
+    { id: "runtime", kind: "runtime-document", capabilities: [] },
   ]);
   assert.deepEqual(materialized.payload.terminalBlueprint.payload.serviceRecipes, []);
   assert.deepEqual(materialized.payload.terminalBlueprint.payload.projectionRecipes, []);
   assert.deepEqual(materialized.payload.terminalBlueprint.payload.presentation, {
     slots: ["query-input", { id: "children", region: "query-input" }],
     root: "query-input",
+    allowedCapabilities: ["sample:query-input", "sample:results", "sample:summary"],
   });
 });
 
@@ -133,7 +139,7 @@ test("the projection-recipe schema rejects a headless representation flag", () =
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [{
         id: "intent-to-runtime",
         from: "intent",
@@ -166,11 +172,10 @@ test("the service-recipe schema rejects representation-only fields", () => {
         from: "intent",
         to: "runtime",
         implementationPrograms: [{ id: "default" }],
-        implementationFallback: "default",
-        representations: [{ id: "default" }],
         fallback: "default",
+        representations: [{ id: "default" }],
       } as never],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: {},
       cells: { worker: { id: "worker" } },
@@ -186,7 +191,7 @@ test("representation append merges sparse parent and slot composition", () => {
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [{
       id: "intent-to-runtime",
       from: "intent",
@@ -221,6 +226,16 @@ test("representation append merges sparse parent and slot composition", () => {
       ],
       fallback: "extended",
     }],
+    presentation: {
+      slots: [
+        "root",
+        { id: "header", region: "root" },
+        { id: "content", region: "root" },
+        { id: "actions", region: "root" },
+      ],
+      root: "root",
+      allowedCapabilities: ["ui:text"],
+    },
     runtime: {},
     cells: Object.fromEntries(["root", "heading", "primary", "secondary", "save"].map((id) => [
       id,
@@ -238,6 +253,7 @@ test("representation append merges sparse parent and slot composition", () => {
       { id: "actions", region: "root" },
     ],
     root: "root",
+    allowedCapabilities: ["ui:text"],
   });
   assert.equal(terminal.payload.cells?.heading.potentialViews?.main.region, "header");
   assert.equal(terminal.payload.cells?.primary.potentialViews?.main.region, "content");
@@ -252,7 +268,7 @@ test("a representation decorator uses JSONata to add loading UI around source-ba
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [{
       id: "intent-to-runtime",
       from: "intent",
@@ -279,6 +295,11 @@ test("a representation decorator uses JSONata to add loading UI around source-ba
       }],
       fallback: "screen",
     }],
+    presentation: {
+      slots: ["board"],
+      root: "board",
+      allowedCapabilities: ["primitive:container", "ui:text", "fluent:spinner"],
+    },
     runtime: {},
     services: {
       "remote-service": {

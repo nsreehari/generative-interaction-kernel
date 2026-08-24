@@ -8,6 +8,14 @@ Every Blueprint declares all four arrays. A recipe-free axis contains exactly on
 an empty recipe array. The removed `tiers` and `recipes` fields are not normalized or deprecated
 aliases; they are rejected.
 
+Each projection tier declares its Blueprint-local named `capabilities`. A presentation's mandatory
+`allowedCapabilities` is the one closed authorization boundary: exact strings admit terminal host
+capabilities, while `{ "tier": "<id>" }` admits that projection tier's complete vocabulary. Host
+component namespaces are flat and terminal; projection recipes specialize selection, filtering,
+layout, and composition rather than lowering semantic components into primitive or Fluent ones.
+Each Blueprint-local capability name belongs to exactly one projection tier, so Cells and recipes use
+plain, unqualified names without ambiguous tier ownership.
+
 ```bash
 npm install @gik/blueprint @gik/kernel @gik/evaluators @gik/durable-runtime
 ```
@@ -53,7 +61,7 @@ immutable external context; the child owns its state, services, lifecycle, settl
 
 ## Nested Blueprints
 
-`gik:blueprint` is the host-provided structural capability for rendering a Blueprint inside another
+`gik:blueprint` is a system-provided structural capability for rendering a Blueprint inside another
 Blueprint. Bind its `blueprint` prop to a complete inline `BlueprintArtifact`; all remaining props
 become the child Blueprint's initial inputs. The host mounts the child with isolated runtime state
 and the parent Cell's stable instance identity.
@@ -77,6 +85,10 @@ forms use the same host-scoped nested Blueprint renderer; `gik:blueprint` is not
 component-library projection.
 Artifact assembly remains synchronous so cycle detection and interface admission complete before execution.
 
+`gik:blueprint` and the compiler-generated `gik:presentation-fragment` are intrinsic system
+capabilities. They remain available when a host supplies a closed terminal component catalog and do
+not need entries in that catalog.
+
 ## Presentation slots
 
 Blueprint presentation is authored independently from Cell definitions. It is a closed, flat set of
@@ -92,7 +104,12 @@ on one of its own `potentialViews`:
       { "id": "navigation", "region": "workspace" },
       { "id": "content", "region": "workspace" }
     ],
-    "root": "workspace"
+    "root": "workspace",
+    "allowedCapabilities": [
+      { "tier": "product-intent" },
+      "semantic:event-series",
+      "fluent:button"
+    ]
   },
   "cells": {
     "catalog": { "potentialViews": { "primary": { "capability": "...", "region": "navigation" } } },
@@ -111,7 +128,8 @@ own `region`),
 never a third structure — deleting a Cell or a slot removes its own attachment fact with it. A Cell's
 `region` may name more than one slot, rendering one independent instance per attachment while every
 instance reads and writes through that one Cell. A representation may replace the complete
-presentation or append additional slot entries (`presentationAppend`, a plain array concatenation).
+presentation layout or append additional slot entries (`presentationAppend`, a plain array
+concatenation), but it cannot replace the Blueprint's authored `allowedCapabilities` authority.
 
 ## Worker hosting
 
@@ -173,7 +191,7 @@ ownership, and effect outcomes return through the journal before changing Bluepr
 
 - `BlueprintArtifact` is the portable authored envelope. Its `payload` is a `BlueprintDefinition`.
 - `ServiceLoweringRecipeDefinition` selects contract-compatible Cell implementations through
-  `implementationPrograms` and a required `implementationFallback`. Despite the axis name, this seam
+  `implementationPrograms` and a required `fallback`. Despite the axis name, this seam
   covers Cell sources, compute, behavior, and top-level service declarations.
 - `ProjectionLoweringRecipeDefinition` selects named views and presentation through
   `representations` and a required `fallback`.
@@ -188,5 +206,5 @@ ownership, and effect outcomes return through the journal before changing Bluepr
   dormant unless its own `region` attaches to a slot reachable from the active presentation root; if
   `region` is an array, one independent instance is rendered per named slot.
 - `PresentationDefinition` is a closed, flat set of `slots` plus a `root`. Slot entries
-  self-declare nesting with `region`. `allowedCapabilities` is optional; when present, every
-  capability used by Cell views and view decorations must appear in it.
+  self-declare nesting with `region`. Its mandatory `allowedCapabilities` authorizes every
+  capability used by Cell views and view decorations.

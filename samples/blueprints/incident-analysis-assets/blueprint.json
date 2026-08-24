@@ -33,7 +33,8 @@
     "projectionTiers": [
       {
         "id": "runtime-document",
-        "kind": "runtime-document"
+        "kind": "runtime-document",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],

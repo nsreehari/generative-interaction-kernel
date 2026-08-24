@@ -1,15 +1,21 @@
 import { lowerToProgram, type ExecutableProgramDefinition, type ProgramMessageFor } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import { analyzeCellComposition } from "./cells";
+import {
+  collectProjectionCapabilityUses,
+  collectRepresentationCapabilityUses,
+  resolveProjectionVocabulary,
+} from "./projection-vocabulary";
 import type {
   BlueprintArtifact,
   BlueprintDefinition,
   BlueprintLowering,
   BlueprintReferenceResolver,
   LoweringRecipeDefinition,
+  ProjectionTierDefinition,
   TierDefinition,
 } from "./types";
-import { resolveBlueprintExecution } from "./execution";
+import { resolveBlueprintExecution, resolveLoweringAxis } from "./execution";
 
 export class BlueprintValidationError extends Error {
   constructor(message: string, readonly errors: readonly unknown[] = []) {
@@ -124,6 +130,11 @@ export function validateBlueprintArtifact(
   for (const [cellId, cell] of Object.entries(cells)) {
     if (cell.id !== cellId) throw new BlueprintValidationError(`Blueprint cell key '${cellId}' does not match id '${cell.id}'`);
   }
+  const authoredCapabilityUses = collectProjectionCapabilityUses(cells);
+  const representationCapabilityUses = collectRepresentationCapabilityUses(blueprint);
+  if (!blueprint.presentation && (authoredCapabilityUses.length > 0 || representationCapabilityUses.length > 0)) {
+    throw new BlueprintValidationError("Blueprints with potential views or projection representation views require a presentation");
+  }
   if (blueprint.presentation) {
     const slotIds = new Set(blueprint.presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
     if (!slotIds.has(blueprint.presentation.root)) {
@@ -192,14 +203,44 @@ export function validateBlueprintArtifact(
       }
     }
   }
-  const allowedCapabilities = blueprint.presentation?.allowedCapabilities;
-  if (allowedCapabilities) {
-    const allowed = new Set(allowedCapabilities);
-    for (const [cellId, cell] of Object.entries(cells)) {
-      for (const [viewName, view] of Object.entries(cell.potentialViews ?? {})) {
-        for (const capability of [view.capability, ...(view.before ?? []).map((d) => d.capability), ...(view.after ?? []).map((d) => d.capability), ...(view.wrap ?? []).map((d) => d.capability)]) {
-          if (capability !== undefined && !allowed.has(capability)) {
-            throw new BlueprintValidationError(`Blueprint Cell '${cellId}' view '${viewName}' uses capability '${capability}' not in presentation.allowedCapabilities`);
+  if (blueprint.presentation) {
+    let vocabulary;
+    try {
+      vocabulary = resolveProjectionVocabulary(
+        blueprint.projectionTiers,
+        blueprint.presentation.allowedCapabilities,
+      );
+    } catch (error) {
+      throw new BlueprintValidationError(error instanceof Error ? error.message : String(error));
+    }
+    for (const use of authoredCapabilityUses) {
+      if (!vocabulary.authorizedCapabilities.has(use.capability)) {
+        throw new BlueprintValidationError(
+          `Blueprint Cell '${use.cellId}' view '${use.viewName}' ${use.location} uses capability '${use.capability}' not in presentation.allowedCapabilities`,
+        );
+      }
+    }
+    for (const use of representationCapabilityUses) {
+      if (!vocabulary.authorizedCapabilities.has(use.capability)) {
+        throw new BlueprintValidationError(
+          `Projection recipe '${use.recipeId}' representation '${use.representationId}' Cell '${use.cellId}' view '${use.viewName}' ${use.location} uses capability '${use.capability}' not in presentation.allowedCapabilities`,
+        );
+      }
+    }
+    for (const recipe of blueprint.projectionRecipes) {
+      for (const representation of recipe.representations) {
+        for (const cellId of Object.keys(representation.views ?? {})) {
+          if (!cells[cellId]) {
+            throw new BlueprintValidationError(
+              `Projection recipe '${recipe.id}' representation '${representation.id}' references unknown Cell '${cellId}'`,
+            );
+          }
+        }
+        for (const cellId of Object.keys(representation.removeViews ?? {})) {
+          if (!cells[cellId]) {
+            throw new BlueprintValidationError(
+              `Projection recipe '${recipe.id}' representation '${representation.id}' removes views from unknown Cell '${cellId}'`,
+            );
           }
         }
       }
@@ -220,43 +261,24 @@ function validateLoweringAxis(blueprint: BlueprintDefinition, axis: "service" | 
     throw new BlueprintValidationError(`Blueprint ${axis}Recipes must be an array`);
   }
 
-  const tierIds = new Set<string>();
-  for (const tier of tiers) {
-    if (!tier.id || !tier.kind) throw new BlueprintValidationError(`Blueprint ${axis} tier identity is incomplete`);
-    if (tierIds.has(tier.id)) throw new BlueprintValidationError(`Duplicate blueprint ${axis} tier '${tier.id}'`);
-    tierIds.add(tier.id);
-  }
-
-  const recipeIds = new Set<string>();
-  const incoming = new Map<string, number>();
-  const outgoing = new Map<string, number>();
-  for (const recipe of recipes) {
-    if (!recipe.id || !recipe.from || !recipe.to) throw new BlueprintValidationError(`Blueprint ${axis} recipe is incomplete`);
-    if (recipeIds.has(recipe.id)) throw new BlueprintValidationError(`Duplicate blueprint ${axis} recipe '${recipe.id}'`);
-    if (!tierIds.has(recipe.from)) throw new BlueprintValidationError(`Blueprint ${axis} recipe '${recipe.id}' starts from unknown ${axis} tier '${recipe.from}'`);
-    if (!tierIds.has(recipe.to)) throw new BlueprintValidationError(`Blueprint ${axis} recipe '${recipe.id}' targets unknown ${axis} tier '${recipe.to}'`);
-    recipeIds.add(recipe.id);
-    outgoing.set(recipe.from, (outgoing.get(recipe.from) ?? 0) + 1);
-    incoming.set(recipe.to, (incoming.get(recipe.to) ?? 0) + 1);
-  }
-
-  if (recipes.length === 0) {
-    // A recipe-free axis has nothing to select, so it must already be terminal.
-    if (tiers.length !== 1) {
-      throw new BlueprintValidationError(`Blueprint with no ${axis} recipes must declare exactly one terminal ${axis} tier`);
+  if (axis === "projection") {
+    const capabilityOwners = new Map<string, string>();
+    for (const tier of tiers as ProjectionTierDefinition[]) {
+      for (const capability of tier.capabilities) {
+        const owner = capabilityOwners.get(capability);
+        if (owner) {
+          throw new BlueprintValidationError(
+            `Blueprint projection capability '${capability}' is declared by both tiers '${owner}' and '${tier.id}'`,
+          );
+        }
+        capabilityOwners.set(capability, tier.id);
+      }
     }
-    return;
   }
-
-  const sourceTiers = tiers.filter((tier) => !incoming.has(tier.id));
-  const terminalTiers = tiers.filter((tier) => !outgoing.has(tier.id));
-  if (sourceTiers.length !== 1 || terminalTiers.length !== 1) {
-    throw new BlueprintValidationError(`Blueprint ${axis} recipes must form one connected ${axis} tier chain`);
-  }
-  for (const tier of tiers) {
-    if ((incoming.get(tier.id) ?? 0) > 1 || (outgoing.get(tier.id) ?? 0) > 1) {
-      throw new BlueprintValidationError(`Blueprint ${axis} tier '${tier.id}' branches or merges`);
-    }
+  try {
+    resolveLoweringAxis(blueprint.id, axis, tiers, recipes);
+  } catch (error) {
+    throw new BlueprintValidationError(error instanceof Error ? error.message : String(error));
   }
 }
 

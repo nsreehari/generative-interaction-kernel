@@ -26,7 +26,7 @@ const backend = {
     },
     serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+    projectionTiers: [{ id: "runtime-document", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [],
     runtime: {
       state: { backend: { result: null } },

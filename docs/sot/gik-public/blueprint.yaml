@@ -130,7 +130,7 @@ artifact_contracts:
       structureMode?: BlueprintStructureMode;
       structurePolicy?: BlueprintStructurePolicy;
       serviceTiers: TierDefinition[]; serviceRecipes: ServiceLoweringRecipeDefinition[];
-      projectionTiers: TierDefinition[]; projectionRecipes: ProjectionLoweringRecipeDefinition[];
+      projectionTiers: ProjectionTierDefinition[]; projectionRecipes: ProjectionLoweringRecipeDefinition[];
       cells?: Record<string, CellDefinition>;
       presentation?: PresentationDefinition;
       services?: Record<string, ServiceDeclaration>;
@@ -156,8 +156,18 @@ artifact_contracts:
       - Manifest capabilities are populated from the capability names actually referenced by materialized Cell views and decorations, not authored on this record.
   - name: TierDefinition
     signature: >-
-      interface TierDefinition { id: string; kind: string; schema?: string;
-      description?: string; input?: Record<string, Json> }
+      interface TierDefinition { id: string; kind: string; description?: string }
+    guarantees:
+      - id is the unique identity used by recipe endpoints and chain resolution.
+      - kind is a reusable classification for authoring, policy, and tooling; it does not identify a chain node.
+  - name: ProjectionTierDefinition
+    signature: >-
+      interface ProjectionTierDefinition extends TierDefinition {
+      capabilities: readonly string[] }
+    guarantees:
+      - capabilities are Blueprint-local projection symbols available at this stage.
+      - Each capability name is owned by exactly one projection tier in a Blueprint.
+      - semantic, primitive, Fluent, and domain component namespaces have no implicit tier ordering.
   - name: LoweringRecipeDefinition
     signature: >-
       interface LoweringRecipeDefinition { id: string; from: string; to: string }
@@ -168,7 +178,7 @@ artifact_contracts:
     signature: >-
       interface ServiceLoweringRecipeDefinition extends LoweringRecipeDefinition {
       implementationPrograms: BlueprintImplementationProgram[];
-      implementationFallback: string }
+      fallback: string }
     purpose: >-
       Select the contract-compatible Cell implementation seam -- sources, compute, behavior, and
       top-level service declarations -- for one service-axis tier transition. The axis is named
@@ -184,8 +194,8 @@ artifact_contracts:
       interface ProjectionLoweringRecipeDefinition extends LoweringRecipeDefinition {
       representations: BlueprintRepresentation[]; fallback: string }
     purpose: >-
-      Select named potentialViews and the presentation skeleton for one projection-axis tier
-      transition.
+      Select, filter, arrange, and specialize named potentialViews and the presentation skeleton for
+      one projection-axis tier transition.
     guarantees:
       - Every projection recipe produces an authored presentation projection.
       - A representation may declare decorators whose JSONata select expression returns one Cell id or an array of Cell ids.
@@ -194,6 +204,9 @@ artifact_contracts:
       - Decorators are applied after inherited view overrides and before terminal Blueprint validation.
       - The projection chain is applied after the complete service chain, so a representation observes the selected terminal implementation.
       - Representation selection resolves independently from contract-compatible Cell and service implementation selection.
+      - A representation may explicitly remove named views before applying view upserts.
+      - A representation may replace presentation layout but never the authored allowedCapabilities authority.
+      - After a stage, capabilities belonging only to projection tiers already passed must not remain.
   - name: BlueprintRepresentationDecorator
     signature: >-
       interface BlueprintRepresentationDecorator { select: string;
@@ -269,7 +282,7 @@ artifact_contracts:
   - name: PresentationDefinition
     signature: >-
       interface PresentationDefinition { slots: readonly PresentationSlot[]; root: string;
-      allowedCapabilities?: readonly string[] }
+      allowedCapabilities: readonly (string | { tier: string })[] }
       type PresentationSlot = string | { id: string; region?: string }
     purpose: >-
       A closed, flat set of named slots plus a root. Presentation has no knowledge of Cells and no
@@ -287,9 +300,11 @@ artifact_contracts:
       - Slot names express caller-authored semantic placement intent and are not component capability
         insertion points; a slot itself carries no capability or props — visual styling for a region is
         always a rendering host/theme concern, never Blueprint-authored data.
-      - allowedCapabilities is optional; when absent, any capability name is legal. When present, it is a
-        real, validated closed set -- every capability referenced by this Blueprint's Cell views and view
-        decorations must appear in it, or Blueprint validation fails.
+      - allowedCapabilities is mandatory and closed.
+      - Exact strings authorize terminal host capabilities that may pass through every projection stage.
+      - A `{ tier }` entry admits every named capability declared by that projection tier.
+      - Every capability referenced by Cell views, view decorations, wrappers, or projection
+        representations must resolve through this list, or Blueprint validation fails.
     consumed_by:
       - When present, the reserved top-level `presentation` entry is the layout the current compiler projects.
       - composeCellProgram requires a valid root and walks the slot/Cell attachment graph into the Kernel
@@ -437,17 +452,13 @@ transition_api:
       - Reserves externalContext as a read-only runtime namespace.
       - >-
         capabilityCatalog is an optional, host-supplied Record<capability, CapabilityDescriptor> used
-        to populate the vocabulary manifest's capabilities entries; when a referenced capability is
-        absent from it (including when the whole option is omitted), that capability gets a
-        permissive placeholder descriptor instead ({propsSchema:{type:object,additionalProperties:true}}),
-        which the Kernel's own prop-shape validation (validateProgramDefinition) then trivially
-        satisfies for every prop. @gik/blueprint deliberately declares no component catalog of its
-        own and does not depend on @gik/components -- supplying a real one (e.g. @gik/components'
-        own generated componentCapabilities) is a host's deliberate choice to opt into stronger
-        Kernel-level prop/emit-shape enforcement, exactly like a host's other admitted-capability
-        decisions (credentials, providers, endpoints); it is not required for a Blueprint to author
-        or execute correctly. The Blueprint-facing closed-world capability *name* contract, if a
-        Blueprint wants one, remains presentation.allowedCapabilities, independent of this option.
+        to populate the vocabulary manifest's capabilities entries. When supplied, it is closed:
+        every referenced terminal capability must resolve from it. When omitted, referenced
+        capabilities receive permissive placeholder descriptors. The intrinsic system capabilities
+        gik:blueprint and gik:presentation-fragment remain available in either mode and do not require
+        host catalog entries. @gik/blueprint deliberately declares no host component catalog and does
+        not depend on @gik/components. The Blueprint-facing closed name authority remains the mandatory
+        presentation.allowedCapabilities list whenever a presentation exists.
   - name: runMaterializedTransition
     signature: >-
       runMaterializedTransition({ state, materializedBlueprint, events,
@@ -565,11 +576,11 @@ resolution_api:
         - Clones service declarations.
     - name: resolveLoweringAxis
       signature: >-
-        resolveLoweringAxis<TRecipe extends LoweringRecipeDefinition>(blueprintId: string,
-        axis: "service" | "projection", tiers: readonly TierDefinition[],
-        recipes: readonly TRecipe[]): ResolvedBlueprintAxis<TRecipe>
+        resolveLoweringAxis<TTier extends TierDefinition, TRecipe extends LoweringRecipeDefinition>(
+        blueprintId: string, axis: "service" | "projection", tiers: readonly TTier[],
+        recipes: readonly TRecipe[]): ResolvedBlueprintAxis<TTier, TRecipe>
       behavior:
-        - The single shared implementation both axes resolve through; diagnostics name the axis.
+        - The single authoritative implementation both axes validate and resolve through; diagnostics name the axis.
 
 lowering_cell_api:
   types:
@@ -665,8 +676,8 @@ validation:
       duplicate-placement restriction.
     - Every Cell source's service/operation resolves to a declared entry in top-level services; an
       unresolvable reference is rejected.
-    - When `presentation.allowedCapabilities` is present, every capability referenced by a Cell view or
-      view decoration must appear in it.
+    - Every capability referenced by a Cell view or view decoration must be authorized by the
+      presentation's mandatory `allowedCapabilities`.
 
 execution_boundary:
   blueprint_input: BlueprintArtifact JSON accepted by this package.

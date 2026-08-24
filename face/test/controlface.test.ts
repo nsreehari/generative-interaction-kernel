@@ -47,6 +47,13 @@ function singleSlotPresentation(root: string) {
   return {
     slots: [root],
     root,
+    allowedCapabilities: [
+      "surface:before",
+      "surface:after",
+      "ui:blueprint",
+      "ui:screen",
+      "ui:text",
+    ],
   } as const;
 }
 
@@ -73,7 +80,7 @@ function structuralBlueprint(
     } : {}),
     serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [],
     runtime: {},
     cells: {
@@ -117,7 +124,7 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
       version: "1",
       serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" , capabilities: []}],
       projectionRecipes: [],
       runtime: {},
       cells: {
@@ -171,7 +178,7 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
         from: "runtime-document",
         to: "runtime-document",
         implementationPrograms: [{ id: "default" }],
-        implementationFallback: "default",
+        fallback: "default",
       }],
     },
   }), undefined);
@@ -187,7 +194,7 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
       version: "1",
       serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" , capabilities: []}],
       projectionRecipes: [],
       runtime: {
         state: { example: { ready: true } },
@@ -247,7 +254,7 @@ test("ControlFace drives a projection-free Blueprint but rejects render access",
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -286,7 +293,7 @@ test("ControlFace applies initialSeed from blueprint context", () => {
       version: "1",
       serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" , capabilities: []}],
       projectionRecipes: [],
       runtime: {
         state: { example: { ready: false, nested: { before: true } } },
@@ -337,7 +344,7 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
       version: "2",
       serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { child: { count: 1 } } },
       cells: { root: { id: "root", potentialViews: { primary: { capability: "ui:text", region: "root" } } } },
@@ -353,7 +360,7 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
       version: "1",
       serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { parent: { ready: true } } },
       cells: {
@@ -388,7 +395,7 @@ test("ControlFace rejects Blueprints without runtime", () => {
       version: "1",
       serviceTiers: [{ id: "workflow", kind: "workflow" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "workflow", kind: "workflow" }],
+      projectionTiers: [{ id: "workflow", kind: "workflow" , capabilities: []}],
       projectionRecipes: [],
     },
   };

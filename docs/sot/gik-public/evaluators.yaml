@@ -231,7 +231,7 @@ validator_kinds:
   blueprint_service_recipe:
     accepted_form: "{ kind: blueprint-service-recipe, message?, level?, code?, node? }"
     behavior:
-      - Validates one strict service-axis recipe (implementationPrograms + implementationFallback).
+      - Validates one strict service-axis recipe (implementationPrograms + fallback).
       - Validates local fallback, uniqueness, and JSONata-expression invariants.
       - Does not validate whether from and to reference tiers in a containing Blueprint.
   blueprint_projection_recipe:

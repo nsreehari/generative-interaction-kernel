@@ -249,18 +249,20 @@
             }
           }
         ],
-        "implementationFallback": "foundry"
+        "fallback": "foundry"
       }
     ],
     "projectionTiers": [
       {
         "id": "ai-agent",
-        "kind": "ai-agent"
+        "kind": "ai-agent",
+        "capabilities": []
       },
       {
         "id": "runtime-document",
         "kind": "runtime-document",
-        "description": "Authored terminal document for this hosted Blueprint."
+        "description": "Authored terminal document for this hosted Blueprint.",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [
@@ -454,8 +456,16 @@
       ],
       "root": "ai-agent-root",
       "layout": {
-        "ai-agent-root": { "direction": "column", "gap": "l" }
-      }
+        "ai-agent-root": {
+          "direction": "column",
+          "gap": "l"
+        }
+      },
+      "allowedCapabilities": [
+        "fluent:spinner",
+        "primitive:form",
+        "primitive:markdown"
+      ]
     }
   }
 }
