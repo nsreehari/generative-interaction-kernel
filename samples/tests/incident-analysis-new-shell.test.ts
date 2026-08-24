@@ -13,7 +13,7 @@ const cells = Object.values(payload.cells) as CellDefinition[];
 
 describe("incident analysis shell", () => {
   it("selects the analysis model from external context and routes refinement to its agent", () => {
-    expect(payload.recipes).toEqual([
+    expect(payload.serviceRecipes).toEqual([
       expect.objectContaining({
         id: "incident-analysis-to-runtime",
         implementationFallback: "semantic",
@@ -29,6 +29,10 @@ describe("incident analysis shell", () => {
           }),
         ],
       }),
+    ]);
+    // The projection axis is authored independently and carries no implementation selection.
+    expect(payload.projectionRecipes).toEqual([
+      expect.objectContaining({ id: "incident-analysis-to-runtime", fallback: "shared-shell" }),
     ]);
     expect(payload.services["incident-report-analysis"].config.agent)
       .toBe("Incident-Report-Semantic-Agent");

@@ -403,7 +403,7 @@ export function prepareBlueprintProgram(
 ): PreparedBlueprintProgram {
   const externalContext = resolveBlueprintExternalContext(source, options.externalContext);
   const assembled = assembleBlueprint(source, options.resolveBlueprint);
-  const blueprint = assembled.payload.recipes.length > 0
+  const blueprint = assembled.payload.serviceRecipes.length > 0 || assembled.payload.projectionRecipes.length > 0
     ? lowerWithFixedMetaGraph(assembled, externalContext)
     : assembled;
   if (!blueprint.payload.cells) throw new Error(`Blueprint '${blueprint.payload.id}' has no executable Cells`);

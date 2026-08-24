@@ -5,14 +5,22 @@
     "id": "copilot-c2",
     "kind": "runtime-blueprint",
     "version": "1.0",
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document",
         "description": "Authored terminal document for a local Copilot command center."
       }
     ],
-    "recipes": [],
+    "serviceRecipes": [],
+    "projectionTiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Authored terminal document for a local Copilot command center."
+      }
+    ],
+    "projectionRecipes": [],
     "services": {
       "copilot-environment": {
         "kind": "mcp",

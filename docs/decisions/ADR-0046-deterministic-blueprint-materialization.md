@@ -171,3 +171,63 @@ each removal:
 `actions`, and `capabilities` (`ProjectedVocabularyManifest` itself, a kernel-level wire type, is
 untouched) — only their *source* changes, from Blueprint-authored data to host-derived data computed
 during materialization.
+
+## Amendment (2026-08-24): the one lowering chain splits into two independent axes
+
+The single authored `tiers`/`recipes` pair is superseded and **removed**. A Blueprint payload now
+declares four required arrays:
+
+```text
+serviceTiers      serviceRecipes
+projectionTiers   projectionRecipes
+```
+
+This is a hard cut. `validateBlueprintArtifact` rejects a payload that declares either removed field,
+and the Blueprint schema's `additionalProperties: false` rejects it structurally as well. There is no
+compatibility normalization, no dual-read, and no deprecation window: a pre-split Blueprint fails
+loudly rather than silently materializing only one axis.
+
+**Why two axes rather than two lists inside one recipe.** ADR-0046 already held that projection and
+implementation are independently selected. The pre-split shape expressed that as two optional lists on
+one recipe, which forced the two seams to share a tier chain, share a stage count, and share one
+recipe identity even when the product's real context dimensions had nothing in common. Splitting the
+arrays makes the independence structural: each axis has its own tiers, its own recipes, its own
+predicates, and its own fallback, and either axis may be a single terminal tier with an empty recipe
+array while the other lowers through several stages.
+
+**What the `service` axis actually selects.** The axis keeps the requested `service` terminology, but
+its scope is deliberately broader than transport: a service recipe's `implementationPrograms` select
+the whole contract-compatible **Cell implementation seam** — `sources`, `compute`, `behavior`, *and*
+top-level `services` declarations. The name describes the *choice* ("which concrete backing service
+implementation answers this Cell's already-authored contracts"), not a restriction to service
+declarations alone. The contract-stability rules are unchanged: an override's source ids and their
+*resolved* operation contracts, and a service override's `{operationId, contract}` pairs, must match
+what was already authored.
+
+**Split recipe contracts.** The combined recipe contract is removed.
+`ProjectionLoweringRecipeDefinition` owns `representations` + `fallback`;
+`ServiceLoweringRecipeDefinition` owns `implementationPrograms` + `implementationFallback`. Both
+fields are required on their own dialect, and the schema rejects each dialect carrying the other's
+fields, so a recipe can never quietly do both jobs.
+
+**Independent resolution, identical invariants.** Both axes resolve through one shared
+`resolveLoweringAxis` implementation, so `service` and `projection` are held to exactly the same chain
+invariants — unique tier and recipe ids, known endpoints, no branching or merging, one source tier and
+one terminal tier when recipes are present, and exactly one terminal tier when the axis is
+recipe-free. Tier and recipe ids are per-axis namespaces; the two chains never have to be the same
+length. Diagnostics name the failing axis.
+
+**Deterministic application order.** $M(A,C)$ applies the **complete service chain first**, then the
+**complete projection chain**. Two consequences are load-bearing and are now stated rather than
+implied:
+
+1. A representation observes the already-selected terminal implementation. A decorator `select`, for
+   example, may legitimately match Cells whose lowered `sources` name a particular service.
+2. Service selection can never observe projected presentation. If a service choice appears to need
+   presentation input, that is a modelling error, not a missing capability.
+
+Neither axis' *resolution* depends on the other; only this application order is shared, and it is
+fixed, so $M(A,C)=T$ stays deterministic.
+
+**Terminal emission.** The terminal Blueprint keeps exactly one terminal tier in each axis and clears
+both recipe arrays, and — as before — must pass the same validation as a directly authored Blueprint.

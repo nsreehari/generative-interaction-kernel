@@ -24,8 +24,10 @@ const backend = {
       events: ["put", "get"],
       outputs: { result: { from: "backend.result" } },
     },
-    tiers: [{ id: "runtime-document", kind: "runtime-document" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+    projectionRecipes: [],
     runtime: {
       state: { backend: { result: null } },
     },

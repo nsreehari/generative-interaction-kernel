@@ -20,7 +20,8 @@ export interface BlueprintUseSource extends BlueprintLifecycleMaterialSource {
     readonly version: string;
     readonly structureMode?: string;
     readonly structurePolicy?: unknown;
-    readonly tiers?: readonly { readonly id?: string; readonly kind?: string; readonly description?: string }[];
+    readonly serviceTiers?: readonly { readonly id?: string; readonly kind?: string; readonly description?: string }[];
+    readonly projectionTiers?: readonly { readonly id?: string; readonly kind?: string; readonly description?: string }[];
     readonly cells?: Readonly<Record<string, {
       readonly id?: string;
       readonly inputs?: readonly unknown[];
@@ -231,7 +232,8 @@ export function describeBlueprint(
           intentKinds: authored.intentKinds,
         }
       : null,
-    tiers: (payload.tiers ?? []).map(({ id, kind, description }) => ({ id, kind, description })),
+    serviceTiers: (payload.serviceTiers ?? []).map(({ id, kind, description }) => ({ id, kind, description })),
+    projectionTiers: (payload.projectionTiers ?? []).map(({ id, kind, description }) => ({ id, kind, description })),
     cells: Object.entries(payload.cells ?? {}).map(([id, cell]) => ({
       id,
       hasBehavior: cell.behavior !== undefined,

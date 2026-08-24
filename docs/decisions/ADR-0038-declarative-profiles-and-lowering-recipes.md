@@ -273,3 +273,35 @@ component in `packages/components`** (including `FluentDialog` itself) — the m
 ordinary nested `DocNode`, and both the Kernel's already-generic child-walking and `FluentDialog`'s
 existing `{children}` consumption already handle it. That is the entire reason this stayed a small,
 `@gik/blueprint`-internal compiler/schema/type change.
+
+## Amendment (2026-08-24): one recipe vocabulary becomes two axis-specific dialects
+
+The `representationRecipe` dialect defined here — one recipe carrying `representations` + `fallback`
+*and* optional `implementationPrograms` + `implementationFallback` — is superseded and removed. See
+ADR-0046's 2026-08-24 amendment for the full decision; this amendment records only the consequences
+for the recipe vocabulary and its schema.
+
+`lowering-recipe.schema.json` no longer publishes a `loweringRecipe`/`representationRecipe` definition.
+It publishes exactly two dialects:
+
+- `projectionRecipe` — `{ id, from, to, representations, fallback, metadata? }`;
+- `serviceRecipe` — `{ id, from, to, implementationPrograms, implementationFallback, metadata? }`.
+
+Both keep `additionalProperties: false`, so a projection recipe declaring `implementationPrograms`, or
+a service recipe declaring `representations`, is a schema error rather than a silently ignored field.
+`implementationFallback` is now **required** on a service recipe, mirroring the projection axis'
+already-required `fallback`: a recipe whose predicates all miss must still resolve deterministically,
+and requiring the fallback makes that an authoring-time error instead of a materialization-time one.
+
+The evaluator's validator surface follows the same split. The `blueprint-lowering-recipe` validator
+kind and the `validateLoweringRecipe`/`validateRecipe` functions are removed, replaced by
+`blueprint-service-recipe`/`validateServiceRecipe` and
+`blueprint-projection-recipe`/`validateProjectionRecipe`. The `blueprint` validator runs the
+corresponding semantic checks over `payload.serviceRecipes` and `payload.projectionRecipes`
+separately, and reports which axis a diagnostic came from. Capability collection for
+`blueprint-capability-acceptance` reads un-lowered representations from
+`payload.projectionRecipes[*].representations[*]`, since that is the only axis that can carry a view.
+
+Historical decisions above are not rewritten: the "recipes select, never restructure" invariant, the
+representation `extends`/decorator semantics, and the contract-stability rules for implementation
+programs all survive the split unchanged — they simply now live on the axis that owns them.
