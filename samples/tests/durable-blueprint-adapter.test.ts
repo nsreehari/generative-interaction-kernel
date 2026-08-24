@@ -18,8 +18,10 @@ test("app host runs a JSON-portable materialized Blueprint through stateless dur
     id: "durable-blueprint-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {

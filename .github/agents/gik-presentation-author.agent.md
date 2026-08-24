@@ -45,7 +45,7 @@ You must not change:
 - Cell ids or semantic responsibilities;
 - Cell inputs, outputs, events, sources, compute, behavior, or hosting;
 - services, runtime state, or Blueprint interface contracts;
-- tiers, recipes, representations, or implementation programs;
+- service/projection tiers or recipes, representations, or implementation programs;
 - component implementations or adapter code;
 - Blueprint-specific TypeScript product logic or product specifications.
 

@@ -38,8 +38,9 @@ Delegate specialist work through the available subagent/task mechanism:
   and required runtime state.
 - `gik-presentation-author` owns `potentialViews`, component contracts, and the
   Cell-agnostic presentation skeleton.
-- `gik-lowering-author` owns tiers, recipes, representations, implementation
-  programs, and deterministic context selection.
+- `gik-lowering-author` owns independent projection and service tiers and
+  recipes, representations, implementation programs, and deterministic context
+  selection.
 - `gik-purpose-reviewer` independently reviews the integrated result and must
   remain read-only.
 
@@ -146,12 +147,17 @@ Do not invoke lowering merely because the schema supports it. If the product has
 genuine immutable-context variation, invoke `gik-lowering-author` with the
 accepted semantic and presentation models. Require proof that:
 
-- projection and implementation choices are independent;
+- projection and service/implementation choices are independent and use
+  separate tier and recipe chains;
+- the complete service chain materializes before the projection chain, so
+  projection may observe the selected implementation but service selection
+  never depends on projected presentation;
 - Cells, ports, events, source contracts, services, and slots are preserved;
 - representative cross-product contexts materialize deterministically;
 - terminal artifacts validate.
 
-Accept "one tier, no recipes" when no real variation exists.
+Accept one terminal tier and an empty recipe array independently for each axis
+when no real variation exists.
 
 ### 5. Integrate governed product scenarios
 
@@ -203,7 +209,7 @@ findings merely to complete the task.
 Do not:
 
 - create Cells for wrappers, dialogs, forms, tabs, panels, or layout;
-- use recipes to add, remove, replace, merge, split, or route around Cells;
+- use recipes on either axis to add, remove, replace, merge, split, or route around Cells;
 - add or remove presentation slots during lowering;
 - embed credentials, endpoints, or physical provider authority;
 - use mutable runtime state as materialization context;
@@ -233,7 +239,7 @@ Product outcome
 Semantic graph and contracts
 Services, effects, and host authority
 Named potential views and presentation structure
-Context dimensions, tiers, and recipes
+Context dimensions, projection tiers/recipes, and service tiers/recipes
 Governed scenarios
 Specialists invoked and accepted handoffs
 Platform gaps and deferred work

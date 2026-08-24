@@ -85,8 +85,10 @@ export function compilerBlueprint(): BlueprintArtifact {
     // "presentation" below are state namespaces inside this one tier, not separate Blueprint
     // tiers — the two-tier *application* shape lives in what this compiler produces, not in
     // the compiler's own declared structure.
-    tiers: [{ id: "runtime", kind: "runtime-document" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+    projectionRecipes: [],
     // Seeded state lives on `runtime.state` (a flat blob). `composeCellDocument` never reads
     // a Cell's own `state.initial` facet — that field is declared in blueprint/src/types.ts but
     // not consumed anywhere in today's lowering path.
@@ -191,8 +193,10 @@ export function compilerBlueprint(): BlueprintArtifact {
               'id': 'due-diligence-report',
               'kind': 'presentation-blueprint',
               'version': '1',
-              'tiers': [{ 'id': 'runtime', 'kind': 'runtime-document' }],
-              'recipes': [],
+              'serviceTiers': [{ 'id': 'runtime', 'kind': 'runtime-document' }],
+              'serviceRecipes': [],
+              'projectionTiers': [{ 'id': 'runtime', 'kind': 'runtime-document' }],
+              'projectionRecipes': [],
               'runtime': {
                 'state': {
                   'report': {

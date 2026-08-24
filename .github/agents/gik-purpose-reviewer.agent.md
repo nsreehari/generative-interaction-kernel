@@ -59,11 +59,13 @@ Apply these invariants:
   manufacture Cells merely to express wrappers, dialogs, forms, tabs, panels,
   actions, or other visual composition. It must still be expressive enough for
   complete product experiences.
-- Representations select or upsert named views without changing Cell identity
-  or ports. Implementation programs independently select contract-compatible
-  Cell implementations.
-- Tiers and recipes are deterministic contextual lowering mechanisms, not an
-  escape hatch for structurally rewriting the semantic Cell graph.
+- Projection recipes select or upsert named views without changing Cell identity
+  or ports. Service recipes independently select contract-compatible Cell
+  implementations across sources, compute, behavior, and service declarations.
+- `projectionTiers`/`projectionRecipes` and `serviceTiers`/`serviceRecipes` are
+  independent deterministic contextual lowering axes, not an escape hatch for
+  structurally rewriting the semantic Cell graph. The complete service chain
+  materializes before the complete projection chain.
 - Hosts own physical authority: credentials, providers, endpoints, admitted
   capabilities, service execution, durable storage, decisions, and approvals.
   Blueprints declare requirements and authorized operations.

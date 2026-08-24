@@ -176,7 +176,7 @@
           "additionalProperties": false,
           "properties": {
             "kind": {
-              "enum": ["blueprint-cell", "blueprint-tier", "blueprint-lowering-recipe", "blueprint"]
+              "enum": ["blueprint-cell", "blueprint-tier", "blueprint-service-recipe", "blueprint-projection-recipe", "blueprint"]
             },
             "message": { "type": "string" },
             "level": { "enum": ["error", "warning"] },

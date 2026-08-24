@@ -50,7 +50,7 @@ You must not author or change:
 - `structureMode` or `structurePolicy`;
 - `potentialViews`;
 - presentation slots, root, or capability vocabulary;
-- tiers, recipes, representations, or implementation programs;
+- service/projection tiers or recipes, representations, or implementation programs;
 - component capabilities, view props, bindings, decorations, or regions;
 - UI wrappers, dialogs, forms, tabs, panels, or layout;
 - Blueprint-specific TypeScript product logic or product specifications.

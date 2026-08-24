@@ -8,7 +8,6 @@
     "interface": {
       "events": ["queue", "complete"]
     },
-    "recipes": [],
     "runtime": {
       "expression": "jsonata",
       "namespaces": ["continuity"],
@@ -30,13 +29,22 @@
         }
       }
     },
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document",
         "description": "Control-plane continuity workflow shared by MCP and a background worker."
       }
     ],
+    "serviceRecipes": [],
+    "projectionTiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Control-plane continuity workflow shared by MCP and a background worker."
+      }
+    ],
+    "projectionRecipes": [],
     "cells": {
       "continuity-controller": {
         "id": "continuity-controller",

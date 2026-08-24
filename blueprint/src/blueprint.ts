@@ -7,6 +7,7 @@ import type {
   BlueprintLowering,
   BlueprintReferenceResolver,
   LoweringRecipeDefinition,
+  TierDefinition,
 } from "./types";
 import { resolveBlueprintExecution } from "./execution";
 
@@ -17,18 +18,28 @@ export class BlueprintValidationError extends Error {
   }
 }
 
+/** One lowering axis' authored chain, as reported to an authoring agent. */
+export interface BlueprintAuthoringAxisReport {
+  sourceTier: string;
+  terminalTier: string;
+  stages: Array<{ id: string; from: string; to: string }>;
+}
+
 export interface BlueprintAuthoringValidationReport {
   valid: boolean;
   artifact: BlueprintArtifact | null;
   errors: string[];
   warnings: string[];
   execution: {
-    sourceTier: string;
-    terminalTier: string;
-    stages: Array<{ id: string; from: string; to: string }>;
+    /** Applied first during materialization. */
+    service: BlueprintAuthoringAxisReport;
+    /** Applied second, over the already-selected terminal implementation. */
+    projection: BlueprintAuthoringAxisReport;
     status: "invalid" | "runtime-ready" | "lowering-required";
   };
 }
+
+const EMPTY_AXIS_REPORT: BlueprintAuthoringAxisReport = { sourceTier: "", terminalTier: "", stages: [] };
 
 export function validateBlueprintForAuthoring(value: unknown): BlueprintAuthoringValidationReport {
   try {
@@ -37,21 +48,26 @@ export function validateBlueprintForAuthoring(value: unknown): BlueprintAuthorin
       : structuredClone(value) as unknown;
     validateBlueprintArtifact(artifact);
     const resolved = resolveBlueprintExecution(artifact);
-    const stages = resolved.stages.map(({ recipe, fromTier, toTier }) => ({
-      id: recipe.id,
-      from: fromTier.id,
-      to: toTier.id,
-    }));
+    const axisReport = (axis: typeof resolved.service | typeof resolved.projection): BlueprintAuthoringAxisReport => ({
+      sourceTier: axis.sourceTier.id,
+      terminalTier: axis.terminalTier.id,
+      stages: axis.stages.map(({ recipe, fromTier, toTier }) => ({
+        id: recipe.id,
+        from: fromTier.id,
+        to: toTier.id,
+      })),
+    });
+    const service = axisReport(resolved.service);
+    const projection = axisReport(resolved.projection);
     return {
       valid: true,
       artifact,
       errors: [],
       warnings: [],
       execution: {
-        sourceTier: stages[0]?.from ?? artifact.payload.tiers[0]?.id ?? "",
-        terminalTier: stages.at(-1)?.to ?? artifact.payload.tiers[0]?.id ?? "",
-        stages,
-        status: stages.length > 0 ? "lowering-required" : "runtime-ready",
+        service,
+        projection,
+        status: service.stages.length + projection.stages.length > 0 ? "lowering-required" : "runtime-ready",
       },
     };
   } catch (error) {
@@ -61,18 +77,17 @@ export function validateBlueprintForAuthoring(value: unknown): BlueprintAuthorin
       errors: [error instanceof Error ? error.message : String(error)],
       warnings: [],
       execution: {
-        sourceTier: "",
-        terminalTier: "",
-        stages: [],
+        service: { ...EMPTY_AXIS_REPORT, stages: [] },
+        projection: { ...EMPTY_AXIS_REPORT, stages: [] },
         status: "invalid",
       },
     };
   }
 }
 
-export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition>(
+export function validateBlueprintArtifact(
   value: unknown,
-): asserts value is BlueprintArtifact<TRecipe> {
+): asserts value is BlueprintArtifact {
   const report = runDeclarativeValidators([{
     kind: "blueprint",
     message: "Invalid Blueprint artifact",
@@ -90,8 +105,17 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
   }
   const blueprint = artifact.payload as BlueprintDefinition;
   if (!blueprint.id || !blueprint.kind || !blueprint.version) throw new BlueprintValidationError("Blueprint identity is incomplete");
-  if (!Array.isArray(blueprint.tiers) || blueprint.tiers.length === 0) throw new BlueprintValidationError("Blueprint requires at least one tier");
-  if (!Array.isArray(blueprint.recipes)) throw new BlueprintValidationError("Blueprint recipes must be an array");
+  // Hard cut: the pre-split combined `tiers`/`recipes` pair is rejected outright rather than
+  // normalized, so a stale Blueprint fails loudly instead of silently materializing one axis.
+  for (const legacy of ["tiers", "recipes"] as const) {
+    if (legacy in (blueprint as unknown as Record<string, unknown>)) {
+      throw new BlueprintValidationError(
+        `Blueprint declares removed field '${legacy}'; author serviceTiers, serviceRecipes, projectionTiers, and projectionRecipes instead`,
+      );
+    }
+  }
+  validateLoweringAxis(blueprint, "service");
+  validateLoweringAxis(blueprint, "projection");
   if (!blueprint.runtime || typeof blueprint.runtime !== "object") {
     throw new BlueprintValidationError("Blueprint requires a runtime declaration");
   }
@@ -181,64 +205,84 @@ export function validateBlueprintArtifact<TRecipe extends LoweringRecipeDefiniti
       }
     }
   }
+}
+
+/** Both axes are validated by this one function, so `service` and `projection` are held to exactly
+ * the same chain invariants: unique tier ids, unique recipe ids, known endpoints, no branching or
+ * merging, and — when the axis declares recipes — exactly one source and one terminal tier. */
+function validateLoweringAxis(blueprint: BlueprintDefinition, axis: "service" | "projection"): void {
+  const tiers: TierDefinition[] | undefined = axis === "service" ? blueprint.serviceTiers : blueprint.projectionTiers;
+  const recipes: LoweringRecipeDefinition[] | undefined = axis === "service" ? blueprint.serviceRecipes : blueprint.projectionRecipes;
+  if (!Array.isArray(tiers) || tiers.length === 0) {
+    throw new BlueprintValidationError(`Blueprint requires at least one ${axis} tier`);
+  }
+  if (!Array.isArray(recipes)) {
+    throw new BlueprintValidationError(`Blueprint ${axis}Recipes must be an array`);
+  }
 
   const tierIds = new Set<string>();
-  for (const tier of blueprint.tiers) {
-    if (!tier.id || !tier.kind) throw new BlueprintValidationError("Blueprint tier identity is incomplete");
-    if (tierIds.has(tier.id)) throw new BlueprintValidationError(`Duplicate blueprint tier '${tier.id}'`);
+  for (const tier of tiers) {
+    if (!tier.id || !tier.kind) throw new BlueprintValidationError(`Blueprint ${axis} tier identity is incomplete`);
+    if (tierIds.has(tier.id)) throw new BlueprintValidationError(`Duplicate blueprint ${axis} tier '${tier.id}'`);
     tierIds.add(tier.id);
   }
+
   const recipeIds = new Set<string>();
   const incoming = new Map<string, number>();
   const outgoing = new Map<string, number>();
-  for (const recipe of blueprint.recipes) {
-    if (!recipe.id || !recipe.from || !recipe.to) throw new BlueprintValidationError("Blueprint lowering recipe is incomplete");
-    if (recipeIds.has(recipe.id)) throw new BlueprintValidationError(`Duplicate blueprint lowering recipe '${recipe.id}'`);
-    if (!tierIds.has(recipe.from)) throw new BlueprintValidationError(`Blueprint lowering recipe '${recipe.id}' starts from unknown tier '${recipe.from}'`);
-    if (!tierIds.has(recipe.to)) throw new BlueprintValidationError(`Blueprint lowering recipe '${recipe.id}' targets unknown tier '${recipe.to}'`);
+  for (const recipe of recipes) {
+    if (!recipe.id || !recipe.from || !recipe.to) throw new BlueprintValidationError(`Blueprint ${axis} recipe is incomplete`);
+    if (recipeIds.has(recipe.id)) throw new BlueprintValidationError(`Duplicate blueprint ${axis} recipe '${recipe.id}'`);
+    if (!tierIds.has(recipe.from)) throw new BlueprintValidationError(`Blueprint ${axis} recipe '${recipe.id}' starts from unknown ${axis} tier '${recipe.from}'`);
+    if (!tierIds.has(recipe.to)) throw new BlueprintValidationError(`Blueprint ${axis} recipe '${recipe.id}' targets unknown ${axis} tier '${recipe.to}'`);
     recipeIds.add(recipe.id);
     outgoing.set(recipe.from, (outgoing.get(recipe.from) ?? 0) + 1);
     incoming.set(recipe.to, (incoming.get(recipe.to) ?? 0) + 1);
   }
-  if (blueprint.recipes.length > 0) {
-    const sourceTiers = blueprint.tiers.filter((tier) => !incoming.has(tier.id));
-    const terminalTiers = blueprint.tiers.filter((tier) => !outgoing.has(tier.id));
-    if (sourceTiers.length !== 1 || terminalTiers.length !== 1) {
-      throw new BlueprintValidationError("Blueprint lowering recipes must form one connected tier chain");
+
+  if (recipes.length === 0) {
+    // A recipe-free axis has nothing to select, so it must already be terminal.
+    if (tiers.length !== 1) {
+      throw new BlueprintValidationError(`Blueprint with no ${axis} recipes must declare exactly one terminal ${axis} tier`);
     }
-    for (const tier of blueprint.tiers) {
-      if ((incoming.get(tier.id) ?? 0) > 1 || (outgoing.get(tier.id) ?? 0) > 1) {
-        throw new BlueprintValidationError(`Blueprint tier '${tier.id}' branches or merges`);
-      }
+    return;
+  }
+
+  const sourceTiers = tiers.filter((tier) => !incoming.has(tier.id));
+  const terminalTiers = tiers.filter((tier) => !outgoing.has(tier.id));
+  if (sourceTiers.length !== 1 || terminalTiers.length !== 1) {
+    throw new BlueprintValidationError(`Blueprint ${axis} recipes must form one connected ${axis} tier chain`);
+  }
+  for (const tier of tiers) {
+    if ((incoming.get(tier.id) ?? 0) > 1 || (outgoing.get(tier.id) ?? 0) > 1) {
+      throw new BlueprintValidationError(`Blueprint ${axis} tier '${tier.id}' branches or merges`);
     }
   }
 }
 
-export function createBlueprint<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition>(
-  definition: BlueprintDefinition<TRecipe>,
-): BlueprintArtifact<TRecipe> {
-  const blueprint: BlueprintArtifact<TRecipe> = { gik: "0.1", type: "blueprint", payload: structuredClone(definition) };
+export function createBlueprint(definition: BlueprintDefinition): BlueprintArtifact {
+  const blueprint: BlueprintArtifact = { gik: "0.1", type: "blueprint", payload: structuredClone(definition) };
   validateBlueprintArtifact(blueprint);
   return blueprint;
 }
 
-export function parseBlueprintJson<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition>(text: string): BlueprintArtifact<TRecipe> {
+export function parseBlueprintJson(text: string): BlueprintArtifact {
   const blueprint: unknown = JSON.parse(text);
-  validateBlueprintArtifact<TRecipe>(blueprint);
+  validateBlueprintArtifact(blueprint);
   return blueprint;
 }
 
-export function stringifyBlueprint<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition>(blueprint: BlueprintArtifact<TRecipe>): string {
+export function stringifyBlueprint(blueprint: BlueprintArtifact): string {
   validateBlueprintArtifact(blueprint);
   return JSON.stringify(blueprint, null, 2);
 }
 
-export function assembleBlueprint<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition>(
-  source: BlueprintArtifact<TRecipe>,
-  resolveReference?: BlueprintReferenceResolver<TRecipe>,
-): BlueprintArtifact<TRecipe> {
+export function assembleBlueprint(
+  source: BlueprintArtifact,
+  resolveReference?: BlueprintReferenceResolver,
+): BlueprintArtifact {
   const active = new Set<string>();
-  const assemble = (blueprint: BlueprintArtifact<TRecipe>): BlueprintArtifact<TRecipe> => {
+  const assemble = (blueprint: BlueprintArtifact): BlueprintArtifact => {
     validateBlueprintArtifact(blueprint);
     if (active.has(blueprint.payload.id)) throw new BlueprintValidationError(`Recursive Blueprint reference cycle at '${blueprint.payload.id}'`);
     active.add(blueprint.payload.id);
@@ -253,7 +297,7 @@ export function assembleBlueprint<TRecipe extends LoweringRecipeDefinition = Low
         const assembledChild = assemble(resolveReference(ref, { parentBlueprintId: blueprint.payload.id, cellId }));
         cell.blueprint = { inline: assembledChild };
       } else {
-        const assembledChild = assemble(child.inline as BlueprintArtifact<TRecipe>);
+        const assembledChild = assemble(child.inline as BlueprintArtifact);
         cell.blueprint = { inline: assembledChild };
       }
     }

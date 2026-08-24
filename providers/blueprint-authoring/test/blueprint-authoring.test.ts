@@ -13,7 +13,10 @@ function asJson(value: unknown): Json {
 test("summarizeBlueprint exposes the canonical runtime Blueprint", () => {
   const summary = summarizeBlueprint(blueprintStudioBlueprint);
   assert.equal(summary?.id, "blueprint-studio");
-  assert.deepEqual(summary?.recipes, []);
+  assert.deepEqual(summary?.serviceRecipes, []);
+  assert.deepEqual(summary?.projectionRecipes, []);
+  assert.deepEqual(summary?.serviceTiers, [{ id: "runtime-document", kind: "runtime-document" }]);
+  assert.deepEqual(summary?.projectionTiers, [{ id: "runtime-document", kind: "runtime-document" }]);
 });
 
 test("blueprint authoring registry composes blueprint and recipes from graph outputs", async () => {

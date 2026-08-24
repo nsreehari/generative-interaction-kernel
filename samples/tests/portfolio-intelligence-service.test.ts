@@ -97,7 +97,8 @@ describe("portfolio intelligence service declarations", () => {
         negativeCurrency: ["infer historical performance from a current snapshot"],
         constraints: ["one coherent experience"],
         blueprintProfile: {
-          tiers: [
+          serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+          projectionTiers: [
             { id: "report-semantic", kind: "semantic-report-model" },
             { id: "runtime-document", kind: "runtime-document" },
           ],

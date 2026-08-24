@@ -5,7 +5,6 @@
     "id": "4layers",
     "kind": "runtime-blueprint",
     "version": "1.0.0",
-    "recipes": [],
     "runtime": {
       "expression": "jsonata",
       "namespaces": [
@@ -103,13 +102,22 @@
         }
       }
     },
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document",
         "description": "Canonical Kernel-executable terminal document."
       }
     ],
+    "serviceRecipes": [],
+    "projectionTiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Canonical Kernel-executable terminal document."
+      }
+    ],
+    "projectionRecipes": [],
     "cells": {
       "four-layers-root": {
         "id": "four-layers-root",
