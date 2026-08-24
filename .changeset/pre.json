@@ -20,5 +20,7 @@
     "@gik/transport-mcp-http": "0.1.0",
     "@gik/samples": "0.1.2"
   },
-  "changesets": []
+  "changesets": [
+    "clean-public-package-docs"
+  ]
 }
