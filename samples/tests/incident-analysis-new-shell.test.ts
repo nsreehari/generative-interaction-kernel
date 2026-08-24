@@ -54,6 +54,12 @@ describe("incident analysis shell", () => {
           ? "Incident-Report-Refinement-Agent"
           : "Incident-Report-Semantic-Agent",
       });
+      expect(materialized.cells?.["analysis-selection"].potentialViews?.primary.capability)
+        .toBe("primitive:form");
+      expect(materialized.cells?.["report-analysis"].potentialViews?.primary.capability)
+        .toBe("fluent:button");
+      expect(materialized.cells?.["report-resolution"].potentialViews?.primary.capability)
+        .toBe("gik:blueprint");
     }
   });
 
@@ -88,7 +94,7 @@ describe("incident analysis shell", () => {
       },
       potentialViews: {
         primary: {
-          capability: "primitive:form",
+          capability: "incident-analysis:selection",
           before: [expect.objectContaining({ capability: "fluent:spinner" })],
         },
       },
@@ -135,7 +141,7 @@ describe("incident analysis shell", () => {
       behavior: { on: { press: [expect.objectContaining({ do: "assign", target: "incident.analysisRequest" })] } },
       potentialViews: {
         primary: {
-          capability: "fluent:button",
+          capability: "incident-analysis:request",
           props: { label: "Analyze / refresh report" },
           before: [expect.objectContaining({
             capability: "fluent:spinner",
@@ -162,7 +168,7 @@ describe("incident analysis shell", () => {
       }],
       potentialViews: {
         primary: {
-          capability: "gik:blueprint",
+          capability: "incident-analysis:report",
           visibility: "incident.resolvedSavedReportEnvelope.found and incident.resolvedSavedReportEnvelope.analysisReport != null",
           bindings: {
             blueprint: {

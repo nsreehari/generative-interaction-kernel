@@ -256,7 +256,10 @@
       {
         "id": "ai-agent",
         "kind": "ai-agent",
-        "capabilities": []
+        "capabilities": [
+          "ai-agent:query",
+          "ai-agent:response"
+        ]
       },
       {
         "id": "runtime-document",
@@ -273,7 +276,59 @@
         "representations": [
           {
             "id": "shared-presentation",
-            "views": {}
+            "views": {
+              "agent-query-form": {
+                "primary": {
+                  "capability": "primitive:form",
+                  "region": "query",
+                  "before": [
+                    {
+                      "capability": "fluent:spinner",
+                      "props": {
+                        "label": "Loading agents",
+                        "size": "medium"
+                      },
+                      "visibility": "systemInputs.numSourcesRunning > 0"
+                    }
+                  ],
+                  "props": {
+                    "saveLabel": "Ask",
+                    "discardLabel": "Discard",
+                    "initiallyDirty": true
+                  },
+                  "bindings": {
+                    "fields": {
+                      "expression": "{'properties':{'agentName':{'title':'Agent','type':'string','options':agent.agentOptions,'placeholder':'Choose an agent','span':12},'message':{'title':'Message','type':'string','format':'textarea','rows':5,'minLength':1,'placeholder':'Ask the agent something...','span':12}},'required':['agentName','message']}"
+                    },
+                    "value": {
+                      "from": "agent.formValue"
+                    }
+                  },
+                  "visibility": "$count(agent.agentOptions) > 0"
+                }
+              },
+              "agent-response": {
+                "primary": {
+                  "capability": "primitive:markdown",
+                  "region": "response",
+                  "before": [
+                    {
+                      "capability": "fluent:spinner",
+                      "props": {
+                        "label": "Waiting for agent response",
+                        "size": "medium"
+                      },
+                      "visibility": "systemInputs.numSourcesRunning > 0"
+                    }
+                  ],
+                  "bindings": {
+                    "value": {
+                      "from": "agent.reply"
+                    }
+                  }
+                }
+              }
+            }
           }
         ],
         "fallback": "shared-presentation"
@@ -334,7 +389,7 @@
         },
         "potentialViews": {
           "primary": {
-            "capability": "primitive:form",
+            "capability": "ai-agent:query",
             "region": "query",
             "before": [
               {
@@ -421,7 +476,7 @@
         ],
         "potentialViews": {
           "primary": {
-            "capability": "primitive:markdown",
+            "capability": "ai-agent:response",
             "region": "response",
             "before": [
               {
@@ -462,6 +517,9 @@
         }
       },
       "allowedCapabilities": [
+        {
+          "tier": "ai-agent"
+        },
         "fluent:spinner",
         "primitive:form",
         "primitive:markdown"

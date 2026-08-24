@@ -16,6 +16,45 @@ layout, and composition rather than lowering semantic components into primitive 
 Each Blueprint-local capability name belongs to exactly one projection tier, so Cells and recipes use
 plain, unqualified names without ambiguous tier ownership.
 
+For a nonterminal projection chain, prefer source-tier names in authored Cell views and replace them
+explicitly in the recipe that leaves that tier:
+
+```json
+{
+  "projectionTiers": [
+    { "id": "intent", "kind": "product-intent", "capabilities": ["portfolio:holdings"] },
+    { "id": "runtime", "kind": "runtime-document", "capabilities": [] }
+  ],
+  "presentation": {
+    "slots": ["holdings"],
+    "root": "holdings",
+    "allowedCapabilities": [{ "tier": "intent" }, "primitive:editable-table"]
+  },
+  "cells": {
+    "holdings": {
+      "id": "holdings",
+      "potentialViews": {
+        "primary": { "capability": "portfolio:holdings", "region": "holdings" }
+      }
+    }
+  },
+  "projectionRecipes": [{
+    "id": "intent-to-runtime",
+    "from": "intent",
+    "to": "runtime",
+    "representations": [{
+      "id": "default",
+      "views": {
+        "holdings": {
+          "primary": { "capability": "primitive:editable-table", "region": "holdings" }
+        }
+      }
+    }],
+    "fallback": "default"
+  }]
+}
+```
+
 ```bash
 npm install @gik/blueprint @gik/kernel @gik/evaluators @gik/durable-runtime
 ```

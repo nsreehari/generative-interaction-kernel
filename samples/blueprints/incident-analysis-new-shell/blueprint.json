@@ -112,7 +112,11 @@
       {
         "id": "incident-analysis",
         "kind": "incident-analysis",
-        "capabilities": []
+        "capabilities": [
+          "incident-analysis:selection",
+          "incident-analysis:request",
+          "incident-analysis:report"
+        ]
       },
       {
         "id": "runtime-document",
@@ -128,7 +132,83 @@
         "representations": [
           {
             "id": "shared-shell",
-            "views": {}
+            "views": {
+              "analysis-selection": {
+                "primary": {
+                  "capability": "primitive:form",
+                  "region": "shell",
+                  "props": {
+                    "saveLabel": "Select report",
+                    "discardLabel": "Discard",
+                    "initiallyDirty": true
+                  },
+                  "before": [
+                    {
+                      "capability": "fluent:spinner",
+                      "props": {
+                        "label": "Loading incident reports",
+                        "size": "medium"
+                      },
+                      "visibility": "systemInputs.numSourcesRunning > 0"
+                    }
+                  ],
+                  "bindings": {
+                    "fields": {
+                      "expression": "{'properties':{'sourceReport':{'title':'Source report','type':'string','options':incident.sourceOptions,'placeholder':'Choose a source report','span':12}},'required':['sourceReport']}"
+                    },
+                    "value": {
+                      "from": "incident.selection"
+                    }
+                  },
+                  "visibility": "$count(incident.sourceOptions) > 0"
+                }
+              },
+              "report-analysis": {
+                "primary": {
+                  "capability": "fluent:button",
+                  "region": "shell",
+                  "props": {
+                    "label": "Analyze / refresh report",
+                    "appearance": "primary"
+                  },
+                  "before": [
+                    {
+                      "capability": "fluent:spinner",
+                      "props": {
+                        "label": "Analyzing report",
+                        "size": "medium"
+                      },
+                      "visibility": "systemInputs.numSourcesRunning > 0"
+                    }
+                  ]
+                }
+              },
+              "report-resolution": {
+                "primary": {
+                  "capability": "gik:blueprint",
+                  "region": "shell",
+                  "visibility": "incident.resolvedSavedReportEnvelope.found and incident.resolvedSavedReportEnvelope.analysisReport != null",
+                  "bindings": {
+                    "blueprint": {
+                      "expression": "incident.resolvedSavedReportEnvelope.analysisReport"
+                    }
+                  },
+                  "before": [
+                    {
+                      "capability": "primitive:datetime",
+                      "props": {
+                        "label": "Analysis as of"
+                      },
+                      "bindings": {
+                        "value": {
+                          "expression": "incident.resolvedSavedReportEnvelope.asOn"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           }
         ],
         "fallback": "shared-shell"
@@ -764,7 +844,7 @@
         },
         "potentialViews": {
           "primary": {
-            "capability": "primitive:form",
+            "capability": "incident-analysis:selection",
             "region": "shell",
             "props": {
               "saveLabel": "Select report",
@@ -879,7 +959,7 @@
         },
         "potentialViews": {
           "primary": {
-            "capability": "fluent:button",
+            "capability": "incident-analysis:request",
             "region": "shell",
             "props": {
               "label": "Analyze / refresh report",
@@ -1032,7 +1112,7 @@
         ],
         "potentialViews": {
           "primary": {
-            "capability": "gik:blueprint",
+            "capability": "incident-analysis:report",
             "region": "shell",
             "visibility": "incident.resolvedSavedReportEnvelope.found and incident.resolvedSavedReportEnvelope.analysisReport != null",
             "bindings": {
@@ -1069,6 +1149,9 @@
         }
       },
       "allowedCapabilities": [
+        {
+          "tier": "incident-analysis"
+        },
         "fluent:button",
         "fluent:spinner",
         "gik:blueprint",

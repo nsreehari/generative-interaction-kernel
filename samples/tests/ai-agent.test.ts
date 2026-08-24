@@ -20,6 +20,32 @@ async function waitForState(
   throw new Error(`Timed out waiting for ai-agent state: ${JSON.stringify(controller.getState())}`);
 }
 
+test("ai-agent lowers its top-tier projection vocabulary to terminal host capabilities", () => {
+  const blueprint = resolveSampleBlueprintSource("ai-agent");
+  assert.deepEqual(blueprint.payload.projectionTiers[0].capabilities, [
+    "ai-agent:query",
+    "ai-agent:response",
+  ]);
+  assert.equal(
+    blueprint.payload.cells?.["agent-query-form"].potentialViews?.primary.capability,
+    "ai-agent:query",
+  );
+  assert.equal(
+    blueprint.payload.cells?.["agent-response"].potentialViews?.primary.capability,
+    "ai-agent:response",
+  );
+
+  const terminal = materializeBlueprint({ blueprint }).payload.terminalBlueprint.payload;
+  assert.equal(
+    terminal.cells?.["agent-query-form"].potentialViews?.primary.capability,
+    "primitive:form",
+  );
+  assert.equal(
+    terminal.cells?.["agent-response"].potentialViews?.primary.capability,
+    "primitive:markdown",
+  );
+});
+
 test("Foundry service exposes schema-constrained replies as structured output", async () => {
   let requestBody: Record<string, unknown> | undefined;
   const factory = createFoundryAgentKind(async (_input, init) => {

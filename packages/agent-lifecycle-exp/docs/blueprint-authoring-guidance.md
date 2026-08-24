@@ -228,6 +228,12 @@ inside one recipe. A Blueprint declares **two fully independent lowering axes**:
   vocabularies; recipes progressively eliminate higher-tier names through selection, filtering,
   layout, composition, and view specialization until only host-renderable capabilities remain.
 
+For a nonterminal projection axis, author the Cell's intent-facing primary view with a capability
+owned by the source (top) projection tier, then make every selected recipe path replace or remove it
+before advancing beyond that tier. Use an exact host capability directly only when that manifestation
+is deliberately terminal/pass-through. This preserves the useful distinction between Blueprint-local
+intent and the host component chosen to render it.
+
 The host's GIK component catalog is flat: `semantic:*`, `primitive:*`, `fluent:*`, and opt-in domain
 components are all equally terminal when the host supplies them. Projection lowering never implies
 `semantic:* -> primitive:* -> fluent:*`; namespace prefixes carry no tier ordering.

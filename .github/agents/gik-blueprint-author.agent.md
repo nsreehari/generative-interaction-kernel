@@ -159,6 +159,11 @@ accepted semantic and presentation models. Require proof that:
 - projection recipes are limited to selection, filtering, layout, composition,
   and view specialization; they eliminate names from tiers already passed while
   preserving explicitly authorized terminal host capabilities;
+- for a nonterminal projection axis, authored Cell manifestations use the
+  source tier's named capabilities where they express Blueprint-local intent,
+  and each selected recipe explicitly replaces or removes those names before
+  advancing; exact host capabilities remain valid only when intentionally
+  terminal/pass-through;
 - `semantic:*`, `primitive:*`, `fluent:*`, and domain component namespaces are
   treated as a flat terminal host catalog, never as an implicit lowering order;
 - representative cross-product contexts materialize deterministically;
