@@ -9,6 +9,16 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/blueprint/**"],
       "outputs": ["dist/**"]
+    },
+    "@gik/kernel#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/kernel/**"],
+      "outputs": ["dist/**"]
+    },
+    "@gik/controlface#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/face/**"],
+      "outputs": ["dist/**"]
     }
   }
 }
