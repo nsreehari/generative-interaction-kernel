@@ -37,7 +37,7 @@ function shellBlueprint(overrides: { id?: string } = {}): BlueprintArtifact {
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program", capabilities: [] }],
     projectionRecipes: [],
     runtime: {
       externals: { projectionViews: { app: { from: "app", use: ["label", "counter"] } } },
@@ -75,6 +75,7 @@ function shellBlueprint(overrides: { id?: string } = {}): BlueprintArtifact {
         { id: "primary", region: "shell" },
       ],
       root: "shell",
+      allowedCapabilities: ["app:label", "app:counter"],
       exportedRegions: [
         { name: "command-bar", slot: "command-bar", required: true },
         { name: "sidebar", slot: "sidebar" },
@@ -91,7 +92,7 @@ function headlessHostedBlueprint(): BlueprintArtifact {
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program", capabilities: [] }],
     projectionRecipes: [],
     runtime: { state: {} },
     cells: {
@@ -103,6 +104,7 @@ function headlessHostedBlueprint(): BlueprintArtifact {
     presentation: {
       slots: ["shell", { id: "primary", region: "shell" }],
       root: "shell",
+      allowedCapabilities: ["gik:blueprint"],
       exportedRegions: [{ name: "primary", slot: "primary" }],
     },
   } as BlueprintDefinition);
@@ -331,8 +333,8 @@ test("changing provider externalContext re-materializes and re-publishes the reg
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
     projectionTiers: [
-      { id: "intent", kind: "interaction-intent" },
-      { id: "runtime", kind: "runtime-program" },
+      { id: "intent", kind: "interaction-intent", capabilities: [] },
+      { id: "runtime", kind: "runtime-program", capabilities: [] },
     ],
     projectionRecipes: [{
       id: "intent-to-runtime",
@@ -379,6 +381,7 @@ test("changing provider externalContext re-materializes and re-publishes the reg
     presentation: {
       slots: ["shell", { id: "command-bar", region: "shell" }, { id: "primary", region: "shell" }],
       root: "shell",
+      allowedCapabilities: ["app:label"],
     },
   } as BlueprintDefinition);
 
@@ -524,7 +527,7 @@ test("nested hosted Blueprint regions stay scoped to the child instance", async 
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program", capabilities: [] }],
     projectionRecipes: [],
     runtime: {
       externals: { projectionViews: { app: { from: "app", use: ["label", "counter"] } } },
@@ -540,6 +543,7 @@ test("nested hosted Blueprint regions stay scoped to the child instance", async 
     presentation: {
       slots: ["shell", { id: "primary", region: "shell" }],
       root: "shell",
+      allowedCapabilities: ["gik:blueprint"],
       exportedRegions: [{ name: "primary", slot: "primary" }],
     },
   } as BlueprintDefinition);

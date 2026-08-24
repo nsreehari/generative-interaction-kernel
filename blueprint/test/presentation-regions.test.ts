@@ -26,7 +26,7 @@ function shell(presentation: PresentationDefinition, id = "shell"): BlueprintArt
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program", capabilities: [] }],
     projectionRecipes: [],
     runtime: {},
     cells,
@@ -42,6 +42,7 @@ const layout: PresentationDefinition = {
     { id: "primary", region: "shell" },
   ],
   root: "shell",
+  allowedCapabilities: ["ui:text"],
 };
 
 describe("exported presentation regions", () => {
@@ -103,6 +104,7 @@ describe("exported presentation regions", () => {
     expect(() => shell({
       slots: ["shell", { id: "primary", region: "shell" }, "detached"],
       root: "shell",
+      allowedCapabilities: ["ui:text"],
       exportedRegions: [{ name: "detached", slot: "detached" }],
     })).toThrow(/exports slot 'detached' that is unreachable from root 'shell'/);
   });
@@ -126,8 +128,8 @@ describe("exported presentation regions", () => {
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
       projectionTiers: [
-        { id: "intent", kind: "interaction-intent" },
-        { id: "runtime", kind: "runtime-program" },
+        { id: "intent", kind: "interaction-intent", capabilities: [] },
+        { id: "runtime", kind: "runtime-program", capabilities: [] },
       ],
       projectionRecipes: [{
         id: "intent-to-runtime",
@@ -138,7 +140,8 @@ describe("exported presentation regions", () => {
             id: "default",
             views: { status: { primary: { capability: "ui:text", region: "primary" } } },
             presentation: {
-              ...layout,
+              slots: layout.slots,
+              root: layout.root,
               exportedRegions: [
                 { name: "primary", slot: "primary", required: true },
                 { name: "sidebar", slot: "sidebar" },
@@ -160,7 +163,11 @@ describe("exported presentation regions", () => {
       }],
       runtime: {},
       cells,
-      presentation: { slots: ["shell", { id: "primary", region: "shell" }], root: "shell" },
+      presentation: {
+        slots: ["shell", { id: "primary", region: "shell" }],
+        root: "shell",
+        allowedCapabilities: ["ui:text"],
+      },
     } as BlueprintDefinition);
 
     const wide = materializeBlueprint({ blueprint, externalContext: { device: "desktop" } });

@@ -21,6 +21,7 @@ import {
   type BlueprintArtifact,
   type ExportedPresentationRegion,
 } from "@gik/blueprint";
+export type { ExportedPresentationRegion } from "@gik/blueprint";
 import type { ResolvedNode } from "@gik/kernel";
 import type { ComponentRegistry } from "../registry";
 import { renderNode, type EmitFn } from "../render";
