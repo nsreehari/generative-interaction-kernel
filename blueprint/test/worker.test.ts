@@ -13,6 +13,7 @@ import {
   executeQueuedBlueprintEffect,
   executeQueuedCellSourceEffect,
   prepareQueuedCellSourceEffect,
+  queuedBlueprintEffectFailureEvents,
   settleQueuedCellSourceEffect,
 } from "../src/worker";
 import { createInMemoryBlueprintExecution } from "../src/worker/in-memory";
@@ -367,6 +368,32 @@ test("declarative service invoke settlements re-enter durable Blueprint state", 
       cells: { root: { sources: [] } },
     },
   });
+});
+
+test("a declarative service invoke (no sourceRequestToken) that exhausts retries now settles instead of vanishing", () => {
+  // This is a plain serviceRef invoke, distinct from both a Cell source (sourceRequestToken) and
+  // a "request" effect -- and its SUCCESS path (executeQueuedBlueprintEffect's isDeclarativeService
+  // branch, tested above) already synthesizes a settlement event for it. This failure path had no
+  // matching branch: after every retry attempt is exhausted, this exact effect fell through to
+  // `return []` -- the terminal failure was silently dropped, with no settlement event, no state
+  // change, and no user-facing signal of any kind.
+  const effect = {
+    kind: "invoke" as const,
+    node: "blueprint-create",
+    control: { tool: "createBlueprintDraft", serviceRef: "blueprint-studio-data" },
+    data: {},
+  };
+  const events = queuedBlueprintEffectFailureEvents(effect, {
+    messageId: "msg-1",
+    attempt: 1,
+    error: "Server unavailable",
+  });
+  assert.equal(events.length, 1);
+  assert.equal(events[0].name, "settled");
+  const payload = events[0].payload as { result: { outcome: string; detail: unknown }; effect: unknown };
+  assert.equal(payload.result.outcome, "failed");
+  assert.deepEqual(payload.result.detail, { messageId: "msg-1", attempt: 1, error: "Server unavailable" });
+  assert.deepEqual(payload.effect, effect);
 });
 
 test("void invokes are acknowledged without appending settlement receipts", async () => {

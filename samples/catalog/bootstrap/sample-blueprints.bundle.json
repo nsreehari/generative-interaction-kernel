@@ -580,7 +580,13 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintListRefreshStamp','value':'create:' & $now()},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
+                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintListRefreshStamp','value':'create:' & $now()},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'},{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':''}]} : {'ops':[{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':response.error ? response.error : 'Unable to create the Blueprint.'}]}"
+                  }
+                },
+                "failureSettlement": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'ops':[{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':error.message}]}"
                   }
                 }
               },
@@ -596,7 +602,13 @@
                 "settlement": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintListRefreshStamp','value':'clone:' & $now()},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
+                    "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintListRefreshStamp','value':'clone:' & $now()},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'},{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':''}]} : {'ops':[{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':response.error ? response.error : 'Unable to clone the Blueprint.'}]}"
+                  }
+                },
+                "failureSettlement": {
+                  "transform": {
+                    "kind": "jsonata",
+                    "expr": "{'ops':[{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':error.message}]}"
                   }
                 }
               },
@@ -708,7 +720,9 @@
               "previewExternalContext": {},
               "draftPreviewExternalContext": {},
               "blueprintListRefreshStamp": "initial",
-              "selectedBlueprintDraftId": ""
+              "selectedBlueprintDraftId": "",
+              "blueprintCreateSaving": false,
+              "blueprintCreateError": ""
             }
           }
         },
@@ -914,6 +928,20 @@
               "on": {
                 "save": [
                   {
+                    "do": "assign",
+                    "target": "studio.blueprintCreateSaving",
+                    "args": {
+                      "value": true
+                    }
+                  },
+                  {
+                    "do": "assign",
+                    "target": "studio.blueprintCreateError",
+                    "args": {
+                      "value": ""
+                    }
+                  },
+                  {
                     "do": "invoke",
                     "guard": "$not($exists($event.values.cloneFrom)) or $event.values.cloneFrom = ''",
                     "control": {
@@ -987,11 +1015,18 @@
                     "version": "1.0.0"
                   },
                   "saveLabel": "Create draft",
-                  "discardLabel": "Reset"
+                  "discardLabel": "Reset",
+                  "savingLabel": "Creating draft…"
                 },
                 "bindings": {
                   "fields": {
                     "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], studio.blueprints[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], studio.blueprints[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
+                  },
+                  "saving": {
+                    "from": "studio.blueprintCreateSaving"
+                  },
+                  "saveError": {
+                    "from": "studio.blueprintCreateError"
                   }
                 },
                 "wrap": [
@@ -13193,7 +13228,13 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintListRefreshStamp','value':'create:' & $now()},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
+                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintListRefreshStamp','value':'create:' & $now()},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'},{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':''}]} : {'ops':[{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':response.error ? response.error : 'Unable to create the Blueprint.'}]}"
+                          }
+                        },
+                        "failureSettlement": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'ops':[{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':error.message}]}"
                           }
                         }
                       },
@@ -13209,7 +13250,13 @@
                         "settlement": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintListRefreshStamp','value':'clone:' & $now()},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'}]} : {'ops':[]}"
+                            "expr": "response.blueprint ? {'ops':[{'op':'set','path':'studio.selectedBlueprintId','value':response.blueprint.id},{'op':'set','path':'studio.selected','value':response.blueprint},{'op':'set','path':'studio.blueprintListRefreshStamp','value':'clone:' & $now()},{'op':'set','path':'studio.blueprintJsonVersion','value':'draft'},{'op':'set','path':'studio.blueprintPreviewVersion','value':'draft'},{'op':'set','path':'studio.activeTab','value':'blueprint-json'},{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':''}]} : {'ops':[{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':response.error ? response.error : 'Unable to clone the Blueprint.'}]}"
+                          }
+                        },
+                        "failureSettlement": {
+                          "transform": {
+                            "kind": "jsonata",
+                            "expr": "{'ops':[{'op':'set','path':'studio.blueprintCreateSaving','value':false},{'op':'set','path':'studio.blueprintCreateError','value':error.message}]}"
                           }
                         }
                       },
@@ -13321,7 +13368,9 @@
                       "previewExternalContext": {},
                       "draftPreviewExternalContext": {},
                       "blueprintListRefreshStamp": "initial",
-                      "selectedBlueprintDraftId": ""
+                      "selectedBlueprintDraftId": "",
+                      "blueprintCreateSaving": false,
+                      "blueprintCreateError": ""
                     }
                   }
                 },
@@ -13527,6 +13576,20 @@
                       "on": {
                         "save": [
                           {
+                            "do": "assign",
+                            "target": "studio.blueprintCreateSaving",
+                            "args": {
+                              "value": true
+                            }
+                          },
+                          {
+                            "do": "assign",
+                            "target": "studio.blueprintCreateError",
+                            "args": {
+                              "value": ""
+                            }
+                          },
+                          {
                             "do": "invoke",
                             "guard": "$not($exists($event.values.cloneFrom)) or $event.values.cloneFrom = ''",
                             "control": {
@@ -13600,11 +13663,18 @@
                             "version": "1.0.0"
                           },
                           "saveLabel": "Create draft",
-                          "discardLabel": "Reset"
+                          "discardLabel": "Reset",
+                          "savingLabel": "Creating draft…"
                         },
                         "bindings": {
                           "fields": {
                             "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], studio.blueprints[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], studio.blueprints[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
+                          },
+                          "saving": {
+                            "from": "studio.blueprintCreateSaving"
+                          },
+                          "saveError": {
+                            "from": "studio.blueprintCreateError"
                           }
                         },
                         "wrap": [
@@ -19270,6 +19340,6 @@
       ]
     }
   },
-  "bundleVersion": "fdeb300841ea166b",
-  "digest": "sha256:fdeb300841ea166b86bc7c7529238f4c84392130a8a5c8504e6b29c9e4d10d33"
+  "bundleVersion": "81e6f7282e0b2306",
+  "digest": "sha256:81e6f7282e0b230699019a416779426157d26b68fea967529b9ba19298a62f77"
 }
