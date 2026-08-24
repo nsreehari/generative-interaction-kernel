@@ -1,6 +1,6 @@
 {
   "name": "@gik/components",
-  "version": "0.2.0",
+  "version": "0.2.1-next.0",
   "description": "Self-describing declarative Fluent components for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
@@ -70,9 +70,9 @@
     "react-dom": "^18.3.1"
   },
   "dependencies": {
-    "@gik/evaluators": "0.1.1",
-    "@gik/kernel": "0.1.1",
-    "@gik/react": "0.3.0",
+    "@gik/evaluators": "0.1.2-next.0",
+    "@gik/kernel": "0.1.2-next.0",
+    "@gik/react": "0.3.1-next.0",
     "@xyflow/react": "^12.11.2",
     "mermaid": "^11.16.0"
   },
