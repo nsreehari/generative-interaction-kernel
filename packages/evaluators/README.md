@@ -56,8 +56,10 @@ field defaults, form defaults, and caller-provided values.
 - `validateCell(value)` validates one Cell definition and reports Cell-specific
   errors and warnings.
 - `validateTier(value)` validates one standalone Tier definition.
-- `validateLoweringRecipe(value)` validates one standalone lowering recipe.
-- `validateRecipe` is the exported alias of `validateLoweringRecipe`.
+- `validateServiceRecipe(value)` validates one standalone service-axis lowering recipe
+  (`implementationPrograms` + `implementationFallback`).
+- `validateProjectionRecipe(value)` validates one standalone projection-axis lowering recipe
+  (`representations` + `fallback`).
 
 ### Declarative validators
 
@@ -75,10 +77,12 @@ field defaults, form defaults, and caller-provided values.
   - `typedef` — checks whether the value matches one or more JSON value kinds.
   - `blueprint-cell` — validates one Blueprint Cell document.
   - `blueprint-tier` — validates one Blueprint Tier document.
-  - `blueprint-lowering-recipe` — validates one Blueprint lowering recipe
+  - `blueprint-service-recipe` — validates one service-axis lowering recipe
+    document.
+  - `blueprint-projection-recipe` — validates one projection-axis lowering recipe
     document.
   - `blueprint` — validates one Blueprint document, including its embedded
-    Cells and recipes.
+    Cells and both axes' recipes.
 
 ### System-input helpers
 

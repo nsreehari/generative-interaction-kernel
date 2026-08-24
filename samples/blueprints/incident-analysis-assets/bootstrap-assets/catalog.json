@@ -81,7 +81,14 @@
             "kind": "semantic-report",
             "version": "1.0.0",
             "structureMode": "fixed",
-            "tiers": [
+            "serviceTiers": [
+              {
+                "id": "runtime-document",
+                "kind": "runtime-document"
+              }
+            ],
+            "serviceRecipes": [],
+            "projectionTiers": [
               {
                 "id": "report-semantic",
                 "kind": "incident-report-semantic-model"
@@ -91,7 +98,7 @@
                 "kind": "runtime-document"
               }
             ],
-            "recipes": [
+            "projectionRecipes": [
               {
                 "id": "semantic-report-to-runtime",
                 "from": "report-semantic",

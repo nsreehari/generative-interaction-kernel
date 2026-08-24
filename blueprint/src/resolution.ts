@@ -4,13 +4,10 @@ import {
   resolveBlueprintExecution,
   type ResolvedBlueprint,
 } from "./execution";
-import type { LoweringRecipeDefinition } from "./types";
 
-/** Resolve a self-contained Blueprint into its ordered lowering stages. */
-export function loadBlueprint<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition>(
-  value: unknown,
-): ResolvedBlueprint<TRecipe> {
-  validateBlueprintArtifact<TRecipe>(value);
-  const blueprint: BlueprintArtifact<TRecipe> = value;
+/** Resolve a self-contained Blueprint into its two independent lowering axes. */
+export function loadBlueprint(value: unknown): ResolvedBlueprint {
+  validateBlueprintArtifact(value);
+  const blueprint: BlueprintArtifact = value;
   return resolveBlueprintExecution(blueprint);
 }

@@ -47,8 +47,10 @@ function blueprint(id = "test"): BlueprintArtifact {
     id,
     kind: "test",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime,
   });
 }
@@ -82,8 +84,10 @@ describe("@gik/blueprint", () => {
       id: "cell-preflight",
       kind: "test",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       services: { market: { kind: "test-service", version: "1", operations: { quote: { operation: "quote", contract: "quote/v1" } } } },
       runtime: {
         ...runtime,
@@ -143,8 +147,10 @@ describe("@gik/blueprint", () => {
       id: "blocked-cell-preflight",
       kind: "test",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime,
       cells: {
         summary: {
@@ -175,8 +181,10 @@ describe("@gik/blueprint", () => {
       id: "cell-evaluator",
       kind: "test",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       services: { market: { kind: "test-service", version: "1", operations: { quote: { operation: "quote", contract: "quote/v1" } } } },
       runtime: {
         ...runtime,
@@ -512,8 +520,10 @@ describe("@gik/blueprint", () => {
       id: "child",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: {} },
       cells: {},
       interface: { inputs: { report: { required: true, schema: { type: "string" } } } },
@@ -526,8 +536,10 @@ describe("@gik/blueprint", () => {
       id: "parent",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: {} },
       cells: { host: { id: "host", blueprint: { inline: hostedChild() } } },
     })).toThrow("missing required child input(s): report");
@@ -536,8 +548,10 @@ describe("@gik/blueprint", () => {
       id: "parent",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: { source: { report: "hello" } } },
       cells: {
         host: {
@@ -553,8 +567,10 @@ describe("@gik/blueprint", () => {
       id: "parent",
       kind: "intent-blueprint",
       version: "1",
-      tiers: [{ id: "intent", kind: "interaction-intent" }, { id: "runtime", kind: "runtime-program" }],
-      recipes: [{
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "intent", kind: "interaction-intent" }, { id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [{
         id: "intent-to-runtime",
         from: "intent",
         to: "runtime",
@@ -1005,12 +1021,12 @@ describe("@gik/blueprint", () => {
     expect(() => parseBlueprintReference(reference)).toThrow("Invalid Blueprint reference");
   });
 
-  it("rejects invalid tier and lowering recipe references", () => {
-    const artifact = {
+  it("rejects invalid tier and lowering recipe references on each axis", () => {
+    const projectionArtifact = {
       ...blueprint(),
       payload: {
         ...blueprint().payload,
-        recipes: [{
+        projectionRecipes: [{
           id: "missing",
           from: "domain",
           to: "runtime",
@@ -1020,7 +1036,33 @@ describe("@gik/blueprint", () => {
         }],
       },
     };
-    expect(() => validateBlueprintArtifact(artifact)).toThrow("unknown tier 'domain'");
+    expect(() => validateBlueprintArtifact(projectionArtifact)).toThrow("unknown projection tier 'domain'");
+
+    const serviceArtifact = {
+      ...blueprint(),
+      payload: {
+        ...blueprint().payload,
+        serviceRecipes: [{
+          id: "missing",
+          from: "domain",
+          to: "runtime",
+          implementationPrograms: [{ id: "default" }],
+          implementationFallback: "default",
+          metadata: { executor: "test" },
+        }],
+      },
+    };
+    expect(() => validateBlueprintArtifact(serviceArtifact)).toThrow("unknown service tier 'domain'");
+  });
+
+  it("rejects the removed pre-split `tiers`/`recipes` payload shape outright", () => {
+    for (const legacy of ["tiers", "recipes"] as const) {
+      const artifact = {
+        ...blueprint(),
+        payload: { ...blueprint().payload, [legacy]: [] },
+      };
+      expect(() => validateBlueprintArtifact(artifact)).toThrow();
+    }
   });
 
   it("rejects a malformed CellSource.acceptanceCriteria rule at authoring-validation time", () => {
@@ -1330,8 +1372,10 @@ describe("@gik/blueprint", () => {
       id: "counter",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: {},
       cells: {
         root: {
@@ -1375,8 +1419,10 @@ describe("@gik/blueprint", () => {
       id: "state-backed-output",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: {
         state: { portfolio: { holdings: initialHoldings } },
       },
@@ -1420,8 +1466,10 @@ describe("@gik/blueprint", () => {
       id: "cross-cutting-state-backed-output",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: { list: { refreshStamp: "initial" }, studio: { selectedId: null } } },
       cells: {
         list: {
@@ -1500,8 +1548,10 @@ describe("@gik/blueprint", () => {
       id: "headless-counter",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {
         counter: {
@@ -1539,9 +1589,8 @@ describe("@gik/blueprint", () => {
       artifact,
       errors: [],
       execution: {
-        sourceTier: "runtime",
-        terminalTier: "runtime",
-        stages: [],
+        service: { sourceTier: "runtime", terminalTier: "runtime", stages: [] },
+        projection: { sourceTier: "runtime", terminalTier: "runtime", stages: [] },
         status: "runtime-ready",
       },
     });
@@ -1590,8 +1639,10 @@ describe("@gik/blueprint", () => {
       id: "materialized-counter",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {
         root: {
@@ -1627,8 +1678,10 @@ describe("@gik/blueprint", () => {
       id: "capability-descriptor-check",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: {} },
       cells: {
         root: { id: "root", potentialViews: { primary: { capability: "custom:widget", region: "root" } } },
@@ -1663,8 +1716,10 @@ describe("@gik/blueprint", () => {
       id: "namespace-seed-check",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {
         root: { id: "root", potentialViews: { primary: { capability: "screen", region: "root" } } },
@@ -1687,8 +1742,10 @@ describe("@gik/blueprint", () => {
       id: "presented-event-contract",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {
         root: {
@@ -1743,8 +1800,10 @@ describe("@gik/blueprint", () => {
         },
         initialValue: { mode: "safe", label: "ok" },
       },
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: {} },
       cells: {
         root: { id: "root", potentialViews: { primary: { capability: "screen", region: "root" } } },
@@ -1780,8 +1839,10 @@ describe("@gik/blueprint", () => {
       id: "context-write",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: { local: {} } },
       cells: {
         root: {
@@ -1816,8 +1877,10 @@ describe("@gik/blueprint", () => {
       kind: "runtime-blueprint",
       version: "1",
       structureMode: "reconfigurable",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: {} },
       cells: { root: { id: "root", potentialViews: { primary: { capability: "screen", region: "root" } } } },
       presentation: singleSlotPresentation("root"),
@@ -1841,8 +1904,10 @@ describe("@gik/blueprint", () => {
       id: "durable-counter",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {
         root: {

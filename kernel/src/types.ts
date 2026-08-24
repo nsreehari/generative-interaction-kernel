@@ -535,7 +535,7 @@ export type GuardrailRule =
       node?: string;
     }
   | {
-      kind: "blueprint" | "blueprint-cell" | "blueprint-tier" | "blueprint-lowering-recipe";
+      kind: "blueprint" | "blueprint-cell" | "blueprint-tier" | "blueprint-service-recipe" | "blueprint-projection-recipe";
       message?: string;
       level?: GuardrailLevel;
       code?: string;

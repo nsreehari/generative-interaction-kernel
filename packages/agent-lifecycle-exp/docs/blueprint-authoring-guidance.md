@@ -6,7 +6,7 @@ changes across tiers. A Cell also carries `potentialViews`: zero, one, or many n
 manifestations, each dormant unless its own declared region is reachable from the active
 presentation. `presentation` is a closed set of named slots with no knowledge of Cells. Attachment —
 which slot a potential view occupies, or which slot a slot nests inside — is always self-declared on
-the thing attaching, never a separate table. Tiers and recipes only ever select, add, or replace: which
+the thing attaching, never a separate table. Both lowering axes only ever select, add, or replace: which
 views exist, which slot attachment each occupies, which internal implementation backs a Cell — never
 which Cells or slots exist.
 
@@ -63,8 +63,9 @@ top-level fields — nothing else is invented:
 - `interface` — this Blueprint's own port surface, for when it is hosted inside another Blueprint (see
   **Interface** below);
 - `contextFormSpec` — the schema for the immutable `externalContext` a materialization expects;
-- `tiers` / `recipes` — the authored representations and the lowering between them (see **Tiers +
-  recipes** below);
+- `serviceTiers` / `serviceRecipes` — the service (implementation) lowering axis;
+- `projectionTiers` / `projectionRecipes` — the projection (presentation) lowering axis (both axes
+  are described under **Two independent lowering axes** below);
 - `cells` — the data-flow graph (see **Cells** above);
 - `presentation` — the named-slot skeleton, plus an optional closed capability vocabulary (see
   **Presentation** below);
@@ -77,7 +78,8 @@ A minimal, complete Blueprint — one source-backed Cell feeding a second Cell t
 attached to the presentation skeleton — looks like this. Note the `compute` step: it is what turns the
 settled source into both committed state and the `computed.*` value the output reads; a source alone
 never populates `computed` on its own. Note also `potentialViews`: even a Cell with only one
-manifestation still names it (`primary` is the conventional name for a Cell's sole view) — tiers/recipes
+manifestation still names it (`primary` is the conventional name for a Cell's sole view) — projection
+recipes
 address a view by that name, and the name is what lets an AI coding agent add a second manifestation
 later (e.g. `compact`) without touching the first.
 
@@ -90,8 +92,10 @@ later (e.g. `compact`) without touching the first.
     "kind": "app",
     "version": "1",
     "structureMode": "fixed",
-    "tiers": [{ "id": "base", "kind": "app-domain" }],
-    "recipes": [],
+    "serviceTiers": [{ "id": "base", "kind": "app-domain" }],
+    "serviceRecipes": [],
+    "projectionTiers": [{ "id": "base", "kind": "app-domain" }],
+    "projectionRecipes": [],
     "services": {
       "incident-data": {
         "kind": "storage-kv",
@@ -145,7 +149,7 @@ later (e.g. `compact`) without touching the first.
 ### Cells = the unit of data flow
 
 A Cell is the only participant in the data-flow graph — the sole thing with ports, and the only thing
-tiers/recipes are forbidden from restructuring. Name it for a stable semantic responsibility, not a
+both lowering axes are forbidden from restructuring. Name it for a stable semantic responsibility, not a
 layout (`summary`, `evidence`, `risks`, `actions` — never `left-column`, `header-bar`). A Cell owns:
 
 - **ports** — `inputs` (what it consumes) and `outputs` (what it publishes);
@@ -208,17 +212,35 @@ re-evaluated at runtime:
   until its own `region` is reachable from the presentation active for that materialization (see
   **Attachment** below).
 
-These two seams are independently selected — not two facets of one choice. A Blueprint's `recipes` lower
-one tier to the next using the *same mechanism applied twice*: a recipe's `representations[]` selects,
-per `when` predicate over immutable `externalContext`, which alternative of a Cell's `potentialViews`
-apply; its `implementationPrograms[]` independently selects, by its own `when` predicates, which
-alternative `sources`/`compute`/`behavior` apply. Both lists are declared once per recipe and compose
-multiplicatively — any representation combined with any implementation program is a valid, real
-materialization — so N representations and M implementation programs give N×M actual outcomes from only
-N+M authored entries. This is the mechanism that lets, say, a headless host, a browser host, and an
-Azure Function host all run the *same* Blueprint (representations vary; sources/behavior may too), while
-a "which stock-quote provider" choice and a "mobile vs. desktop layout" choice stay entirely independent
-of each other. The only thing invariant across every tier is a Cell's ports (`inputs`/`outputs`) and its
+These two seams are independently selected — not two facets of one choice, and not even two lists
+inside one recipe. A Blueprint declares **two fully independent lowering axes**:
+
+- the **service axis** (`serviceTiers` + `serviceRecipes`) — a service recipe owns
+  `implementationPrograms[]` + `implementationFallback` and selects, per `when` predicate over
+  immutable `externalContext`, which alternative implementation applies. It is named for the *choice*
+  ("which concrete backing service answers this Cell's already-authored contracts"), but what it
+  selects is the broader contract-compatible **Cell implementation seam** —
+  `sources`/`compute`/`behavior` *and* top-level `services` — not only transport declarations;
+- the **projection axis** (`projectionTiers` + `projectionRecipes`) — a projection recipe owns
+  `representations[]` + `fallback` and selects which of a Cell's `potentialViews`, and which
+  presentation skeleton, apply.
+
+Both axes resolve through the same resolver, so both are held to identical chain invariants: unique
+ids, known endpoints, no branching or merging, one source and one terminal tier when the axis declares
+recipes, exactly one terminal tier when it does not. The chains need not be the same length, and an
+axis with nothing to select is simply one terminal tier and an empty recipe array. The axes still
+compose multiplicatively — N representations and M implementation programs give N×M real outcomes from
+N+M authored entries — which is what lets a headless host, a browser host, and an Azure Function host
+run the *same* Blueprint while a "which stock-quote provider" choice and a "mobile vs. desktop layout"
+choice stay entirely independent.
+
+**Application order is deterministic and one-directional.** Materialization applies the complete
+service chain first, then the complete projection chain. A representation therefore observes the
+already-selected terminal implementation (a decorator `select` may match Cells whose lowered `sources`
+name a particular service), while service selection can never observe projected presentation — if it
+appears to need presentation input, that is a modelling error.
+
+The only thing invariant across every tier on either axis is a Cell's ports (`inputs`/`outputs`) and its
 declared event names/payload shapes — but the two seams are not symmetric in what they may introduce:
 
 - **projection** — a representation may introduce a Cell's very first named view, add another one
@@ -344,19 +366,25 @@ confirm every declared `region` resolves to a slot, or Cell, that still exists.
 
 ### Tiers + recipes select — and, for views only, may add — they never restructure
 
-A tier is an authored representation; a recipe lowers one tier to the next by independently choosing,
-through its `representations[]` and `implementationPrograms[]` (see **two seams** above), between
-authored alternatives for a Cell's two seams. A recipe may:
+A tier is an authored stage on one axis; a recipe lowers one tier to the next on that axis only (see
+**two seams** above). A **projection** recipe may:
 
 - add, select, or replace one or more of a Cell's named **`potentialViews`** — capability, props,
   bindings, visibility, decorations, and which slot(s) each named view's `region` attaches to; a view
-  named here does not need to already exist on the Cell;
+  named here does not need to already exist on the Cell.
+
+A **service** recipe may:
+
 - select or replace a Cell's **implementation** — the `sources`/`compute`/`behavior` powering an existing
-  Cell id, while its ports and event contracts stay exactly as declared. Unlike views, an implementation
+  Cell id, plus contract-compatible top-level `services` declarations, while its ports and event contracts
+  stay exactly as declared. Unlike views, an implementation
   program cannot introduce a source (or a service operation) the Cell (or `services`) did not already
   declare at authoring time — see **two seams** above for the exact contract the compiler enforces.
 
-A recipe never adds a slot, never adds a Cell, and never changes which Cells exist. Generation earns
+Neither recipe kind may do the other's job: the schema rejects `representations`/`fallback` on a service
+recipe and `implementationPrograms`/`implementationFallback` on a projection recipe. A recipe never adds
+a slot, never adds a Cell, and never changes which Cells exist. The terminal Blueprint keeps exactly one
+terminal tier per axis and empties both recipe arrays. Generation earns
 no special trust: the terminal Blueprint must pass the same validation as any hand-authored one.
 
 ### Services = the declared contract a Cell's sources and invokes call through
@@ -377,7 +405,8 @@ service once; every Cell that needs it references it by id.
 A `source`'s `acceptanceCriteria` reuses the same `GuardrailRule[]` vocabulary as the operation's own
 `response.validators`, plus `blueprint-capability-acceptance`: it checks every capability a response
 declares or uses (`presentation.allowedCapabilities` plus every view/decorator `capability`, across
-both a materialized `cells[*].potentialViews` shape and an un-lowered `recipes[*].representations[*]`
+both a materialized `cells[*].potentialViews` shape and an un-lowered
+`projectionRecipes[*].representations[*]`
 shape) against an accepted-capabilities list read from the request (`acceptedField`, default
 `"acceptedCapabilities"`).
 
@@ -479,7 +508,8 @@ immediate values.
 3. **DISCOVER ONCE** — if needed, call `catalog-capabilities` with the accepted capability IDs.
 4. **DESCRIBE ONCE** — call `multiple-capabilities` with all shortlisted IDs; never serialize details.
 5. **COMPOSE** — slots and root, Cells, and each Cell's named `potentialViews` and `region` attachment.
-6. **LOWER** — tiers, recipes, view/region selection, and permitted implementations.
+6. **LOWER** — service and projection tiers/recipes, view/region selection, and permitted
+   implementations.
 7. **PREFLIGHT** — schemas, references, capability subset, cycles, and budgets.
 8. **RETURN** — one complete Blueprint artifact; no commentary.
 

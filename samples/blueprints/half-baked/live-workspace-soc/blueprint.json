@@ -10,7 +10,6 @@
       "pitchBeat": "T3/Beat 3",
       "thesis": "Many actors. One state. Multiple views. Governed actions. Complete provenance."
     },
-    "recipes": [],
     "services": {
       "correlation-agent": {
         "kind": "foundry-agent",
@@ -617,12 +616,20 @@
         }
       }
     },
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "runtime-doc",
         "kind": "runtime-doc"
       }
     ],
+    "serviceRecipes": [],
+    "projectionTiers": [
+      {
+        "id": "runtime-doc",
+        "kind": "runtime-doc"
+      }
+    ],
+    "projectionRecipes": [],
     "cells": {
       "soc-workspace-shell": {
         "id": "soc-workspace-shell",

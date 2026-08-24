@@ -18,8 +18,10 @@ function localBlueprint(id: string, version = "1.0.0") {
     id,
     kind: "runtime-blueprint",
     version,
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: {},
   });
 }

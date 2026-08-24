@@ -6,111 +6,20 @@
     "kind": "intent-blueprint",
     "version": "1",
     "structureMode": "fixed",
-    "tiers": [
-      {
-        "id": "intent",
-        "kind": "interaction-intent"
-      },
+    "serviceTiers": [
       {
         "id": "runtime",
         "kind": "runtime-document"
       }
     ],
-    "recipes": [
+    "serviceRecipes": [],
+    "projectionTiers": [
       {
-        "id": "intent-to-runtime",
-        "from": "intent",
-        "to": "runtime",
-        "patch": [
-          {
-            "op": "replaceCell",
-            "cellId": "query-input",
-            "cell": {
-              "id": "query-input",
-              "kind": "runtime-cell",
-              "view": {
-                "capability": "sample:query-input"
-              },
-              "events": {
-                "submit": {
-                  "payloadSchema": {
-                    "type": "object"
-                  }
-                }
-              },
-              "behavior": {
-                "on": {
-                  "submit": [
-                    {
-                      "do": "assign",
-                      "target": "search.submitted",
-                      "args": {
-                        "value": true
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "op": "replaceCell",
-            "cellId": "results",
-            "cell": {
-              "id": "results",
-              "kind": "runtime-cell",
-              "view": {
-                "capability": "sample:results",
-                "bindings": {
-                  "items": {
-                    "from": "search.results"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "op": "replaceCell",
-            "cellId": "summary",
-            "cell": {
-              "id": "summary",
-              "kind": "runtime-cell",
-              "view": {
-                "capability": "sample:summary",
-                "bindings": {
-                  "count": {
-                    "expression": "$count(search.results)"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "op": "setProjection",
-            "projectionId": "presentation",
-            "projection": {
-              "roots": [
-                "query-input"
-              ],
-              "placements": [
-                {
-                  "cell": "results",
-                  "parent": "query-input",
-                  "slot": "children",
-                  "order": 0
-                },
-                {
-                  "cell": "summary",
-                  "parent": "query-input",
-                  "slot": "children",
-                  "order": 1
-                }
-              ]
-            }
-          }
-        ]
+        "id": "runtime",
+        "kind": "runtime-document"
       }
     ],
+    "projectionRecipes": [],
     "cells": {
       "query-input": {
         "id": "query-input",

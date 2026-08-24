@@ -18,13 +18,20 @@
         }
       }
     },
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document"
       }
     ],
-    "recipes": [],
+    "serviceRecipes": [],
+    "projectionTiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document"
+      }
+    ],
+    "projectionRecipes": [],
     "runtime": {
       "state": {
         "portfolioAssets": {

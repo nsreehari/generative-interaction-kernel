@@ -1,6 +1,7 @@
 # @gik/blueprint
 
-Canonical Blueprint artifacts, Cells, tiers, lowering recipes, and validated lowering into
+Canonical Blueprint artifacts, Cells, two independent lowering axes (`serviceTiers`/`serviceRecipes`
+and `projectionTiers`/`projectionRecipes`), and validated lowering into
 `@gik/kernel` executable programs.
 
 ```bash
@@ -96,8 +97,8 @@ on one of its own `potentialViews`:
 }
 ```
 
-Slot names express caller-owned placement intent. They are available to representation tiers and
-lowering recipes, but are not component insertion points and carry no capability or props of their
+Slot names express caller-owned placement intent. They are available to projection tiers and
+projection recipes, but are not component insertion points and carry no capability or props of their
 own — visual styling for a region is always a rendering host/theme concern, never Blueprint-authored
 data. Materialization flattens the resolved attachments deterministically into ordinary ordered
 children, so Cells and component projections do not need to understand the slot names. Attachment is
@@ -128,7 +129,8 @@ ownership, and effect outcomes return through the journal before changing Bluepr
 - `createBlueprint(definition)` clones a `BlueprintDefinition`, wraps it in the `BlueprintArtifact`
   envelope (`gik: "0.1"`, `type: "blueprint"`), validates it, and returns the validated artifact.
 - `validateBlueprintArtifact(value)` asserts that a value is a `BlueprintArtifact`. Validation covers
-  the envelope, Blueprint identity and runtime declaration, tier and recipe shape, Cell key/id
+  the envelope, Blueprint identity and runtime declaration, per-axis tier and recipe shape and chain
+  invariants, rejection of the removed `tiers`/`recipes` fields, Cell key/id
   agreement, service-operation references, presentation slot references,
   `presentation.allowedCapabilities`, and required `interface.inputs` for inline hosted child
   Blueprints.
@@ -136,8 +138,9 @@ ownership, and effect outcomes return through the journal before changing Bluepr
 ### Materialization and transition
 
 - `materializeBlueprint({ blueprint, externalContext?, resolveBlueprint?, capabilityCatalog? })`
-  assembles child Blueprint references, validates external context, applies authored lowering recipes
-  when present, and returns a portable `MaterializedBlueprint`.
+  assembles child Blueprint references, validates external context, applies the complete authored
+  service chain and then the complete authored projection chain when present, and returns a portable
+  `MaterializedBlueprint`.
 - `MaterializedBlueprint` carries the terminal `BlueprintArtifact`, cloned immutable
   `externalContext`, derived vocabulary, compiled program, initial state, and `eventNodeOwners`.
 - `capabilityCatalog` is optional. It lets a host supply real `CapabilityDescriptor` entries keyed by
