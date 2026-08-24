@@ -16,6 +16,7 @@ import {
   controlTool,
   createBlueprintUseLifecycle,
   customizeBlueprint,
+  describeBlueprint,
   createBlueprintExperienceCatalog,
   defineBlueprintLifecycleProfile,
   executeAgentFunctionCall,
@@ -256,16 +257,75 @@ test("useBlueprint derives authored description and delegates live lifecycle ope
     set_in_progress_proposal: () => { calls.push("set_in_progress_proposal"); return { id: "proposal-1" }; },
   };
   const ops = createBlueprintUseLifecycle({ blueprint, schemas, host });
-  const description = await ops.describe!({}) as { identity: { id: string }; lifecycle: { constraints: string[] } };
+  const description = await ops.describe!({}) as {
+    identity: { id: string };
+    lifecycle: { constraints: string[] };
+    serviceRecipes: unknown[];
+    projectionRecipes: unknown[];
+    structure: { mode: string; policy: unknown };
+  };
   assert.equal(description.identity.id, "incident-report-explorer-1a");
   assert.deepEqual(description.lifecycle.constraints, ["Preserve source facts."]);
+  assert.deepEqual(description.serviceRecipes, []);
+  assert.deepEqual(description.projectionRecipes, []);
+  assert.equal(description.structure.mode, "fixed");
 
   const tools = useBlueprint({ blueprint, schemas, host });
   await tools.find(({ name }) => name === "use_blueprint_set_in_progress_proposal")!.handler({ event: "press" });
   assert.deepEqual(calls, ["set_in_progress_proposal"]);
 });
 
-test("customizeBlueprint and authorBlueprint bind manifests from their meta-Blueprints", () => {
+test("describeBlueprint surfaces recipe summaries and structurePolicy without leaking recipe internals", () => {
+  const blueprint = {
+    payload: {
+      id: "tiered-blueprint-1",
+      kind: "tiered-semantic-blueprint",
+      version: "1.0.0",
+      structureMode: "fixed",
+      structurePolicy: { allowedBlueprintOperations: ["setPresentation"] },
+      serviceTiers: [{ id: "basic", kind: "basic" }, { id: "premium", kind: "premium" }],
+      serviceRecipes: [{
+        id: "basic-to-premium",
+        from: "basic",
+        to: "premium",
+        implementationPrograms: [{ id: "upgrade", cells: {} }],
+        fallback: "basic",
+      }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-document", capabilities: [] }],
+      projectionRecipes: [{
+        id: "runtime-to-compact",
+        from: "runtime",
+        to: "compact",
+        representations: [{ id: "compact-card", capability: "gik:card" }],
+      }],
+      cells: {},
+      services: {},
+      runtime: {},
+    },
+  };
+  const description = describeBlueprint(blueprint as never) as {
+    serviceRecipes: readonly { id: string; from: string; to: string }[];
+    projectionRecipes: readonly { id: string; from: string; to: string }[];
+    structure: { mode: string; policy: { allowedBlueprintOperations: readonly string[] } };
+  };
+  assert.deepEqual(description.serviceRecipes, [
+    { id: "basic-to-premium", from: "basic", to: "premium" },
+  ]);
+  assert.deepEqual(description.projectionRecipes, [
+    { id: "runtime-to-compact", from: "runtime", to: "compact" },
+  ]);
+  assert.deepEqual(description.structure.policy.allowedBlueprintOperations, ["setPresentation"]);
+  assert.equal(
+    (description.serviceRecipes[0] as unknown as Record<string, unknown>).implementationPrograms,
+    undefined,
+  );
+  assert.equal(
+    (description.projectionRecipes[0] as unknown as Record<string, unknown>).representations,
+    undefined,
+  );
+});
+
+test("customizeBlueprint and authorBlueprint bind manifests and shared structural descriptions", async () => {
   const manifest = (id: string) => ({
     id,
     version: "1.0.0",
@@ -279,6 +339,10 @@ test("customizeBlueprint and authorBlueprint bind manifests from their meta-Blue
       id: "blueprint-meta",
       kind: "blueprint-meta-graph",
       version: "1.0.0",
+      structureMode: "reconfigurable",
+      structurePolicy: { allowedBlueprintOperations: ["setPresentation"] },
+      serviceRecipes: [],
+      projectionRecipes: [{ id: "source-to-runtime", from: "source", to: "runtime" }],
       agentLifecycle: { profiles: {
         customize: manifest("customize-blueprint"),
         author: manifest("author-blueprint"),
@@ -297,8 +361,23 @@ test("customizeBlueprint and authorBlueprint bind manifests from their meta-Blue
     set_in_progress_proposal: () => ({ id: "proposal" }),
   };
 
-  assert.equal(customizeBlueprint({ blueprint: metaBlueprint, schemas, host })[0].name, "customize_blueprint_manifest");
-  assert.equal(authorBlueprint({ blueprint: metaBlueprint, schemas, host })[0].name, "author_blueprint_manifest");
+  for (const [profile, tools] of [
+    ["customize", customizeBlueprint({ blueprint: metaBlueprint, schemas, host })],
+    ["author", authorBlueprint({ blueprint: metaBlueprint, schemas, host })],
+  ] as const) {
+    assert.equal(tools[0].name, `${profile}_blueprint_manifest`);
+    const description = await tools.find(({ name }) => name === `${profile}_blueprint_describe`)!.handler({}) as {
+      serviceRecipes: unknown[];
+      projectionRecipes: { id: string; from: string; to: string }[];
+      structure: { mode: string; policy: { allowedBlueprintOperations: string[] } };
+    };
+    assert.deepEqual(description.serviceRecipes, []);
+    assert.deepEqual(description.projectionRecipes, [
+      { id: "source-to-runtime", from: "source", to: "runtime" },
+    ]);
+    assert.equal(description.structure.mode, "reconfigurable");
+    assert.deepEqual(description.structure.policy.allowedBlueprintOperations, ["setPresentation"]);
+  }
 });
 
 test("generated lifecycle tools project to strict function tools and execute through one catalog", async () => {
