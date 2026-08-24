@@ -183,7 +183,7 @@
             }
           }
         ],
-        "implementationFallback": "mock-market"
+        "fallback": "mock-market"
       },
       {
         "id": "portfolio-market-to-presentation",
@@ -1550,7 +1550,7 @@
             }
           }
         ],
-        "implementationFallback": "simple-foundry"
+        "fallback": "simple-foundry"
       }
     ],
     "projectionTiers": [

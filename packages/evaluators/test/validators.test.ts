@@ -395,7 +395,7 @@ test("validateServiceRecipe validates standalone recipe-local semantics on its o
       { id: "mock", when: "externalContext.market = 'mock'" },
       { id: "mock" },
     ],
-    implementationFallback: "unknown",
+    fallback: "unknown",
   });
 
   assert.equal(report.ok, false);
@@ -411,7 +411,6 @@ test("each axis' schema rejects the other axis' fields", () => {
     representations: [{ id: "desktop" }],
     fallback: "desktop",
     implementationPrograms: [{ id: "mock" }],
-    implementationFallback: "mock",
   });
   assert.equal(projectionWithImplementation.ok, false);
 
@@ -420,9 +419,8 @@ test("each axis' schema rejects the other axis' fields", () => {
     from: "logic",
     to: "runtime",
     implementationPrograms: [{ id: "mock" }],
-    implementationFallback: "mock",
+    fallback: "mock",
     representations: [{ id: "desktop" }],
-    fallback: "desktop",
   });
   assert.equal(serviceWithRepresentations.ok, false);
 });

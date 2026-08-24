@@ -57,7 +57,7 @@ field defaults, form defaults, and caller-provided values.
   errors and warnings.
 - `validateTier(value)` validates one standalone Tier definition.
 - `validateServiceRecipe(value)` validates one standalone service-axis lowering recipe
-  (`implementationPrograms` + `implementationFallback`).
+  (`implementationPrograms` + `fallback`).
 - `validateProjectionRecipe(value)` validates one standalone projection-axis lowering recipe
   (`representations` + `fallback`).
 

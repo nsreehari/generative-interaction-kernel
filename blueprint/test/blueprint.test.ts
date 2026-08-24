@@ -1075,7 +1075,7 @@ describe("@gik/blueprint", () => {
           from: "domain",
           to: "runtime",
           implementationPrograms: [{ id: "default" }],
-          implementationFallback: "default",
+          fallback: "default",
           metadata: { executor: "test" },
         }],
       },

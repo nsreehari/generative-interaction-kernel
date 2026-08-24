@@ -219,7 +219,7 @@ what was already authored.
 
 **Split recipe contracts.** The combined recipe contract is removed.
 `ProjectionLoweringRecipeDefinition` owns `representations` + `fallback`;
-`ServiceLoweringRecipeDefinition` owns `implementationPrograms` + `implementationFallback`. Both
+`ServiceLoweringRecipeDefinition` owns `implementationPrograms` + `fallback`. Both
 fields are required on their own dialect, and the schema rejects each dialect carrying the other's
 fields, so a recipe can never quietly do both jobs.
 

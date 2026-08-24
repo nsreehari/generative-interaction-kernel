@@ -217,7 +217,7 @@ These two seams are independently selected — not two facets of one choice, and
 inside one recipe. A Blueprint declares **two fully independent lowering axes**:
 
 - the **service axis** (`serviceTiers` + `serviceRecipes`) — a service recipe owns
-  `implementationPrograms[]` + `implementationFallback` and selects, per `when` predicate over
+  `implementationPrograms[]` + `fallback` and selects, per `when` predicate over
   immutable `externalContext`, which alternative implementation applies. It is named for the *choice*
   ("which concrete backing service answers this Cell's already-authored contracts"), but what it
   selects is the broader contract-compatible **Cell implementation seam** —
@@ -231,6 +231,8 @@ inside one recipe. A Blueprint declares **two fully independent lowering axes**:
 The host's GIK component catalog is flat: `semantic:*`, `primitive:*`, `fluent:*`, and opt-in domain
 components are all equally terminal when the host supplies them. Projection lowering never implies
 `semantic:* -> primitive:* -> fluent:*`; namespace prefixes carry no tier ordering.
+Each Blueprint-local projection capability name belongs to exactly one projection tier, so Cells and
+recipes use plain, unqualified names without ambiguous tier ownership.
 
 Both axes resolve through the same resolver, so both are held to identical chain invariants: unique
 ids, known endpoints, no branching or merging, one source and one terminal tier when the axis declares
@@ -400,7 +402,7 @@ A **service** recipe may:
   declare at authoring time — see **two seams** above for the exact contract the compiler enforces.
 
 Neither recipe kind may do the other's job: the schema rejects `representations`/`fallback` on a service
-recipe and `implementationPrograms`/`implementationFallback` on a projection recipe. A recipe never adds
+recipe and `implementationPrograms`/`fallback` on a projection recipe. A recipe never adds
 a slot, never adds a Cell, and never changes which Cells exist. The terminal Blueprint keeps exactly one
 terminal tier per axis and empties both recipe arrays. Generation earns
 no special trust: the terminal Blueprint must pass the same validation as any hand-authored one.

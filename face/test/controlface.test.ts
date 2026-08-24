@@ -178,7 +178,7 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
         from: "runtime-document",
         to: "runtime-document",
         implementationPrograms: [{ id: "default" }],
-        implementationFallback: "default",
+        fallback: "default",
       }],
     },
   }), undefined);
