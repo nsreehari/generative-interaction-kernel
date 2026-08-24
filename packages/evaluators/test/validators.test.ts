@@ -6,8 +6,8 @@ import {
   runDeclarativeValidators,
   validateDeclarativeFormSpec,
   validateDeclarativeFormValues,
-  validateLoweringRecipe,
-  validateRecipe,
+  validateProjectionRecipe,
+  validateServiceRecipe,
   validateTier,
 } from "../src";
 
@@ -256,8 +256,10 @@ test("runDeclarativeValidators validates every Cell in a Blueprint", () => {
       id: "invalid-cell",
       kind: "test",
       version: "1",
-      tiers: [{ id: "runtime", kind: "runtime-program" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
       runtime: {},
       cells: {
         summary: {
@@ -279,7 +281,7 @@ test("blueprint-capability-acceptance rejects capabilities outside the accepted 
     type: "blueprint",
     payload: {
       id: "generated-semantic-report",
-      recipes: [{
+      projectionRecipes: [{
         id: "semantic-report-to-runtime",
         representations: [{
           id: "report",
@@ -324,8 +326,8 @@ test("validateTier validates a standalone strict tier definition", () => {
   assert.ok(report.errors.some(({ detail }) => detail.includes("additional properties")));
 });
 
-test("validateLoweringRecipe validates standalone recipe-local semantics", () => {
-  const report = validateLoweringRecipe({
+test("validateProjectionRecipe validates standalone recipe-local semantics", () => {
+  const report = validateProjectionRecipe({
     id: "semantic-to-runtime",
     from: "semantic",
     to: "runtime",
@@ -341,8 +343,49 @@ test("validateLoweringRecipe validates standalone recipe-local semantics", () =>
   assert.ok(report.errors.some(({ detail }) => detail.includes("extends unknown representation 'missing'")));
 });
 
-test("validateLoweringRecipe validates representation decorator select expressions", () => {
-  const valid = validateLoweringRecipe({
+test("validateServiceRecipe validates standalone recipe-local semantics on its own axis", () => {
+  const report = validateServiceRecipe({
+    id: "logic-to-runtime",
+    from: "logic",
+    to: "runtime",
+    implementationPrograms: [
+      { id: "mock", when: "externalContext.market = 'mock'" },
+      { id: "mock" },
+    ],
+    implementationFallback: "unknown",
+  });
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some(({ detail }) => detail.includes("duplicate implementation program 'mock'")));
+  assert.ok(report.errors.some(({ detail }) => detail.includes("implementation program fallback 'unknown'")));
+});
+
+test("each axis' schema rejects the other axis' fields", () => {
+  const projectionWithImplementation = validateProjectionRecipe({
+    id: "semantic-to-runtime",
+    from: "semantic",
+    to: "runtime",
+    representations: [{ id: "desktop" }],
+    fallback: "desktop",
+    implementationPrograms: [{ id: "mock" }],
+    implementationFallback: "mock",
+  });
+  assert.equal(projectionWithImplementation.ok, false);
+
+  const serviceWithRepresentations = validateServiceRecipe({
+    id: "logic-to-runtime",
+    from: "logic",
+    to: "runtime",
+    implementationPrograms: [{ id: "mock" }],
+    implementationFallback: "mock",
+    representations: [{ id: "desktop" }],
+    fallback: "desktop",
+  });
+  assert.equal(serviceWithRepresentations.ok, false);
+});
+
+test("validateProjectionRecipe validates representation decorator select expressions", () => {
+  const valid = validateProjectionRecipe({
     id: "semantic-to-runtime",
     from: "semantic",
     to: "runtime",
@@ -357,7 +400,7 @@ test("validateLoweringRecipe validates representation decorator select expressio
   });
   assert.equal(valid.ok, true);
 
-  const invalid = validateLoweringRecipe({
+  const invalid = validateProjectionRecipe({
     id: "semantic-to-runtime",
     from: "semantic",
     to: "runtime",
@@ -405,7 +448,7 @@ test("Blueprint Cell validation rejects invalid decoration expressions and neste
 });
 
 test("standalone recipe validation does not own Blueprint tier references", () => {
-  const report = validateRecipe({
+  const report = validateProjectionRecipe({
     id: "semantic-to-runtime",
     from: "not-in-a-blueprint",
     to: "also-not-in-a-blueprint",
@@ -416,8 +459,8 @@ test("standalone recipe validation does not own Blueprint tier references", () =
   assert.equal(report.ok, true);
 });
 
-test("validateLoweringRecipe rejects unknown recipe fields", () => {
-  const unknown = validateLoweringRecipe({
+test("validateProjectionRecipe rejects unknown recipe fields", () => {
+  const unknown = validateProjectionRecipe({
     id: "semantic-to-runtime",
     from: "semantic",
     to: "runtime",
@@ -428,7 +471,7 @@ test("validateLoweringRecipe rejects unknown recipe fields", () => {
   assert.equal(unknown.ok, false);
   assert.ok(unknown.errors.some(({ detail }) => detail.includes("additional properties")));
 
-  const legacyPatch = validateLoweringRecipe({
+  const legacyPatch = validateProjectionRecipe({
     id: "semantic-to-runtime",
     from: "semantic",
     to: "runtime",
@@ -445,8 +488,10 @@ test("Blueprint validation composes recipe-local semantic validation", () => {
       id: "invalid-recipe",
       kind: "test",
       version: "1",
-      tiers: [{ id: "semantic", kind: "semantic" }, { id: "runtime", kind: "runtime-program" }],
-      recipes: [{
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "semantic", kind: "semantic" }, { id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [{
         id: "semantic-to-runtime",
         from: "semantic",
         to: "runtime",

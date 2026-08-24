@@ -34,103 +34,6 @@
       "saveLabel": "Apply context",
       "discardLabel": "Discard"
     },
-    "recipes": [
-      {
-        "id": "ai-agent-to-runtime",
-        "from": "ai-agent",
-        "to": "runtime-document",
-        "representations": [
-          {
-            "id": "shared-presentation",
-            "views": {}
-          }
-        ],
-        "fallback": "shared-presentation",
-        "implementationPrograms": [
-          {
-            "id": "foundry",
-            "when": "externalContext.ai = 'foundry'"
-          },
-          {
-            "id": "copilot",
-            "when": "externalContext.ai = 'copilot'",
-            "services": {
-              "assistant": {
-                "kind": "copilot-agent",
-                "version": "1",
-                "operations": {
-                  "askAgent": {
-                    "operation": "chat",
-                    "contract": "ai-agent-chat/v1",
-                    "response": {
-                      "validators": [
-                        {
-                          "kind": "ajv-schema",
-                          "message": "AI agent returned an invalid chat response",
-                          "schema": {
-                            "type": "object",
-                            "required": [
-                              "conversationId",
-                              "responseId",
-                              "reply"
-                            ],
-                            "properties": {
-                              "conversationId": {
-                                "type": "string"
-                              },
-                              "responseId": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "reply": {
-                                "type": "string"
-                              }
-                            },
-                            "additionalProperties": true
-                          }
-                        }
-                      ]
-                    },
-                    "onViolation": {
-                      "action": "fail"
-                    }
-                  },
-                  "discoverAgents": {
-                    "operation": "discover",
-                    "contract": "ai-agent-list/v1",
-                    "response": {
-                      "validators": [
-                        {
-                          "kind": "ajv-schema",
-                          "message": "AI provider returned an invalid agent list",
-                          "schema": {
-                            "type": "array",
-                            "items": {
-                              "type": "string",
-                              "minLength": 1
-                            }
-                          }
-                        }
-                      ]
-                    },
-                    "onViolation": {
-                      "action": "fail"
-                    }
-                  }
-                },
-                "config": {
-                  "server": "http://127.0.0.1:7801/mcp",
-                  "model": "gpt-5.4",
-                  "workspaceRef": ".copilot-workspace"
-                },
-                "scope": "per-session"
-              }
-            }
-          }
-        ],
-        "implementationFallback": "foundry"
-      }
-    ],
     "services": {
       "assistant": {
         "kind": "foundry-agent",
@@ -248,7 +151,7 @@
         }
       }
     },
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "ai-agent",
         "kind": "ai-agent"
@@ -257,6 +160,121 @@
         "id": "runtime-document",
         "kind": "runtime-document",
         "description": "Authored terminal document for this hosted Blueprint."
+      }
+    ],
+    "serviceRecipes": [
+      {
+        "id": "ai-agent-to-runtime",
+        "from": "ai-agent",
+        "to": "runtime-document",
+        "implementationPrograms": [
+          {
+            "id": "foundry",
+            "when": "externalContext.ai = 'foundry'"
+          },
+          {
+            "id": "copilot",
+            "when": "externalContext.ai = 'copilot'",
+            "services": {
+              "assistant": {
+                "kind": "copilot-agent",
+                "version": "1",
+                "operations": {
+                  "askAgent": {
+                    "operation": "chat",
+                    "contract": "ai-agent-chat/v1",
+                    "response": {
+                      "validators": [
+                        {
+                          "kind": "ajv-schema",
+                          "message": "AI agent returned an invalid chat response",
+                          "schema": {
+                            "type": "object",
+                            "required": [
+                              "conversationId",
+                              "responseId",
+                              "reply"
+                            ],
+                            "properties": {
+                              "conversationId": {
+                                "type": "string"
+                              },
+                              "responseId": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "reply": {
+                                "type": "string"
+                              }
+                            },
+                            "additionalProperties": true
+                          }
+                        }
+                      ]
+                    },
+                    "onViolation": {
+                      "action": "fail"
+                    }
+                  },
+                  "discoverAgents": {
+                    "operation": "discover",
+                    "contract": "ai-agent-list/v1",
+                    "response": {
+                      "validators": [
+                        {
+                          "kind": "ajv-schema",
+                          "message": "AI provider returned an invalid agent list",
+                          "schema": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "onViolation": {
+                      "action": "fail"
+                    }
+                  }
+                },
+                "config": {
+                  "server": "http://127.0.0.1:7801/mcp",
+                  "model": "gpt-5.4",
+                  "workspaceRef": ".copilot-workspace"
+                },
+                "scope": "per-session"
+              }
+            }
+          }
+        ],
+        "implementationFallback": "foundry"
+      }
+    ],
+    "projectionTiers": [
+      {
+        "id": "ai-agent",
+        "kind": "ai-agent"
+      },
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Authored terminal document for this hosted Blueprint."
+      }
+    ],
+    "projectionRecipes": [
+      {
+        "id": "ai-agent-to-runtime",
+        "from": "ai-agent",
+        "to": "runtime-document",
+        "representations": [
+          {
+            "id": "shared-presentation",
+            "views": {}
+          }
+        ],
+        "fallback": "shared-presentation"
       }
     ],
     "cells": {

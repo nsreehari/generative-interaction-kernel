@@ -9,7 +9,7 @@ import {
   materializeBlueprint,
   parseBlueprintJson,
   runFixedLoweringMetaGraph,
-  type RepresentationLoweringRecipeDefinition,
+  type ProjectionLoweringRecipeDefinition,
 } from "../src/index";
 
 const sampleUrl = new URL("./fixtures/representation-lowering.blueprint.json", import.meta.url);
@@ -24,19 +24,25 @@ test("the package owns one fixed three-Cell lowering meta-graph", () => {
     "emit-blueprint",
   ]);
 });
-
-test("the fixed meta-graph lowers the two-tier representation recipe to an executable terminal Blueprint", () => {
-  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
+test("the fixed meta-graph lowers both two-tier axes to an executable terminal Blueprint", () => {
+  const authored = parseBlueprintJson(readFileSync(sampleUrl, "utf8"));
   const authoredSnapshot = structuredClone(authored);
   const terminal = lowerWithFixedMetaGraph(authored);
   const materialized = materializeBlueprint({ blueprint: authored });
 
-  assert.deepEqual(terminal.payload.tiers, [{ id: "runtime", kind: "runtime-document" }]);
-  assert.deepEqual(terminal.payload.recipes, []);
+  assert.deepEqual(terminal.payload.serviceTiers, [{ id: "runtime", kind: "runtime-document" }]);
+  assert.deepEqual(terminal.payload.serviceRecipes, []);
+  assert.deepEqual(terminal.payload.projectionTiers, [{ id: "runtime", kind: "runtime-document" }]);
+  assert.deepEqual(terminal.payload.projectionRecipes, []);
   assert.deepEqual(terminal.payload.presentation, {
     slots: ["query-input", { id: "children", region: "query-input" }],
     root: "query-input",
   });
+  // The service axis selected the implementation seam; the projection axis selected the views.
+  assert.deepEqual(
+    terminal.payload.cells?.["query-input"].behavior,
+    { on: { submit: [{ do: "assign", target: "search.submitted", args: { value: true } }] } },
+  );
   assert.equal(Object.keys(terminal.payload.cells ?? {}).length, 3);
   assert.deepEqual(materialized.payload.terminalBlueprint, terminal);
   assert.ok(unwrap(materialized.payload.program).root);
@@ -44,7 +50,7 @@ test("the fixed meta-graph lowers the two-tier representation recipe to an execu
 });
 
 test("lowering executes all fixed compiler Cells through Kernel token flow", () => {
-  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
+  const authored = parseBlueprintJson(readFileSync(sampleUrl, "utf8"));
 
   const result = runFixedLoweringMetaGraph(authored);
 
@@ -59,17 +65,17 @@ test("lowering executes all fixed compiler Cells through Kernel token flow", () 
   assert.deepEqual(result.execution.tokens["compiled:artifact"].value, result.blueprint);
 });
 
-test("the same fixed meta-graph folds an arbitrary ordered tier chain", () => {
-  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
-  const [recipe] = authored.payload.recipes;
-  authored.payload.tiers.splice(1, 0, { id: "presentation", kind: "presentation-model" });
-  authored.payload.recipes = [
+test("the same fixed meta-graph folds an arbitrary ordered tier chain on each axis", () => {
+  const authored = parseBlueprintJson(readFileSync(sampleUrl, "utf8"));
+  const [projectionRecipe] = authored.payload.projectionRecipes;
+  authored.payload.projectionTiers.splice(1, 0, { id: "presentation", kind: "presentation-model" });
+  authored.payload.projectionRecipes = [
     {
       id: "intent-to-presentation",
       from: "intent",
       to: "presentation",
-      representations: recipe.representations,
-      fallback: recipe.fallback,
+      representations: projectionRecipe.representations,
+      fallback: projectionRecipe.fallback,
     },
     {
       id: "presentation-to-runtime",
@@ -79,26 +85,29 @@ test("the same fixed meta-graph folds an arbitrary ordered tier chain", () => {
       // representation carries forward whatever presentation the prior stage already produced.
       representations: [{ id: "pass-through" }],
       fallback: "pass-through",
-      implementationPrograms: recipe.implementationPrograms,
-      implementationFallback: recipe.implementationFallback,
     },
   ];
 
   const materialized = materializeBlueprint({ blueprint: authored });
 
-  assert.deepEqual(materialized.payload.terminalBlueprint.payload.tiers, [
+  // The service axis keeps its own, shorter chain; the axes never have to be the same length.
+  assert.deepEqual(materialized.payload.terminalBlueprint.payload.serviceTiers, [
     { id: "runtime", kind: "runtime-document" },
   ]);
-  assert.deepEqual(materialized.payload.terminalBlueprint.payload.recipes, []);
+  assert.deepEqual(materialized.payload.terminalBlueprint.payload.projectionTiers, [
+    { id: "runtime", kind: "runtime-document" },
+  ]);
+  assert.deepEqual(materialized.payload.terminalBlueprint.payload.serviceRecipes, []);
+  assert.deepEqual(materialized.payload.terminalBlueprint.payload.projectionRecipes, []);
   assert.deepEqual(materialized.payload.terminalBlueprint.payload.presentation, {
     slots: ["query-input", { id: "children", region: "query-input" }],
     root: "query-input",
   });
 });
 
-test("materialization rejects a representation recipe missing its required representations", () => {
-  const authored = parseBlueprintJson<RepresentationLoweringRecipeDefinition>(readFileSync(sampleUrl, "utf8"));
-  delete (authored.payload.recipes[0] as Partial<RepresentationLoweringRecipeDefinition>).representations;
+test("materialization rejects a projection recipe missing its required representations", () => {
+  const authored = parseBlueprintJson(readFileSync(sampleUrl, "utf8"));
+  delete (authored.payload.projectionRecipes[0] as Partial<ProjectionLoweringRecipeDefinition>).representations;
 
   assert.throws(
     () => materializeBlueprint({ blueprint: authored }),
@@ -106,14 +115,26 @@ test("materialization rejects a representation recipe missing its required repre
   );
 });
 
-test("the lowering-recipe schema rejects a headless representation flag", () => {
+test("materialization rejects a service recipe missing its required implementation programs", () => {
+  const authored = parseBlueprintJson(readFileSync(sampleUrl, "utf8"));
+  delete (authored.payload.serviceRecipes[0] as Partial<{ implementationPrograms: unknown }>).implementationPrograms;
+
   assert.throws(
-    () => createBlueprint<RepresentationLoweringRecipeDefinition>({
+    () => materializeBlueprint({ blueprint: authored }),
+    /must have required property 'implementationPrograms'/,
+  );
+});
+
+test("the projection-recipe schema rejects a headless representation flag", () => {
+  assert.throws(
+    () => createBlueprint({
       id: "invalid-representation",
       kind: "test",
       version: "1",
-      tiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-program" }],
-      recipes: [{
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [{
         id: "intent-to-runtime",
         from: "intent",
         to: "runtime",
@@ -133,13 +154,40 @@ test("the lowering-recipe schema rejects a headless representation flag", () => 
   );
 });
 
+test("the service-recipe schema rejects representation-only fields", () => {
+  assert.throws(
+    () => createBlueprint({
+      id: "invalid-service-recipe",
+      kind: "test",
+      version: "1",
+      serviceTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [{
+        id: "intent-to-runtime",
+        from: "intent",
+        to: "runtime",
+        implementationPrograms: [{ id: "default" }],
+        implementationFallback: "default",
+        representations: [{ id: "default" }],
+        fallback: "default",
+      } as never],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionRecipes: [],
+      runtime: {},
+      cells: { worker: { id: "worker" } },
+    }),
+    /must NOT have additional properties/,
+  );
+});
+
 test("representation append merges sparse parent and slot composition", () => {
-  const authored = createBlueprint<RepresentationLoweringRecipeDefinition>({
+  const authored = createBlueprint({
     id: "composition-append",
     kind: "test",
     version: "1",
-    tiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
-    recipes: [{
+    serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    projectionRecipes: [{
       id: "intent-to-runtime",
       from: "intent",
       to: "runtime",
@@ -198,12 +246,14 @@ test("representation append merges sparse parent and slot composition", () => {
 });
 
 test("a representation decorator uses JSONata to add loading UI around source-backed Cells", () => {
-  const authored = createBlueprint<RepresentationLoweringRecipeDefinition>({
+  const authored = createBlueprint({
     id: "source-backed-decoration",
     kind: "test",
     version: "1",
-    tiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
-    recipes: [{
+    serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    projectionRecipes: [{
       id: "intent-to-runtime",
       from: "intent",
       to: "runtime",

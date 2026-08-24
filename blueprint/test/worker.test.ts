@@ -249,8 +249,10 @@ test("ordinary invoke execution is acknowledged without applying returned state"
     id: "headless-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
@@ -306,8 +308,10 @@ test("declarative service invoke settlements re-enter durable Blueprint state", 
     id: "service-counter",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       root: {
@@ -370,8 +374,10 @@ test("void invokes are acknowledged without appending settlement receipts", asyn
     id: "void-effect",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: {} },
     cells: {
       root: {
@@ -422,8 +428,10 @@ test("duplicate settlement receipts do not replay their follow-up events", async
     id: "settlement-replay",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: {} },
     cells: {
       root: {
@@ -493,8 +501,10 @@ test("durable source state promotes only the latest pending request and rejects 
     id: "durable-source-queue",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     services: {
       work: {
         kind: "test-service",

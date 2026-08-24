@@ -9,7 +9,7 @@ import {
   type ProgramNode,
 } from "@gik/kernel";
 import { createBlueprint, validateBlueprintArtifact } from "./blueprint";
-import { resolveBlueprintExecution } from "./execution";
+import { resolveBlueprintExecution, type ResolvedBlueprintStage } from "./execution";
 import type {
   BlueprintArtifact,
   BlueprintImplementationProgram,
@@ -17,7 +17,9 @@ import type {
   BlueprintRepresentationDecorator,
   CellDefinition,
   CellSource,
-  RepresentationLoweringRecipeDefinition,
+  ProjectionLoweringRecipeDefinition,
+  ServiceLoweringRecipeDefinition,
+  TierDefinition,
 } from "./types";
 
 const FIXED_LOWERING_META_GRAPH = createBlueprint({
@@ -25,8 +27,10 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
   kind: "lowering-meta-graph",
   version: "1",
   structureMode: "fixed",
-  tiers: [{ id: "runtime", kind: "runtime-document" }],
-  recipes: [],
+  serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
+  serviceRecipes: [],
+  projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+  projectionRecipes: [],
   runtime: {
     state: { lowering: {} },
   },
@@ -84,7 +88,7 @@ export function runFixedLoweringMetaGraph(
 ): FixedLoweringMetaGraphResult {
   const metaGraph = fixedLoweringMetaGraphBlueprint();
   const resolved = resolveBlueprintExecution(source);
-  if (resolved.stages.length === 0) {
+  if (resolved.service.stages.length === 0 && resolved.projection.stages.length === 0) {
     return {
       blueprint: structuredClone(source),
       execution: {
@@ -158,12 +162,16 @@ interface LoweringChainInput {
 }
 
 interface ResolvedLoweringChain extends LoweringChainInput {
-  stages: ReturnType<typeof resolveBlueprintExecution>["stages"];
+  serviceStages: ResolvedBlueprintStage<ServiceLoweringRecipeDefinition>[];
+  projectionStages: ResolvedBlueprintStage<ProjectionLoweringRecipeDefinition>[];
+  serviceTerminalTier: TierDefinition;
+  projectionTerminalTier: TierDefinition;
 }
 
 interface AppliedLoweringChain {
   artifact: BlueprintArtifact;
-  terminalTier: ReturnType<typeof resolveBlueprintExecution>["stages"][number]["toTier"];
+  serviceTerminalTier: TierDefinition;
+  projectionTerminalTier: TierDefinition;
 }
 
 function executeFixedLoweringOperation(
@@ -174,19 +182,37 @@ function executeFixedLoweringOperation(
     case "resolve-lowering-chain": {
       const source = inputs.source as unknown as LoweringChainInput;
       const resolved = resolveBlueprintExecution(source.artifact);
-      return { outputs: { stage: structuredClone({ ...source, stages: resolved.stages }) as unknown as Json } };
+      return {
+        outputs: {
+          stage: structuredClone({
+            ...source,
+            serviceStages: resolved.service.stages,
+            projectionStages: resolved.projection.stages,
+            serviceTerminalTier: resolved.service.terminalTier,
+            projectionTerminalTier: resolved.projection.terminalTier,
+          }) as unknown as Json,
+        },
+      };
     }
     case "apply-lowering-chain": {
       const chain = inputs.stage as unknown as ResolvedLoweringChain;
       let artifact = structuredClone(chain.artifact);
-      for (const { recipe } of chain.stages) {
-        artifact = applyLoweringRecipe(artifact, recipe, chain.externalContext);
+      // Deterministic application order: the complete service chain first, then the complete
+      // projection chain. Projection therefore always observes the already-selected terminal
+      // implementation, while service selection can never observe projected presentation. Neither
+      // axis' *resolution* depends on the other; only this application order is shared.
+      for (const { recipe } of chain.serviceStages) {
+        artifact = applyServiceRecipe(artifact, recipe, chain.externalContext);
+      }
+      for (const { recipe } of chain.projectionStages) {
+        artifact = applyProjectionRecipe(artifact, recipe, chain.externalContext);
       }
       return {
         outputs: {
           artifact: structuredClone({
             artifact,
-            terminalTier: chain.stages.at(-1)!.toTier,
+            serviceTerminalTier: chain.serviceTerminalTier,
+            projectionTerminalTier: chain.projectionTerminalTier,
           }) as unknown as Json,
         },
       };
@@ -194,8 +220,10 @@ function executeFixedLoweringOperation(
     case "emit-blueprint": {
       const applied = inputs.artifact as unknown as AppliedLoweringChain;
       const terminal = structuredClone(applied.artifact);
-      terminal.payload.tiers = [structuredClone(applied.terminalTier)];
-      terminal.payload.recipes = [];
+      terminal.payload.serviceTiers = [structuredClone(applied.serviceTerminalTier)];
+      terminal.payload.serviceRecipes = [];
+      terminal.payload.projectionTiers = [structuredClone(applied.projectionTerminalTier)];
+      terminal.payload.projectionRecipes = [];
       validateBlueprintArtifact(terminal);
       return { outputs: { compiled: terminal as unknown as Json } };
     }
@@ -204,24 +232,18 @@ function executeFixedLoweringOperation(
   }
 }
 
-function applyLoweringRecipe(
-  artifact: BlueprintArtifact,
-  recipe: ReturnType<typeof resolveBlueprintExecution>["stages"][number]["recipe"],
-  externalContext: Readonly<Record<string, Json>>,
-): BlueprintArtifact {
-  return applyRepresentationRecipe(artifact, recipe as RepresentationLoweringRecipeDefinition, externalContext);
-}
-
-function applyRepresentationRecipe(
+/** Applies one projection-axis stage: it selects named views and the presentation skeleton, and
+ * never reads or writes `sources`, `compute`, `behavior`, or `services`. */
+function applyProjectionRecipe(
   source: BlueprintArtifact,
-  recipe: RepresentationLoweringRecipeDefinition,
+  recipe: ProjectionLoweringRecipeDefinition,
   externalContext: Readonly<Record<string, Json>>,
 ): BlueprintArtifact {
   const representations = new Map(recipe.representations.map((representation) => [representation.id, representation]));
   const selected = recipe.representations.find((representation) => representation.when
     ? evalSyncJsonata(representation.when, { externalContext } as Json) === true
     : false) ?? representations.get(recipe.fallback);
-  if (!selected) throw new Error(`Blueprint lowering recipe '${recipe.id}' has unknown fallback '${recipe.fallback}'`);
+  if (!selected) throw new Error(`Blueprint projection recipe '${recipe.id}' has unknown fallback '${recipe.fallback}'`);
 
   const chain: BlueprintRepresentation[] = [];
   const seen = new Set<string>();
@@ -261,7 +283,6 @@ function applyRepresentationRecipe(
   }
   if (!presentation) throw new Error(`Blueprint representation '${selected.id}' produced no presentation`);
   artifact.payload.presentation = presentation;
-  applyImplementationProgram(artifact, recipe, externalContext);
   return artifact;
 }
 
@@ -340,22 +361,26 @@ function declareDecorationCapability(
   runtime.externals = { ...runtime.externals, projectionViews };
 }
 
-function applyImplementationProgram(
-  artifact: BlueprintArtifact,
-  recipe: RepresentationLoweringRecipeDefinition,
+/** Applies one service-axis stage: it selects the contract-compatible Cell implementation seam —
+ * `sources`, `compute`, `behavior`, plus top-level `services` declarations — and never reads or
+ * writes `potentialViews` or `presentation`. */
+function applyServiceRecipe(
+  source: BlueprintArtifact,
+  recipe: ServiceLoweringRecipeDefinition,
   externalContext: Readonly<Record<string, Json>>,
-): void {
-  if (!recipe.implementationPrograms?.length) return;
+): BlueprintArtifact {
+  const artifact = structuredClone(source);
   const programs = new Map(recipe.implementationPrograms.map((program) => [program.id, program]));
   const selected = recipe.implementationPrograms.find((program) => program.when
     ? evalSyncJsonata(program.when, { externalContext } as Json) === true
-    : false) ?? (recipe.implementationFallback ? programs.get(recipe.implementationFallback) : undefined);
+    : false) ?? programs.get(recipe.implementationFallback);
   if (!selected) {
-    throw new Error(`Blueprint lowering recipe '${recipe.id}' has no matching implementation program`);
+    throw new Error(`Blueprint service recipe '${recipe.id}' has unknown implementation fallback '${recipe.implementationFallback}'`);
   }
 
   applyCellImplementationOverrides(artifact, selected);
   applyServiceImplementationOverrides(artifact, selected);
+  return artifact;
 }
 
 function applyCellImplementationOverrides(

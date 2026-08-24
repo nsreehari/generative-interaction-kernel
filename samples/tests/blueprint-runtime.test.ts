@@ -6,8 +6,10 @@ test("every registered sample opens through terminal materialization", () => {
   for (const id of getSampleBlueprintCatalog().blueprints) {
     const runtime = openSampleBlueprint(id);
     assert.equal(runtime.blueprintId, id);
-    assert.equal(runtime.definition.payload.tiers.length, 1, `${id} did not resolve to one terminal tier`);
-    assert.deepEqual(runtime.definition.payload.recipes, [], `${id} retained lowering recipes at runtime`);
+    assert.equal(runtime.definition.payload.serviceTiers.length, 1, `${id} did not resolve to one terminal service tier`);
+    assert.deepEqual(runtime.definition.payload.serviceRecipes, [], `${id} retained service lowering recipes at runtime`);
+    assert.equal(runtime.definition.payload.projectionTiers.length, 1, `${id} did not resolve to one terminal projection tier`);
+    assert.deepEqual(runtime.definition.payload.projectionRecipes, [], `${id} retained projection lowering recipes at runtime`);
   }
 }, 60_000);
 
@@ -23,8 +25,13 @@ test("ai-agent selects the local Copilot implementation through external context
   const runtime = openSampleBlueprint("ai-agent", { ai: "copilot" });
 
   assert.equal(runtime.blueprintId, "ai-agent");
-  assert.equal(runtime.definition.payload.tiers.length, 1);
-  assert.deepEqual(runtime.definition.payload.tiers, [{
+  assert.equal(runtime.definition.payload.serviceTiers.length, 1);
+  assert.deepEqual(runtime.definition.payload.serviceTiers, [{
+    id: "runtime-document",
+    kind: "runtime-document",
+    description: "Authored terminal document for this hosted Blueprint.",
+  }]);
+  assert.deepEqual(runtime.definition.payload.projectionTiers, [{
     id: "runtime-document",
     kind: "runtime-document",
     description: "Authored terminal document for this hosted Blueprint.",
@@ -38,10 +45,14 @@ test("sample opener selects representation and implementation from external cont
     view: "mobile",
   });
 
-  assert.deepEqual(runtime.definition.payload.tiers, [
+  assert.deepEqual(runtime.definition.payload.serviceTiers, [
     { id: "portfolio-presentation", kind: "runtime-document" },
   ]);
-  assert.deepEqual(runtime.definition.payload.recipes, []);
+  assert.deepEqual(runtime.definition.payload.projectionTiers, [
+    { id: "portfolio-presentation", kind: "runtime-document" },
+  ]);
+  assert.deepEqual(runtime.definition.payload.serviceRecipes, []);
+  assert.deepEqual(runtime.definition.payload.projectionRecipes, []);
   assert.equal(runtime.definition.payload.cells?.["portfolio-value-cell"]?.potentialViews?.primary?.capability, "primitive:chart");
   assert.equal(runtime.definition.payload.cells?.["portfolio-value-cell"]?.potentialViews?.primary?.props?.variant, "compact");
   assert.deepEqual(runtime.definition.payload.services?.["portfolio-market-data"]?.blueprint, {
