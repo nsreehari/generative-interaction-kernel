@@ -1,6 +1,6 @@
 # ADR-0046: Deterministic Blueprint materialization and portable execution values
 
-**Status:** Accepted — 2026-07-29
+**Status:** Accepted — amended 2026-08-24
 
 ## Context
 

@@ -1,6 +1,6 @@
 # ADR-0038 — Declarative profiles: layers + data-driven lowering recipes
 
-**Status:** Accepted — 2026-07-13
+**Status:** Accepted — amended 2026-08-24
 
 ## Context
 

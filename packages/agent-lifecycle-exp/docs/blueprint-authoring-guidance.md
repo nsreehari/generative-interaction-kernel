@@ -364,7 +364,7 @@ Because attachment is self-declared, deletion is always safe: removing a Cell re
 declaration with it. Nothing external ever needs to be found and edited, and `PREFLIGHT` only needs to
 confirm every declared `region` resolves to a slot, or Cell, that still exists.
 
-### Tiers + recipes select — and, for views only, may add — they never restructure
+### The two tier + recipe axes select — and, for views only, may add — they never restructure
 
 A tier is an authored stage on one axis; a recipe lowers one tier to the next on that axis only (see
 **two seams** above). A **projection** recipe may:
@@ -521,5 +521,5 @@ immediate values.
 - No invented facts or hidden uncertainty.
 - No unauthorized services, sources, actions, effects, or behavior.
 - Component props, variants, data props, events, and slots validate.
-- Cell, slot, region, and tier references resolve.
+- Cell, slot, region, and service/projection tier references resolve.
 - Composition is intuitive, non-repetitive, and no denser than necessary.

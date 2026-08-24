@@ -110,6 +110,12 @@ The package publishes its supported JSON schemas through
 `@gik/evaluators/schemas/*`. Consumers may load those files directly without
 depending on repository-relative paths.
 
+`blueprint.schema.json` requires `serviceTiers`, `serviceRecipes`,
+`projectionTiers`, and `projectionRecipes` and rejects the removed `tiers` and
+`recipes` fields. `lowering-recipe.schema.json` publishes strict
+`serviceRecipe` and `projectionRecipe` definitions; neither dialect accepts the
+other axis' fields.
+
 ## Package boundary
 
 `@gik/evaluators` evaluates and validates declarative data. It does not own
