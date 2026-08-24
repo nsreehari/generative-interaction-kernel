@@ -34,6 +34,13 @@ for (const [name, { manifest, workspacePath }] of manifests) {
     if (!existsSync(join(root, workspacePath, "README.md"))) {
       errors.push(`${name} is missing README.md`);
     }
+    if (name === "@gik/kernel") {
+      for (const notice of ["THIRD_PARTY_NOTICES.md", "jsonata.LICENSE"]) {
+        if (!existsSync(join(root, workspacePath, notice))) {
+          errors.push(`${name} is missing ${notice}`);
+        }
+      }
+    }
     if (manifest.publishConfig?.access !== "public") {
       errors.push(`${name} must set publishConfig.access to 'public'`);
     }
