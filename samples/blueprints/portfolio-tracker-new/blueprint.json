@@ -816,7 +816,7 @@
                         {
                           "kind": "jsonata",
                           "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.serviceRecipes) = 0 and $count(data.payload.projectionTiers) = 2 and data.payload.projectionTiers[0].id = 'report-semantic' and data.payload.projectionTiers[0].kind = 'semantic-report-model' and data.payload.projectionTiers[1].id = 'runtime-document' and data.payload.projectionTiers[1].kind = 'runtime-document')",
-                          "message": "Semantic portfolio report violates its tier or inertness policy",
+                          "message": "Semantic portfolio report violates its projection-tier or inertness policy",
                           "code": "semantic-report-admission"
                         }
                       ]

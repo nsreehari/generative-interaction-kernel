@@ -219,7 +219,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "($mode := input.model; $guidance := $mode = 'refinement' ? 'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.' : ($mode = 'source-faithful' ? 'Preserve only facts, relationships, verdicts, impacts, priorities, actions, ordering, identifiers, evidence, and uncertainty explicitly asserted by the source. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations.' : 'Normalize the supplied incident facts, relationships, evidence, uncertainty, impacts, and actions without inventing content.'); {'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\n\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. ' & $guidance & ' Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000})"
+                "expr": "($mode := input.model; $guidance := $mode = 'refinement' ? 'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.' : ($mode = 'source-faithful' ? 'Preserve only facts, relationships, verdicts, impacts, priorities, actions, ordering, identifiers, evidence, and uncertainty explicitly asserted by the source. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations.' : 'Normalize the supplied incident facts, relationships, evidence, uncertainty, impacts, and actions without inventing content.'); {'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\n\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. ' & $guidance & ' Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored terminal service tier with no service recipes, two projection tiers with one projection recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or projection alternatives.','maxOutputTokens':8000})"
               }
             },
             "response": {
@@ -613,8 +613,8 @@
                 {
                   "kind": "jsonata",
                   "expr": "data.payload.projectionTiers[0].id = 'report-semantic' and data.payload.projectionTiers[0].kind = 'incident-report-semantic-model' and data.payload.projectionTiers[1].id = 'runtime-document' and data.payload.projectionTiers[1].kind = 'runtime-document'",
-                  "message": "Incident report Blueprint must contain semantic and runtime-document tiers",
-                  "code": "report-blueprint-tiers"
+                  "message": "Incident report Blueprint must contain semantic and runtime-document projection tiers",
+                  "code": "report-blueprint-projection-tiers"
                 }
               ]
             },
@@ -646,7 +646,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "{'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\\n\\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity. Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000}"
+                "expr": "{'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\\n\\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity. Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored terminal service tier with no service recipes, two projection tiers with one projection recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or projection alternatives.','maxOutputTokens':8000}"
               }
             },
             "settlement": {

@@ -615,7 +615,7 @@
           },
           {
             "id": "selected-blueprint-overview",
-            "expression": "($bp := sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Service tiers:** ' & $join($bp.artifact.payload.serviceTiers.id, ', ') & '\\n- **Projection tiers:** ' & $join($bp.artifact.payload.projectionTiers.id, ', ') & '\\n- **Recipes:** ' & $string($count($bp.artifact.payload.serviceRecipes) + $count($bp.artifact.payload.projectionRecipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
+            "expression": "($bp := sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Service tiers:** ' & $join($bp.artifact.payload.serviceTiers.id, ', ') & '\\n- **Service recipes:** ' & $string($count($bp.artifact.payload.serviceRecipes)) & '\\n- **Projection tiers:** ' & $join($bp.artifact.payload.projectionTiers.id, ', ') & '\\n- **Projection recipes:** ' & $string($count($bp.artifact.payload.projectionRecipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
             "assign": "studio.overviewMarkdown",
             "dependencies": [
               "sources.fetch-blueprint"

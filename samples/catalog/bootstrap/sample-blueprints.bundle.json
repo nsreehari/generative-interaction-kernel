@@ -1123,7 +1123,7 @@
               },
               {
                 "id": "selected-blueprint-overview",
-                "expression": "($bp := sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Service tiers:** ' & $join($bp.artifact.payload.serviceTiers.id, ', ') & '\\n- **Projection tiers:** ' & $join($bp.artifact.payload.projectionTiers.id, ', ') & '\\n- **Recipes:** ' & $string($count($bp.artifact.payload.serviceRecipes) + $count($bp.artifact.payload.projectionRecipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
+                "expression": "($bp := sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Service tiers:** ' & $join($bp.artifact.payload.serviceTiers.id, ', ') & '\\n- **Service recipes:** ' & $string($count($bp.artifact.payload.serviceRecipes)) & '\\n- **Projection tiers:** ' & $join($bp.artifact.payload.projectionTiers.id, ', ') & '\\n- **Projection recipes:** ' & $string($count($bp.artifact.payload.projectionRecipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
                 "assign": "studio.overviewMarkdown",
                 "dependencies": [
                   "sources.fetch-blueprint"
@@ -2618,7 +2618,7 @@
                 "request": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "($mode := input.model; $guidance := $mode = 'refinement' ? 'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.' : ($mode = 'source-faithful' ? 'Preserve only facts, relationships, verdicts, impacts, priorities, actions, ordering, identifiers, evidence, and uncertainty explicitly asserted by the source. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations.' : 'Normalize the supplied incident facts, relationships, evidence, uncertainty, impacts, and actions without inventing content.'); {'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\n\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. ' & $guidance & ' Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000})"
+                    "expr": "($mode := input.model; $guidance := $mode = 'refinement' ? 'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.' : ($mode = 'source-faithful' ? 'Preserve only facts, relationships, verdicts, impacts, priorities, actions, ordering, identifiers, evidence, and uncertainty explicitly asserted by the source. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations.' : 'Normalize the supplied incident facts, relationships, evidence, uncertainty, impacts, and actions without inventing content.'); {'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\n\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. ' & $guidance & ' Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored terminal service tier with no service recipes, two projection tiers with one projection recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or projection alternatives.','maxOutputTokens':8000})"
                   }
                 },
                 "response": {
@@ -3012,8 +3012,8 @@
                     {
                       "kind": "jsonata",
                       "expr": "data.payload.projectionTiers[0].id = 'report-semantic' and data.payload.projectionTiers[0].kind = 'incident-report-semantic-model' and data.payload.projectionTiers[1].id = 'runtime-document' and data.payload.projectionTiers[1].kind = 'runtime-document'",
-                      "message": "Incident report Blueprint must contain semantic and runtime-document tiers",
-                      "code": "report-blueprint-tiers"
+                      "message": "Incident report Blueprint must contain semantic and runtime-document projection tiers",
+                      "code": "report-blueprint-projection-tiers"
                     }
                   ]
                 },
@@ -3045,7 +3045,7 @@
                 "request": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "{'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\\n\\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity. Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000}"
+                    "expr": "{'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\\n\\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity. Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored terminal service tier with no service recipes, two projection tiers with one projection recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or projection alternatives.','maxOutputTokens':8000}"
                   }
                 },
                 "settlement": {
@@ -4515,7 +4515,7 @@
                             {
                               "kind": "jsonata",
                               "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.serviceRecipes) = 0 and $count(data.payload.projectionTiers) = 2 and data.payload.projectionTiers[0].id = 'report-semantic' and data.payload.projectionTiers[0].kind = 'semantic-report-model' and data.payload.projectionTiers[1].id = 'runtime-document' and data.payload.projectionTiers[1].kind = 'runtime-document')",
-                              "message": "Semantic portfolio report violates its tier or inertness policy",
+                              "message": "Semantic portfolio report violates its projection-tier or inertness policy",
                               "code": "semantic-report-admission"
                             }
                           ]
@@ -13736,7 +13736,7 @@
                       },
                       {
                         "id": "selected-blueprint-overview",
-                        "expression": "($bp := sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Service tiers:** ' & $join($bp.artifact.payload.serviceTiers.id, ', ') & '\\n- **Projection tiers:** ' & $join($bp.artifact.payload.projectionTiers.id, ', ') & '\\n- **Recipes:** ' & $string($count($bp.artifact.payload.serviceRecipes) + $count($bp.artifact.payload.projectionRecipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
+                        "expression": "($bp := sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Service tiers:** ' & $join($bp.artifact.payload.serviceTiers.id, ', ') & '\\n- **Service recipes:** ' & $string($count($bp.artifact.payload.serviceRecipes)) & '\\n- **Projection tiers:** ' & $join($bp.artifact.payload.projectionTiers.id, ', ') & '\\n- **Projection recipes:** ' & $string($count($bp.artifact.payload.projectionRecipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
                         "assign": "studio.overviewMarkdown",
                         "dependencies": [
                           "sources.fetch-blueprint"
@@ -15273,7 +15273,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "($mode := input.model; $guidance := $mode = 'refinement' ? 'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.' : ($mode = 'source-faithful' ? 'Preserve only facts, relationships, verdicts, impacts, priorities, actions, ordering, identifiers, evidence, and uncertainty explicitly asserted by the source. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations.' : 'Normalize the supplied incident facts, relationships, evidence, uncertainty, impacts, and actions without inventing content.'); {'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\n\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. ' & $guidance & ' Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000})"
+                            "expr": "($mode := input.model; $guidance := $mode = 'refinement' ? 'Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity.' : ($mode = 'source-faithful' ? 'Preserve only facts, relationships, verdicts, impacts, priorities, actions, ordering, identifiers, evidence, and uncertainty explicitly asserted by the source. Do not infer causality, compromise status, severity, urgency, attribution, or recommendations.' : 'Normalize the supplied incident facts, relationships, evidence, uncertainty, impacts, and actions without inventing content.'); {'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\n\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. ' & $guidance & ' Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored terminal service tier with no service recipes, two projection tiers with one projection recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or projection alternatives.','maxOutputTokens':8000})"
                           }
                         },
                         "response": {
@@ -15667,8 +15667,8 @@
                             {
                               "kind": "jsonata",
                               "expr": "data.payload.projectionTiers[0].id = 'report-semantic' and data.payload.projectionTiers[0].kind = 'incident-report-semantic-model' and data.payload.projectionTiers[1].id = 'runtime-document' and data.payload.projectionTiers[1].kind = 'runtime-document'",
-                              "message": "Incident report Blueprint must contain semantic and runtime-document tiers",
-                              "code": "report-blueprint-tiers"
+                              "message": "Incident report Blueprint must contain semantic and runtime-document projection tiers",
+                              "code": "report-blueprint-projection-tiers"
                             }
                           ]
                         },
@@ -15700,7 +15700,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "{'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\\n\\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity. Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored two tiers, recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or presentation alternatives.','maxOutputTokens':8000}"
+                            "expr": "{'message':'Create a self-contained GIK incident analysis report Blueprint from this source report:\\n\\n' & input.incident_report,'instructions':'Return the complete Blueprint artifact directly. Preserve every source section, fact, identifier, value, relationship, order, and uncertainty while improving report organization and clarity. Put the complete report in payload.runtime.state.report.markdown. Use exactly the schema-authored terminal service tier with no service recipes, two projection tiers with one projection recipe, primitive:markdown catalog, runtime state, and report Cell. Do not add services, effects, native code, references, controls, host mutation instructions, or projection alternatives.','maxOutputTokens':8000}"
                           }
                         },
                         "settlement": {
@@ -17212,7 +17212,7 @@
                                     {
                                       "kind": "jsonata",
                                       "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.serviceRecipes) = 0 and $count(data.payload.projectionTiers) = 2 and data.payload.projectionTiers[0].id = 'report-semantic' and data.payload.projectionTiers[0].kind = 'semantic-report-model' and data.payload.projectionTiers[1].id = 'runtime-document' and data.payload.projectionTiers[1].kind = 'runtime-document')",
-                                      "message": "Semantic portfolio report violates its tier or inertness policy",
+                                      "message": "Semantic portfolio report violates its projection-tier or inertness policy",
                                       "code": "semantic-report-admission"
                                     }
                                   ]
@@ -19270,6 +19270,6 @@
       ]
     }
   },
-  "bundleVersion": "905913899c29e817",
-  "digest": "sha256:905913899c29e817d8c713948022010978b28d2a0cf9c0e728b9237b611fb824"
+  "bundleVersion": "fdeb300841ea166b",
+  "digest": "sha256:fdeb300841ea166b86bc7c7529238f4c84392130a8a5c8504e6b29c9e4d10d33"
 }

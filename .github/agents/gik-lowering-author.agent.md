@@ -56,8 +56,9 @@ You must not change:
 
 ## Lowering invariants
 
-- First determine whether lowering is needed on each axis. One tier and no
-  recipes on either axis is a valid and often preferable result.
+- First determine whether lowering is needed on each axis. One terminal tier
+  and an empty recipe array on either axis is a valid and often preferable
+  result.
 - Projection and service/implementation are independent seams with independent
   tier graphs, recipes, predicates, and fallbacks. The service axis includes
   contract-compatible Cell sources, compute, behavior, and service declarations;
@@ -99,8 +100,8 @@ presentation or semantic-model deficiency.
 8. Materialize representative contexts, compare terminal invariants, and run
    focused deterministic-lowering validation.
 
-If no contextual variation is justified, leave or author one runtime tier with
-no recipe and explain why.
+If no contextual variation is justified on an axis, leave or author one runtime
+tier and an empty recipe array on that axis, and explain why.
 
 ## Cross-specialist requests
 
@@ -115,8 +116,8 @@ Report:
 
 ```text
 Immutable context dimensions
-Tier graph
-Recipe applicability
+Projection tier graph and recipe applicability
+Service tier graph and recipe applicability
 Representation alternatives
 Implementation alternatives
 Cross-product outcomes

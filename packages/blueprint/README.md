@@ -4,6 +4,10 @@ Canonical Blueprint artifacts, Cells, two independent lowering axes (`serviceTie
 and `projectionTiers`/`projectionRecipes`), and validated lowering into
 `@gik/kernel` executable programs.
 
+Every Blueprint declares all four arrays. A recipe-free axis contains exactly one terminal tier and
+an empty recipe array. The removed `tiers` and `recipes` fields are not normalized or deprecated
+aliases; they are rejected.
+
 ```bash
 npm install @gik/blueprint @gik/kernel @gik/evaluators @gik/durable-runtime
 ```
@@ -168,6 +172,14 @@ ownership, and effect outcomes return through the journal before changing Bluepr
 ### Core authored contracts
 
 - `BlueprintArtifact` is the portable authored envelope. Its `payload` is a `BlueprintDefinition`.
+- `ServiceLoweringRecipeDefinition` selects contract-compatible Cell implementations through
+  `implementationPrograms` and a required `implementationFallback`. Despite the axis name, this seam
+  covers Cell sources, compute, behavior, and top-level service declarations.
+- `ProjectionLoweringRecipeDefinition` selects named views and presentation through
+  `representations` and a required `fallback`.
+- Service and projection chains resolve independently. Materialization applies the complete service
+  chain before the complete projection chain and emits one terminal tier plus an empty recipe array
+  for each axis.
 - `CellDefinition` is the authored unit for inputs, system inputs, sources, compute steps, outputs,
   event contracts, behavior, optional `potentialViews`, and optional hosted `blueprint`.
 - `CellViewDecoration` is the reusable decoration shape: `capability`, optional `props`, optional

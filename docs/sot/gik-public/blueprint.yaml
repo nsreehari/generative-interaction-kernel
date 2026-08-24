@@ -5,7 +5,7 @@ package:
   version: "0.2.0"
   purpose: >-
     Define and validate Blueprint JSON, resolve its child Blueprint references, analyze its
-    Cells, enforce structural-change policy, lower tier chains through the package-owned fixed
+    Cells, enforce structural-change policy, lower independent service and projection tier chains through the package-owned fixed
     meta-graph, materialize portable execution values, and run canonical state transitions.
   core_promise: >-
     An authored Blueprint remains distinct from its derived terminal Blueprint and Kernel program.
@@ -55,7 +55,7 @@ terminology:
     - The pre-split combined tiers and recipes fields are removed; a Blueprint declaring either is rejected.
     - Lowering Cells use fromTier and toTier.
     - Cells are declared directly in a Blueprint; there is no separate Organism document.
-    - Tiers and recipes are static authored materialization data.
+    - Service and projection tiers and recipes are static authored materialization data.
     - Each axis resolves its own chain independently under identical chain invariants; a recipe-free axis requires exactly one terminal tier.
     - Materialization applies the complete service chain first and then the complete projection chain, so projection observes the selected terminal implementation and service selection never observes projected presentation.
     - Immutable external context may select a Cell implementation program but never changes its semantic contract.
@@ -75,7 +75,7 @@ architecture:
     - Recursive child Blueprint assembly.
     - Calling a supplied lowering function and validating its resulting Kernel program.
     - Preparing the executable vocabulary, program, and initial state for a declarative Blueprint.
-    - Deterministically materializing authored Blueprint tier chains and immutable external context into a portable execution value.
+    - Deterministically materializing authored Blueprint service and projection tier chains and immutable external context into a portable execution value.
     - Selecting contract-compatible Cell implementation programs through static recipe vocabulary and immutable external context.
     - Running deterministic Blueprint transitions from explicit state and ordered events.
     - Providing a Blueprint-owned adapter compatible with provider-neutral durable transition hosts.
@@ -430,9 +430,9 @@ transition_api:
       - Publishes authored Blueprint plus immutable context at lowering:source and accepts terminal output only from compiled:artifact.
       - Applies the complete service chain before the complete projection chain, so projection observes the selected terminal implementation and service selection never observes projected presentation.
       - Emits a terminal Blueprint carrying exactly one terminal tier per axis and empty serviceRecipes and projectionRecipes arrays.
-      - Drives the Kernel's shared graph traversal synchronously for the deterministic recipe chain.
+      - Drives the Kernel's shared graph traversal synchronously for both deterministic recipe chains.
       - Resolves context-selected Cell implementation programs while preserving Cell semantic and data-flow contracts.
-      - Prepares terminal vocabulary, executable program, and initial state from the emitted recipe-free Blueprint.
+      - Prepares terminal vocabulary, executable program, and initial state from the emitted Blueprint whose two recipe arrays are empty.
       - Emits a non-projected program when the terminal Blueprint has Cells but no presentation projection.
       - Reserves externalContext as a read-only runtime namespace.
       - >-
@@ -603,9 +603,9 @@ lowering_cell_api:
       - emit-blueprint
     behavior:
       - Is package-owned and is never supplied by an individual materialization call.
-      - Uses one graph for arbitrary connected, non-branching tier chains.
+      - Uses one graph for arbitrary connected, non-branching service and projection tier chains.
       - Runs the compiler Cells on one separate Kernel instance.
-      - Applies vocabulary-patch or representation recipe operations in resolved stage order.
+      - Applies service-recipe implementation programs in resolved service-stage order, then projection-recipe representations in resolved projection-stage order.
       - Evaluates representation decorator selectors and emits static terminal Cell-view decorations.
       - Validates the emitted terminal Blueprint before executable preparation.
       - runFixedLoweringMetaGraph returns the terminal Blueprint plus compiler ExecutionSnapshot evidence.
@@ -639,7 +639,7 @@ lowering_api:
     - Delegates terminal executable-program validation to Kernel lowerToProgram.
     - Preserves program message typing for Blueprints with and without presentation projections.
   boundary:
-    - Fixed materialization executes synchronous vocabulary-patch and representation recipes through compiler Cells.
+    - Fixed materialization executes synchronous service and projection recipes through compiler Cells, with the complete service chain preceding the complete projection chain.
     - This phase does not select or synthesize strategies and performs no asynchronous effects.
     - Kernel validation rejects invalid lowering output before lowerBlueprint returns a program message.
 

@@ -156,8 +156,8 @@ accepted semantic and presentation models. Require proof that:
 - representative cross-product contexts materialize deterministically;
 - terminal artifacts validate.
 
-Accept "one tier, no recipes" independently for each axis when no real
-variation exists.
+Accept one terminal tier and an empty recipe array independently for each axis
+when no real variation exists.
 
 ### 5. Integrate governed product scenarios
 
@@ -209,7 +209,7 @@ findings merely to complete the task.
 Do not:
 
 - create Cells for wrappers, dialogs, forms, tabs, panels, or layout;
-- use recipes to add, remove, replace, merge, split, or route around Cells;
+- use recipes on either axis to add, remove, replace, merge, split, or route around Cells;
 - add or remove presentation slots during lowering;
 - embed credentials, endpoints, or physical provider authority;
 - use mutable runtime state as materialization context;
