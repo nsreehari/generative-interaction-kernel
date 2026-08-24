@@ -20,7 +20,7 @@ function localBlueprint(id: string, version = "1.0.0") {
     version,
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: {},
   });

@@ -30,7 +30,7 @@ const child = createBlueprint({
   version: "1.0.0",
   serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
   serviceRecipes: [],
-  projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+  projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
   projectionRecipes: [],
   runtime: {},
 });
@@ -188,7 +188,7 @@ function nestedChildBlueprint(labelProps: Record<string, Json>) {
     version: "1.0.0",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: {
       externals: { projectionViews: { strict: { from: "strict", use: ["label"] } } },
@@ -202,7 +202,7 @@ function nestedChildBlueprint(labelProps: Record<string, Json>) {
         },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["strict:label"]},
   });
 }
 
@@ -238,7 +238,7 @@ function durableParentBlueprint(childBlueprint: ReturnType<typeof nestedChildBlu
     version: "1.0.0",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: {} },
     cells: {
@@ -250,7 +250,7 @@ function durableParentBlueprint(childBlueprint: ReturnType<typeof nestedChildBlu
         },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["gik:blueprint"]},
   });
 }
 

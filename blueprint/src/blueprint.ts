@@ -1,12 +1,18 @@
 import { lowerToProgram, type ExecutableProgramDefinition, type ProgramMessageFor } from "@gik/kernel";
 import { runDeclarativeValidators } from "@gik/evaluators";
 import { analyzeCellComposition } from "./cells";
+import {
+  collectProjectionCapabilityUses,
+  collectRepresentationCapabilityUses,
+  resolveProjectionVocabulary,
+} from "./projection-vocabulary";
 import type {
   BlueprintArtifact,
   BlueprintDefinition,
   BlueprintLowering,
   BlueprintReferenceResolver,
   LoweringRecipeDefinition,
+  ProjectionTierDefinition,
   TierDefinition,
 } from "./types";
 import { resolveBlueprintExecution } from "./execution";
@@ -124,6 +130,11 @@ export function validateBlueprintArtifact(
   for (const [cellId, cell] of Object.entries(cells)) {
     if (cell.id !== cellId) throw new BlueprintValidationError(`Blueprint cell key '${cellId}' does not match id '${cell.id}'`);
   }
+  const authoredCapabilityUses = collectProjectionCapabilityUses(cells);
+  const representationCapabilityUses = collectRepresentationCapabilityUses(blueprint);
+  if (!blueprint.presentation && (authoredCapabilityUses.length > 0 || representationCapabilityUses.length > 0)) {
+    throw new BlueprintValidationError("Blueprints with potential views or projection representation views require a presentation");
+  }
   if (blueprint.presentation) {
     const slotIds = new Set(blueprint.presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
     if (!slotIds.has(blueprint.presentation.root)) {
@@ -192,14 +203,44 @@ export function validateBlueprintArtifact(
       }
     }
   }
-  const allowedCapabilities = blueprint.presentation?.allowedCapabilities;
-  if (allowedCapabilities) {
-    const allowed = new Set(allowedCapabilities);
-    for (const [cellId, cell] of Object.entries(cells)) {
-      for (const [viewName, view] of Object.entries(cell.potentialViews ?? {})) {
-        for (const capability of [view.capability, ...(view.before ?? []).map((d) => d.capability), ...(view.after ?? []).map((d) => d.capability), ...(view.wrap ?? []).map((d) => d.capability)]) {
-          if (capability !== undefined && !allowed.has(capability)) {
-            throw new BlueprintValidationError(`Blueprint Cell '${cellId}' view '${viewName}' uses capability '${capability}' not in presentation.allowedCapabilities`);
+  if (blueprint.presentation) {
+    let vocabulary;
+    try {
+      vocabulary = resolveProjectionVocabulary(
+        blueprint.projectionTiers,
+        blueprint.presentation.allowedCapabilities,
+      );
+    } catch (error) {
+      throw new BlueprintValidationError(error instanceof Error ? error.message : String(error));
+    }
+    for (const use of authoredCapabilityUses) {
+      if (!vocabulary.authorizedCapabilities.has(use.capability)) {
+        throw new BlueprintValidationError(
+          `Blueprint Cell '${use.cellId}' view '${use.viewName}' ${use.location} uses capability '${use.capability}' not in presentation.allowedCapabilities`,
+        );
+      }
+    }
+    for (const use of representationCapabilityUses) {
+      if (!vocabulary.authorizedCapabilities.has(use.capability)) {
+        throw new BlueprintValidationError(
+          `Projection recipe '${use.recipeId}' representation '${use.representationId}' Cell '${use.cellId}' view '${use.viewName}' ${use.location} uses capability '${use.capability}' not in presentation.allowedCapabilities`,
+        );
+      }
+    }
+    for (const recipe of blueprint.projectionRecipes) {
+      for (const representation of recipe.representations) {
+        for (const cellId of Object.keys(representation.views ?? {})) {
+          if (!cells[cellId]) {
+            throw new BlueprintValidationError(
+              `Projection recipe '${recipe.id}' representation '${representation.id}' references unknown Cell '${cellId}'`,
+            );
+          }
+        }
+        for (const cellId of Object.keys(representation.removeViews ?? {})) {
+          if (!cells[cellId]) {
+            throw new BlueprintValidationError(
+              `Projection recipe '${recipe.id}' representation '${representation.id}' removes views from unknown Cell '${cellId}'`,
+            );
           }
         }
       }
@@ -225,6 +266,15 @@ function validateLoweringAxis(blueprint: BlueprintDefinition, axis: "service" | 
     if (!tier.id || !tier.kind) throw new BlueprintValidationError(`Blueprint ${axis} tier identity is incomplete`);
     if (tierIds.has(tier.id)) throw new BlueprintValidationError(`Duplicate blueprint ${axis} tier '${tier.id}'`);
     tierIds.add(tier.id);
+    if (axis === "projection") {
+      const projectionTier = tier as ProjectionTierDefinition;
+      if (!Array.isArray(projectionTier.capabilities)) {
+        throw new BlueprintValidationError(`Blueprint projection tier '${tier.id}' requires a capabilities array`);
+      }
+      if (new Set(projectionTier.capabilities).size !== projectionTier.capabilities.length) {
+        throw new BlueprintValidationError(`Blueprint projection tier '${tier.id}' declares duplicate capabilities`);
+      }
+    }
   }
 
   const recipeIds = new Set<string>();

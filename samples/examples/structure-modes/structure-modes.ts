@@ -49,7 +49,7 @@ function structureModeBlueprint(
     } : {}),
     serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [],
     runtime: {},
     cells: {
@@ -64,7 +64,11 @@ function structureModeBlueprint(
         potentialViews: { primary: { capability: `${structureMode}:before`, region: "root" } },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: {
+      slots: ["root"],
+      root: "root",
+      allowedCapabilities: [`${structureMode}:before`, `${structureMode}:after`],
+    },
   });
 }
 

@@ -17,7 +17,8 @@
       {
         "id": "runtime-document",
         "kind": "runtime-document",
-        "description": "Authored terminal document for a local Copilot command center."
+        "description": "Authored terminal document for a local Copilot command center.",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],
@@ -970,14 +971,24 @@
         "id": "copilot-c2-title",
         "view": {
           "capability": "fluent:text",
-          "props": { "value": "Copilot C2", "as": "h1", "variant": "title", "block": true }
+          "props": {
+            "value": "Copilot C2",
+            "as": "h1",
+            "variant": "title",
+            "block": true
+          }
         }
       },
       "copilot-c2-subtitle": {
         "id": "copilot-c2-subtitle",
         "view": {
           "capability": "fluent:text",
-          "props": { "value": "Drive local Copilot agents through the demo-boards MCP server", "as": "p", "variant": "subtitle", "block": true }
+          "props": {
+            "value": "Drive local Copilot agents through the demo-boards MCP server",
+            "as": "p",
+            "variant": "subtitle",
+            "block": true
+          }
         }
       },
       "copilot-c2-dashboard": {

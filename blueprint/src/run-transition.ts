@@ -31,6 +31,10 @@ import { assembleBlueprint } from "./blueprint";
 import { compileCellTopology } from "./cells";
 import { composeCellProgram, deriveCellEventOwners } from "./cell-projection";
 import { lowerWithFixedMetaGraph } from "./fixed-lowering-meta-graph";
+import {
+  BLUEPRINT_CAPABILITY,
+  PRESENTATION_FRAGMENT_CAPABILITY,
+} from "./hosted-blueprint";
 import { loadBlueprint } from "./resolution";
 import { admitBlueprintPatch, applyBlueprintPatch } from "./structure-patch";
 import type {
@@ -363,10 +367,12 @@ function deriveActions(cells: Record<string, CellDefinition>): string[] {
   return [...actions].sort();
 }
 
-/** A fully permissive descriptor for a capability the caller's catalog doesn't describe -- mirrors
- * Kernel's own `generateVocabulary`'s `PERMISSIVE` fallback, so an undescribed capability still
- * validates and renders rather than silently defeating prop/event checks with an empty `{}`. */
+/** A fully permissive descriptor used when a host does not supply a capability catalog. */
 const PERMISSIVE_CAPABILITY_DESCRIPTOR: CapabilityDescriptor = { propsSchema: { type: "object", additionalProperties: true } };
+const SYSTEM_CAPABILITIES = new Set([
+  BLUEPRINT_CAPABILITY,
+  PRESENTATION_FRAGMENT_CAPABILITY,
+]);
 
 /** Every capability name actually referenced by a materialized view or its decorations, paired with
  * its real descriptor from the caller-supplied catalog when available. Blueprint itself declares no
@@ -374,19 +380,19 @@ const PERMISSIVE_CAPABILITY_DESCRIPTOR: CapabilityDescriptor = { propsSchema: { 
  * of truth for propsSchema/dataProp/emits/slots); the closed-world *name* contract, if a Blueprint
  * wants one, is `presentation.allowedCapabilities`.
  *
- * `catalog` (materializeBlueprint's `capabilityCatalog` option) is deliberately optional and no
- * current host wires one in: not passing it is not a defect to fix here. Every capability simply
- * falls back to PERMISSIVE_CAPABILITY_DESCRIPTOR, same as an uncataloged capability would. Supplying
- * a real catalog is a host's own admitted-capabilities decision -- like its choice of credentials,
- * providers, and endpoints -- made only if that host wants Kernel-level prop/emit-shape enforcement
- * beyond whatever it already does at its own render layer. */
+ * `catalog` (materializeBlueprint's `capabilityCatalog` option) is optional. When supplied it is the
+ * host's closed terminal catalog, so every materialized capability must resolve through it. */
 function deriveCapabilities(
   cells: Record<string, CellDefinition>,
   catalog: Record<string, CapabilityDescriptor> | undefined,
 ): Record<string, CapabilityDescriptor> {
   const capabilities: Record<string, CapabilityDescriptor> = {};
   const record = (capability: string | undefined) => {
-    if (capability) capabilities[capability] ??= catalog?.[capability] ?? PERMISSIVE_CAPABILITY_DESCRIPTOR;
+    if (!capability || capabilities[capability]) return;
+    if (catalog && !catalog[capability] && !SYSTEM_CAPABILITIES.has(capability)) {
+      throw new Error(`Terminal Blueprint uses capability '${capability}', but the host capability catalog does not provide it`);
+    }
+    capabilities[capability] = catalog?.[capability] ?? PERMISSIVE_CAPABILITY_DESCRIPTOR;
   };
   for (const cell of Object.values(cells)) {
     for (const view of Object.values(cell.potentialViews ?? {})) {

@@ -87,7 +87,7 @@ export function compilerBlueprint(): BlueprintArtifact {
     // the compiler's own declared structure.
     serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [],
     // Seeded state lives on `runtime.state` (a flat blob). `composeCellDocument` never reads
     // a Cell's own `state.initial` facet — that field is declared in blueprint/src/types.ts but
@@ -103,7 +103,7 @@ export function compilerBlueprint(): BlueprintArtifact {
           ],
           riskFlags: ["litigation-history"],
         },
-        presentation: {},
+        presentation: {allowedCapabilities: []},
         compiled: { approved: false },
       },
     },
@@ -195,7 +195,7 @@ export function compilerBlueprint(): BlueprintArtifact {
               'version': '1',
               'serviceTiers': [{ 'id': 'runtime', 'kind': 'runtime-document' }],
               'serviceRecipes': [],
-              'projectionTiers': [{ 'id': 'runtime', 'kind': 'runtime-document' }],
+              'projectionTiers': [{ 'id': 'runtime', 'kind': 'runtime-document', 'capabilities': [] }],
               'projectionRecipes': [],
               'runtime': {
                 'state': {
@@ -212,7 +212,11 @@ export function compilerBlueprint(): BlueprintArtifact {
                   'potentialViews': { 'primary': { 'capability': 'workflow:due-diligence-report', 'region': 'report-view' } }
                 }
               },
-              'presentation': { 'slots': ['report-view'], 'root': 'report-view' }
+              'presentation': {
+                'slots': ['report-view'],
+                'root': 'report-view',
+                'allowedCapabilities': ['workflow:due-diligence-report']
+              }
             } : null`,
             assign: "compiled.artifact",
             dependencies: ["presentation.rows", "presentation.summary", "compiled.approved"],

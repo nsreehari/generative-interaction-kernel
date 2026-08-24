@@ -10,6 +10,11 @@ import {
 } from "@gik/kernel";
 import { createBlueprint, validateBlueprintArtifact } from "./blueprint";
 import { resolveBlueprintExecution, type ResolvedBlueprintStage } from "./execution";
+import {
+  allowedCapabilitiesAtTier,
+  collectProjectionCapabilityUses,
+  resolveProjectionVocabulary,
+} from "./projection-vocabulary";
 import type {
   BlueprintArtifact,
   BlueprintImplementationProgram,
@@ -18,6 +23,7 @@ import type {
   CellDefinition,
   CellSource,
   ProjectionLoweringRecipeDefinition,
+  ProjectionTierDefinition,
   ServiceLoweringRecipeDefinition,
   TierDefinition,
 } from "./types";
@@ -29,7 +35,7 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
   structureMode: "fixed",
   serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
   serviceRecipes: [],
-  projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+  projectionTiers: [{ id: "runtime", kind: "runtime-document", capabilities: [] }],
   projectionRecipes: [],
   runtime: {
     state: { lowering: {} },
@@ -63,6 +69,7 @@ const FIXED_LOWERING_META_GRAPH = createBlueprint({
   presentation: {
     slots: ["root", { id: "children", region: "root" }],
     root: "root",
+    allowedCapabilities: ["compiler:resolve-stage"],
   },
 });
 
@@ -165,13 +172,13 @@ interface ResolvedLoweringChain extends LoweringChainInput {
   serviceStages: ResolvedBlueprintStage<ServiceLoweringRecipeDefinition>[];
   projectionStages: ResolvedBlueprintStage<ProjectionLoweringRecipeDefinition>[];
   serviceTerminalTier: TierDefinition;
-  projectionTerminalTier: TierDefinition;
+  projectionTerminalTier: ProjectionTierDefinition;
 }
 
 interface AppliedLoweringChain {
   artifact: BlueprintArtifact;
   serviceTerminalTier: TierDefinition;
-  projectionTerminalTier: TierDefinition;
+  projectionTerminalTier: ProjectionTierDefinition;
 }
 
 function executeFixedLoweringOperation(
@@ -189,7 +196,7 @@ function executeFixedLoweringOperation(
             serviceStages: resolved.service.stages,
             projectionStages: resolved.projection.stages,
             serviceTerminalTier: resolved.service.terminalTier,
-            projectionTerminalTier: resolved.projection.terminalTier,
+            projectionTerminalTier: resolved.projection.terminalTier as ProjectionTierDefinition,
           }) as unknown as Json,
         },
       };
@@ -204,8 +211,26 @@ function executeFixedLoweringOperation(
       for (const { recipe } of chain.serviceStages) {
         artifact = applyServiceRecipe(artifact, recipe, chain.externalContext);
       }
-      for (const { recipe } of chain.projectionStages) {
+      const projectionTierChain = chain.projectionStages.length > 0
+        ? [chain.projectionStages[0].fromTier, ...chain.projectionStages.map(({ toTier }) => toTier)]
+        : [chain.projectionTerminalTier];
+      const projectionVocabulary = artifact.payload.presentation
+        ? resolveProjectionVocabulary(
+          artifact.payload.projectionTiers,
+          artifact.payload.presentation.allowedCapabilities,
+        )
+        : undefined;
+      for (const { recipe, toTier } of chain.projectionStages) {
         artifact = applyProjectionRecipe(artifact, recipe, chain.externalContext);
+        if (projectionVocabulary) {
+          validateProjectionStageCapabilities(
+            artifact,
+            projectionTierChain,
+            toTier.id,
+            projectionVocabulary,
+            recipe.id,
+          );
+        }
       }
       return {
         outputs: {
@@ -220,6 +245,11 @@ function executeFixedLoweringOperation(
     case "emit-blueprint": {
       const applied = inputs.artifact as unknown as AppliedLoweringChain;
       const terminal = structuredClone(applied.artifact);
+      if (terminal.payload.presentation) {
+        terminal.payload.presentation.allowedCapabilities = [
+          ...new Set(collectProjectionCapabilityUses(terminal.payload.cells ?? {}).map(({ capability }) => capability)),
+        ].sort();
+      }
       terminal.payload.serviceTiers = [structuredClone(applied.serviceTerminalTier)];
       terminal.payload.serviceRecipes = [];
       terminal.payload.projectionTiers = [structuredClone(applied.projectionTerminalTier)];
@@ -263,6 +293,16 @@ function applyProjectionRecipe(
     ? structuredClone(artifact.payload.presentation)
     : undefined;
   for (const representation of chain) {
+    for (const [cellId, viewNames] of Object.entries(representation.removeViews ?? {})) {
+      const cell = artifact.payload.cells?.[cellId];
+      if (!cell) throw new Error(`Blueprint representation '${representation.id}' references unknown Cell '${cellId}'`);
+      for (const viewName of viewNames) {
+        if (!cell.potentialViews?.[viewName]) {
+          throw new Error(`Blueprint representation '${representation.id}' removes unknown view '${cellId}.${viewName}'`);
+        }
+        delete cell.potentialViews[viewName];
+      }
+    }
     for (const [cellId, viewsForCell] of Object.entries(representation.views ?? {})) {
       const cell = artifact.payload.cells?.[cellId];
       if (!cell) throw new Error(`Blueprint representation '${representation.id}' references unknown Cell '${cellId}'`);
@@ -270,7 +310,17 @@ function applyProjectionRecipe(
       // other view already declared on the Cell is left untouched.
       cell.potentialViews = { ...(cell.potentialViews ?? {}), ...structuredClone(viewsForCell) };
     }
-    if (representation.presentation) presentation = structuredClone(representation.presentation);
+    if (representation.presentation) {
+      const allowedCapabilities = source.payload.presentation?.allowedCapabilities
+        ?? presentation?.allowedCapabilities;
+      if (!allowedCapabilities) {
+        throw new Error(`Blueprint representation '${representation.id}' cannot introduce presentation without authored allowedCapabilities`);
+      }
+      presentation = {
+        ...structuredClone(representation.presentation),
+        allowedCapabilities: structuredClone(allowedCapabilities),
+      };
+    }
     if (representation.presentationAppend) {
       if (!presentation) throw new Error(`Blueprint representation '${representation.id}' cannot append to a missing presentation`);
       presentation = { ...presentation, slots: [...presentation.slots, ...structuredClone(representation.presentationAppend)] };
@@ -284,6 +334,30 @@ function applyProjectionRecipe(
   if (!presentation) throw new Error(`Blueprint representation '${selected.id}' produced no presentation`);
   artifact.payload.presentation = presentation;
   return artifact;
+}
+
+function validateProjectionStageCapabilities(
+  artifact: BlueprintArtifact,
+  orderedTiers: readonly TierDefinition[],
+  targetTierId: string,
+  vocabulary: ReturnType<typeof resolveProjectionVocabulary>,
+  recipeId: string,
+): void {
+  const allowed = allowedCapabilitiesAtTier(
+    orderedTiers.map((tier) => ({
+      ...tier,
+      capabilities: artifact.payload.projectionTiers.find(({ id }) => id === tier.id)?.capabilities ?? [],
+    })),
+    targetTierId,
+    vocabulary,
+  );
+  for (const use of collectProjectionCapabilityUses(artifact.payload.cells ?? {})) {
+    if (!allowed.has(use.capability)) {
+      throw new Error(
+        `Projection recipe '${recipeId}' left capability '${use.capability}' on Cell '${use.cellId}' view '${use.viewName}' ${use.location}; it is not valid at or below target tier '${targetTierId}'`,
+      );
+    }
+  }
 }
 
 function applyRepresentationDecorator(

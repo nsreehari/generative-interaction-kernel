@@ -111,11 +111,13 @@
     "projectionTiers": [
       {
         "id": "incident-analysis",
-        "kind": "incident-analysis"
+        "kind": "incident-analysis",
+        "capabilities": []
       },
       {
         "id": "runtime-document",
-        "kind": "runtime-document"
+        "kind": "runtime-document",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [
@@ -1061,8 +1063,18 @@
       ],
       "root": "shell",
       "layout": {
-        "shell": { "direction": "column", "gap": "l" }
-      }
+        "shell": {
+          "direction": "column",
+          "gap": "l"
+        }
+      },
+      "allowedCapabilities": [
+        "fluent:button",
+        "fluent:spinner",
+        "gik:blueprint",
+        "primitive:datetime",
+        "primitive:form"
+      ]
     },
     "metadata": {
       "compositionPattern": "external-model-selected-analysis-with-nested-report"

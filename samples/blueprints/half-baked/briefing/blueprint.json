@@ -77,11 +77,20 @@
         "projectionViews": {
           "primitive": {
             "from": "primitive",
-            "use": ["container", "markdown", "metric"]
+            "use": [
+              "container",
+              "markdown",
+              "metric"
+            ]
           },
           "fluent": {
             "from": "fluent",
-            "use": ["panel", "row", "table", "text"]
+            "use": [
+              "panel",
+              "row",
+              "table",
+              "text"
+            ]
           }
         }
       },
@@ -132,7 +141,8 @@
       {
         "id": "runtime-document",
         "kind": "runtime-document",
-        "description": "Canonical Kernel-executable briefing document."
+        "description": "Canonical Kernel-executable briefing document.",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],

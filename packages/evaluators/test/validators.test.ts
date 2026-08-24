@@ -258,7 +258,7 @@ test("runDeclarativeValidators validates every Cell in a Blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: {},
       cells: {
@@ -281,12 +281,22 @@ test("blueprint-capability-acceptance rejects capabilities outside the accepted 
     type: "blueprint",
     payload: {
       id: "generated-semantic-report",
+      projectionTiers: [{
+        id: "product",
+        kind: "product-projection",
+        capabilities: ["product:report"],
+      }],
+      presentation: {
+        slots: ["report"],
+        root: "report",
+        allowedCapabilities: [{ tier: "product" }, "primitive:markdown"],
+      },
       projectionRecipes: [{
         id: "semantic-report-to-runtime",
         representations: [{
           id: "report",
           views: { report: { main: { capability: "chart:pie", bindings: { value: { from: "report.data" } } } } },
-          presentation: { slots: ["report"], root: "report", allowedCapabilities: ["primitive:markdown"] },
+          presentation: { slots: ["report"], root: "report" },
         }],
       }],
     },
@@ -294,7 +304,7 @@ test("blueprint-capability-acceptance rejects capabilities outside the accepted 
   const report = runDeclarativeValidators(
     [{ kind: "blueprint-capability-acceptance", message: "capability not accepted" }],
     generatedRecipeShapedBlueprint,
-    { bindings: { request: { acceptedCapabilities: ["primitive:markdown"] } } },
+    { bindings: { request: { acceptedCapabilities: ["product:report", "primitive:markdown"] } } },
   );
 
   assert.equal(report.ok, false);
@@ -313,6 +323,39 @@ test("blueprint-capability-acceptance accepts a Blueprint whose declared and use
     [{ kind: "blueprint-capability-acceptance" }],
     materializedCellShapedBlueprint,
     { bindings: { request: { acceptedCapabilities: ["primitive:markdown"] } } },
+  );
+
+  assert.equal(report.ok, true);
+});
+
+test("blueprint-capability-acceptance expands structured projection tier references", () => {
+  const report = runDeclarativeValidators(
+    [{ kind: "blueprint-capability-acceptance", message: "capability not accepted" }],
+    {
+      payload: {
+        projectionTiers: [{
+          id: "product",
+          kind: "product-projection",
+          capabilities: ["product:overview", "product:actions"],
+        }],
+        presentation: {
+          slots: ["root"],
+          root: "root",
+          allowedCapabilities: [{ tier: "product" }, "semantic:event-series"],
+        },
+      },
+    },
+    {
+      bindings: {
+        request: {
+          acceptedCapabilities: [
+            "product:overview",
+            "product:actions",
+            "semantic:event-series",
+          ],
+        },
+      },
+    },
   );
 
   assert.equal(report.ok, true);
@@ -490,7 +533,7 @@ test("Blueprint validation composes recipe-local semantic validation", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "semantic", kind: "semantic" }, { id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "semantic", kind: "semantic" , capabilities: []}, { id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [{
         id: "semantic-to-runtime",
         from: "semantic",

@@ -20,7 +20,7 @@ test("app host runs a JSON-portable materialized Blueprint through stateless dur
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -39,7 +39,7 @@ test("app host runs a JSON-portable materialized Blueprint through stateless dur
         },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   const sourceAdapter = createBlueprintDurableTransitionAdapter({
     blueprint,

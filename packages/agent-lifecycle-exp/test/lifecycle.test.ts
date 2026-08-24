@@ -42,8 +42,9 @@ test("exports package-owned Blueprint authoring guidance", () => {
   // sources/services and potentialViews model rewrites, then to 31_000 for the
   // headless-hosting correction, then to 32_000 for the nested-composition gap
   // clarification, then to 33_000 for the wrap mechanism closing that gap, then to
-  // 34_000 for the service/projection lowering-axis split; the doc should be re-tightened.
-  assert.ok(guidance.length < 34_000, `Guidance grew to ${guidance.length} characters`);
+  // 36_000 for the service/projection lowering-axis split and closed projection vocabularies;
+  // the doc should be re-tightened before growing further.
+  assert.ok(guidance.length < 36_000, `Guidance grew to ${guidance.length} characters`);
 });
 
 const objectSchema = { type: "object", additionalProperties: true } as const;
@@ -233,7 +234,7 @@ test("useBlueprint derives authored description and delegates live lifecycle ope
         constraints: ["Preserve source facts."],
       } } },
       serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
-      projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-document" , capabilities: []}],
       cells: { improve: { id: "improve", kind: "command" } },
       services: { refinement: {} },
       runtime: {},

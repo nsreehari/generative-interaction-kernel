@@ -11,10 +11,16 @@
           "id": "author-blueprint",
           "version": "1.0.0",
           "description": "Validate and maintain a request-scoped draft for publishing portable Blueprint artifacts without activating them.",
-          "targetKinds": ["blueprint-authoring-workspace"],
-          "intentKinds": ["author-blueprint"],
+          "targetKinds": [
+            "blueprint-authoring-workspace"
+          ],
+          "intentKinds": [
+            "author-blueprint"
+          ],
           "operationPreset": "static-authoring",
-          "goals": ["Produce structurally and semantically valid Blueprint artifacts."],
+          "goals": [
+            "Produce structurally and semantically valid Blueprint artifacts."
+          ],
           "constraints": [
             "Validation and proposal must not activate or persist the candidate artifact.",
             "Use the canonical Blueprint validator rather than sample-specific checks."
@@ -269,7 +275,8 @@
       {
         "id": "runtime-document",
         "kind": "runtime-document",
-        "description": "Authored terminal document for this hosted Blueprint."
+        "description": "Authored terminal document for this hosted Blueprint.",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],
@@ -315,14 +322,24 @@
         "id": "manage-blueprints-title",
         "view": {
           "capability": "fluent:text",
-          "props": { "value": "Manage Blueprints", "as": "h1", "variant": "title", "block": true }
+          "props": {
+            "value": "Manage Blueprints",
+            "as": "h1",
+            "variant": "title",
+            "block": true
+          }
         }
       },
       "manage-blueprints-subtitle": {
         "id": "manage-blueprints-subtitle",
         "view": {
           "capability": "fluent:text",
-          "props": { "value": "Browse built-in Blueprints and manage your editable copies", "as": "p", "variant": "subtitle", "block": true }
+          "props": {
+            "value": "Browse built-in Blueprints and manage your editable copies",
+            "as": "p",
+            "variant": "subtitle",
+            "block": true
+          }
         }
       },
       "manage-blueprints-layout": {
@@ -601,7 +618,9 @@
         "id": "blueprint-recipes",
         "view": {
           "capability": "primitive:property",
-          "props": { "label": "Recipes" },
+          "props": {
+            "label": "Recipes"
+          },
           "bindings": {
             "value": {
               "from": "manageBlueprints.selected.recipeCount"
@@ -744,7 +763,10 @@
                   "message": "Enter a valid Blueprint ID and Blueprint document.",
                   "schema": {
                     "type": "object",
-                    "required": ["id", "blueprint"],
+                    "required": [
+                      "id",
+                      "blueprint"
+                    ],
                     "properties": {
                       "id": {
                         "type": "string",
@@ -752,13 +774,29 @@
                       },
                       "blueprint": {
                         "type": "object",
-                        "required": ["gik", "type", "payload"],
+                        "required": [
+                          "gik",
+                          "type",
+                          "payload"
+                        ],
                         "properties": {
-                          "gik": { "type": "string" },
-                          "type": { "const": "blueprint" },
+                          "gik": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "const": "blueprint"
+                          },
                           "payload": {
                             "type": "object",
-                            "required": ["id", "kind", "version", "serviceTiers", "serviceRecipes", "projectionTiers", "projectionRecipes"]
+                            "required": [
+                              "id",
+                              "kind",
+                              "version",
+                              "serviceTiers",
+                              "serviceRecipes",
+                              "projectionTiers",
+                              "projectionRecipes"
+                            ]
                           }
                         }
                       }

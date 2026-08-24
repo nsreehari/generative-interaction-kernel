@@ -35,6 +35,7 @@ test("ai-agent selects the local Copilot implementation through external context
     id: "runtime-document",
     kind: "runtime-document",
     description: "Authored terminal document for this hosted Blueprint.",
+    capabilities: [],
   }]);
   assert.equal(runtime.definition.payload.services?.assistant?.kind, "copilot-agent");
 });
@@ -49,7 +50,7 @@ test("sample opener selects representation and implementation from external cont
     { id: "portfolio-presentation", kind: "runtime-document" },
   ]);
   assert.deepEqual(runtime.definition.payload.projectionTiers, [
-    { id: "portfolio-presentation", kind: "runtime-document" },
+    { id: "portfolio-presentation", kind: "runtime-document", capabilities: [] },
   ]);
   assert.deepEqual(runtime.definition.payload.serviceRecipes, []);
   assert.deepEqual(runtime.definition.payload.projectionRecipes, []);

@@ -38,7 +38,9 @@
         "projectionViews": {
           "primitive": {
             "from": "primitive",
-            "use": ["container"]
+            "use": [
+              "container"
+            ]
           },
           "overview": {
             "from": "self"
@@ -292,7 +294,8 @@
       {
         "id": "runtime-document",
         "kind": "runtime-document",
-        "description": "Authored terminal document for this hosted Blueprint."
+        "description": "Authored terminal document for this hosted Blueprint.",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],

@@ -18,7 +18,7 @@ function twoAxisBlueprint(overrides: Partial<BlueprintDefinition>): BlueprintDef
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { board: {} } },
     services: {
@@ -52,7 +52,11 @@ function twoAxisBlueprint(overrides: Partial<BlueprintDefinition>): BlueprintDef
         potentialViews: { primary: { capability: "ui:text", region: "board" } },
       },
     },
-    presentation: { slots: ["board"], root: "board" },
+    presentation: {
+      slots: ["board"],
+      root: "board",
+      allowedCapabilities: ["ui:text", "ui:compact", "ui:rich", "ui:badge"],
+    },
     ...overrides,
   } as BlueprintDefinition;
 }
@@ -97,7 +101,7 @@ const projectionRecipe = (id: string, from: string, to: string, fallback = "comp
 
 test("a projection-only Blueprint lowers its projection axis and leaves the service axis terminal", () => {
   const authored = createBlueprint(twoAxisBlueprint({
-    projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [projectionRecipe("intent-to-runtime", "intent", "runtime")],
   }));
 
@@ -147,7 +151,7 @@ test("both axes resolve independently with unequal chain lengths", () => {
         implementationFallback: "pass-through",
       },
     ],
-    projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [projectionRecipe("intent-to-runtime", "intent", "runtime")],
   }));
 
@@ -166,7 +170,7 @@ test("each axis falls back independently when its own predicates do not match", 
   const authored = createBlueprint(twoAxisBlueprint({
     serviceTiers: [{ id: "logic", kind: "logic" }, { id: "runtime", kind: "runtime-document" }],
     serviceRecipes: [serviceRecipe("logic-to-runtime", "logic", "runtime", "live-backed")],
-    projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [projectionRecipe("intent-to-runtime", "intent", "runtime", "compact")],
   }));
 
@@ -179,7 +183,7 @@ test("each axis falls back independently when its own predicates do not match", 
 test("an unknown fallback is rejected on the axis that declares it, naming that axis", () => {
   assert.throws(
     () => createBlueprint(twoAxisBlueprint({
-      projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+      projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
       projectionRecipes: [projectionRecipe("intent-to-runtime", "intent", "runtime", "missing")],
     })),
     /Projection recipe 'intent-to-runtime': representation fallback 'missing' does not reference a declared representation/,
@@ -198,14 +202,18 @@ test("the terminal Blueprint keeps one terminal tier per axis and clears both re
   const authored = createBlueprint(twoAxisBlueprint({
     serviceTiers: [{ id: "logic", kind: "logic" }, { id: "service-runtime", kind: "runtime-document" }],
     serviceRecipes: [serviceRecipe("logic-to-runtime", "logic", "service-runtime")],
-    projectionTiers: [{ id: "intent", kind: "intent" }, { id: "projection-runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "projection-runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [projectionRecipe("intent-to-runtime", "intent", "projection-runtime")],
   }));
 
   const terminal = lowerWithFixedMetaGraph(authored);
 
   assert.deepEqual(terminal.payload.serviceTiers, [{ id: "service-runtime", kind: "runtime-document" }]);
-  assert.deepEqual(terminal.payload.projectionTiers, [{ id: "projection-runtime", kind: "runtime-document" }]);
+  assert.deepEqual(terminal.payload.projectionTiers, [{
+    id: "projection-runtime",
+    kind: "runtime-document",
+    capabilities: [],
+  }]);
   assert.deepEqual(terminal.payload.serviceRecipes, []);
   assert.deepEqual(terminal.payload.projectionRecipes, []);
   // A terminal Blueprint must pass the same validation as a directly authored one.
@@ -225,7 +233,7 @@ test("the complete service chain applies before the complete projection chain", 
       }],
       implementationFallback: "live-backed",
     }],
-    projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+    projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [{
       id: "intent-to-runtime",
       from: "intent",
@@ -278,7 +286,7 @@ test("the authoring report describes both axes separately", () => {
 test("a recipe-free axis must declare exactly one terminal tier", () => {
   assert.throws(
     () => createBlueprint(twoAxisBlueprint({
-      projectionTiers: [{ id: "intent", kind: "intent" }, { id: "runtime", kind: "runtime-document" }],
+      projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
     })),
     /no projection recipes must declare exactly one terminal projection tier/,
   );
@@ -288,4 +296,126 @@ test("a recipe-free axis must declare exactly one terminal tier", () => {
     })),
     /no service recipes must declare exactly one terminal service tier/,
   );
+});
+
+test("allowedCapabilities admits tier vocabularies alongside exact terminal host capabilities", () => {
+  const authored = createBlueprint(twoAxisBlueprint({
+    projectionTiers: [
+      { id: "intent", kind: "intent", capabilities: ["ui:intent"] },
+      { id: "runtime", kind: "runtime-document", capabilities: [] },
+    ],
+    projectionRecipes: [{
+      id: "intent-to-runtime",
+      from: "intent",
+      to: "runtime",
+      representations: [{
+        id: "runtime",
+        views: { quotes: { primary: { capability: "semantic:measure", region: "board" } } },
+      }],
+      fallback: "runtime",
+    }],
+    cells: {
+      quotes: {
+        id: "quotes",
+        sources: [{ id: "quotes.source", service: "mock", operation: "read" }],
+        potentialViews: { primary: { capability: "ui:intent", region: "board" } },
+      },
+    },
+    presentation: {
+      slots: ["board"],
+      root: "board",
+      allowedCapabilities: [{ tier: "intent" }, "semantic:measure"],
+    },
+  }));
+
+  const terminal = lowerWithFixedMetaGraph(authored);
+
+  assert.equal(terminal.payload.cells?.quotes.potentialViews?.primary.capability, "semantic:measure");
+  assert.deepEqual(terminal.payload.presentation?.allowedCapabilities, ["semantic:measure"]);
+});
+
+test("an unknown projection tier reference in allowedCapabilities is rejected", () => {
+  assert.throws(
+    () => createBlueprint(twoAxisBlueprint({
+      presentation: {
+        slots: ["board"],
+        root: "board",
+        allowedCapabilities: [{ tier: "missing" }],
+      },
+    })),
+    /allowedCapabilities references unknown projection tier 'missing'/,
+  );
+});
+
+test("a higher-tier named capability must be lowered before leaving its tier", () => {
+  const authored = createBlueprint(twoAxisBlueprint({
+    projectionTiers: [
+      { id: "intent", kind: "intent", capabilities: ["ui:intent"] },
+      { id: "runtime", kind: "runtime-document", capabilities: [] },
+    ],
+    projectionRecipes: [{
+      id: "intent-to-runtime",
+      from: "intent",
+      to: "runtime",
+      representations: [{ id: "pass-through" }],
+      fallback: "pass-through",
+    }],
+    cells: {
+      quotes: {
+        id: "quotes",
+        sources: [{ id: "quotes.source", service: "mock", operation: "read" }],
+        potentialViews: { primary: { capability: "ui:intent", region: "board" } },
+      },
+    },
+    presentation: {
+      slots: ["board"],
+      root: "board",
+      allowedCapabilities: [{ tier: "intent" }],
+    },
+  }));
+
+  assert.throws(
+    () => lowerWithFixedMetaGraph(authored),
+    /left capability 'ui:intent'.*not valid at or below target tier 'runtime'/,
+  );
+});
+
+test("projection filtering can remove a higher-tier named view before the target stage", () => {
+  const authored = createBlueprint(twoAxisBlueprint({
+    projectionTiers: [
+      { id: "intent", kind: "intent", capabilities: ["ui:intent"] },
+      { id: "runtime", kind: "runtime-document", capabilities: [] },
+    ],
+    projectionRecipes: [{
+      id: "intent-to-runtime",
+      from: "intent",
+      to: "runtime",
+      representations: [{
+        id: "runtime",
+        removeViews: { quotes: ["detail"] },
+        views: { quotes: { primary: { capability: "semantic:measure", region: "board" } } },
+      }],
+      fallback: "runtime",
+    }],
+    cells: {
+      quotes: {
+        id: "quotes",
+        sources: [{ id: "quotes.source", service: "mock", operation: "read" }],
+        potentialViews: {
+          primary: { capability: "ui:intent", region: "board" },
+          detail: { capability: "ui:intent", region: "board" },
+        },
+      },
+    },
+    presentation: {
+      slots: ["board"],
+      root: "board",
+      allowedCapabilities: [{ tier: "intent" }, "semantic:measure"],
+    },
+  }));
+
+  const terminal = lowerWithFixedMetaGraph(authored);
+
+  assert.equal(terminal.payload.cells?.quotes.potentialViews?.detail, undefined);
+  assert.equal(terminal.payload.cells?.quotes.potentialViews?.primary.capability, "semantic:measure");
 });

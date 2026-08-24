@@ -91,11 +91,13 @@
             "projectionTiers": [
               {
                 "id": "report-semantic",
-                "kind": "incident-report-semantic-model"
+                "kind": "incident-report-semantic-model",
+                "capabilities": []
               },
               {
                 "id": "runtime-document",
-                "kind": "runtime-document"
+                "kind": "runtime-document",
+                "capabilities": []
               }
             ],
             "projectionRecipes": [
@@ -151,6 +153,15 @@
               "report": {
                 "id": "report"
               }
+            },
+            "presentation": {
+              "slots": [
+                "report"
+              ],
+              "root": "report",
+              "allowedCapabilities": [
+                "primitive:markdown"
+              ]
             }
           }
         }

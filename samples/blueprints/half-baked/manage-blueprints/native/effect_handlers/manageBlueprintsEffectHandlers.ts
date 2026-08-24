@@ -254,7 +254,7 @@ function portableStarterBlueprint(): BlueprintArtifact {
       structureMode: "fixed",
       serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" , capabilities: []}],
       projectionRecipes: [],
       runtime: { version: "local-blueprint/1.0", capabilities: {}, state: {} },
     },

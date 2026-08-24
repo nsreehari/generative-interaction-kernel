@@ -61,11 +61,18 @@
         "projectionViews": {
           "primitive": {
             "from": "primitive",
-            "use": ["container", "markdown"]
+            "use": [
+              "container",
+              "markdown"
+            ]
           },
           "fluent": {
             "from": "fluent",
-            "use": ["panel", "table", "text"]
+            "use": [
+              "panel",
+              "table",
+              "text"
+            ]
           }
         }
       },
@@ -114,7 +121,8 @@
       {
         "id": "runtime-document",
         "kind": "runtime-document",
-        "description": "Canonical Kernel-executable terminal document."
+        "description": "Canonical Kernel-executable terminal document.",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],

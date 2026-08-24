@@ -16,7 +16,11 @@ test("summarizeBlueprint exposes the canonical runtime Blueprint", () => {
   assert.deepEqual(summary?.serviceRecipes, []);
   assert.deepEqual(summary?.projectionRecipes, []);
   assert.deepEqual(summary?.serviceTiers, [{ id: "runtime-document", kind: "runtime-document" }]);
-  assert.deepEqual(summary?.projectionTiers, [{ id: "runtime-document", kind: "runtime-document" }]);
+  assert.deepEqual(summary?.projectionTiers, [{
+    id: "runtime-document",
+    kind: "runtime-document",
+    capabilities: [],
+  }]);
 });
 
 test("blueprint authoring registry composes blueprint and recipes from graph outputs", async () => {

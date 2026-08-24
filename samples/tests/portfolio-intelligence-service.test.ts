@@ -99,8 +99,8 @@ describe("portfolio intelligence service declarations", () => {
         blueprintProfile: {
           serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
           projectionTiers: [
-            { id: "report-semantic", kind: "semantic-report-model" },
-            { id: "runtime-document", kind: "runtime-document" },
+            { id: "report-semantic", kind: "semantic-report-model" , capabilities: []},
+            { id: "runtime-document", kind: "runtime-document" , capabilities: []},
           ],
           behavior: "inert",
         },

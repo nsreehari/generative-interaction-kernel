@@ -41,6 +41,23 @@ import {
 import { settleQueuedCellSourceEffect } from "../src/worker";
 
 const runtime = {};
+const TEST_ALLOWED_CAPABILITIES = [
+  "custom:widget",
+  "fluent:dialog",
+  "fluent:panel",
+  "fluent:text",
+  "gik:blueprint",
+  "gik:presentation-fragment",
+  "host:hosted-blueprint",
+  "primitive:container",
+  "primitive:form",
+  "primitive:note",
+  "primitive:pane-with-trigger",
+  "sample:analysis",
+  "screen",
+  "surface",
+  "ui:empty",
+] as const;
 
 function blueprint(id = "test"): BlueprintArtifact {
   return createBlueprint({
@@ -49,7 +66,7 @@ function blueprint(id = "test"): BlueprintArtifact {
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime,
   });
@@ -59,6 +76,7 @@ function singleSlotPresentation(root: string) {
   return {
     slots: [root],
     root,
+    allowedCapabilities: TEST_ALLOWED_CAPABILITIES,
   } as const;
 }
 
@@ -86,7 +104,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       services: { market: { kind: "test-service", version: "1", operations: { quote: { operation: "quote", contract: "quote/v1" } } } },
       runtime: {
@@ -149,7 +167,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime,
       cells: {
@@ -183,7 +201,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       services: { market: { kind: "test-service", version: "1", operations: { quote: { operation: "quote", contract: "quote/v1" } } } },
       runtime: {
@@ -522,7 +540,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: {} },
       cells: {},
@@ -538,7 +556,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: {} },
       cells: { host: { id: "host", blueprint: { inline: hostedChild() } } },
@@ -550,7 +568,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { source: { report: "hello" } } },
       cells: {
@@ -569,7 +587,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "intent", kind: "interaction-intent" }, { id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "intent", kind: "interaction-intent" , capabilities: []}, { id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [{
         id: "intent-to-runtime",
         from: "intent",
@@ -659,6 +677,7 @@ describe("@gik/blueprint", () => {
           { id: "content", region: "root" },
         ],
         root: "root",
+        allowedCapabilities: ["custom:widget", "fluent:dialog", "fluent:panel", "fluent:text", "gik:blueprint", "gik:presentation-fragment", "host:hosted-blueprint", "primitive:container", "primitive:form", "primitive:note", "primitive:pane-with-trigger", "sample:analysis", "screen", "surface", "ui:empty"],
       },
     });
 
@@ -994,6 +1013,15 @@ describe("@gik/blueprint", () => {
       presentation: { slots: ["studio"], root: "studio", allowedCapabilities: ["primitive:form"] },
     });
     expect(build).toThrow("uses capability 'fluent:dialog' not in presentation.allowedCapabilities");
+  });
+
+  it("requires presentation.allowedCapabilities even when the closed vocabulary is empty", () => {
+    const build = () => createBlueprint({
+      ...blueprint("mandatory-capability-vocabulary").payload,
+      presentation: { slots: ["root"], root: "root" } as never,
+    });
+
+    expect(build).toThrow("must have required property 'allowedCapabilities'");
   });
 
   it("parses and formats canonical hosted Blueprint references", () => {
@@ -1374,7 +1402,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: {},
       cells: {
@@ -1421,7 +1449,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: {
         state: { portfolio: { holdings: initialHoldings } },
@@ -1468,7 +1496,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { list: { refreshStamp: "initial" }, studio: { selectedId: null } } },
       cells: {
@@ -1550,7 +1578,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {
@@ -1641,7 +1669,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {
@@ -1680,7 +1708,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: {} },
       cells: {
@@ -1709,6 +1737,37 @@ describe("@gik/blueprint", () => {
       dataProp: "label",
       emits: ["click"],
     });
+    expect(() => materializeBlueprint({
+      blueprint: artifact,
+      capabilityCatalog: {},
+    })).toThrow("host capability catalog does not provide it");
+  });
+
+  it.each([
+    BLUEPRINT_CAPABILITY,
+    PRESENTATION_FRAGMENT_CAPABILITY,
+  ])("treats the system capability '%s' as available outside the host catalog", (capability) => {
+    const artifact = createBlueprint({
+      ...blueprint("system-capability").payload,
+      cells: {
+        root: {
+          id: "root",
+          potentialViews: {
+            primary: { capability, region: "root" },
+          },
+        },
+      },
+      presentation: {
+        slots: ["root"],
+        root: "root",
+        allowedCapabilities: [capability],
+      },
+    });
+
+    expect(() => materializeBlueprint({
+      blueprint: artifact,
+      capabilityCatalog: {},
+    })).not.toThrow();
   });
 
   it("derives namespaces from the admitted initial-seed context, not only from runtime.state", () => {
@@ -1718,7 +1777,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {
@@ -1744,7 +1803,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {
@@ -1802,7 +1861,7 @@ describe("@gik/blueprint", () => {
       },
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: {} },
       cells: {
@@ -1841,7 +1900,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { local: {} } },
       cells: {
@@ -1879,7 +1938,7 @@ describe("@gik/blueprint", () => {
       structureMode: "reconfigurable",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: {} },
       cells: { root: { id: "root", potentialViews: { primary: { capability: "screen", region: "root" } } } },
@@ -1906,7 +1965,7 @@ describe("@gik/blueprint", () => {
       version: "1",
       serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
       serviceRecipes: [],
-      projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
       projectionRecipes: [],
       runtime: { state: { counter: { value: 1 } } },
       cells: {

@@ -21,7 +21,12 @@ export interface BlueprintUseSource extends BlueprintLifecycleMaterialSource {
     readonly structureMode?: string;
     readonly structurePolicy?: unknown;
     readonly serviceTiers?: readonly { readonly id?: string; readonly kind?: string; readonly description?: string }[];
-    readonly projectionTiers?: readonly { readonly id?: string; readonly kind?: string; readonly description?: string }[];
+    readonly projectionTiers?: readonly {
+      readonly id?: string;
+      readonly kind?: string;
+      readonly description?: string;
+      readonly capabilities?: readonly string[];
+    }[];
     readonly cells?: Readonly<Record<string, {
       readonly id?: string;
       readonly inputs?: readonly unknown[];
@@ -32,7 +37,7 @@ export interface BlueprintUseSource extends BlueprintLifecycleMaterialSource {
     }>>;
     readonly services?: Readonly<Record<string, unknown>>;
     readonly presentation?: {
-      readonly allowedCapabilities?: readonly string[];
+      readonly allowedCapabilities: readonly (string | { readonly tier: string })[];
     };
     readonly runtime?: {
       readonly externals?: unknown;
@@ -208,6 +213,16 @@ function deriveUsedCapabilities(cells: BlueprintUseSource["payload"]["cells"]): 
   return [...capabilities];
 }
 
+function resolveAllowedCapabilities(payload: BlueprintUseSource["payload"]): string[] {
+  const tiers = new Map((payload.projectionTiers ?? []).map((tier) => [tier.id, tier.capabilities ?? []]));
+  const capabilities = new Set<string>();
+  for (const entry of payload.presentation?.allowedCapabilities ?? []) {
+    if (typeof entry === "string") capabilities.add(entry);
+    else for (const capability of tiers.get(entry.tier) ?? []) capabilities.add(capability);
+  }
+  return [...capabilities];
+}
+
 export function describeBlueprint(
   blueprint: BlueprintUseSource,
   profile: BlueprintLifecycleProfileKind = "use",
@@ -233,7 +248,12 @@ export function describeBlueprint(
         }
       : null,
     serviceTiers: (payload.serviceTiers ?? []).map(({ id, kind, description }) => ({ id, kind, description })),
-    projectionTiers: (payload.projectionTiers ?? []).map(({ id, kind, description }) => ({ id, kind, description })),
+    projectionTiers: (payload.projectionTiers ?? []).map(({ id, kind, description, capabilities }) => ({
+      id,
+      kind,
+      description,
+      capabilities: capabilities ?? [],
+    })),
     cells: Object.entries(payload.cells ?? {}).map(([id, cell]) => ({
       id,
       hasBehavior: cell.behavior !== undefined,
@@ -244,8 +264,9 @@ export function describeBlueprint(
     services: Object.keys(payload.services ?? {}),
     runtime: {
       actions: deriveActions(payload.cells),
-      // The closed set when the Blueprint declares one; otherwise whatever capabilities it actually uses.
-      capabilities: payload.presentation?.allowedCapabilities ?? deriveUsedCapabilities(payload.cells),
+      capabilities: payload.presentation
+        ? resolveAllowedCapabilities(payload)
+        : deriveUsedCapabilities(payload.cells),
       namespaces: deriveNamespaces(payload.runtime?.state),
     },
   };

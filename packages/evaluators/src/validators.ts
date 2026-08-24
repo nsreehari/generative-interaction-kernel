@@ -505,10 +505,8 @@ export function runDeclarativeValidators(
   return { ok: errors.length === 0, errors, warnings };
 }
 
-/** Every `capability` a Blueprint (enveloped or bare) declares or uses, across both an already
- * materialized shape (`payload.cells[*].potentialViews`) and an un-lowered projection-axis shape
- * (`payload.projectionRecipes[*].representations[*]`), so the same check works regardless of which
- * tier a generated Blueprint document happens to be authored at. */
+/** Every capability a Blueprint authorizes or uses, across both materialized Cell views and
+ * un-lowered projection representations. */
 function collectBlueprintCapabilities(value: JsonValue): string[] {
   const out: string[] = [];
   const addDecoration = (decoration: unknown): void => {
@@ -518,15 +516,41 @@ function collectBlueprintCapabilities(value: JsonValue): string[] {
   };
   const addView = (view: unknown): void => {
     if (!view || typeof view !== "object") return;
-    const v = view as { capability?: unknown; before?: unknown; after?: unknown };
+    const v = view as { capability?: unknown; before?: unknown; after?: unknown; wrap?: unknown };
     if (typeof v.capability === "string") out.push(v.capability);
     for (const decoration of Array.isArray(v.before) ? v.before : []) addDecoration(decoration);
     for (const decoration of Array.isArray(v.after) ? v.after : []) addDecoration(decoration);
+    for (const decoration of Array.isArray(v.wrap) ? v.wrap : []) addDecoration(decoration);
   };
   const record = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, JsonValue> : {};
   const payload = record.payload && typeof record.payload === "object" && !Array.isArray(record.payload)
     ? record.payload as Record<string, JsonValue>
     : record;
+  const projectionTiers = new Map(
+    (Array.isArray(payload.projectionTiers) ? payload.projectionTiers : [])
+      .filter((tier): tier is Record<string, JsonValue> => Boolean(tier) && typeof tier === "object" && !Array.isArray(tier))
+      .map((tier) => [
+        typeof tier.id === "string" ? tier.id : "",
+        Array.isArray(tier.capabilities)
+          ? tier.capabilities.filter((capability): capability is string => typeof capability === "string")
+          : [],
+      ]),
+  );
+  const addAllowedCapabilities = (entries: unknown): void => {
+    for (const entry of Array.isArray(entries) ? entries : []) {
+      if (typeof entry === "string") {
+        out.push(entry);
+        continue;
+      }
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+      const tierId = (entry as { tier?: unknown }).tier;
+      if (typeof tierId === "string") out.push(...(projectionTiers.get(tierId) ?? []));
+    }
+  };
+  const presentation = payload.presentation && typeof payload.presentation === "object" && !Array.isArray(payload.presentation)
+    ? payload.presentation as Record<string, JsonValue>
+    : undefined;
+  addAllowedCapabilities(presentation?.allowedCapabilities);
 
   const cells = payload.cells && typeof payload.cells === "object" && !Array.isArray(payload.cells)
     ? payload.cells as Record<string, JsonValue>
@@ -545,13 +569,7 @@ function collectBlueprintCapabilities(value: JsonValue): string[] {
     const representations = (recipe as { representations?: unknown }).representations;
     for (const representation of Array.isArray(representations) ? representations : []) {
       if (!representation || typeof representation !== "object") continue;
-      const rep = representation as { views?: unknown; presentation?: unknown; decorators?: unknown };
-      const allowedCapabilities = rep.presentation && typeof rep.presentation === "object"
-        ? (rep.presentation as { allowedCapabilities?: unknown }).allowedCapabilities
-        : undefined;
-      for (const capability of Array.isArray(allowedCapabilities) ? allowedCapabilities : []) {
-        if (typeof capability === "string") out.push(capability);
-      }
+      const rep = representation as { views?: unknown; decorators?: unknown };
       if (rep.views && typeof rep.views === "object") {
         for (const cellViews of Object.values(rep.views as Record<string, unknown>)) {
           if (!cellViews || typeof cellViews !== "object") continue;
