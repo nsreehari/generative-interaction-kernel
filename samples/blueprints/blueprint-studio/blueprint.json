@@ -385,12 +385,6 @@
             "clone-blueprint-draft"
           ]
         },
-        "inputs": [
-          {
-            "token": "blueprintList",
-            "as": "blueprintList"
-          }
-        ],
         "outputs": [
           {
             "token": "blueprintListRefreshStamp",
@@ -482,7 +476,7 @@
             },
             "bindings": {
               "fields": {
-                "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], inputs.blueprintList[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], inputs.blueprintList[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
+                "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], studio.blueprints[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], studio.blueprints[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
               }
             },
             "wrap": [

@@ -518,10 +518,6 @@
                   "before": [
                     {
                       "capability": "primitive:datetime",
-                      "props": {
-                        "variant": "timestamp",
-                        "label": "Report generated"
-                      },
                       "bindings": {
                         "value": {
                           "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
@@ -627,10 +623,6 @@
                   "before": [
                     {
                       "capability": "primitive:datetime",
-                      "props": {
-                        "variant": "timestamp",
-                        "label": "Report generated"
-                      },
                       "bindings": {
                         "value": {
                           "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
@@ -953,7 +945,7 @@
                     "request": {
                       "transform": {
                         "kind": "jsonata",
-                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                       }
                     },
                     "response": {
@@ -1506,7 +1498,7 @@
                     "request": {
                       "transform": {
                         "kind": "jsonata",
-                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                       }
                     },
                     "response": {
@@ -2000,7 +1992,7 @@
             "request": {
               "transform": {
                 "kind": "jsonata",
-                "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
               }
             },
             "response": {
