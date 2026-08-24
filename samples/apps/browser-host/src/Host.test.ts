@@ -6,15 +6,40 @@ import { test, vi } from "vitest";
 const capturedProps = vi.hoisted(() => ({
   scenariosJson: undefined as unknown,
   externalContext: undefined as unknown,
+  appRootRenders: 0,
+  demoHostRenders: 0,
 }));
 
 vi.mock("@gik/demo-runner-host", () => ({
   GikDemoBlueprintHost: (props: { scenariosJson?: unknown; externalContext?: unknown }) => {
     capturedProps.scenariosJson = props.scenariosJson;
     capturedProps.externalContext = props.externalContext;
+    capturedProps.demoHostRenders += 1;
     return null;
   },
 }));
+
+// The application root page runs a whole embedded Blueprint of its own; these tests are about which
+// route the host selects, so it is stubbed here and exercised for real in AppRootPage.test.tsx.
+vi.mock("./AppRootPage", () => ({
+  AppRootPage: () => {
+    capturedProps.appRootRenders += 1;
+    return null;
+  },
+}));
+
+function withLocation(href: string, run: () => void): void {
+  const previousWindow = globalThis.window;
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: { location: { href, search: new URL(href).search, pathname: new URL(href).pathname } },
+  });
+  try {
+    run();
+  } finally {
+    Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
+  }
+}
 
 import "fake-indexeddb/auto";
 import type { BlueprintProposalReceipt } from "@gik/blueprint-agent-host";
@@ -98,38 +123,49 @@ test("sample host bootstraps isolated memory or persistent IndexedDB Blueprint s
 });
 
 test("samples without demo scenarios do not receive them", () => {
-  const previousWindow = globalThis.window;
-  Object.defineProperty(globalThis, "window", {
-    configurable: true,
-    value: {
-      location: {
-        href: "https://example.test/?b=ai-agent&demo=1",
-        search: "?b=ai-agent&demo=1",
-      },
-    },
-  });
-
-  try {
+  withLocation("https://example.test/?b=ai-agent&demo=1", () => {
     renderToStaticMarkup(React.createElement(Host));
     assert.equal(capturedProps.scenariosJson, undefined);
-  } finally {
-    Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
-  }
+  });
+});
+
+test("an explicit ?b= selection opens that Blueprint's full host route", () => {
+  capturedProps.appRootRenders = 0;
+  capturedProps.demoHostRenders = 0;
+  withLocation("https://example.test/?b=blueprint-studio", () => {
+    renderToStaticMarkup(React.createElement(Host));
+  });
+  assert.equal(capturedProps.appRootRenders, 0);
+  assert.equal(capturedProps.demoHostRenders, 1);
+  // blueprint-studio's own authored launch defaults select its normal presentation mode, so the
+  // full route stays exactly the Studio it has always been.
+  assert.deepEqual(capturedProps.externalContext, { mode: "normal" });
+});
+
+test("a legacy ?bundle= selection still opens the full host route", () => {
+  capturedProps.appRootRenders = 0;
+  capturedProps.demoHostRenders = 0;
+  withLocation("https://example.test/?bundle=ai-agent", () => {
+    renderToStaticMarkup(React.createElement(Host));
+  });
+  assert.equal(capturedProps.appRootRenders, 0);
+  assert.equal(capturedProps.demoHostRenders, 1);
+});
+
+test("no Blueprint selection renders the application root page instead of a default Blueprint", () => {
+  capturedProps.appRootRenders = 0;
+  capturedProps.demoHostRenders = 0;
+  withLocation("https://example.test/", () => {
+    renderToStaticMarkup(React.createElement(Host));
+  });
+  assert.equal(capturedProps.appRootRenders, 1);
+  assert.equal(capturedProps.demoHostRenders, 0);
+  // The catalog still declares a default Blueprint; the root route deliberately does not open it.
+  assert.equal(getSampleBlueprintCatalog().defaultBlueprint, "portfolio-tracker-new");
 });
 
 test("portfolio tracker uses Blueprint-authored launch defaults", () => {
-  const previousWindow = globalThis.window;
-  Object.defineProperty(globalThis, "window", {
-    configurable: true,
-    value: {
-      location: {
-        href: "https://example.test/?b=portfolio-tracker-new&gik=1",
-        search: "?b=portfolio-tracker-new&gik=1",
-      },
-    },
-  });
-
-  try {
+  withLocation("https://example.test/?b=portfolio-tracker-new&gik=1", () => {
     renderToStaticMarkup(React.createElement(Host));
     assert.deepEqual(capturedProps.scenariosJson, getSampleBlueprintCatalog().demoScenarios["portfolio-tracker-new"]);
     assert.deepEqual(capturedProps.externalContext, {
@@ -139,7 +175,5 @@ test("portfolio tracker uses Blueprint-authored launch defaults", () => {
       semantic: "simple-markdown",
       view: "desktop",
     });
-  } finally {
-    Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
-  }
+  });
 });

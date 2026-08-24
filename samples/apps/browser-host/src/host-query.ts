@@ -3,6 +3,8 @@ import type { Json } from "@gik/kernel";
 const DEFAULT_PRESENTATION_CONTEXT = "full-substrate";
 
 export interface HostQuery {
+  /** The explicitly selected Blueprint, or `null` when nothing named one. `null` is never
+   * substituted with the catalog's default Blueprint: it selects the host's application root. */
   targetId: string | null;
   durableEnabled: boolean;
   externalContext?: Record<string, Json>;
@@ -35,11 +37,22 @@ function parseExternalContext(value: string | null): Record<string, Json> | unde
   return Object.keys(parsed).length === 0 ? undefined : parsed as Record<string, Json>;
 }
 
+function selectedBlueprintId(params: URLSearchParams, pathname: string): string | null {
+  // An explicit, non-empty `b` (or its legacy `bundle` spelling, which canonicalizes to `b`) is the
+  // only thing that names a Blueprint to open. Absent or blank is not "the default Blueprint" -- it
+  // means the host has no single current Blueprint at all.
+  for (const name of ["b", "bundle"] as const) {
+    const value = params.get(name)?.trim();
+    if (value) return value;
+  }
+  return cachedBlueprintFromPath(pathname);
+}
+
 export function readHostQuery(search: string, pathname = ""): HostQuery {
   const params = new URLSearchParams(search);
   const externalContext = parseExternalContext(params.get("context"));
   return {
-    targetId: params.get("b") ?? params.get("bundle") ?? cachedBlueprintFromPath(pathname),
+    targetId: selectedBlueprintId(params, pathname),
     durableEnabled: isNonZeroEnabled(params, "durable"),
     ...(externalContext ? { externalContext } : {}),
   };
@@ -49,8 +62,9 @@ export function canonicalizeHostUrl(href: string): string {
   const url = new URL(href);
   const params = url.searchParams;
   const legacyPresentation = params.get("presentationContext");
-  const legacyTarget = params.get("bundle");
+  const legacyTarget = params.get("bundle")?.trim();
 
+  if (params.has("b") && !params.get("b")?.trim()) params.delete("b");
   if (legacyTarget && !params.has("b")) params.set("b", legacyTarget);
 
   if ((params.get("harness") === "gik-control-harness" || params.has("plane")) && !params.has("gik")) {
