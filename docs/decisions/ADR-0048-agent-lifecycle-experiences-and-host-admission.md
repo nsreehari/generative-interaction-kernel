@@ -342,3 +342,42 @@ agent-lifecycle material again, it should be re-introduced as an explicitly host
 (e.g. a registry keyed by Blueprint id, mirroring how credential references are host-owned rather than
 authored inline — ADR-0034-adjacent precedent), not as a field on the portable authored artifact.
 
+## Amendment (2026-08-24): self-mutation of `structureMode`/`structurePolicy` is always host-activated
+
+The platform's `adaptive` lowering meta-graph precedent already requires that its own
+`structureMode`/`structurePolicy` remain "reconfigurable under host authority, never adaptive," even
+once that meta-graph becomes agent/host-editable. This amendment states that precedent as a general
+rule rather than one specific to the compiler/lowering meta-graph: **any proposal that would change a
+Blueprint's own `structureMode` or `structurePolicy` — regardless of which lifecycle profile (`use`,
+`customize`, or `author`) originates it — is host-activated only.** No lifecycle profile may cause a
+Blueprint to adopt a broader self-mutation policy than its currently active one without a distinct
+trusted-host activation step. A `use` or `customize` profile's `validate`/`simulate`/`preflight` and
+proposal operations may describe or stage such a change, but applying it always requires the same
+authorized-origin admission path (ADR-0018/ADR-0046) that already governs `BlueprintPatchRequest`
+application — an agent-originated intent can never itself flip a Blueprint from `fixed` to
+`reconfigurable`/`adaptive`, or widen `allowedBlueprintOperations`/`allowedProgramOperations`, by being
+applied.
+
+### Materialization-time lowering vs. live structural and binding decisions
+
+`describeBlueprint` (`@gik/agent-lifecycle-exp`) now surfaces service/projection tier and recipe
+summaries together with `structureMode`/`structurePolicy`, so an agent can discover the target's
+materialization and structural capabilities before proposing a change. Authors must distinguish
+three mechanisms:
+
+- **Tier/recipe lowering** (`serviceRecipes`/`projectionRecipes`) is deterministic and
+  materialization-time only: it is driven exclusively by immutable external context (locale,
+  capability, policy, deployment strategy), runs once per materialization, and cannot react to live
+  runtime state or a live user/agent turn.
+- **Cell-graph structural patching** (`addCell`/`replaceCell`/`removeCell`) is live and policy-gated.
+  It changes the parent Blueprint's Cell topology through the host-authorized admission path; it is
+  not a lowering operation.
+- **Bound child-Blueprint swapping** changes the complete `BlueprintArtifact` held by a
+  `gik:blueprint` state token through an ordinary `use` data proposal. It changes which child is
+  rendered at that binding point without changing the parent Cell graph or selecting a tier/recipe.
+
+A Cell may also choose its own `_view` hint or update ordinary state continuously during live
+execution. An agent that wants presentation or behavior to respond to live conditions must use those
+runtime mechanisms, a bound child swap, or an admitted structural patch as appropriate. It must not
+propose a new lowering recipe or tier: recipes are materialization-time-only and are never proposed
+or activated adaptively.
