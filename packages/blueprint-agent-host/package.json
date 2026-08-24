@@ -5,28 +5,47 @@
   "description": "Blueprint-specific trusted host lifecycle for agent proposals in GIK.",
   "license": "MIT",
   "author": "nsreehari",
-  "keywords": ["gik", "blueprint", "agents", "host", "durable"],
+  "keywords": [
+    "gik",
+    "blueprint",
+    "agents",
+    "host",
+    "durable"
+  ],
   "homepage": "https://github.com/nsreehari/generative-interaction-kernel#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nsreehari/generative-interaction-kernel.git",
     "directory": "packages/blueprint-agent-host"
   },
-  "bugs": { "url": "https://github.com/nsreehari/generative-interaction-kernel/issues" },
+  "bugs": {
+    "url": "https://github.com/nsreehari/generative-interaction-kernel/issues"
+  },
   "type": "module",
   "sideEffects": false,
-  "files": ["dist", "docs"],
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": [
+    "dist",
+    "docs"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
     "prepack": "node ../../scripts/sync-package-license.mjs packages/blueprint-agent-host"
   },
   "dependencies": {
     "@gik/agent-lifecycle-exp": "0.1.0",
-    "@gik/durable-runtime": "0.8.0",
-    "@gik/evaluators": "0.1.1"
+    "@gik/durable-runtime": "0.8.1-next.0",
+    "@gik/evaluators": "0.1.2-next.0"
   }
 }
