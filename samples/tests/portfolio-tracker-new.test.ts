@@ -424,6 +424,10 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         assert.match(activeSource?.input?.expr ?? "", /slotPolicy/);
         if (semantic === "simple-markdown") {
           assert.match(activeSource?.input?.expr ?? "", /DELIMITER-CHECK/);
+          assert.doesNotMatch(
+            activeSource?.input?.expr ?? "",
+            /'cells':\{'report':\{'id':'report','kind'/,
+          );
         }
         assert.equal(
           (activeSource?.input?.expr ?? "").includes("'portfolioValue'"),
@@ -460,6 +464,20 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
           : activeService?.operations?.[
             "generateReport"
           ];
+        if (semantic === "rich-components") {
+          assert.match(
+            semanticOperation?.request?.transform?.expr ?? "",
+            /RICH SHAPE: use at most seven Cells/,
+          );
+          assert.match(
+            semanticOperation?.request?.transform?.expr ?? "",
+            /presentation owns slots, root, allowedCapabilities/,
+          );
+          assert.match(
+            semanticOperation?.request?.transform?.expr ?? "",
+            /Every binding value is an object/,
+          );
+        }
         assert.match(semanticOperation?.request?.transform?.expr ?? "", /'acceptedCapabilities':input\.acceptedCapabilities/);
         assert.match(semanticOperation?.request?.transform?.expr ?? "", /'authoringBrief':input\.authoringBrief/);
         assert.match(semanticOperation?.request?.transform?.expr ?? "", /'presentationMode':input\.presentationMode/);
@@ -482,6 +500,10 @@ test("portfolio-tracker-new selects intelligence and board behavior from explici
         assert.equal(
           terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.before?.[0]?.capability,
           "primitive:datetime",
+        );
+        assert.equal(
+          terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.before?.[0]?.props,
+          undefined,
         );
         assert.equal(
           terminal.cells?.["portfolio-intelligence-resolution"].potentialViews?.primary.before?.[0]?.visibility,

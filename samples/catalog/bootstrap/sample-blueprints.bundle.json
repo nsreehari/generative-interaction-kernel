@@ -875,12 +875,6 @@
                 "clone-blueprint-draft"
               ]
             },
-            "inputs": [
-              {
-                "token": "blueprintList",
-                "as": "blueprintList"
-              }
-            ],
             "outputs": [
               {
                 "token": "blueprintListRefreshStamp",
@@ -972,7 +966,7 @@
                 },
                 "bindings": {
                   "fields": {
-                    "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], inputs.blueprintList[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], inputs.blueprintList[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
+                    "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], studio.blueprints[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], studio.blueprints[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
                   }
                 },
                 "wrap": [
@@ -4142,10 +4136,6 @@
                       "before": [
                         {
                           "capability": "primitive:datetime",
-                          "props": {
-                            "variant": "timestamp",
-                            "label": "Report generated"
-                          },
                           "bindings": {
                             "value": {
                               "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
@@ -4256,10 +4246,6 @@
                       "before": [
                         {
                           "capability": "primitive:datetime",
-                          "props": {
-                            "variant": "timestamp",
-                            "label": "Report generated"
-                          },
                           "bindings": {
                             "value": {
                               "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
@@ -4585,7 +4571,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                           }
                         },
                         "response": {
@@ -5138,7 +5124,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                           }
                         },
                         "response": {
@@ -5632,7 +5618,7 @@
                 "request": {
                   "transform": {
                     "kind": "jsonata",
-                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                   }
                 },
                 "response": {
@@ -13291,12 +13277,6 @@
                         "clone-blueprint-draft"
                       ]
                     },
-                    "inputs": [
-                      {
-                        "token": "blueprintList",
-                        "as": "blueprintList"
-                      }
-                    ],
                     "outputs": [
                       {
                         "token": "blueprintListRefreshStamp",
@@ -13388,7 +13368,7 @@
                         },
                         "bindings": {
                           "fields": {
-                            "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], inputs.blueprintList[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], inputs.blueprintList[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
+                            "expression": "{'properties':{'cloneFrom':{'title':'Clone from','type':'string','enum':$append([''], studio.blueprints[source = 'repo' or published = true].id),'enumNames':$append(['Blank Blueprint'], studio.blueprints[source = 'repo' or published = true].(label & ' · ' & version)),'span':12},'id':{'title':'New Blueprint ID','type':'string','pattern':'^[a-z0-9](?:[a-z0-9._\\\\/\\\\-]*[a-z0-9])?$','span':12},'kind':{'title':'Kind','type':'string','span':12},'version':{'title':'Initial version','type':'string','span':12}},'required':['id','kind','version'],'additionalProperties':false}"
                           }
                         },
                         "wrap": [
@@ -16642,10 +16622,6 @@
                               "before": [
                                 {
                                   "capability": "primitive:datetime",
-                                  "props": {
-                                    "variant": "timestamp",
-                                    "label": "Report generated"
-                                  },
                                   "bindings": {
                                     "value": {
                                       "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
@@ -16756,10 +16732,6 @@
                               "before": [
                                 {
                                   "capability": "primitive:datetime",
-                                  "props": {
-                                    "variant": "timestamp",
-                                    "label": "Report generated"
-                                  },
                                   "bindings": {
                                     "value": {
                                       "from": "portfolio.resolvedIntelligenceEnvelope.asOf"
@@ -17085,7 +17057,7 @@
                                 "request": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                                   }
                                 },
                                 "response": {
@@ -17638,7 +17610,7 @@
                                 "request": {
                                   "transform": {
                                     "kind": "jsonata",
-                                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                                    "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                                   }
                                 },
                                 "response": {
@@ -18132,7 +18104,7 @@
                         "request": {
                           "transform": {
                             "kind": "jsonata",
-                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 12000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                            "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
                           }
                         },
                         "response": {
@@ -18883,6 +18855,6 @@
       ]
     }
   },
-  "bundleVersion": "3f339e6f2b71ae1d",
-  "digest": "sha256:3f339e6f2b71ae1d7ab2d2878a11cc68d381a15bf26ac1312df7b00c4e5366d8"
+  "bundleVersion": "a528932f8c299980",
+  "digest": "sha256:a528932f8c2999807525a89f90373e1f749969d0fe91d6f57ccc33800cf44afd"
 }

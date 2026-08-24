@@ -116,11 +116,13 @@ describe("portfolio intelligence service declarations", () => {
       }) as Record<string, unknown>;
       const message = String(request.message);
 
-      expect(request.maxOutputTokens).toBe(semantic === "rich-components" ? 12000 : 5000);
+      expect(request.maxOutputTokens).toBe(semantic === "rich-components" ? 8000 : 5000);
       expect(message).toContain(`"objective":"Help the investor understand this portfolio snapshot."`);
       expect(message).toContain(`"overview":"Orient the user quickly."`);
       expect(message.includes('"primitive:chart"')).toBe(semantic === "rich-components");
       expect(message.includes('"primitive:markdown"')).toBe(semantic === "simple-markdown");
+      expect(message.includes("Emit payload.cells before payload.runtime"))
+        .toBe(semantic === "rich-components");
       expect(request.instructions).toBeUndefined();
       // `acceptedCapabilities`/`authoringBrief` are deliberately echoed through onto the
       // transformed request (not just embedded in `message`'s prose) because the response
