@@ -27,6 +27,8 @@ export interface BlueprintUseSource extends BlueprintLifecycleMaterialSource {
       readonly description?: string;
       readonly capabilities?: readonly string[];
     }[];
+    readonly serviceRecipes?: readonly { readonly id?: string; readonly from?: string; readonly to?: string }[];
+    readonly projectionRecipes?: readonly { readonly id?: string; readonly from?: string; readonly to?: string }[];
     readonly cells?: Readonly<Record<string, {
       readonly id?: string;
       readonly inputs?: readonly unknown[];
@@ -254,6 +256,8 @@ export function describeBlueprint(
       description,
       capabilities: capabilities ?? [],
     })),
+    serviceRecipes: (payload.serviceRecipes ?? []).map(({ id, from, to }) => ({ id, from, to })),
+    projectionRecipes: (payload.projectionRecipes ?? []).map(({ id, from, to }) => ({ id, from, to })),
     cells: Object.entries(payload.cells ?? {}).map(([id, cell]) => ({
       id,
       hasBehavior: cell.behavior !== undefined,
