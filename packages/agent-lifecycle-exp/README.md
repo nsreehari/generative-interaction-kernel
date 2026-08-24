@@ -17,6 +17,13 @@ manifest -> describe -> validate -> simulate
 		 -> read_in_progress_proposal -> set_in_progress_proposal
 ```
 
+`describeBlueprint` self-describes a Blueprint-backed target: alongside `identity` and `lifecycle`, it
+returns `structure.mode`/`structure.policy` (including `allowedBlueprintOperations` when declared),
+`serviceTiers`/`projectionTiers`, and separate `serviceRecipes`/`projectionRecipes` summaries
+(`{ id, from, to }` per authored recipe, `[]` when none) — enough for an agent to judge
+structural-change readiness without exposing recipe internals (representations, implementation
+programs, patch bodies).
+
 Profiles may also declare an explicit custom subset. Operation meaning does not change with the
 selection: `simulate` uses supplied or candidate-owned state, while `preflight` checks current host
 state and policy. `set_in_progress_proposal` atomically replaces one complete, request-scoped draft;
