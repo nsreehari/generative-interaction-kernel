@@ -2284,6 +2284,18 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
                 "discardLabel": {
                   "type": "string"
                 },
+                "successLabel": {
+                  "type": "string"
+                },
+                "savingLabel": {
+                  "type": "string"
+                },
+                "saving": {
+                  "type": "boolean"
+                },
+                "saveError": {
+                  "type": "string"
+                },
                 "initiallyDirty": {
                   "type": "boolean"
                 },
@@ -3673,6 +3685,18 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         "discardLabel": {
           "type": "string"
         },
+        "successLabel": {
+          "type": "string"
+        },
+        "savingLabel": {
+          "type": "string"
+        },
+        "saving": {
+          "type": "boolean"
+        },
+        "saveError": {
+          "type": "string"
+        },
         "initiallyDirty": {
           "type": "boolean"
         },
@@ -3704,7 +3728,9 @@ export const agentFacingComponentCatalog: AgentFacingCapabilityCatalog = {
         "Use readOnly for inspect-only forms",
         "Pass external validator bindings through validationContext",
         "Use initiallyDirty only for drafts not yet persisted",
-        "Keep workflow effects outside the component"
+        "Keep workflow effects outside the component",
+        "The component itself shows a local success confirmation (successLabel) after a save with no further edits -- do not also author a separate saved-confirmation view for the common case",
+        "For a save that resolves asynchronously in the host Blueprint (e.g. a durable service invoke), bind `saving`/`saveError` to ordinary Blueprint state the Cell's own behavior manages -- an `assign` sets `saving` true at dispatch, and the operation's `settlement`/`failureSettlement` transform sets it back to false (plus `saveError` on failure) -- rather than relying on the optimistic success shown as soon as `save` is emitted"
       ],
       "notes": [
         "Editing is draft-based; values are published only through save."
