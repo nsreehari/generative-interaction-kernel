@@ -172,6 +172,19 @@ each removal:
 untouched) — only their *source* changes, from Blueprint-authored data to host-derived data computed
 during materialization.
 
+## Amendment (2026-08-24): mandatory tier-aware projection vocabulary
+
+The prior optional/open `presentation.allowedCapabilities: string[]` contract is superseded.
+Every authored presentation now declares a mandatory closed list whose entries are either an exact
+terminal host capability string or `{ "tier": "<projection-tier-id>" }`. Projection tiers declare
+their Blueprint-local named `capabilities`; a tier reference admits that complete vocabulary.
+
+Exact strings may pass unchanged through projection lowering. Tier-defined names must be eliminated
+once lowering passes their last declaring tier. Projection recipes own only selection, filtering,
+layout, composition, and view specialization; they do not lower between the host's flat semantic,
+primitive, Fluent, or domain component namespaces. The terminal materialization retains only exact
+capabilities its resulting views use, and a host-supplied capability catalog is closed when present.
+
 ## Amendment (2026-08-24): the one lowering chain splits into two independent axes
 
 The single authored `tiers`/`recipes` pair is superseded and **removed**. A Blueprint payload now
@@ -206,7 +219,7 @@ what was already authored.
 
 **Split recipe contracts.** The combined recipe contract is removed.
 `ProjectionLoweringRecipeDefinition` owns `representations` + `fallback`;
-`ServiceLoweringRecipeDefinition` owns `implementationPrograms` + `implementationFallback`. Both
+`ServiceLoweringRecipeDefinition` owns `implementationPrograms` + `fallback`. Both
 fields are required on their own dialect, and the schema rejects each dialect carrying the other's
 fields, so a recipe can never quietly do both jobs.
 

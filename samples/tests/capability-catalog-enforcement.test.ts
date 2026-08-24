@@ -20,7 +20,7 @@ function blueprintWithInvalidTextProps(): BlueprintArtifact {
     version: "1.0.0",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: {
       externals: { projectionViews: { fluent: { from: "fluent", use: ["text"] } } },
@@ -35,7 +35,7 @@ function blueprintWithInvalidTextProps(): BlueprintArtifact {
         },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["fluent:text"]},
   });
 }
 

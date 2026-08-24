@@ -284,18 +284,20 @@
                 }
               }
             ],
-            "implementationFallback": "foundry"
+            "fallback": "foundry"
           }
         ],
         "projectionTiers": [
           {
             "id": "ai-agent",
-            "kind": "ai-agent"
+            "kind": "ai-agent",
+            "capabilities": []
           },
           {
             "id": "runtime-document",
             "kind": "runtime-document",
-            "description": "Authored terminal document for this hosted Blueprint."
+            "description": "Authored terminal document for this hosted Blueprint.",
+            "capabilities": []
           }
         ],
         "projectionRecipes": [
@@ -493,7 +495,12 @@
               "direction": "column",
               "gap": "l"
             }
-          }
+          },
+          "allowedCapabilities": [
+            "fluent:spinner",
+            "primitive:form",
+            "primitive:markdown"
+          ]
         }
       }
     },
@@ -515,7 +522,8 @@
         "projectionTiers": [
           {
             "id": "runtime-document",
-            "kind": "runtime-document"
+            "kind": "runtime-document",
+            "capabilities": []
           }
         ],
         "projectionRecipes": [],
@@ -1508,7 +1516,18 @@
               "direction": "column",
               "gap": "m"
             }
-          }
+          },
+          "allowedCapabilities": [
+            "fluent:button",
+            "fluent:list",
+            "fluent:spinner",
+            "fluent:tab-bar",
+            "fluent:text",
+            "gik:blueprint",
+            "primitive:form",
+            "primitive:markdown",
+            "primitive:pane-with-trigger"
+          ]
         }
       }
     },
@@ -1551,7 +1570,8 @@
         "projectionTiers": [
           {
             "id": "runtime-document",
-            "kind": "runtime-document"
+            "kind": "runtime-document",
+            "capabilities": []
           }
         ],
         "projectionRecipes": [],
@@ -2101,7 +2121,8 @@
         "projectionTiers": [
           {
             "id": "runtime-document",
-            "kind": "runtime-document"
+            "kind": "runtime-document",
+            "capabilities": []
           }
         ],
         "projectionRecipes": [],
@@ -2539,17 +2560,19 @@
                 }
               }
             ],
-            "implementationFallback": "semantic"
+            "fallback": "semantic"
           }
         ],
         "projectionTiers": [
           {
             "id": "incident-analysis",
-            "kind": "incident-analysis"
+            "kind": "incident-analysis",
+            "capabilities": []
           },
           {
             "id": "runtime-document",
-            "kind": "runtime-document"
+            "kind": "runtime-document",
+            "capabilities": []
           }
         ],
         "projectionRecipes": [
@@ -3499,7 +3522,14 @@
               "direction": "column",
               "gap": "l"
             }
-          }
+          },
+          "allowedCapabilities": [
+            "fluent:button",
+            "fluent:spinner",
+            "gik:blueprint",
+            "primitive:datetime",
+            "primitive:form"
+          ]
         },
         "metadata": {
           "compositionPattern": "external-model-selected-analysis-with-nested-report"
@@ -3536,7 +3566,8 @@
         "projectionTiers": [
           {
             "id": "runtime-document",
-            "kind": "runtime-document"
+            "kind": "runtime-document",
+            "capabilities": []
           }
         ],
         "projectionRecipes": [],
@@ -3660,7 +3691,8 @@
         "projectionTiers": [
           {
             "id": "runtime-document",
-            "kind": "runtime-document"
+            "kind": "runtime-document",
+            "capabilities": []
           }
         ],
         "projectionRecipes": [],
@@ -3917,7 +3949,7 @@
                 }
               }
             ],
-            "implementationFallback": "mock-market"
+            "fallback": "mock-market"
           },
           {
             "id": "portfolio-market-to-presentation",
@@ -4060,7 +4092,7 @@
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model','capabilities':[]},{'id':'runtime-document','kind':'runtime-document','capabilities':[]}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report'}}],'fallback':'report'}],'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']},'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
@@ -4157,7 +4189,7 @@
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model','capabilities':[]},{'id':'runtime-document','kind':'runtime-document','capabilities':[]}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report'}}],'fallback':'report'}],'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']},'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
@@ -4242,6 +4274,7 @@
                                       "serviceRecipes",
                                       "projectionTiers",
                                       "projectionRecipes",
+                                      "presentation",
                                       "runtime",
                                       "cells"
                                     ],
@@ -4295,7 +4328,8 @@
                                           "type": "object",
                                           "required": [
                                             "id",
-                                            "kind"
+                                            "kind",
+                                            "capabilities"
                                           ],
                                           "properties": {
                                             "id": {
@@ -4303,6 +4337,12 @@
                                             },
                                             "kind": {
                                               "type": "string"
+                                            },
+                                            "capabilities": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
                                             }
                                           },
                                           "additionalProperties": false
@@ -4407,8 +4447,7 @@
                                                     "type": "object",
                                                     "required": [
                                                       "slots",
-                                                      "root",
-                                                      "allowedCapabilities"
+                                                      "root"
                                                     ],
                                                     "properties": {
                                                       "slots": {
@@ -4439,13 +4478,6 @@
                                                       },
                                                       "root": {
                                                         "type": "string"
-                                                      },
-                                                      "allowedCapabilities": {
-                                                        "type": "array",
-                                                        "minItems": 1,
-                                                        "items": {
-                                                          "type": "string"
-                                                        }
                                                       }
                                                     },
                                                     "additionalProperties": false
@@ -4460,6 +4492,69 @@
                                           },
                                           "additionalProperties": false
                                         }
+                                      },
+                                      "presentation": {
+                                        "type": "object",
+                                        "required": [
+                                          "slots",
+                                          "root",
+                                          "allowedCapabilities"
+                                        ],
+                                        "properties": {
+                                          "slots": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "items": {
+                                              "oneOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "id"
+                                                  ],
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "id": {
+                                                      "type": "string"
+                                                    },
+                                                    "region": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "root": {
+                                            "type": "string"
+                                          },
+                                          "allowedCapabilities": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "items": {
+                                              "oneOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "tier"
+                                                  ],
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "tier": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        "additionalProperties": false
                                       },
                                       "runtime": {
                                         "type": "object",
@@ -4640,7 +4735,7 @@
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views, a presentation with slots/root, and an allowedCapabilities array listing every capability used>','fallback':'<representation id>'}],'runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model','capabilities':[]},{'id':'runtime-document','kind':'runtime-document','capabilities':[]}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and a presentation with slots/root>','fallback':'<representation id>'}],'presentation':'<compose slots/root and allowedCapabilities listing every capability used>','runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
@@ -4737,7 +4832,7 @@
                         "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                         "input": {
                           "kind": "jsonata",
-                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views, a presentation with slots/root, and an allowedCapabilities array listing every capability used>','fallback':'<representation id>'}],'runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                          "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model','capabilities':[]},{'id':'runtime-document','kind':'runtime-document','capabilities':[]}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and a presentation with slots/root>','fallback':'<representation id>'}],'presentation':'<compose slots/root and allowedCapabilities listing every capability used>','runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                         },
                         "output": {
                           "kind": "jsonata",
@@ -4822,6 +4917,7 @@
                                       "serviceRecipes",
                                       "projectionTiers",
                                       "projectionRecipes",
+                                      "presentation",
                                       "runtime",
                                       "cells"
                                     ],
@@ -4875,7 +4971,8 @@
                                           "type": "object",
                                           "required": [
                                             "id",
-                                            "kind"
+                                            "kind",
+                                            "capabilities"
                                           ],
                                           "properties": {
                                             "id": {
@@ -4883,6 +4980,12 @@
                                             },
                                             "kind": {
                                               "type": "string"
+                                            },
+                                            "capabilities": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
                                             }
                                           },
                                           "additionalProperties": false
@@ -4987,8 +5090,7 @@
                                                     "type": "object",
                                                     "required": [
                                                       "slots",
-                                                      "root",
-                                                      "allowedCapabilities"
+                                                      "root"
                                                     ],
                                                     "properties": {
                                                       "slots": {
@@ -5019,13 +5121,6 @@
                                                       },
                                                       "root": {
                                                         "type": "string"
-                                                      },
-                                                      "allowedCapabilities": {
-                                                        "type": "array",
-                                                        "minItems": 1,
-                                                        "items": {
-                                                          "type": "string"
-                                                        }
                                                       }
                                                     },
                                                     "additionalProperties": false
@@ -5040,6 +5135,69 @@
                                           },
                                           "additionalProperties": false
                                         }
+                                      },
+                                      "presentation": {
+                                        "type": "object",
+                                        "required": [
+                                          "slots",
+                                          "root",
+                                          "allowedCapabilities"
+                                        ],
+                                        "properties": {
+                                          "slots": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "items": {
+                                              "oneOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "id"
+                                                  ],
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "id": {
+                                                      "type": "string"
+                                                    },
+                                                    "region": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "root": {
+                                            "type": "string"
+                                          },
+                                          "allowedCapabilities": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "items": {
+                                              "oneOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "tier"
+                                                  ],
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "tier": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        "additionalProperties": false
                                       },
                                       "runtime": {
                                         "type": "object",
@@ -5158,21 +5316,24 @@
                 }
               }
             ],
-            "implementationFallback": "simple-foundry"
+            "fallback": "simple-foundry"
           }
         ],
         "projectionTiers": [
           {
             "id": "portfolio-logic",
-            "kind": "portfolio-domain"
+            "kind": "portfolio-domain",
+            "capabilities": []
           },
           {
             "id": "portfolio-market",
-            "kind": "portfolio-domain"
+            "kind": "portfolio-domain",
+            "capabilities": []
           },
           {
             "id": "portfolio-presentation",
-            "kind": "runtime-document"
+            "kind": "runtime-document",
+            "capabilities": []
           }
         ],
         "projectionRecipes": [
@@ -5871,6 +6032,7 @@
                               "serviceRecipes",
                               "projectionTiers",
                               "projectionRecipes",
+                              "presentation",
                               "runtime",
                               "cells"
                             ],
@@ -5924,7 +6086,8 @@
                                   "type": "object",
                                   "required": [
                                     "id",
-                                    "kind"
+                                    "kind",
+                                    "capabilities"
                                   ],
                                   "properties": {
                                     "id": {
@@ -5932,6 +6095,12 @@
                                     },
                                     "kind": {
                                       "type": "string"
+                                    },
+                                    "capabilities": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
                                     }
                                   },
                                   "additionalProperties": false
@@ -6036,8 +6205,7 @@
                                             "type": "object",
                                             "required": [
                                               "slots",
-                                              "root",
-                                              "allowedCapabilities"
+                                              "root"
                                             ],
                                             "properties": {
                                               "slots": {
@@ -6068,13 +6236,6 @@
                                               },
                                               "root": {
                                                 "type": "string"
-                                              },
-                                              "allowedCapabilities": {
-                                                "type": "array",
-                                                "minItems": 1,
-                                                "items": {
-                                                  "type": "string"
-                                                }
                                               }
                                             },
                                             "additionalProperties": false
@@ -6089,6 +6250,69 @@
                                   },
                                   "additionalProperties": false
                                 }
+                              },
+                              "presentation": {
+                                "type": "object",
+                                "required": [
+                                  "slots",
+                                  "root",
+                                  "allowedCapabilities"
+                                ],
+                                "properties": {
+                                  "slots": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "items": {
+                                      "oneOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "id"
+                                          ],
+                                          "additionalProperties": false,
+                                          "properties": {
+                                            "id": {
+                                              "type": "string"
+                                            },
+                                            "region": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "root": {
+                                    "type": "string"
+                                  },
+                                  "allowedCapabilities": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "items": {
+                                      "oneOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "tier"
+                                          ],
+                                          "additionalProperties": false,
+                                          "properties": {
+                                            "tier": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
                               },
                               "runtime": {
                                 "type": "object",
@@ -6598,6 +6822,43 @@
               }
             ]
           }
+        },
+        "presentation": {
+          "slots": [
+            "board",
+            {
+              "id": "holdings",
+              "region": "board"
+            },
+            {
+              "id": "market",
+              "region": "board"
+            },
+            {
+              "id": "valuation",
+              "region": "board"
+            },
+            {
+              "id": "intelligence",
+              "region": "board"
+            },
+            {
+              "id": "status",
+              "region": "board"
+            }
+          ],
+          "root": "board",
+          "allowedCapabilities": [
+            "fluent:button",
+            "fluent:spinner",
+            "fluent:table",
+            "gik:blueprint",
+            "primitive:chart",
+            "primitive:container",
+            "primitive:datetime",
+            "primitive:editable-table",
+            "primitive:markdown"
+          ]
         }
       }
     }
@@ -6759,11 +7020,13 @@
                 "projectionTiers": [
                   {
                     "id": "report-semantic",
-                    "kind": "incident-report-semantic-model"
+                    "kind": "incident-report-semantic-model",
+                    "capabilities": []
                   },
                   {
                     "id": "runtime-document",
-                    "kind": "runtime-document"
+                    "kind": "runtime-document",
+                    "capabilities": []
                   }
                 ],
                 "projectionRecipes": [
@@ -6819,6 +7082,15 @@
                   "report": {
                     "id": "report"
                   }
+                },
+                "presentation": {
+                  "slots": [
+                    "report"
+                  ],
+                  "root": "report",
+                  "allowedCapabilities": [
+                    "primitive:markdown"
+                  ]
                 }
               }
             }
@@ -12918,18 +13190,20 @@
                         }
                       }
                     ],
-                    "implementationFallback": "foundry"
+                    "fallback": "foundry"
                   }
                 ],
                 "projectionTiers": [
                   {
                     "id": "ai-agent",
-                    "kind": "ai-agent"
+                    "kind": "ai-agent",
+                    "capabilities": []
                   },
                   {
                     "id": "runtime-document",
                     "kind": "runtime-document",
-                    "description": "Authored terminal document for this hosted Blueprint."
+                    "description": "Authored terminal document for this hosted Blueprint.",
+                    "capabilities": []
                   }
                 ],
                 "projectionRecipes": [
@@ -13127,7 +13401,12 @@
                       "direction": "column",
                       "gap": "l"
                     }
-                  }
+                  },
+                  "allowedCapabilities": [
+                    "fluent:spinner",
+                    "primitive:form",
+                    "primitive:markdown"
+                  ]
                 }
               }
             },
@@ -13163,7 +13442,8 @@
                 "projectionTiers": [
                   {
                     "id": "runtime-document",
-                    "kind": "runtime-document"
+                    "kind": "runtime-document",
+                    "capabilities": []
                   }
                 ],
                 "projectionRecipes": [],
@@ -14156,7 +14436,18 @@
                       "direction": "column",
                       "gap": "m"
                     }
-                  }
+                  },
+                  "allowedCapabilities": [
+                    "fluent:button",
+                    "fluent:list",
+                    "fluent:spinner",
+                    "fluent:tab-bar",
+                    "fluent:text",
+                    "gik:blueprint",
+                    "primitive:form",
+                    "primitive:markdown",
+                    "primitive:pane-with-trigger"
+                  ]
                 }
               }
             },
@@ -14213,7 +14504,8 @@
                 "projectionTiers": [
                   {
                     "id": "runtime-document",
-                    "kind": "runtime-document"
+                    "kind": "runtime-document",
+                    "capabilities": []
                   }
                 ],
                 "projectionRecipes": [],
@@ -14777,7 +15069,8 @@
                 "projectionTiers": [
                   {
                     "id": "runtime-document",
-                    "kind": "runtime-document"
+                    "kind": "runtime-document",
+                    "capabilities": []
                   }
                 ],
                 "projectionRecipes": [],
@@ -15229,17 +15522,19 @@
                         }
                       }
                     ],
-                    "implementationFallback": "semantic"
+                    "fallback": "semantic"
                   }
                 ],
                 "projectionTiers": [
                   {
                     "id": "incident-analysis",
-                    "kind": "incident-analysis"
+                    "kind": "incident-analysis",
+                    "capabilities": []
                   },
                   {
                     "id": "runtime-document",
-                    "kind": "runtime-document"
+                    "kind": "runtime-document",
+                    "capabilities": []
                   }
                 ],
                 "projectionRecipes": [
@@ -16189,7 +16484,14 @@
                       "direction": "column",
                       "gap": "l"
                     }
-                  }
+                  },
+                  "allowedCapabilities": [
+                    "fluent:button",
+                    "fluent:spinner",
+                    "gik:blueprint",
+                    "primitive:datetime",
+                    "primitive:form"
+                  ]
                 },
                 "metadata": {
                   "compositionPattern": "external-model-selected-analysis-with-nested-report"
@@ -16240,7 +16542,8 @@
                 "projectionTiers": [
                   {
                     "id": "runtime-document",
-                    "kind": "runtime-document"
+                    "kind": "runtime-document",
+                    "capabilities": []
                   }
                 ],
                 "projectionRecipes": [],
@@ -16378,7 +16681,8 @@
                 "projectionTiers": [
                   {
                     "id": "runtime-document",
-                    "kind": "runtime-document"
+                    "kind": "runtime-document",
+                    "capabilities": []
                   }
                 ],
                 "projectionRecipes": [],
@@ -16649,7 +16953,7 @@
                         }
                       }
                     ],
-                    "implementationFallback": "mock-market"
+                    "fallback": "mock-market"
                   },
                   {
                     "id": "portfolio-market-to-presentation",
@@ -16792,7 +17096,7 @@
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model','capabilities':[]},{'id':'runtime-document','kind':'runtime-document','capabilities':[]}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report'}}],'fallback':'report'}],'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']},'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
@@ -16889,7 +17193,7 @@
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model','capabilities':[]},{'id':'runtime-document','kind':'runtime-document','capabilities':[]}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report'}}],'fallback':'report'}],'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']},'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
@@ -16974,6 +17278,7 @@
                                               "serviceRecipes",
                                               "projectionTiers",
                                               "projectionRecipes",
+                                              "presentation",
                                               "runtime",
                                               "cells"
                                             ],
@@ -17027,7 +17332,8 @@
                                                   "type": "object",
                                                   "required": [
                                                     "id",
-                                                    "kind"
+                                                    "kind",
+                                                    "capabilities"
                                                   ],
                                                   "properties": {
                                                     "id": {
@@ -17035,6 +17341,12 @@
                                                     },
                                                     "kind": {
                                                       "type": "string"
+                                                    },
+                                                    "capabilities": {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "string"
+                                                      }
                                                     }
                                                   },
                                                   "additionalProperties": false
@@ -17139,8 +17451,7 @@
                                                             "type": "object",
                                                             "required": [
                                                               "slots",
-                                                              "root",
-                                                              "allowedCapabilities"
+                                                              "root"
                                                             ],
                                                             "properties": {
                                                               "slots": {
@@ -17171,13 +17482,6 @@
                                                               },
                                                               "root": {
                                                                 "type": "string"
-                                                              },
-                                                              "allowedCapabilities": {
-                                                                "type": "array",
-                                                                "minItems": 1,
-                                                                "items": {
-                                                                  "type": "string"
-                                                                }
                                                               }
                                                             },
                                                             "additionalProperties": false
@@ -17192,6 +17496,69 @@
                                                   },
                                                   "additionalProperties": false
                                                 }
+                                              },
+                                              "presentation": {
+                                                "type": "object",
+                                                "required": [
+                                                  "slots",
+                                                  "root",
+                                                  "allowedCapabilities"
+                                                ],
+                                                "properties": {
+                                                  "slots": {
+                                                    "type": "array",
+                                                    "minItems": 1,
+                                                    "items": {
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "string"
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "required": [
+                                                            "id"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "id": {
+                                                              "type": "string"
+                                                            },
+                                                            "region": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        }
+                                                      ]
+                                                    }
+                                                  },
+                                                  "root": {
+                                                    "type": "string"
+                                                  },
+                                                  "allowedCapabilities": {
+                                                    "type": "array",
+                                                    "minItems": 1,
+                                                    "items": {
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "string"
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "required": [
+                                                            "tier"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "tier": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        }
+                                                      ]
+                                                    }
+                                                  }
+                                                },
+                                                "additionalProperties": false
                                               },
                                               "runtime": {
                                                 "type": "object",
@@ -17372,7 +17739,7 @@
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views, a presentation with slots/root, and an allowedCapabilities array listing every capability used>','fallback':'<representation id>'}],'runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model','capabilities':[]},{'id':'runtime-document','kind':'runtime-document','capabilities':[]}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and a presentation with slots/root>','fallback':'<representation id>'}],'presentation':'<compose slots/root and allowedCapabilities listing every capability used>','runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
@@ -17469,7 +17836,7 @@
                                 "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
                                 "input": {
                                   "kind": "jsonata",
-                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views, a presentation with slots/root, and an allowedCapabilities array listing every capability used>','fallback':'<representation id>'}],'runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                                  "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model','capabilities':[]},{'id':'runtime-document','kind':'runtime-document','capabilities':[]}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views and a presentation with slots/root>','fallback':'<representation id>'}],'presentation':'<compose slots/root and allowedCapabilities listing every capability used>','runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
                                 },
                                 "output": {
                                   "kind": "jsonata",
@@ -17554,6 +17921,7 @@
                                               "serviceRecipes",
                                               "projectionTiers",
                                               "projectionRecipes",
+                                              "presentation",
                                               "runtime",
                                               "cells"
                                             ],
@@ -17607,7 +17975,8 @@
                                                   "type": "object",
                                                   "required": [
                                                     "id",
-                                                    "kind"
+                                                    "kind",
+                                                    "capabilities"
                                                   ],
                                                   "properties": {
                                                     "id": {
@@ -17615,6 +17984,12 @@
                                                     },
                                                     "kind": {
                                                       "type": "string"
+                                                    },
+                                                    "capabilities": {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "string"
+                                                      }
                                                     }
                                                   },
                                                   "additionalProperties": false
@@ -17719,8 +18094,7 @@
                                                             "type": "object",
                                                             "required": [
                                                               "slots",
-                                                              "root",
-                                                              "allowedCapabilities"
+                                                              "root"
                                                             ],
                                                             "properties": {
                                                               "slots": {
@@ -17751,13 +18125,6 @@
                                                               },
                                                               "root": {
                                                                 "type": "string"
-                                                              },
-                                                              "allowedCapabilities": {
-                                                                "type": "array",
-                                                                "minItems": 1,
-                                                                "items": {
-                                                                  "type": "string"
-                                                                }
                                                               }
                                                             },
                                                             "additionalProperties": false
@@ -17772,6 +18139,69 @@
                                                   },
                                                   "additionalProperties": false
                                                 }
+                                              },
+                                              "presentation": {
+                                                "type": "object",
+                                                "required": [
+                                                  "slots",
+                                                  "root",
+                                                  "allowedCapabilities"
+                                                ],
+                                                "properties": {
+                                                  "slots": {
+                                                    "type": "array",
+                                                    "minItems": 1,
+                                                    "items": {
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "string"
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "required": [
+                                                            "id"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "id": {
+                                                              "type": "string"
+                                                            },
+                                                            "region": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        }
+                                                      ]
+                                                    }
+                                                  },
+                                                  "root": {
+                                                    "type": "string"
+                                                  },
+                                                  "allowedCapabilities": {
+                                                    "type": "array",
+                                                    "minItems": 1,
+                                                    "items": {
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "string"
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "required": [
+                                                            "tier"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "tier": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        }
+                                                      ]
+                                                    }
+                                                  }
+                                                },
+                                                "additionalProperties": false
                                               },
                                               "runtime": {
                                                 "type": "object",
@@ -17890,21 +18320,24 @@
                         }
                       }
                     ],
-                    "implementationFallback": "simple-foundry"
+                    "fallback": "simple-foundry"
                   }
                 ],
                 "projectionTiers": [
                   {
                     "id": "portfolio-logic",
-                    "kind": "portfolio-domain"
+                    "kind": "portfolio-domain",
+                    "capabilities": []
                   },
                   {
                     "id": "portfolio-market",
-                    "kind": "portfolio-domain"
+                    "kind": "portfolio-domain",
+                    "capabilities": []
                   },
                   {
                     "id": "portfolio-presentation",
-                    "kind": "runtime-document"
+                    "kind": "runtime-document",
+                    "capabilities": []
                   }
                 ],
                 "projectionRecipes": [
@@ -18603,6 +19036,7 @@
                                       "serviceRecipes",
                                       "projectionTiers",
                                       "projectionRecipes",
+                                      "presentation",
                                       "runtime",
                                       "cells"
                                     ],
@@ -18656,7 +19090,8 @@
                                           "type": "object",
                                           "required": [
                                             "id",
-                                            "kind"
+                                            "kind",
+                                            "capabilities"
                                           ],
                                           "properties": {
                                             "id": {
@@ -18664,6 +19099,12 @@
                                             },
                                             "kind": {
                                               "type": "string"
+                                            },
+                                            "capabilities": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
                                             }
                                           },
                                           "additionalProperties": false
@@ -18768,8 +19209,7 @@
                                                     "type": "object",
                                                     "required": [
                                                       "slots",
-                                                      "root",
-                                                      "allowedCapabilities"
+                                                      "root"
                                                     ],
                                                     "properties": {
                                                       "slots": {
@@ -18800,13 +19240,6 @@
                                                       },
                                                       "root": {
                                                         "type": "string"
-                                                      },
-                                                      "allowedCapabilities": {
-                                                        "type": "array",
-                                                        "minItems": 1,
-                                                        "items": {
-                                                          "type": "string"
-                                                        }
                                                       }
                                                     },
                                                     "additionalProperties": false
@@ -18821,6 +19254,69 @@
                                           },
                                           "additionalProperties": false
                                         }
+                                      },
+                                      "presentation": {
+                                        "type": "object",
+                                        "required": [
+                                          "slots",
+                                          "root",
+                                          "allowedCapabilities"
+                                        ],
+                                        "properties": {
+                                          "slots": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "items": {
+                                              "oneOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "id"
+                                                  ],
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "id": {
+                                                      "type": "string"
+                                                    },
+                                                    "region": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "root": {
+                                            "type": "string"
+                                          },
+                                          "allowedCapabilities": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "items": {
+                                              "oneOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "tier"
+                                                  ],
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "tier": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        "additionalProperties": false
                                       },
                                       "runtime": {
                                         "type": "object",
@@ -19330,6 +19826,43 @@
                       }
                     ]
                   }
+                },
+                "presentation": {
+                  "slots": [
+                    "board",
+                    {
+                      "id": "holdings",
+                      "region": "board"
+                    },
+                    {
+                      "id": "market",
+                      "region": "board"
+                    },
+                    {
+                      "id": "valuation",
+                      "region": "board"
+                    },
+                    {
+                      "id": "intelligence",
+                      "region": "board"
+                    },
+                    {
+                      "id": "status",
+                      "region": "board"
+                    }
+                  ],
+                  "root": "board",
+                  "allowedCapabilities": [
+                    "fluent:button",
+                    "fluent:spinner",
+                    "fluent:table",
+                    "gik:blueprint",
+                    "primitive:chart",
+                    "primitive:container",
+                    "primitive:datetime",
+                    "primitive:editable-table",
+                    "primitive:markdown"
+                  ]
                 }
               }
             },
@@ -19340,6 +19873,6 @@
       ]
     }
   },
-  "bundleVersion": "81e6f7282e0b2306",
-  "digest": "sha256:81e6f7282e0b230699019a416779426157d26b68fea967529b9ba19298a62f77"
+  "bundleVersion": "033bac9094f2233e",
+  "digest": "sha256:033bac9094f2233ebcad89102b9d822bd493d197b227e6ebd52fc1b80470f562"
 }

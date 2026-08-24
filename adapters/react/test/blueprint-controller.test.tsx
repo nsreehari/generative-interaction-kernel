@@ -22,7 +22,7 @@ test("BlueprintController renders and transitions Blueprint-owned in-memory stat
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: {
       state: { counter: { value: 1 } },
@@ -45,7 +45,7 @@ test("BlueprintController renders and transitions Blueprint-owned in-memory stat
         },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   const controller = new BlueprintController(blueprint);
 
@@ -62,7 +62,7 @@ test("BlueprintController reuses materialized execution with immutable externalC
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -83,7 +83,7 @@ test("BlueprintController reuses materialized execution with immutable externalC
         },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   const externalContext = { policy: { nextValue: 2 } };
   const controller = new BlueprintController(blueprint, { externalContext });
@@ -103,8 +103,8 @@ test("BlueprintController seeds state on the materialized terminal Blueprint", a
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
     projectionTiers: [
-      { id: "intent", kind: "interaction-intent" },
-      { id: "runtime", kind: "runtime-program" },
+      { id: "intent", kind: "interaction-intent" , capabilities: []},
+      { id: "runtime", kind: "runtime-program" , capabilities: []},
     ],
     projectionRecipes: [{
       id: "intent-to-runtime",
@@ -122,7 +122,7 @@ test("BlueprintController seeds state on the materialized terminal Blueprint", a
     }],
     runtime: { state: { counter: { value: 1 } } },
     cells: { root: { id: "root" } },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   const controller = new BlueprintController(blueprint, {
     context: { initialSeed: { counter: { value: 7 } } },
@@ -140,7 +140,7 @@ test("BlueprintController executes ordinary native effects without applying retu
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -153,7 +153,7 @@ test("BlueprintController executes ordinary native effects without applying retu
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   let releaseEffect!: () => void;
   const blockedEffect = new Promise<void>((resolve) => { releaseEffect = resolve; });
@@ -191,7 +191,7 @@ test("BlueprintController does not retain effects when no native executor is con
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -204,7 +204,7 @@ test("BlueprintController does not retain effects when no native executor is con
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   const controller = new BlueprintController(blueprint);
 
@@ -221,7 +221,7 @@ test("BlueprintController retries a failed ordinary effect without applying retu
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -234,7 +234,7 @@ test("BlueprintController retries a failed ordinary effect without applying retu
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   let attempts = 0;
   let effectCompleted!: () => void;

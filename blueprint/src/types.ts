@@ -14,10 +14,15 @@ import type { DeclarativeFormSpec, SystemInputToken } from "@gik/evaluators";
 
 export interface TierDefinition {
   id: string;
+  /** Reusable classification for authoring, policy, and tooling; `id` remains the chain identity. */
   kind: string;
-  schema?: string;
   description?: string;
-  input?: Record<string, Json>;
+}
+
+export interface ProjectionTierDefinition extends TierDefinition {
+  /** Blueprint-local projection capabilities available at this stage. These are compiler symbols,
+   * not an ordering over the host's flat semantic/primitive/Fluent capability catalog. */
+  capabilities: readonly string[];
 }
 
 /** The shared identity every tier transition carries on either axis. It is never authored on its own:
@@ -35,9 +40,11 @@ export interface BlueprintRepresentation {
   /** Upserts one named potential view on an existing Cell, addressed by (cellId, viewName). Every
    * other named view already declared on that Cell is left untouched. */
   views?: Record<string, Record<string, CellPotentialView>>;
+  /** Removes named views before this representation's upserts are applied. */
+  removeViews?: Record<string, readonly string[]>;
   decorators?: BlueprintRepresentationDecorator[];
-  /** Replaces the whole authored presentation for this representation. */
-  presentation?: PresentationDefinition;
+  /** Replaces presentation layout while preserving the Blueprint's authored capability authority. */
+  presentation?: RepresentationPresentationDefinition;
   /** Appends additional slot entries to the authored presentation — a plain array concat, since
    * slots are a flat list rather than a nested tree. */
   presentationAppend?: readonly PresentationSlot[];
@@ -78,7 +85,7 @@ export interface ProjectionLoweringRecipeDefinition extends LoweringRecipeDefini
  * that choice. It never touches `potentialViews` or `presentation`. */
 export interface ServiceLoweringRecipeDefinition extends LoweringRecipeDefinition {
   implementationPrograms: BlueprintImplementationProgram[];
-  implementationFallback: string;
+  fallback: string;
 }
 
 export interface BlueprintRuntimeDefinition {
@@ -188,6 +195,8 @@ export interface PresentationSlotEntry {
 
 export type PresentationSlot = string | PresentationSlotEntry;
 
+export type AllowedCapabilityEntry = string | { tier: string };
+
 export type PresentationLayoutDirection = "row" | "row-reverse" | "column" | "column-reverse";
 export type PresentationLayoutGap = "none" | "xs" | "s" | "m" | "l" | "xl";
 export type PresentationLayoutAlign = "stretch" | "start" | "center" | "end" | "baseline";
@@ -212,10 +221,9 @@ export interface PresentationSlotLayout {
 export interface PresentationDefinition {
   slots: readonly PresentationSlot[];
   root: string;
-  /** A closed vocabulary of capability names any view/decoration in this Blueprint may use. Absent
-   * means open -- any capability name is legal, the pre-existing default behavior. Present makes it
-   * a real, validated closed set: referencing anything else is a Blueprint validation error. */
-  allowedCapabilities?: readonly string[];
+  /** The mandatory closed projection vocabulary. Exact strings authorize terminal host
+   * capabilities; `{ tier }` admits every named capability declared by that projection tier. */
+  allowedCapabilities: readonly AllowedCapabilityEntry[];
   /** Optional layout for named slots' own children, keyed by slot id. A slot absent from this map
    * keeps rendering as a plain Fragment, exactly as before this field existed. Layout is a rendering
    * concern about one slot's own children, kept as one flat, easy-to-scan map here rather than
@@ -223,6 +231,8 @@ export interface PresentationDefinition {
    * view -- symmetric with `allowedCapabilities` already being a flat, presentation-wide field. */
   layout?: Record<string, PresentationSlotLayout>;
 }
+
+export type RepresentationPresentationDefinition = Omit<PresentationDefinition, "allowedCapabilities">;
 
 
 export type BlueprintStructureMode = "fixed" | "reconfigurable" | "adaptive";
@@ -284,7 +294,7 @@ export interface BlueprintDefinition {
   /** The service axis' tier transitions. Empty means the axis has exactly one terminal tier. */
   serviceRecipes: ServiceLoweringRecipeDefinition[];
   /** The projection (presentation) axis' authored tiers. Independent of the service axis. */
-  projectionTiers: TierDefinition[];
+  projectionTiers: ProjectionTierDefinition[];
   /** The projection axis' tier transitions. Empty means the axis has exactly one terminal tier. */
   projectionRecipes: ProjectionLoweringRecipeDefinition[];
   contextFormSpec?: DeclarativeFormSpec;

@@ -7,6 +7,7 @@ export * from "./cells";
 export * from "./lowering-cells";
 export * from "./types";
 export * from "./execution";
+export * from "./projection-vocabulary";
 export * from "./cell-impact";
 export * from "./exploration";
 export * from "./fixed-lowering-meta-graph";

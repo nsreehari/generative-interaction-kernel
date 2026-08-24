@@ -26,6 +26,7 @@ function singleSlotPresentation(root: string) {
   return {
     slots: [root],
     root,
+    allowedCapabilities: ["screen"],
   } as const;
 }
 
@@ -252,7 +253,7 @@ test("ordinary invoke execution is acknowledged without applying returned state"
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -311,7 +312,7 @@ test("declarative service invoke settlements re-enter durable Blueprint state", 
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -403,7 +404,7 @@ test("void invokes are acknowledged without appending settlement receipts", asyn
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: {} },
     cells: {
@@ -457,7 +458,7 @@ test("duplicate settlement receipts do not replay their follow-up events", async
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: {} },
     cells: {
@@ -530,7 +531,7 @@ test("durable source state promotes only the latest pending request and rejects 
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     services: {
       work: {

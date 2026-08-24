@@ -43,17 +43,23 @@
             }
           }
         ],
-        "implementationFallback": "default"
+        "fallback": "default"
       }
     ],
     "projectionTiers": [
       {
         "id": "intent",
-        "kind": "interaction-intent"
+        "kind": "interaction-intent",
+        "capabilities": [
+          "sample:query-intent",
+          "sample:results-intent",
+          "sample:summary-intent"
+        ]
       },
       {
         "id": "runtime",
-        "kind": "runtime-document"
+        "kind": "runtime-document",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [
@@ -121,18 +127,36 @@
               "type": "object"
             }
           }
+        },
+        "potentialViews": {
+          "primary": {
+            "capability": "sample:query-intent",
+            "region": "query-input"
+          }
         }
       },
       "results": {
         "id": "results",
         "metadata": {
           "role": "show-results"
+        },
+        "potentialViews": {
+          "primary": {
+            "capability": "sample:results-intent",
+            "region": "children"
+          }
         }
       },
       "summary": {
         "id": "summary",
         "metadata": {
           "role": "summarize-results"
+        },
+        "potentialViews": {
+          "primary": {
+            "capability": "sample:summary-intent",
+            "region": "children"
+          }
         }
       }
     },
@@ -152,6 +176,24 @@
           ]
         }
       }
+    },
+    "presentation": {
+      "slots": [
+        "query-input",
+        {
+          "id": "children",
+          "region": "query-input"
+        }
+      ],
+      "root": "query-input",
+      "allowedCapabilities": [
+        {
+          "tier": "intent"
+        },
+        "sample:query-input",
+        "sample:results",
+        "sample:summary"
+      ]
     }
   }
 }
