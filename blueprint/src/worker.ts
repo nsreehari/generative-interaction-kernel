@@ -208,7 +208,12 @@ export function queuedBlueprintEffectFailureEvents(
       },
     }, effect)];
   }
-  if (effect.kind === "invoke" && effect.control.sourceRequestToken) {
+  // Mirrors executeQueuedBlueprintEffect's success-path classification just above: any invoke that
+  // settles a Cell source (sourceRequestToken) OR a plain declarative service (serviceRef, with no
+  // sourceRequestToken -- e.g. an action-triggered save) must also settle on terminal failure, or
+  // the failure is silently dropped once the queue exhausts retries -- no settlement event, no
+  // state change, no signal the Blueprint (or its view) can ever observe.
+  if (effect.kind === "invoke" && (effect.control.sourceRequestToken || effect.control.serviceRef)) {
     return [createBlueprintDurableEffectSettlementEvent(failure.messageId, {
       outcome: "failed",
       detail,
