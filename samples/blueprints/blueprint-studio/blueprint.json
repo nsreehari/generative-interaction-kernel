@@ -16,7 +16,8 @@
     "projectionTiers": [
       {
         "id": "runtime-document",
-        "kind": "runtime-document"
+        "kind": "runtime-document",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],
@@ -251,9 +252,18 @@
             "capability": "fluent:tab-bar",
             "props": {
               "tabs": [
-                { "value": "overview", "headerLabel": "Overview" },
-                { "value": "blueprint-json", "headerLabel": "Blueprint JSON" },
-                { "value": "preview", "headerLabel": "Preview" }
+                {
+                  "value": "overview",
+                  "headerLabel": "Overview"
+                },
+                {
+                  "value": "blueprint-json",
+                  "headerLabel": "Blueprint JSON"
+                },
+                {
+                  "value": "preview",
+                  "headerLabel": "Preview"
+                }
               ]
             },
             "bindings": {
@@ -948,11 +958,35 @@
       ],
       "root": "studio",
       "layout": {
-        "studio": { "direction": "column", "gap": "m" },
-        "studio-body": { "direction": "row", "gap": "l", "align": "stretch" },
-        "catalog": { "direction": "column", "gap": "s" },
-        "workspace": { "direction": "column", "gap": "m" }
-      }
+        "studio": {
+          "direction": "column",
+          "gap": "m"
+        },
+        "studio-body": {
+          "direction": "row",
+          "gap": "l",
+          "align": "stretch"
+        },
+        "catalog": {
+          "direction": "column",
+          "gap": "s"
+        },
+        "workspace": {
+          "direction": "column",
+          "gap": "m"
+        }
+      },
+      "allowedCapabilities": [
+        "fluent:button",
+        "fluent:list",
+        "fluent:spinner",
+        "fluent:tab-bar",
+        "fluent:text",
+        "gik:blueprint",
+        "primitive:form",
+        "primitive:markdown",
+        "primitive:pane-with-trigger"
+      ]
     }
   }
 }

@@ -6,11 +6,16 @@
     "kind": "runtime-blueprint",
     "version": "1.0.0",
     "interface": {
-      "events": ["queue", "complete"]
+      "events": [
+        "queue",
+        "complete"
+      ]
     },
     "runtime": {
       "expression": "jsonata",
-      "namespaces": ["continuity"],
+      "namespaces": [
+        "continuity"
+      ],
       "actions": [
         "assign",
         "emit",
@@ -41,7 +46,8 @@
       {
         "id": "runtime-document",
         "kind": "runtime-document",
-        "description": "Control-plane continuity workflow shared by MCP and a background worker."
+        "description": "Control-plane continuity workflow shared by MCP and a background worker.",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],

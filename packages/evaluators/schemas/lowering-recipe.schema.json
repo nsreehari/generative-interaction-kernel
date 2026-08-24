@@ -69,6 +69,16 @@
             "additionalProperties": { "$ref": "https://genui.dev/schemas/cell.schema.json#/definitions/view" }
           }
         },
+        "removeViews": {
+          "description": "Per Cell, removes named potential views before this representation's view upserts are applied.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
         "decorators": {
           "type": "array",
           "minItems": 1,
@@ -133,11 +143,6 @@
           "items": { "$ref": "#/definitions/presentationSlot" }
         },
         "root": { "type": "string", "minLength": 1 },
-        "allowedCapabilities": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 },
-          "uniqueItems": true
-        },
         "layout": {
           "description": "Optional arrangement for named slots' own children, keyed by slot id.",
           "type": "object",

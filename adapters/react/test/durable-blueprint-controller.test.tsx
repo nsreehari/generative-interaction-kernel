@@ -30,7 +30,7 @@ test("DurableBlueprintController persists Blueprint state", async () => {
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -43,7 +43,7 @@ test("DurableBlueprintController persists Blueprint state", async () => {
         behavior: { on: { increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }] } },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   const runtimeRef = ref("durable-counter");
   const provider = createIndexedDbStorage({ databaseName: `gik-react-${crypto.randomUUID()}` });
@@ -76,7 +76,7 @@ test("DurableBlueprintController does not persist ordinary native effect results
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -89,7 +89,7 @@ test("DurableBlueprintController does not persist ordinary native effect results
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   const runtimeRef = ref("durable-effect-counter");
   const provider = createIndexedDbStorage({ databaseName: `gik-react-effect-${crypto.randomUUID()}` });
@@ -130,7 +130,7 @@ test("DurableBlueprintController leaves ordinary effects for an externally owned
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -143,7 +143,7 @@ test("DurableBlueprintController leaves ordinary effects for an externally owned
         behavior: { on: { save: [{ do: "invoke", control: { tool: "saveValue" } }] } },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   const runtimeRef = ref("remote-worker-counter");
   const provider = createIndexedDbStorage({ databaseName: `gik-react-remote-${crypto.randomUUID()}` });
@@ -187,7 +187,7 @@ test("DurableBlueprintController refreshes after another controller commits", as
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
     serviceRecipes: [],
-    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" , capabilities: []}],
     projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
@@ -200,7 +200,7 @@ test("DurableBlueprintController refreshes after another controller commits", as
         behavior: { on: { increment: [{ do: "assign", target: "counter.value", args: { value: 2 } }] } },
       },
     },
-    presentation: { slots: ["root"], root: "root" },
+    presentation: { slots: ["root"], root: "root" , allowedCapabilities: ["screen"]},
   });
   const listeners = new Set<(event: MessageEvent<unknown>) => void>();
   const provider = createIndexedDbStorage({

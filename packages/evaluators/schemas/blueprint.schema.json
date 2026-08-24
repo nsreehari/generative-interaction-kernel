@@ -77,7 +77,7 @@
           "description": "The projection (presentation) axis' authored tiers, resolved independently of the service axis.",
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "https://genui.dev/schemas/tier.schema.json" }
+          "items": { "$ref": "#/definitions/projectionTier" }
         },
         "projectionRecipes": {
           "description": "The projection axis' tier transitions. Empty means the axis declares exactly one terminal tier.",
@@ -90,7 +90,7 @@
         },
         "presentation": {
           "type": "object",
-          "required": ["slots", "root"],
+          "required": ["slots", "root", "allowedCapabilities"],
           "additionalProperties": false,
           "description": "A closed set of named slots plus a root. Presentation has no knowledge of Cells — attachment is self-declared by whatever attaches (a slot's own `region`, or a Cell view's own `region`).",
           "properties": {
@@ -101,9 +101,9 @@
             },
             "root": { "type": "string", "minLength": 1 },
             "allowedCapabilities": {
-              "description": "A closed vocabulary of capability names any view/decoration in this Blueprint may use. Absent means open; present makes it an enforced closed set.",
+              "description": "The mandatory closed projection vocabulary. Strings authorize exact terminal host capabilities; tier references admit a projection tier's named vocabulary.",
               "type": "array",
-              "items": { "type": "string", "minLength": 1 },
+              "items": { "$ref": "#/definitions/allowedCapabilityEntry" },
               "uniqueItems": true
             },
             "layout": {
@@ -133,6 +133,36 @@
     }
   },
   "definitions": {
+    "allowedCapabilityEntry": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["tier"],
+          "additionalProperties": false,
+          "properties": {
+            "tier": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "projectionTier": {
+      "type": "object",
+      "required": ["id", "kind", "capabilities"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "schema": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "input": { "type": "object" },
+        "capabilities": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
     "presentationSlot": {
       "oneOf": [
         { "type": "string", "minLength": 1 },

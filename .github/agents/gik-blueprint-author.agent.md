@@ -131,6 +131,9 @@ Invoke `gik-presentation-author` with the accepted semantic graph and capability
 constraints. Forbid semantic changes. Require:
 
 - named potential views;
+- projection-tier named capability vocabularies and mandatory
+  `presentation.allowedCapabilities` authorization using exact host capability
+  strings and/or `{ "tier": "<id>" }` entries;
 - real capability descriptor evidence;
 - bindings and owning-Cell event mappings;
 - Cell-agnostic slots and reachability;
@@ -153,6 +156,11 @@ accepted semantic and presentation models. Require proof that:
   projection may observe the selected implementation but service selection
   never depends on projected presentation;
 - Cells, ports, events, source contracts, services, and slots are preserved;
+- projection recipes are limited to selection, filtering, layout, composition,
+  and view specialization; they eliminate names from tiers already passed while
+  preserving explicitly authorized terminal host capabilities;
+- `semantic:*`, `primitive:*`, `fluent:*`, and domain component namespaces are
+  treated as a flat terminal host catalog, never as an implicit lowering order;
 - representative cross-product contexts materialize deterministically;
 - terminal artifacts validate.
 

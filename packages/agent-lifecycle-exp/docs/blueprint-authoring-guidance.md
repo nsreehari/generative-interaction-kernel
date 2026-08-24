@@ -67,7 +67,7 @@ top-level fields — nothing else is invented:
 - `projectionTiers` / `projectionRecipes` — the projection (presentation) lowering axis (both axes
   are described under **Two independent lowering axes** below);
 - `cells` — the data-flow graph (see **Cells** above);
-- `presentation` — the named-slot skeleton, plus an optional closed capability vocabulary (see
+- `presentation` — the named-slot skeleton, plus its mandatory closed capability vocabulary (see
   **Presentation** below);
 - `services` — the declared contracts Cells call through (see **Services** below);
 - `runtime` — declared initial state and host-dependency wiring (see **Runtime** below);
@@ -94,7 +94,7 @@ later (e.g. `compact`) without touching the first.
     "structureMode": "fixed",
     "serviceTiers": [{ "id": "base", "kind": "app-domain" }],
     "serviceRecipes": [],
-    "projectionTiers": [{ "id": "base", "kind": "app-domain" }],
+    "projectionTiers": [{ "id": "base", "kind": "app-domain", "capabilities": [] }],
     "projectionRecipes": [],
     "services": {
       "incident-data": {
@@ -140,7 +140,8 @@ later (e.g. `compact`) without touching the first.
     },
     "presentation": {
       "slots": ["root", { "id": "list", "region": "root" }, { "id": "detail", "region": "root" }],
-      "root": "root"
+      "root": "root",
+      "allowedCapabilities": ["fluent:table", "primitive:markdown"]
     }
   }
 }
@@ -223,7 +224,13 @@ inside one recipe. A Blueprint declares **two fully independent lowering axes**:
   `sources`/`compute`/`behavior` *and* top-level `services` — not only transport declarations;
 - the **projection axis** (`projectionTiers` + `projectionRecipes`) — a projection recipe owns
   `representations[]` + `fallback` and selects which of a Cell's `potentialViews`, and which
-  presentation skeleton, apply.
+  presentation skeleton, apply. Projection tiers declare Blueprint-local named capability
+  vocabularies; recipes progressively eliminate higher-tier names through selection, filtering,
+  layout, composition, and view specialization until only host-renderable capabilities remain.
+
+The host's GIK component catalog is flat: `semantic:*`, `primitive:*`, `fluent:*`, and opt-in domain
+components are all equally terminal when the host supplies them. Projection lowering never implies
+`semantic:* -> primitive:* -> fluent:*`; namespace prefixes carry no tier ordering.
 
 Both axes resolve through the same resolver, so both are held to identical chain invariants: unique
 ids, known endpoints, no branching or merging, one source and one terminal tier when the axis declares
@@ -310,17 +317,17 @@ subtree, so hiding it hides the primary too — that is usually exactly the inte
 only exists to be that layer's content), but it is worth remembering it is not the sibling-independent
 gating `before`/`after` have.
 
-Declare only capabilities actually used and import matching projection views. A Blueprint may
-optionally close this vocabulary down further with `presentation.allowedCapabilities` (see below) —
-when present, referencing anything outside it is a validation error, not just a convention, and this
-applies equally to `wrap`/`before`/`after` capabilities, not just the primary.
+Declare only capabilities actually used and import matching terminal projection views.
+`presentation.allowedCapabilities` is mandatory and closed: referencing anything outside it is a
+validation error, and this applies equally to `wrap`/`before`/`after` capabilities, not just the
+primary.
 
-### Presentation = a closed set of named slots, plus an optional closed capability vocabulary
+### Presentation = a closed set of named slots, plus a mandatory closed capability vocabulary
 
 `presentation` is entirely optional at the whole-Blueprint level — a Blueprint that never renders, or
 that only hosts others purely for their data, needs none; its Cells still fully participate in data
 flow regardless. When present, the `presentation` section declares every slot name that exists, which
-one is the root, and optionally — via `allowedCapabilities` — the closed set of capability names any
+one is the root, and — via mandatory `allowedCapabilities` — the closed set of capability names any
 view or decoration in this Blueprint may use. It has no knowledge of Cells, and it carries no tree of
 who contains whom:
 
@@ -334,14 +341,23 @@ who contains whom:
     { "id": "catalog-list", "region": "catalog" }
   ],
   "root": "studio",
-  "allowedCapabilities": ["fluent:text", "fluent:list"]
+  "allowedCapabilities": [
+    { "tier": "product-intent" },
+    "semantic:event-series",
+    "fluent:button"
+  ]
 }
 ```
 
-`allowedCapabilities` is optional and absent by default (any capability name is legal, the ordinary
-case). Declare it only when a Blueprint genuinely needs a closed, enforced vocabulary — for example, a
-Blueprint validating an AI-generated nested Blueprint against a fixed set of capabilities it was told
-it may use.
+An exact string authorizes one terminal host capability and may pass through every projection stage.
+`{ "tier": "<projection-tier-id>" }` admits every named capability declared by that projection tier.
+The authored Cells may therefore mix top-tier names, intermediate-tier names, and already-terminal
+host capabilities deliberately. After a recipe reaches its target tier, names belonging only to tiers
+already passed must be replaced or removed; exact host capabilities may remain unchanged. A terminal
+materialization rewrites the list to the exact capabilities its views actually use, and a supplied
+host capability catalog must resolve every non-system capability. `gik:blueprint` and the
+compiler-generated `gik:presentation-fragment` are intrinsic system capabilities, not host catalog
+entries.
 
 ### Attachment is self-declared, by whatever is attaching
 
@@ -369,9 +385,11 @@ confirm every declared `region` resolves to a slot, or Cell, that still exists.
 A tier is an authored stage on one axis; a recipe lowers one tier to the next on that axis only (see
 **two seams** above). A **projection** recipe may:
 
-- add, select, or replace one or more of a Cell's named **`potentialViews`** — capability, props,
+- add, select, replace, or remove one or more of a Cell's named **`potentialViews`** — capability, props,
   bindings, visibility, decorations, and which slot(s) each named view's `region` attaches to; a view
-  named here does not need to already exist on the Cell.
+  named here does not need to already exist on the Cell. `removeViews` is the explicit filtering
+  operation; representation presentation replacement may change slots/layout but never the authored
+  `allowedCapabilities` authority.
 
 A **service** recipe may:
 

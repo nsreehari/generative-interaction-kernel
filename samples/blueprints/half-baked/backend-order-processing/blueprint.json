@@ -6,11 +6,19 @@
     "kind": "runtime-blueprint",
     "version": "1.0.0",
     "interface": {
-      "events": ["submit", "approve", "charged", "declined"]
+      "events": [
+        "submit",
+        "approve",
+        "charged",
+        "declined"
+      ]
     },
     "runtime": {
       "expression": "jsonata",
-      "namespaces": ["order", "payment"],
+      "namespaces": [
+        "order",
+        "payment"
+      ],
       "actions": [
         "assign",
         "emit",
@@ -42,7 +50,8 @@
       {
         "id": "runtime-document",
         "kind": "runtime-document",
-        "description": "Headless order workflow driven by backend events and orchestrator effects."
+        "description": "Headless order workflow driven by backend events and orchestrator effects.",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],
@@ -66,9 +75,13 @@
                   "kind": "decision",
                   "responseSchema": {
                     "type": "object",
-                    "required": ["approved"],
+                    "required": [
+                      "approved"
+                    ],
                     "properties": {
-                      "approved": { "type": "boolean" }
+                      "approved": {
+                        "type": "boolean"
+                      }
                     }
                   }
                 },

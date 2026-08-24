@@ -16,7 +16,7 @@ export interface BlueprintSeedSummary {
   version: string;
   serviceTiers: Array<{ id: string; kind: string }>;
   serviceRecipes: Array<{ id: string; from: string; to: string }>;
-  projectionTiers: Array<{ id: string; kind: string }>;
+  projectionTiers: Array<{ id: string; kind: string; capabilities: string[] }>;
   projectionRecipes: Array<{ id: string; from: string; to: string }>;
 }
 
@@ -106,6 +106,11 @@ export function summarizeBlueprint(value: unknown): BlueprintSeedSummary | null 
   const blueprint = asBlueprint(value);
   if (!blueprint) return null;
   const tier = (entry: { id: string; kind: string }) => ({ id: entry.id, kind: entry.kind });
+  const projectionTier = (entry: { id: string; kind: string; capabilities: readonly string[] }) => ({
+    id: entry.id,
+    kind: entry.kind,
+    capabilities: [...entry.capabilities],
+  });
   const stage = (entry: { id: string; from: string; to: string }) => ({ id: entry.id, from: entry.from, to: entry.to });
   return {
     source: "blueprint",
@@ -114,7 +119,7 @@ export function summarizeBlueprint(value: unknown): BlueprintSeedSummary | null 
     version: blueprint.payload.version,
     serviceTiers: blueprint.payload.serviceTiers.map(tier),
     serviceRecipes: blueprint.payload.serviceRecipes.map(stage),
-    projectionTiers: blueprint.payload.projectionTiers.map(tier),
+    projectionTiers: blueprint.payload.projectionTiers.map(projectionTier),
     projectionRecipes: blueprint.payload.projectionRecipes.map(stage),
   };
 }

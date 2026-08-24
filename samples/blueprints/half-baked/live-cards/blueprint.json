@@ -67,25 +67,39 @@
             "type": "object",
             "additionalProperties": true
           },
-          "slots": ["children"]
+          "slots": [
+            "children"
+          ]
         },
         "fluent:button": {
           "propsSchema": {
             "type": "object",
             "additionalProperties": true
           },
-          "emits": ["press"]
+          "emits": [
+            "press"
+          ]
         }
       },
       "externals": {
         "projectionViews": {
           "primitive": {
             "from": "primitive",
-            "use": ["container", "markdown"]
+            "use": [
+              "container",
+              "markdown"
+            ]
           },
           "fluent": {
             "from": "fluent",
-            "use": ["button", "data-grid", "panel", "row", "text", "toolbar"]
+            "use": [
+              "button",
+              "data-grid",
+              "panel",
+              "row",
+              "text",
+              "toolbar"
+            ]
           }
         }
       },
@@ -144,7 +158,8 @@
       {
         "id": "runtime-document",
         "kind": "runtime-document",
-        "description": "Canonical Kernel-executable live cards document."
+        "description": "Canonical Kernel-executable live cards document.",
+        "capabilities": []
       }
     ],
     "projectionRecipes": [],
@@ -165,14 +180,24 @@
         "id": "live-cards-title",
         "view": {
           "capability": "fluent:text",
-          "props": { "value": "Live cards", "as": "h1", "variant": "title", "block": true }
+          "props": {
+            "value": "Live cards",
+            "as": "h1",
+            "variant": "title",
+            "block": true
+          }
         }
       },
       "live-cards-subtitle": {
         "id": "live-cards-subtitle",
         "view": {
           "capability": "fluent:text",
-          "props": { "value": "One state model projected into selectable operational cards", "as": "p", "variant": "subtitle", "block": true }
+          "props": {
+            "value": "One state model projected into selectable operational cards",
+            "as": "p",
+            "variant": "subtitle",
+            "block": true
+          }
         }
       },
       "live-cards-layout": {
@@ -257,7 +282,9 @@
         "id": "live-cards-shortcuts",
         "view": {
           "capability": "fluent:toolbar",
-          "props": { "ariaLabel": "Choose live card" }
+          "props": {
+            "ariaLabel": "Choose live card"
+          }
         }
       },
       "live-cards-shortcut-incident": {
@@ -277,7 +304,9 @@
         },
         "view": {
           "capability": "fluent:button",
-          "props": { "label": "Incident" }
+          "props": {
+            "label": "Incident"
+          }
         },
         "events": {
           "press": {
@@ -304,7 +333,9 @@
         },
         "view": {
           "capability": "fluent:button",
-          "props": { "label": "Evidence" }
+          "props": {
+            "label": "Evidence"
+          }
         },
         "events": {
           "press": {
@@ -331,7 +362,9 @@
         },
         "view": {
           "capability": "fluent:button",
-          "props": { "label": "Response" }
+          "props": {
+            "label": "Response"
+          }
         },
         "events": {
           "press": {
