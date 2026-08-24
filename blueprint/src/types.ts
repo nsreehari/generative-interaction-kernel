@@ -20,6 +20,8 @@ export interface TierDefinition {
   input?: Record<string, Json>;
 }
 
+/** The shared identity every tier transition carries on either axis. It is never authored on its own:
+ * a Blueprint declares only the two concrete axis dialects below. */
 export interface LoweringRecipeDefinition {
   id: string;
   from: string;
@@ -60,12 +62,23 @@ export interface BlueprintImplementationProgram {
   services?: Record<string, ServiceDeclaration>;
 }
 
-/** A deterministic tier transition that preserves Cell contracts while lowering representation and inner programs. */
-export interface RepresentationLoweringRecipeDefinition extends LoweringRecipeDefinition {
+/** A deterministic projection-axis tier transition. It owns exactly one seam: which named
+ * `potentialViews` (and which presentation skeleton) a Cell manifests under immutable context. It
+ * never touches `sources`, `compute`, `behavior`, or `services`. */
+export interface ProjectionLoweringRecipeDefinition extends LoweringRecipeDefinition {
   representations: BlueprintRepresentation[];
   fallback: string;
-  implementationPrograms?: BlueprintImplementationProgram[];
-  implementationFallback?: string;
+}
+
+/** A deterministic service-axis tier transition. It owns the broader contract-compatible Cell
+ * *implementation* seam — `sources`, `compute`, `behavior`, and top-level `services` declarations —
+ * not only transport/service declarations. The axis is named `service` because the choice it makes
+ * is "which concrete backing service implementation answers this Cell's already-authored contracts",
+ * but the selected implementation program may carry the whole contract-compatible implementation of
+ * that choice. It never touches `potentialViews` or `presentation`. */
+export interface ServiceLoweringRecipeDefinition extends LoweringRecipeDefinition {
+  implementationPrograms: BlueprintImplementationProgram[];
+  implementationFallback: string;
 }
 
 export interface BlueprintRuntimeDefinition {
@@ -259,15 +272,21 @@ export type BlueprintPatchDecision =
   | { accepted: true; patch: BlueprintPatch }
   | { accepted: false; reason: "fixed-structure" | "authorization-required" | "policy-rejected" };
 
-export interface BlueprintDefinition<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition> {
+export interface BlueprintDefinition {
   id: string;
   kind: string;
   version: string;
   structureMode?: BlueprintStructureMode;
   structurePolicy?: BlueprintStructurePolicy;
   interface?: BlueprintInterfaceDefinition;
-  tiers: TierDefinition[];
-  recipes: TRecipe[];
+  /** The service (implementation) axis' authored tiers. Independent of the projection axis. */
+  serviceTiers: TierDefinition[];
+  /** The service axis' tier transitions. Empty means the axis has exactly one terminal tier. */
+  serviceRecipes: ServiceLoweringRecipeDefinition[];
+  /** The projection (presentation) axis' authored tiers. Independent of the service axis. */
+  projectionTiers: TierDefinition[];
+  /** The projection axis' tier transitions. Empty means the axis has exactly one terminal tier. */
+  projectionRecipes: ProjectionLoweringRecipeDefinition[];
   contextFormSpec?: DeclarativeFormSpec;
   cells?: Record<string, CellDefinition>;
   presentation?: PresentationDefinition;
@@ -276,16 +295,16 @@ export interface BlueprintDefinition<TRecipe extends LoweringRecipeDefinition = 
   metadata?: Record<string, Json>;
 }
 
-export interface BlueprintArtifact<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition> {
+export interface BlueprintArtifact {
   gik: "0.1";
   type: "blueprint";
-  payload: BlueprintDefinition<TRecipe>;
+  payload: BlueprintDefinition;
 }
 
-export type BlueprintReferenceResolver<TRecipe extends LoweringRecipeDefinition = LoweringRecipeDefinition> = (
+export type BlueprintReferenceResolver = (
   ref: string,
   context: { parentBlueprintId: string; cellId: string },
-) => BlueprintArtifact<TRecipe>;
+) => BlueprintArtifact;
 
 export interface BlueprintReference {
   scheme: "blueprint";

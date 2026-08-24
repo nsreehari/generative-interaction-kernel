@@ -22,7 +22,6 @@
         }
       }
     },
-    "recipes": [],
     "runtime": {
       "expression": "jsonata",
       "namespaces": [
@@ -227,7 +226,8 @@
             "readonly": true,
             "version": "",
             "structureMode": "fixed",
-            "tiers": "",
+            "serviceTiers": "",
+            "projectionTiers": "",
             "recipeCount": 0,
             "tabs": []
           },
@@ -257,13 +257,22 @@
         }
       }
     },
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document",
         "description": "Authored terminal document for this hosted Blueprint."
       }
     ],
+    "serviceRecipes": [],
+    "projectionTiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Authored terminal document for this hosted Blueprint."
+      }
+    ],
+    "projectionRecipes": [],
     "cells": {
       "catalog-loader": {
         "id": "catalog-loader",
@@ -749,7 +758,7 @@
                           "type": { "const": "blueprint" },
                           "payload": {
                             "type": "object",
-                            "required": ["id", "kind", "version", "tiers", "recipes"]
+                            "required": ["id", "kind", "version", "serviceTiers", "serviceRecipes", "projectionTiers", "projectionRecipes"]
                           }
                         }
                       }

@@ -64,6 +64,9 @@ reasoning, function metadata, response schemas, and host execution authority.
 `BLUEPRINT_AUTHORING_GUIDANCE_RESOURCE_URL` identifies the package-owned Markdown guidance for
 agents that author Blueprint artifacts. Provisioning code may read this resource and append it to
 the relevant provider-neutral templates without maintaining provider- or product-specific copies.
+The guidance requires every Blueprint to declare the independent `serviceTiers`/`serviceRecipes`
+and `projectionTiers`/`projectionRecipes` axes and records the service-before-projection
+materialization order.
 
 See `docs/sot/gik-public/agent-lifecycle-exp.yaml` and
 `docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md` in the repository.

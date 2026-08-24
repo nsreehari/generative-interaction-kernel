@@ -47,8 +47,10 @@ function structureModeBlueprint(
         allowedProgramOperations: ["setRoot"],
       },
     } : {}),
-    tiers: [{ id: "runtime", kind: "runtime-document" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+    projectionRecipes: [],
     runtime: {},
     cells: {
       root: {

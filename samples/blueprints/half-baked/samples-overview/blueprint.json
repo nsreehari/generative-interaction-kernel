@@ -5,7 +5,6 @@
     "id": "samples-overview",
     "kind": "runtime-blueprint",
     "version": "2.0",
-    "recipes": [],
     "runtime": {
       "expression": "jsonata",
       "namespaces": [
@@ -281,13 +280,22 @@
         }
       }
     },
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document",
         "description": "Authored terminal document for this hosted Blueprint."
       }
     ],
+    "serviceRecipes": [],
+    "projectionTiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Authored terminal document for this hosted Blueprint."
+      }
+    ],
+    "projectionRecipes": [],
     "cells": {
       "samples-overview-root": {
         "id": "samples-overview-root",

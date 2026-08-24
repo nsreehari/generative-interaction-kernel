@@ -28,8 +28,10 @@ const child = createBlueprint({
   id: "analysis",
   kind: "runtime-blueprint",
   version: "1.0.0",
-  tiers: [{ id: "runtime", kind: "runtime-program" }],
-  recipes: [],
+  serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+  serviceRecipes: [],
+  projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+  projectionRecipes: [],
   runtime: {},
 });
 
@@ -184,8 +186,10 @@ function nestedChildBlueprint(labelProps: Record<string, Json>) {
     id: "nested-preview",
     kind: "runtime-blueprint",
     version: "1.0.0",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: {
       externals: { projectionViews: { strict: { from: "strict", use: ["label"] } } },
       state: {},
@@ -232,8 +236,10 @@ function durableParentBlueprint(childBlueprint: ReturnType<typeof nestedChildBlu
     id: "durable-shell",
     kind: "runtime-blueprint",
     version: "1.0.0",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: {} },
     cells: {
       preview: {

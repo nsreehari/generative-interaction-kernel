@@ -86,8 +86,16 @@ interface BlueprintTierDeclarativeValidator {
   node?: string;
 }
 
-interface BlueprintLoweringRecipeDeclarativeValidator {
-  kind: "blueprint-lowering-recipe";
+interface BlueprintServiceRecipeDeclarativeValidator {
+  kind: "blueprint-service-recipe";
+  message: string;
+  level: DeclarativeValidatorLevel;
+  code?: string;
+  node?: string;
+}
+
+interface BlueprintProjectionRecipeDeclarativeValidator {
+  kind: "blueprint-projection-recipe";
   message: string;
   level: DeclarativeValidatorLevel;
   code?: string;
@@ -104,7 +112,8 @@ interface BlueprintDeclarativeValidator {
 
 /** Checks that every capability a generated child Blueprint declares/uses (its own
  * `presentation.allowedCapabilities`, plus every view/decorator `capability` it references, across
- * both authored `cells[*].potentialViews` and un-lowered `recipes[*].representations[*].views`) is
+ * both authored `cells[*].potentialViews` and un-lowered
+ * `projectionRecipes[*].representations[*].views`) is
  * a subset of an accepted-capabilities list read from the validated request's own input -- the
  * declarative form of the "generated Blueprint may only use capabilities it was told it could use"
  * check, reusable across any source that authors such a request field. */
@@ -126,7 +135,8 @@ type DeclarativeValidator =
   | TypeDefDeclarativeValidator
   | BlueprintCellDeclarativeValidator
   | BlueprintTierDeclarativeValidator
-  | BlueprintLoweringRecipeDeclarativeValidator
+  | BlueprintServiceRecipeDeclarativeValidator
+  | BlueprintProjectionRecipeDeclarativeValidator
   | BlueprintDeclarativeValidator
   | BlueprintCapabilityAcceptanceDeclarativeValidator;
 
@@ -138,7 +148,8 @@ export type DeclarativeValidatorInput =
   | { kind: "typedef"; type: DeclarativeTypeName | readonly DeclarativeTypeName[]; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "blueprint-cell"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "blueprint-tier"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
-  | { kind: "blueprint-lowering-recipe"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "blueprint-service-recipe"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
+  | { kind: "blueprint-projection-recipe"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "blueprint"; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string }
   | { kind: "blueprint-capability-acceptance"; acceptedField?: string; message?: string; level?: DeclarativeValidatorLevel; code?: string; node?: string };
 
@@ -288,7 +299,8 @@ function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
       if (
         candidate.kind === "blueprint-cell" ||
         candidate.kind === "blueprint-tier" ||
-        candidate.kind === "blueprint-lowering-recipe" ||
+        candidate.kind === "blueprint-service-recipe" ||
+        candidate.kind === "blueprint-projection-recipe" ||
         candidate.kind === "blueprint"
       ) {
         out.push({
@@ -301,7 +313,9 @@ function normalizeDeclarativeValidators(raw: unknown): DeclarativeValidator[] {
                 ? "Invalid Blueprint Cell"
                 : candidate.kind === "blueprint-tier"
                   ? "Invalid Blueprint Tier"
-                  : "Invalid Blueprint lowering recipe",
+                  : candidate.kind === "blueprint-service-recipe"
+                    ? "Invalid Blueprint service recipe"
+                    : "Invalid Blueprint projection recipe",
           level: candidate.level === "warning" ? "warning" : "error",
           ...issueMetadata(candidate),
         });
@@ -344,7 +358,8 @@ export function runDeclarativeValidators(
     if (
       validator.kind === "blueprint-cell" ||
       validator.kind === "blueprint-tier" ||
-      validator.kind === "blueprint-lowering-recipe" ||
+      validator.kind === "blueprint-service-recipe" ||
+      validator.kind === "blueprint-projection-recipe" ||
       validator.kind === "blueprint"
     ) {
       const schema = validator.kind === "blueprint"
@@ -353,7 +368,9 @@ export function runDeclarativeValidators(
           ? cellSchema
           : validator.kind === "blueprint-tier"
             ? tierSchema
-            : { $ref: `${loweringRecipeSchema.$id}#/definitions/loweringRecipe` };
+            : validator.kind === "blueprint-service-recipe"
+              ? { $ref: `${loweringRecipeSchema.$id}#/definitions/serviceRecipe` }
+              : { $ref: `${loweringRecipeSchema.$id}#/definitions/projectionRecipe` };
       const schemaValidator: AjvSchemaDeclarativeValidator = {
         kind: "ajv-schema",
         schema,
@@ -380,18 +397,29 @@ export function runDeclarativeValidators(
       }
 
       if (validator.kind === "blueprint-tier") continue;
-      if (validator.kind === "blueprint-lowering-recipe") {
-        for (const issue of validateLoweringRecipeSemantics(value)) {
+      if (validator.kind === "blueprint-service-recipe") {
+        for (const issue of validateServiceRecipeSemantics(value)) {
+          pushIssue(validator, `${validator.message}: ${issue.detail}`);
+        }
+        continue;
+      }
+      if (validator.kind === "blueprint-projection-recipe") {
+        for (const issue of validateProjectionRecipeSemantics(value)) {
           pushIssue(validator, `${validator.message}: ${issue.detail}`);
         }
         continue;
       }
 
       if (validator.kind === "blueprint") {
-        const recipes = (value as { payload?: { recipes?: JsonValue[] } }).payload?.recipes ?? [];
-        for (const recipe of recipes) {
-          for (const issue of validateLoweringRecipeSemantics(recipe)) {
-            pushIssue(validator, `${validator.message}: Recipe '${String((recipe as { id?: unknown }).id)}': ${issue.detail}`);
+        const payload = (value as { payload?: { serviceRecipes?: JsonValue[]; projectionRecipes?: JsonValue[] } }).payload;
+        for (const recipe of payload?.serviceRecipes ?? []) {
+          for (const issue of validateServiceRecipeSemantics(recipe)) {
+            pushIssue(validator, `${validator.message}: Service recipe '${String((recipe as { id?: unknown }).id)}': ${issue.detail}`);
+          }
+        }
+        for (const recipe of payload?.projectionRecipes ?? []) {
+          for (const issue of validateProjectionRecipeSemantics(recipe)) {
+            pushIssue(validator, `${validator.message}: Projection recipe '${String((recipe as { id?: unknown }).id)}': ${issue.detail}`);
           }
         }
       }
@@ -478,9 +506,9 @@ export function runDeclarativeValidators(
 }
 
 /** Every `capability` a Blueprint (enveloped or bare) declares or uses, across both an already
- * materialized shape (`payload.cells[*].potentialViews`) and an un-lowered recipe shape
- * (`payload.recipes[*].representations[*]`), so the same check works regardless of which tier a
- * generated Blueprint document happens to be authored at. */
+ * materialized shape (`payload.cells[*].potentialViews`) and an un-lowered projection-axis shape
+ * (`payload.projectionRecipes[*].representations[*]`), so the same check works regardless of which
+ * tier a generated Blueprint document happens to be authored at. */
 function collectBlueprintCapabilities(value: JsonValue): string[] {
   const out: string[] = [];
   const addDecoration = (decoration: unknown): void => {
@@ -511,7 +539,7 @@ function collectBlueprintCapabilities(value: JsonValue): string[] {
     }
   }
 
-  const recipes = Array.isArray(payload.recipes) ? payload.recipes : [];
+  const recipes = Array.isArray(payload.projectionRecipes) ? payload.projectionRecipes : [];
   for (const recipe of recipes) {
     if (!recipe || typeof recipe !== "object") continue;
     const representations = (recipe as { representations?: unknown }).representations;
@@ -540,7 +568,32 @@ function collectBlueprintCapabilities(value: JsonValue): string[] {
   return out;
 }
 
-function validateLoweringRecipeSemantics(value: JsonValue): DeclarativeValidationResult["errors"] {
+function validateRecipeVariants(
+  variants: readonly { id?: unknown; when?: unknown }[],
+  fallback: unknown,
+  label: string,
+  errors: DeclarativeValidationIssue[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const variant of variants) {
+    if (typeof variant.id === "string") {
+      if (ids.has(variant.id)) errors.push({ detail: `duplicate ${label} '${variant.id}'` });
+      ids.add(variant.id);
+    }
+    if (typeof variant.when === "string") {
+      const result = validateJsonataExpression(variant.when, { mode: "full" });
+      if (!result.ok) errors.push({ detail: `${label} '${String(variant.id)}' has invalid when expression: ${result.error}` });
+    }
+  }
+  if (typeof fallback === "string" && !ids.has(fallback)) {
+    errors.push({ detail: `${label} fallback '${fallback}' does not reference a declared ${label}` });
+  }
+  return ids;
+}
+
+/** Projection-axis semantics: representation ids, `when` predicates, decorator selects, fallback
+ * reachability, and `extends` inheritance. Entirely independent of the service axis. */
+function validateProjectionRecipeSemantics(value: JsonValue): DeclarativeValidationResult["errors"] {
   const recipe = value as {
     representations?: {
       id?: unknown;
@@ -549,67 +602,53 @@ function validateLoweringRecipeSemantics(value: JsonValue): DeclarativeValidatio
       decorators?: { select?: unknown }[];
     }[];
     fallback?: unknown;
+  };
+  const errors: DeclarativeValidationIssue[] = [];
+  if (!Array.isArray(recipe.representations)) return errors;
+
+  const ids = validateRecipeVariants(recipe.representations, recipe.fallback, "representation", errors);
+  const parents = new Map<string, string>();
+  for (const representation of recipe.representations) {
+    if (typeof representation.extends === "string" && !ids.has(representation.extends)) {
+      errors.push({ detail: `representation '${String(representation.id)}' extends unknown representation '${representation.extends}'` });
+    } else if (typeof representation.id === "string" && typeof representation.extends === "string") {
+      parents.set(representation.id, representation.extends);
+    }
+    for (const decorator of representation.decorators ?? []) {
+      if (typeof decorator.select !== "string") continue;
+      const result = validateJsonataExpression(decorator.select, { mode: "full" });
+      if (!result.ok) {
+        errors.push({
+          detail: `representation '${String(representation.id)}' has invalid decorator select expression: ${result.error}`,
+        });
+      }
+    }
+  }
+  for (const id of ids) {
+    const visited = new Set<string>();
+    let cursor: string | undefined = id;
+    while (cursor !== undefined) {
+      if (visited.has(cursor)) {
+        errors.push({ detail: `representation inheritance contains a cycle at '${cursor}'` });
+        break;
+      }
+      visited.add(cursor);
+      cursor = parents.get(cursor);
+    }
+  }
+  return errors;
+}
+
+/** Service-axis semantics: implementation-program ids, `when` predicates, and fallback
+ * reachability. Entirely independent of the projection axis. */
+function validateServiceRecipeSemantics(value: JsonValue): DeclarativeValidationResult["errors"] {
+  const recipe = value as {
     implementationPrograms?: { id?: unknown; when?: unknown }[];
     implementationFallback?: unknown;
   };
   const errors: DeclarativeValidationIssue[] = [];
-  const validateVariants = (
-    variants: readonly { id?: unknown; when?: unknown }[],
-    fallback: unknown,
-    label: string,
-  ) => {
-    const ids = new Set<string>();
-    for (const variant of variants) {
-      if (typeof variant.id === "string") {
-        if (ids.has(variant.id)) errors.push({ detail: `duplicate ${label} '${variant.id}'` });
-        ids.add(variant.id);
-      }
-      if (typeof variant.when === "string") {
-        const result = validateJsonataExpression(variant.when, { mode: "full" });
-        if (!result.ok) errors.push({ detail: `${label} '${String(variant.id)}' has invalid when expression: ${result.error}` });
-      }
-    }
-    if (typeof fallback === "string" && !ids.has(fallback)) {
-      errors.push({ detail: `${label} fallback '${fallback}' does not reference a declared ${label}` });
-    }
-    return ids;
-  };
-
-  if (Array.isArray(recipe.representations)) {
-    const ids = validateVariants(recipe.representations, recipe.fallback, "representation");
-    const parents = new Map<string, string>();
-    for (const representation of recipe.representations) {
-      if (typeof representation.extends === "string" && !ids.has(representation.extends)) {
-        errors.push({ detail: `representation '${String(representation.id)}' extends unknown representation '${representation.extends}'` });
-      } else if (typeof representation.id === "string" && typeof representation.extends === "string") {
-        parents.set(representation.id, representation.extends);
-      }
-      for (const decorator of representation.decorators ?? []) {
-        if (typeof decorator.select !== "string") continue;
-        const result = validateJsonataExpression(decorator.select, { mode: "full" });
-        if (!result.ok) {
-          errors.push({
-            detail: `representation '${String(representation.id)}' has invalid decorator select expression: ${result.error}`,
-          });
-        }
-      }
-    }
-    for (const id of ids) {
-      const visited = new Set<string>();
-      let cursor: string | undefined = id;
-      while (cursor !== undefined) {
-        if (visited.has(cursor)) {
-          errors.push({ detail: `representation inheritance contains a cycle at '${cursor}'` });
-          break;
-        }
-        visited.add(cursor);
-        cursor = parents.get(cursor);
-      }
-    }
-  }
-  if (Array.isArray(recipe.implementationPrograms)) {
-    validateVariants(recipe.implementationPrograms, recipe.implementationFallback, "implementation program");
-  }
+  if (!Array.isArray(recipe.implementationPrograms)) return errors;
+  validateRecipeVariants(recipe.implementationPrograms, recipe.implementationFallback, "implementation program", errors);
   return errors;
 }
 
@@ -617,8 +656,10 @@ export function validateTier(value: JsonValue): DeclarativeValidationResult {
   return runDeclarativeValidators([{ kind: "blueprint-tier" }], value);
 }
 
-export function validateLoweringRecipe(value: JsonValue): DeclarativeValidationResult {
-  return runDeclarativeValidators([{ kind: "blueprint-lowering-recipe" }], value);
+export function validateServiceRecipe(value: JsonValue): DeclarativeValidationResult {
+  return runDeclarativeValidators([{ kind: "blueprint-service-recipe" }], value);
 }
 
-export const validateRecipe = validateLoweringRecipe;
+export function validateProjectionRecipe(value: JsonValue): DeclarativeValidationResult {
+  return runDeclarativeValidators([{ kind: "blueprint-projection-recipe" }], value);
+}

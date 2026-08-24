@@ -92,7 +92,7 @@
       "saveLabel": "Apply context",
       "discardLabel": "Discard"
     },
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "portfolio-logic",
         "kind": "portfolio-domain"
@@ -106,39 +106,11 @@
         "kind": "runtime-document"
       }
     ],
-    "recipes": [
+    "serviceRecipes": [
       {
         "id": "portfolio-logic-to-market",
         "from": "portfolio-logic",
         "to": "portfolio-market",
-        "representations": [
-          {
-            "id": "market-base",
-            "presentation": {
-              "slots": [
-                "board",
-                {
-                  "id": "holdings",
-                  "region": "board"
-                },
-                {
-                  "id": "market",
-                  "region": "board"
-                },
-                {
-                  "id": "valuation",
-                  "region": "board"
-                },
-                {
-                  "id": "intelligence",
-                  "region": "board"
-                }
-              ],
-              "root": "board"
-            }
-          }
-        ],
-        "fallback": "market-base",
         "implementationPrograms": [
           {
             "id": "mock-market",
@@ -217,6 +189,1296 @@
         "id": "portfolio-market-to-presentation",
         "from": "portfolio-market",
         "to": "portfolio-presentation",
+        "implementationPrograms": [
+          {
+            "id": "simple-foundry",
+            "when": "externalContext.`intelligence-model` = 'simple' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')"
+          },
+          {
+            "id": "simple-copilot",
+            "when": "externalContext.`intelligence-model` = 'simple' and externalContext.ai = 'copilot'",
+            "cells": {
+              "portfolio-intelligence": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence.source",
+                    "service": "portfolio-intelligence-copilot",
+                    "operation": "requestIntelligence",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "response"
+                    }
+                  },
+                  {
+                    "id": "portfolio-semantic-intelligence.source",
+                    "service": "portfolio-semantic-intelligence",
+                    "operation": "generateReport",
+                    "when": "false",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "response"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "mock-intelligence",
+            "when": "externalContext.`intelligence-model` = 'mock'",
+            "services": {
+              "portfolio-intelligence": {
+                "blueprint": {
+                  "$ref": "blueprint:portfolio-tracker-mock@1.0.0"
+                },
+                "version": "1",
+                "operations": {
+                  "requestIntelligence": {
+                    "operation": "analyze",
+                    "contract": "portfolio-intelligence/v1",
+                    "request": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "input"
+                      }
+                    },
+                    "settlement": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':response.provider}}"
+                      }
+                    }
+                  }
+                },
+                "scope": "per-blueprint"
+              }
+            }
+          },
+          {
+            "id": "semantic-simple-markdown-foundry",
+            "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
+            "cells": {
+              "portfolio-intelligence-context": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence-context.saved-report",
+                    "service": "portfolio-saved-reports",
+                    "operation": "getSavedReport",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/simple-markdown'}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}"
+                    }
+                  }
+                ],
+                "compute": [
+                  {
+                    "id": "portfolio-analysis-context",
+                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}",
+                    "assign": "portfolio.analysisContext",
+                    "dependencies": [
+                      "inputs.portfolio-value"
+                    ]
+                  },
+                  {
+                    "id": "saved-portfolio-report-envelope",
+                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                    "assign": "savedReportEnvelope",
+                    "dependencies": [
+                      "sources.portfolio-intelligence-context.saved-report"
+                    ]
+                  }
+                ]
+              },
+              "portfolio-intelligence": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence.source",
+                    "service": "portfolio-intelligence",
+                    "operation": "requestIntelligence",
+                    "when": "false",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "response"
+                    }
+                  },
+                  {
+                    "id": "portfolio-semantic-intelligence.source",
+                    "service": "portfolio-semantic-intelligence",
+                    "operation": "generateReport",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
+                    },
+                    "acceptanceCriteria": [
+                      {
+                        "kind": "blueprint-capability-acceptance",
+                        "message": "Semantic portfolio report uses a capability outside its accepted set",
+                        "code": "semantic-report-capability-acceptance"
+                      },
+                      {
+                        "kind": "jsonata",
+                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.projectionRecipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
+                        "message": "Semantic portfolio report is missing a required section slot",
+                        "code": "semantic-report-section-slots"
+                      }
+                    ]
+                  }
+                ],
+                "compute": [
+                  {
+                    "id": "generated-portfolio-report",
+                    "expression": "sources.`portfolio-semantic-intelligence.source`",
+                    "assign": "generatedReport",
+                    "dependencies": [
+                      "sources.portfolio-semantic-intelligence.source"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "semantic-simple-markdown-copilot",
+            "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and externalContext.ai = 'copilot'",
+            "cells": {
+              "portfolio-intelligence-context": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence-context.saved-report",
+                    "service": "portfolio-saved-reports",
+                    "operation": "getSavedReport",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/simple-markdown'}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}"
+                    }
+                  }
+                ],
+                "compute": [
+                  {
+                    "id": "portfolio-analysis-context",
+                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}",
+                    "assign": "portfolio.analysisContext",
+                    "dependencies": [
+                      "inputs.portfolio-value"
+                    ]
+                  },
+                  {
+                    "id": "saved-portfolio-report-envelope",
+                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                    "assign": "savedReportEnvelope",
+                    "dependencies": [
+                      "sources.portfolio-intelligence-context.saved-report"
+                    ]
+                  }
+                ]
+              },
+              "portfolio-intelligence": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence.source",
+                    "service": "portfolio-intelligence",
+                    "operation": "requestIntelligence",
+                    "when": "false",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "response"
+                    }
+                  },
+                  {
+                    "id": "portfolio-semantic-intelligence.source",
+                    "service": "portfolio-semantic-intelligence",
+                    "operation": "generateReport",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
+                    },
+                    "acceptanceCriteria": [
+                      {
+                        "kind": "blueprint-capability-acceptance",
+                        "message": "Semantic portfolio report uses a capability outside its accepted set",
+                        "code": "semantic-report-capability-acceptance"
+                      },
+                      {
+                        "kind": "jsonata",
+                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.projectionRecipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
+                        "message": "Semantic portfolio report is missing a required section slot",
+                        "code": "semantic-report-section-slots"
+                      }
+                    ]
+                  }
+                ],
+                "compute": [
+                  {
+                    "id": "generated-portfolio-report",
+                    "expression": "sources.`portfolio-semantic-intelligence.source`",
+                    "assign": "generatedReport",
+                    "dependencies": [
+                      "sources.portfolio-semantic-intelligence.source"
+                    ]
+                  }
+                ]
+              }
+            },
+            "services": {
+              "portfolio-semantic-intelligence": {
+                "kind": "copilot-agent",
+                "version": "1",
+                "operations": {
+                  "generateReport": {
+                    "operation": "chat",
+                    "contract": "portfolio-semantic-intelligence/v1",
+                    "request": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                      }
+                    },
+                    "response": {
+                      "validators": [
+                        {
+                          "kind": "blueprint",
+                          "code": "semantic-report-blueprint",
+                          "message": "Semantic portfolio intelligence response is not a valid Blueprint"
+                        },
+                        {
+                          "kind": "ajv-schema",
+                          "code": "semantic-report-capability-catalog",
+                          "message": "Semantic portfolio intelligence response is not an inert authorized Blueprint",
+                          "schema": {
+                            "type": "object",
+                            "required": [
+                              "gik",
+                              "type",
+                              "payload"
+                            ],
+                            "properties": {
+                              "gik": {
+                                "type": "string",
+                                "const": "0.1"
+                              },
+                              "type": {
+                                "type": "string",
+                                "const": "blueprint"
+                              },
+                              "payload": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "version",
+                                  "structureMode",
+                                  "serviceTiers",
+                                  "serviceRecipes",
+                                  "projectionTiers",
+                                  "projectionRecipes",
+                                  "runtime",
+                                  "cells"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "const": "generated-semantic-report"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "semantic-report"
+                                  },
+                                  "version": {
+                                    "type": "string",
+                                    "const": "1.0.0"
+                                  },
+                                  "structureMode": {
+                                    "type": "string",
+                                    "const": "fixed"
+                                  },
+                                  "serviceTiers": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 1,
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "id",
+                                        "kind"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "kind": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "serviceRecipes": {
+                                    "type": "array",
+                                    "maxItems": 0
+                                  },
+                                  "projectionTiers": {
+                                    "type": "array",
+                                    "minItems": 2,
+                                    "maxItems": 2,
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "id",
+                                        "kind"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "kind": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "projectionRecipes": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 1,
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "id",
+                                        "from",
+                                        "to",
+                                        "representations",
+                                        "fallback"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "const": "semantic-report-to-runtime"
+                                        },
+                                        "from": {
+                                          "type": "string",
+                                          "const": "report-semantic"
+                                        },
+                                        "to": {
+                                          "type": "string",
+                                          "const": "runtime-document"
+                                        },
+                                        "representations": {
+                                          "type": "array",
+                                          "minItems": 1,
+                                          "maxItems": 1,
+                                          "items": {
+                                            "type": "object",
+                                            "required": [
+                                              "id",
+                                              "views",
+                                              "presentation"
+                                            ],
+                                            "properties": {
+                                              "id": {
+                                                "type": "string"
+                                              },
+                                              "views": {
+                                                "type": "object",
+                                                "minProperties": 1,
+                                                "additionalProperties": {
+                                                  "type": "object",
+                                                  "minProperties": 1,
+                                                  "additionalProperties": {
+                                                    "type": "object",
+                                                    "required": [
+                                                      "capability"
+                                                    ],
+                                                    "properties": {
+                                                      "capability": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "semantic:narrative",
+                                                          "semantic:measure-set",
+                                                          "semantic:argument",
+                                                          "semantic:entity-set",
+                                                          "semantic:relationship-set",
+                                                          "semantic:decision",
+                                                          "primitive:container",
+                                                          "primitive:chart",
+                                                          "primitive:markdown",
+                                                          "fluent:text",
+                                                          "fluent:list",
+                                                          "fluent:table"
+                                                        ]
+                                                      },
+                                                      "props": {
+                                                        "type": "object"
+                                                      },
+                                                      "bindings": {
+                                                        "type": "object"
+                                                      },
+                                                      "region": {
+                                                        "oneOf": [
+                                                          {
+                                                            "type": "string"
+                                                          },
+                                                          {
+                                                            "type": "array",
+                                                            "minItems": 1,
+                                                            "items": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    "additionalProperties": false
+                                                  }
+                                                }
+                                              },
+                                              "presentation": {
+                                                "type": "object",
+                                                "required": [
+                                                  "slots",
+                                                  "root",
+                                                  "allowedCapabilities"
+                                                ],
+                                                "properties": {
+                                                  "slots": {
+                                                    "type": "array",
+                                                    "minItems": 1,
+                                                    "items": {
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "string"
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "required": [
+                                                            "id"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "id": {
+                                                              "type": "string"
+                                                            },
+                                                            "region": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        }
+                                                      ]
+                                                    }
+                                                  },
+                                                  "root": {
+                                                    "type": "string"
+                                                  },
+                                                  "allowedCapabilities": {
+                                                    "type": "array",
+                                                    "minItems": 1,
+                                                    "items": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                },
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "fallback": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "runtime": {
+                                    "type": "object",
+                                    "required": [
+                                      "state"
+                                    ],
+                                    "properties": {
+                                      "externals": {
+                                        "type": "object",
+                                        "required": [
+                                          "projectionViews"
+                                        ],
+                                        "properties": {
+                                          "projectionViews": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                              "type": "object",
+                                              "required": [
+                                                "from",
+                                                "use"
+                                              ],
+                                              "properties": {
+                                                "from": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "semantic",
+                                                    "primitive",
+                                                    "fluent"
+                                                  ]
+                                                },
+                                                "use": {
+                                                  "type": "array",
+                                                  "minItems": 1,
+                                                  "items": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "container",
+                                                      "chart",
+                                                      "markdown",
+                                                      "text",
+                                                      "list",
+                                                      "table",
+                                                      "narrative",
+                                                      "measure-set",
+                                                      "argument",
+                                                      "entity-set",
+                                                      "relationship-set",
+                                                      "decision"
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            }
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      },
+                                      "state": {
+                                        "type": "object"
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "cells": {
+                                    "type": "object",
+                                    "minProperties": 1,
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "required": [
+                                        "id"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "kind": "jsonata",
+                          "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.serviceRecipes) = 0 and $count(data.payload.projectionTiers) = 2 and data.payload.projectionTiers[0].id = 'report-semantic' and data.payload.projectionTiers[0].kind = 'semantic-report-model' and data.payload.projectionTiers[1].id = 'runtime-document' and data.payload.projectionTiers[1].kind = 'runtime-document')",
+                          "message": "Semantic portfolio report violates its projection-tier or inertness policy",
+                          "code": "semantic-report-admission"
+                        }
+                      ]
+                    },
+                    "settlement": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "{'ops':[],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                      }
+                    },
+                    "onViolation": {
+                      "action": "fail"
+                    }
+                  }
+                },
+                "config": {
+                  "server": "http://127.0.0.1:7801/mcp",
+                  "model": "gpt-5.4",
+                  "workspaceRef": ".copilot-workspace",
+                  "agent": "Portfolio-Semantic-Intelligence-Agent",
+                  "responseMode": "json"
+                },
+                "scope": "per-blueprint"
+              }
+            }
+          },
+          {
+            "id": "semantic-rich-components-foundry",
+            "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
+            "cells": {
+              "portfolio-intelligence-context": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence-context.saved-report",
+                    "service": "portfolio-saved-reports",
+                    "operation": "getSavedReport",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/rich-components'}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}"
+                    }
+                  }
+                ],
+                "compute": [
+                  {
+                    "id": "portfolio-analysis-context",
+                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}",
+                    "assign": "portfolio.analysisContext",
+                    "dependencies": [
+                      "inputs.portfolio-value"
+                    ]
+                  },
+                  {
+                    "id": "saved-portfolio-report-envelope",
+                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                    "assign": "savedReportEnvelope",
+                    "dependencies": [
+                      "sources.portfolio-intelligence-context.saved-report"
+                    ]
+                  }
+                ]
+              },
+              "portfolio-intelligence": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence.source",
+                    "service": "portfolio-intelligence",
+                    "operation": "requestIntelligence",
+                    "when": "false",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "response"
+                    }
+                  },
+                  {
+                    "id": "portfolio-semantic-intelligence.source",
+                    "service": "portfolio-semantic-intelligence",
+                    "operation": "generateReport",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views, a presentation with slots/root, and an allowedCapabilities array listing every capability used>','fallback':'<representation id>'}],'runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':$string(inputs.refreshGeneration)}"
+                    },
+                    "acceptanceCriteria": [
+                      {
+                        "kind": "blueprint-capability-acceptance",
+                        "message": "Semantic portfolio report uses a capability outside its accepted set",
+                        "code": "semantic-report-capability-acceptance"
+                      },
+                      {
+                        "kind": "jsonata",
+                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.projectionRecipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
+                        "message": "Semantic portfolio report is missing a required section slot",
+                        "code": "semantic-report-section-slots"
+                      }
+                    ]
+                  }
+                ],
+                "compute": [
+                  {
+                    "id": "generated-portfolio-report",
+                    "expression": "sources.`portfolio-semantic-intelligence.source`",
+                    "assign": "generatedReport",
+                    "dependencies": [
+                      "sources.portfolio-semantic-intelligence.source"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "semantic-rich-components-copilot",
+            "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and externalContext.ai = 'copilot'",
+            "cells": {
+              "portfolio-intelligence-context": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence-context.saved-report",
+                    "service": "portfolio-saved-reports",
+                    "operation": "getSavedReport",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/rich-components'}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}"
+                    }
+                  }
+                ],
+                "compute": [
+                  {
+                    "id": "portfolio-analysis-context",
+                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}",
+                    "assign": "portfolio.analysisContext",
+                    "dependencies": [
+                      "inputs.portfolio-value"
+                    ]
+                  },
+                  {
+                    "id": "saved-portfolio-report-envelope",
+                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
+                    "assign": "savedReportEnvelope",
+                    "dependencies": [
+                      "sources.portfolio-intelligence-context.saved-report"
+                    ]
+                  }
+                ]
+              },
+              "portfolio-intelligence": {
+                "sources": [
+                  {
+                    "id": "portfolio-intelligence.source",
+                    "service": "portfolio-intelligence",
+                    "operation": "requestIntelligence",
+                    "when": "false",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "response"
+                    }
+                  },
+                  {
+                    "id": "portfolio-semantic-intelligence.source",
+                    "service": "portfolio-semantic-intelligence",
+                    "operation": "generateReport",
+                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
+                    "input": {
+                      "kind": "jsonata",
+                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','serviceTiers':[{'id':'runtime-document','kind':'runtime-document'}],'serviceRecipes':[],'projectionTiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'projectionRecipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views, a presentation with slots/root, and an allowedCapabilities array listing every capability used>','fallback':'<representation id>'}],'runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
+                    },
+                    "output": {
+                      "kind": "jsonata",
+                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':$string(inputs.refreshGeneration)}"
+                    },
+                    "acceptanceCriteria": [
+                      {
+                        "kind": "blueprint-capability-acceptance",
+                        "message": "Semantic portfolio report uses a capability outside its accepted set",
+                        "code": "semantic-report-capability-acceptance"
+                      },
+                      {
+                        "kind": "jsonata",
+                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.projectionRecipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
+                        "message": "Semantic portfolio report is missing a required section slot",
+                        "code": "semantic-report-section-slots"
+                      }
+                    ]
+                  }
+                ],
+                "compute": [
+                  {
+                    "id": "generated-portfolio-report",
+                    "expression": "sources.`portfolio-semantic-intelligence.source`",
+                    "assign": "generatedReport",
+                    "dependencies": [
+                      "sources.portfolio-semantic-intelligence.source"
+                    ]
+                  }
+                ]
+              }
+            },
+            "services": {
+              "portfolio-semantic-intelligence": {
+                "kind": "copilot-agent",
+                "version": "1",
+                "operations": {
+                  "generateReport": {
+                    "operation": "chat",
+                    "contract": "portfolio-semantic-intelligence/v1",
+                    "request": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
+                      }
+                    },
+                    "response": {
+                      "validators": [
+                        {
+                          "kind": "blueprint",
+                          "code": "semantic-report-blueprint",
+                          "message": "Semantic portfolio intelligence response is not a valid Blueprint"
+                        },
+                        {
+                          "kind": "ajv-schema",
+                          "code": "semantic-report-capability-catalog",
+                          "message": "Semantic portfolio intelligence response is not an inert authorized Blueprint",
+                          "schema": {
+                            "type": "object",
+                            "required": [
+                              "gik",
+                              "type",
+                              "payload"
+                            ],
+                            "properties": {
+                              "gik": {
+                                "type": "string",
+                                "const": "0.1"
+                              },
+                              "type": {
+                                "type": "string",
+                                "const": "blueprint"
+                              },
+                              "payload": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "version",
+                                  "structureMode",
+                                  "serviceTiers",
+                                  "serviceRecipes",
+                                  "projectionTiers",
+                                  "projectionRecipes",
+                                  "runtime",
+                                  "cells"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "const": "generated-semantic-report"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "semantic-report"
+                                  },
+                                  "version": {
+                                    "type": "string",
+                                    "const": "1.0.0"
+                                  },
+                                  "structureMode": {
+                                    "type": "string",
+                                    "const": "fixed"
+                                  },
+                                  "serviceTiers": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 1,
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "id",
+                                        "kind"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "kind": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "serviceRecipes": {
+                                    "type": "array",
+                                    "maxItems": 0
+                                  },
+                                  "projectionTiers": {
+                                    "type": "array",
+                                    "minItems": 2,
+                                    "maxItems": 2,
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "id",
+                                        "kind"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "kind": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "projectionRecipes": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 1,
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "id",
+                                        "from",
+                                        "to",
+                                        "representations",
+                                        "fallback"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "const": "semantic-report-to-runtime"
+                                        },
+                                        "from": {
+                                          "type": "string",
+                                          "const": "report-semantic"
+                                        },
+                                        "to": {
+                                          "type": "string",
+                                          "const": "runtime-document"
+                                        },
+                                        "representations": {
+                                          "type": "array",
+                                          "minItems": 1,
+                                          "maxItems": 1,
+                                          "items": {
+                                            "type": "object",
+                                            "required": [
+                                              "id",
+                                              "views",
+                                              "presentation"
+                                            ],
+                                            "properties": {
+                                              "id": {
+                                                "type": "string"
+                                              },
+                                              "views": {
+                                                "type": "object",
+                                                "minProperties": 1,
+                                                "additionalProperties": {
+                                                  "type": "object",
+                                                  "minProperties": 1,
+                                                  "additionalProperties": {
+                                                    "type": "object",
+                                                    "required": [
+                                                      "capability"
+                                                    ],
+                                                    "properties": {
+                                                      "capability": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "semantic:narrative",
+                                                          "semantic:measure-set",
+                                                          "semantic:argument",
+                                                          "semantic:entity-set",
+                                                          "semantic:relationship-set",
+                                                          "semantic:decision",
+                                                          "primitive:container",
+                                                          "primitive:chart",
+                                                          "primitive:markdown",
+                                                          "fluent:text",
+                                                          "fluent:list",
+                                                          "fluent:table"
+                                                        ]
+                                                      },
+                                                      "props": {
+                                                        "type": "object"
+                                                      },
+                                                      "bindings": {
+                                                        "type": "object"
+                                                      },
+                                                      "region": {
+                                                        "oneOf": [
+                                                          {
+                                                            "type": "string"
+                                                          },
+                                                          {
+                                                            "type": "array",
+                                                            "minItems": 1,
+                                                            "items": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    "additionalProperties": false
+                                                  }
+                                                }
+                                              },
+                                              "presentation": {
+                                                "type": "object",
+                                                "required": [
+                                                  "slots",
+                                                  "root",
+                                                  "allowedCapabilities"
+                                                ],
+                                                "properties": {
+                                                  "slots": {
+                                                    "type": "array",
+                                                    "minItems": 1,
+                                                    "items": {
+                                                      "oneOf": [
+                                                        {
+                                                          "type": "string"
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "required": [
+                                                            "id"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "id": {
+                                                              "type": "string"
+                                                            },
+                                                            "region": {
+                                                              "type": "string"
+                                                            }
+                                                          }
+                                                        }
+                                                      ]
+                                                    }
+                                                  },
+                                                  "root": {
+                                                    "type": "string"
+                                                  },
+                                                  "allowedCapabilities": {
+                                                    "type": "array",
+                                                    "minItems": 1,
+                                                    "items": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                },
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "fallback": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "runtime": {
+                                    "type": "object",
+                                    "required": [
+                                      "state"
+                                    ],
+                                    "properties": {
+                                      "externals": {
+                                        "type": "object",
+                                        "required": [
+                                          "projectionViews"
+                                        ],
+                                        "properties": {
+                                          "projectionViews": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                              "type": "object",
+                                              "required": [
+                                                "from",
+                                                "use"
+                                              ],
+                                              "properties": {
+                                                "from": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "semantic",
+                                                    "primitive",
+                                                    "fluent"
+                                                  ]
+                                                },
+                                                "use": {
+                                                  "type": "array",
+                                                  "minItems": 1,
+                                                  "items": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "container",
+                                                      "chart",
+                                                      "markdown",
+                                                      "text",
+                                                      "list",
+                                                      "table",
+                                                      "narrative",
+                                                      "measure-set",
+                                                      "argument",
+                                                      "entity-set",
+                                                      "relationship-set",
+                                                      "decision"
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            }
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      },
+                                      "state": {
+                                        "type": "object"
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "cells": {
+                                    "type": "object",
+                                    "minProperties": 1,
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "required": [
+                                        "id"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "kind": "jsonata",
+                          "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.serviceRecipes) = 0 and $count(data.payload.projectionTiers) = 2 and data.payload.projectionTiers[0].id = 'report-semantic' and data.payload.projectionTiers[0].kind = 'semantic-report-model' and data.payload.projectionTiers[1].id = 'runtime-document' and data.payload.projectionTiers[1].kind = 'runtime-document')",
+                          "message": "Semantic portfolio report violates its tier or inertness policy",
+                          "code": "semantic-report-admission"
+                        }
+                      ]
+                    },
+                    "settlement": {
+                      "transform": {
+                        "kind": "jsonata",
+                        "expr": "{'ops':[],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
+                      }
+                    },
+                    "onViolation": {
+                      "action": "fail"
+                    }
+                  }
+                },
+                "config": {
+                  "server": "http://127.0.0.1:7801/mcp",
+                  "model": "gpt-5.4",
+                  "workspaceRef": ".copilot-workspace",
+                  "agent": "Portfolio-Semantic-Intelligence-Agent",
+                  "responseMode": "json"
+                },
+                "scope": "per-blueprint"
+              }
+            }
+          }
+        ],
+        "implementationFallback": "simple-foundry"
+      }
+    ],
+    "projectionTiers": [
+      {
+        "id": "portfolio-logic",
+        "kind": "portfolio-domain"
+      },
+      {
+        "id": "portfolio-market",
+        "kind": "portfolio-domain"
+      },
+      {
+        "id": "portfolio-presentation",
+        "kind": "runtime-document"
+      }
+    ],
+    "projectionRecipes": [
+      {
+        "id": "portfolio-logic-to-market",
+        "from": "portfolio-logic",
+        "to": "portfolio-market",
+        "representations": [
+          {
+            "id": "market-base",
+            "presentation": {
+              "slots": [
+                "board",
+                {
+                  "id": "holdings",
+                  "region": "board"
+                },
+                {
+                  "id": "market",
+                  "region": "board"
+                },
+                {
+                  "id": "valuation",
+                  "region": "board"
+                },
+                {
+                  "id": "intelligence",
+                  "region": "board"
+                }
+              ],
+              "root": "board"
+            }
+          }
+        ],
+        "fallback": "market-base"
+      },
+      {
+        "id": "portfolio-market-to-presentation",
+        "from": "portfolio-market",
+        "to": "portfolio-presentation",
         "representations": [
           {
             "id": "desktop-base",
@@ -229,9 +1491,17 @@
                     "spec": {
                       "schema": {
                         "properties": {
-                          "ticker": { "title": "Ticker" },
-                          "quantity": { "title": "Quantity", "type": "number" },
-                          "costBasis": { "title": "Cost basis", "type": "number" }
+                          "ticker": {
+                            "title": "Ticker"
+                          },
+                          "quantity": {
+                            "title": "Quantity",
+                            "type": "number"
+                          },
+                          "costBasis": {
+                            "title": "Cost basis",
+                            "type": "number"
+                          }
                         }
                       }
                     }
@@ -378,7 +1648,12 @@
               ],
               "root": "board",
               "layout": {
-                "board": { "direction": "row", "gap": "l", "align": "start", "wrap": true }
+                "board": {
+                  "direction": "row",
+                  "gap": "l",
+                  "align": "start",
+                  "wrap": true
+                }
               }
             }
           },
@@ -439,7 +1714,10 @@
               ],
               "root": "board",
               "layout": {
-                "board": { "direction": "column", "gap": "m" }
+                "board": {
+                  "direction": "column",
+                  "gap": "m"
+                }
               }
             }
           },
@@ -556,7 +1834,12 @@
               ],
               "root": "board",
               "layout": {
-                "board": { "direction": "row", "gap": "l", "align": "start", "wrap": true }
+                "board": {
+                  "direction": "row",
+                  "gap": "l",
+                  "align": "start",
+                  "wrap": true
+                }
               }
             }
           },
@@ -661,1194 +1944,15 @@
               ],
               "root": "board",
               "layout": {
-                "board": { "direction": "column", "gap": "m" }
+                "board": {
+                  "direction": "column",
+                  "gap": "m"
+                }
               }
             }
           }
         ],
-        "fallback": "simple-desktop",
-        "implementationPrograms": [
-          {
-            "id": "simple-foundry",
-            "when": "externalContext.`intelligence-model` = 'simple' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')"
-          },
-          {
-            "id": "simple-copilot",
-            "when": "externalContext.`intelligence-model` = 'simple' and externalContext.ai = 'copilot'",
-            "cells": {
-              "portfolio-intelligence": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence.source",
-                    "service": "portfolio-intelligence-copilot",
-                    "operation": "requestIntelligence",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "response"
-                    }
-                  },
-                  {
-                    "id": "portfolio-semantic-intelligence.source",
-                    "service": "portfolio-semantic-intelligence",
-                    "operation": "generateReport",
-                    "when": "false",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "response"
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "id": "mock-intelligence",
-            "when": "externalContext.`intelligence-model` = 'mock'",
-            "services": {
-              "portfolio-intelligence": {
-                "blueprint": {
-                  "$ref": "blueprint:portfolio-tracker-mock@1.0.0"
-                },
-                "version": "1",
-                "operations": {
-                  "requestIntelligence": {
-                    "operation": "analyze",
-                    "contract": "portfolio-intelligence/v1",
-                    "request": {
-                      "transform": {
-                        "kind": "jsonata",
-                        "expr": "input"
-                      }
-                    },
-                    "settlement": {
-                      "transform": {
-                        "kind": "jsonata",
-                        "expr": "{'ops':[{'op':'set','path':'portfolio.intelligence','value':response}],'detail':{'provider':response.provider}}"
-                      }
-                    }
-                  }
-                },
-                "scope": "per-blueprint"
-              }
-            }
-          },
-          {
-            "id": "semantic-simple-markdown-foundry",
-            "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
-            "cells": {
-              "portfolio-intelligence-context": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence-context.saved-report",
-                    "service": "portfolio-saved-reports",
-                    "operation": "getSavedReport",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/simple-markdown'}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}"
-                    }
-                  }
-                ],
-                "compute": [
-                  {
-                    "id": "portfolio-analysis-context",
-                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/simple-markdown'}",
-                    "assign": "portfolio.analysisContext",
-                    "dependencies": [
-                      "inputs.portfolio-value"
-                    ]
-                  },
-                  {
-                    "id": "saved-portfolio-report-envelope",
-                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
-                    "assign": "savedReportEnvelope",
-                    "dependencies": [
-                      "sources.portfolio-intelligence-context.saved-report"
-                    ]
-                  }
-                ]
-              },
-              "portfolio-intelligence": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence.source",
-                    "service": "portfolio-intelligence",
-                    "operation": "requestIntelligence",
-                    "when": "false",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "response"
-                    }
-                  },
-                  {
-                    "id": "portfolio-semantic-intelligence.source",
-                    "service": "portfolio-semantic-intelligence",
-                    "operation": "generateReport",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
-                    },
-                    "acceptanceCriteria": [
-                      {
-                        "kind": "blueprint-capability-acceptance",
-                        "message": "Semantic portfolio report uses a capability outside its accepted set",
-                        "code": "semantic-report-capability-acceptance"
-                      },
-                      {
-                        "kind": "jsonata",
-                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
-                        "message": "Semantic portfolio report is missing a required section slot",
-                        "code": "semantic-report-section-slots"
-                      }
-                    ]
-                  }
-                ],
-                "compute": [
-                  {
-                    "id": "generated-portfolio-report",
-                    "expression": "sources.`portfolio-semantic-intelligence.source`",
-                    "assign": "generatedReport",
-                    "dependencies": [
-                      "sources.portfolio-semantic-intelligence.source"
-                    ]
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "id": "semantic-simple-markdown-copilot",
-            "when": "externalContext.`intelligence-model` = 'semantic' and ($not($exists(externalContext.semantic)) or externalContext.semantic = 'simple-markdown') and externalContext.ai = 'copilot'",
-            "cells": {
-              "portfolio-intelligence-context": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence-context.saved-report",
-                    "service": "portfolio-saved-reports",
-                    "operation": "getSavedReport",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/simple-markdown'}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}"
-                    }
-                  }
-                ],
-                "compute": [
-                  {
-                    "id": "portfolio-analysis-context",
-                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/simple-markdown'}",
-                    "assign": "portfolio.analysisContext",
-                    "dependencies": [
-                      "inputs.portfolio-value"
-                    ]
-                  },
-                  {
-                    "id": "saved-portfolio-report-envelope",
-                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
-                    "assign": "savedReportEnvelope",
-                    "dependencies": [
-                      "sources.portfolio-intelligence-context.saved-report"
-                    ]
-                  }
-                ]
-              },
-              "portfolio-intelligence": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence.source",
-                    "service": "portfolio-intelligence",
-                    "operation": "requestIntelligence",
-                    "when": "false",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "response"
-                    }
-                  },
-                  {
-                    "id": "portfolio-semantic-intelligence.source",
-                    "service": "portfolio-semantic-intelligence",
-                    "operation": "generateReport",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'simple-markdown','acceptedCapabilities':['primitive:markdown'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice'],'constraints':['one coherent Markdown experience'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':[{'id':'report','views':{'report':{'primary':{'capability':'primitive:markdown','bindings':{'value':{'from':'report.markdown'}}}}},'presentation':{'slots':['report'],'root':'report','allowedCapabilities':['primitive:markdown']}}],'fallback':'report'}],'runtime':{'externals':{'projectionViews':{'primitive':{'from':'primitive','use':['markdown']}}},'state':{'report':{'markdown':'<compose the complete report>'}}},'cells':{'report':{'id':'report'}}}},'slotPolicy':'Replace only the markdown slot. DELIMITER-CHECK: close report state and runtime before the sibling cells member; in serialized JSON, emit three closing braces immediately before ,\"cells\" and four closing braces at the end. Preserve everything else.','behavior':'inert'}}}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/simple-markdown','requestId':$string(inputs.refreshGeneration)}"
-                    },
-                    "acceptanceCriteria": [
-                      {
-                        "kind": "blueprint-capability-acceptance",
-                        "message": "Semantic portfolio report uses a capability outside its accepted set",
-                        "code": "semantic-report-capability-acceptance"
-                      },
-                      {
-                        "kind": "jsonata",
-                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
-                        "message": "Semantic portfolio report is missing a required section slot",
-                        "code": "semantic-report-section-slots"
-                      }
-                    ]
-                  }
-                ],
-                "compute": [
-                  {
-                    "id": "generated-portfolio-report",
-                    "expression": "sources.`portfolio-semantic-intelligence.source`",
-                    "assign": "generatedReport",
-                    "dependencies": [
-                      "sources.portfolio-semantic-intelligence.source"
-                    ]
-                  }
-                ]
-              }
-            },
-            "services": {
-              "portfolio-semantic-intelligence": {
-                "kind": "copilot-agent",
-                "version": "1",
-                "operations": {
-                  "generateReport": {
-                    "operation": "chat",
-                    "contract": "portfolio-semantic-intelligence/v1",
-                    "request": {
-                      "transform": {
-                        "kind": "jsonata",
-                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
-                      }
-                    },
-                    "response": {
-                      "validators": [
-                        {
-                          "kind": "blueprint",
-                          "code": "semantic-report-blueprint",
-                          "message": "Semantic portfolio intelligence response is not a valid Blueprint"
-                        },
-                        {
-                          "kind": "ajv-schema",
-                          "code": "semantic-report-capability-catalog",
-                          "message": "Semantic portfolio intelligence response is not an inert authorized Blueprint",
-                          "schema": {
-                            "type": "object",
-                            "required": [
-                              "gik",
-                              "type",
-                              "payload"
-                            ],
-                            "properties": {
-                              "gik": {
-                                "type": "string",
-                                "const": "0.1"
-                              },
-                              "type": {
-                                "type": "string",
-                                "const": "blueprint"
-                              },
-                              "payload": {
-                                "type": "object",
-                                "required": [
-                                  "id",
-                                  "kind",
-                                  "version",
-                                  "structureMode",
-                                  "tiers",
-                                  "recipes",
-                                  "runtime",
-                                  "cells"
-                                ],
-                                "properties": {
-                                  "id": {
-                                    "type": "string",
-                                    "const": "generated-semantic-report"
-                                  },
-                                  "kind": {
-                                    "type": "string",
-                                    "const": "semantic-report"
-                                  },
-                                  "version": {
-                                    "type": "string",
-                                    "const": "1.0.0"
-                                  },
-                                  "structureMode": {
-                                    "type": "string",
-                                    "const": "fixed"
-                                  },
-                                  "tiers": {
-                                    "type": "array",
-                                    "minItems": 2,
-                                    "maxItems": 2,
-                                    "items": {
-                                      "type": "object",
-                                      "required": [
-                                        "id",
-                                        "kind"
-                                      ],
-                                      "properties": {
-                                        "id": {
-                                          "type": "string"
-                                        },
-                                        "kind": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "additionalProperties": false
-                                    }
-                                  },
-                                  "recipes": {
-                                    "type": "array",
-                                    "minItems": 1,
-                                    "maxItems": 1,
-                                    "items": {
-                                      "type": "object",
-                                      "required": [
-                                        "id",
-                                        "from",
-                                        "to",
-                                        "representations",
-                                        "fallback"
-                                      ],
-                                      "properties": {
-                                        "id": {
-                                          "type": "string",
-                                          "const": "semantic-report-to-runtime"
-                                        },
-                                        "from": {
-                                          "type": "string",
-                                          "const": "report-semantic"
-                                        },
-                                        "to": {
-                                          "type": "string",
-                                          "const": "runtime-document"
-                                        },
-                                        "representations": {
-                                          "type": "array",
-                                          "minItems": 1,
-                                          "maxItems": 1,
-                                          "items": {
-                                            "type": "object",
-                                            "required": [
-                                              "id",
-                                              "views",
-                                              "presentation"
-                                            ],
-                                            "properties": {
-                                              "id": {
-                                                "type": "string"
-                                              },
-                                              "views": {
-                                                "type": "object",
-                                                "minProperties": 1,
-                                                "additionalProperties": {
-                                                  "type": "object",
-                                                  "minProperties": 1,
-                                                  "additionalProperties": {
-                                                    "type": "object",
-                                                    "required": [
-                                                      "capability"
-                                                    ],
-                                                    "properties": {
-                                                      "capability": {
-                                                        "type": "string",
-                                                        "enum": [
-                                                          "semantic:narrative",
-                                                          "semantic:measure-set",
-                                                          "semantic:argument",
-                                                          "semantic:entity-set",
-                                                          "semantic:relationship-set",
-                                                          "semantic:decision",
-                                                          "primitive:container",
-                                                          "primitive:chart",
-                                                          "primitive:markdown",
-                                                          "fluent:text",
-                                                          "fluent:list",
-                                                          "fluent:table"
-                                                        ]
-                                                      },
-                                                      "props": {
-                                                        "type": "object"
-                                                      },
-                                                      "bindings": {
-                                                        "type": "object"
-                                                      },
-                                                      "region": {
-                                                        "oneOf": [
-                                                          {
-                                                            "type": "string"
-                                                          },
-                                                          {
-                                                            "type": "array",
-                                                            "minItems": 1,
-                                                            "items": {
-                                                              "type": "string"
-                                                            }
-                                                          }
-                                                        ]
-                                                      }
-                                                    },
-                                                    "additionalProperties": false
-                                                  }
-                                                }
-                                              },
-                                              "presentation": {
-                                                "type": "object",
-                                                "required": [
-                                                  "slots",
-                                                  "root",
-                                                  "allowedCapabilities"
-                                                ],
-                                                "properties": {
-                                                  "slots": {
-                                                    "type": "array",
-                                                    "minItems": 1,
-                                                    "items": {
-                                                      "oneOf": [
-                                                        {
-                                                          "type": "string"
-                                                        },
-                                                        {
-                                                          "type": "object",
-                                                          "required": [
-                                                            "id"
-                                                          ],
-                                                          "additionalProperties": false,
-                                                          "properties": {
-                                                            "id": {
-                                                              "type": "string"
-                                                            },
-                                                            "region": {
-                                                              "type": "string"
-                                                            }
-                                                          }
-                                                        }
-                                                      ]
-                                                    }
-                                                  },
-                                                  "root": {
-                                                    "type": "string"
-                                                  },
-                                                  "allowedCapabilities": {
-                                                    "type": "array",
-                                                    "minItems": 1,
-                                                    "items": {
-                                                      "type": "string"
-                                                    }
-                                                  }
-                                                },
-                                                "additionalProperties": false
-                                              }
-                                            },
-                                            "additionalProperties": false
-                                          }
-                                        },
-                                        "fallback": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "additionalProperties": false
-                                    }
-                                  },
-                                  "runtime": {
-                                    "type": "object",
-                                    "required": [
-                                      "state"
-                                    ],
-                                    "properties": {
-                                      "externals": {
-                                        "type": "object",
-                                        "required": [
-                                          "projectionViews"
-                                        ],
-                                        "properties": {
-                                          "projectionViews": {
-                                            "type": "object",
-                                            "additionalProperties": {
-                                              "type": "object",
-                                              "required": [
-                                                "from",
-                                                "use"
-                                              ],
-                                              "properties": {
-                                                "from": {
-                                                  "type": "string",
-                                                  "enum": [
-                                                    "semantic",
-                                                    "primitive",
-                                                    "fluent"
-                                                  ]
-                                                },
-                                                "use": {
-                                                  "type": "array",
-                                                  "minItems": 1,
-                                                  "items": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "container",
-                                                      "chart",
-                                                      "markdown",
-                                                      "text",
-                                                      "list",
-                                                      "table",
-                                                      "narrative",
-                                                      "measure-set",
-                                                      "argument",
-                                                      "entity-set",
-                                                      "relationship-set",
-                                                      "decision"
-                                                    ]
-                                                  }
-                                                }
-                                              },
-                                              "additionalProperties": false
-                                            }
-                                          }
-                                        },
-                                        "additionalProperties": false
-                                      },
-                                      "state": {
-                                        "type": "object"
-                                      }
-                                    },
-                                    "additionalProperties": false
-                                  },
-                                  "cells": {
-                                    "type": "object",
-                                    "minProperties": 1,
-                                    "additionalProperties": {
-                                      "type": "object",
-                                      "required": [
-                                        "id"
-                                      ],
-                                      "properties": {
-                                        "id": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "additionalProperties": false
-                                    }
-                                  }
-                                },
-                                "additionalProperties": false
-                              }
-                            },
-                            "additionalProperties": false
-                          }
-                        },
-                        {
-                          "kind": "jsonata",
-                          "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
-                          "message": "Semantic portfolio report violates its tier or inertness policy",
-                          "code": "semantic-report-admission"
-                        }
-                      ]
-                    },
-                    "settlement": {
-                      "transform": {
-                        "kind": "jsonata",
-                        "expr": "{'ops':[],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
-                      }
-                    },
-                    "onViolation": {
-                      "action": "fail"
-                    }
-                  }
-                },
-                "config": {
-                  "server": "http://127.0.0.1:7801/mcp",
-                  "model": "gpt-5.4",
-                  "workspaceRef": ".copilot-workspace",
-                  "agent": "Portfolio-Semantic-Intelligence-Agent",
-                  "responseMode": "json"
-                },
-                "scope": "per-blueprint"
-              }
-            }
-          },
-          {
-            "id": "semantic-rich-components-foundry",
-            "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and ($not($exists(externalContext.ai)) or externalContext.ai = 'foundry')",
-            "cells": {
-              "portfolio-intelligence-context": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence-context.saved-report",
-                    "service": "portfolio-saved-reports",
-                    "operation": "getSavedReport",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'foundry/rich-components'}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}"
-                    }
-                  }
-                ],
-                "compute": [
-                  {
-                    "id": "portfolio-analysis-context",
-                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'foundry/rich-components'}",
-                    "assign": "portfolio.analysisContext",
-                    "dependencies": [
-                      "inputs.portfolio-value"
-                    ]
-                  },
-                  {
-                    "id": "saved-portfolio-report-envelope",
-                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
-                    "assign": "savedReportEnvelope",
-                    "dependencies": [
-                      "sources.portfolio-intelligence-context.saved-report"
-                    ]
-                  }
-                ]
-              },
-              "portfolio-intelligence": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence.source",
-                    "service": "portfolio-intelligence",
-                    "operation": "requestIntelligence",
-                    "when": "false",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "response"
-                    }
-                  },
-                  {
-                    "id": "portfolio-semantic-intelligence.source",
-                    "service": "portfolio-semantic-intelligence",
-                    "operation": "generateReport",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views, a presentation with slots/root, and an allowedCapabilities array listing every capability used>','fallback':'<representation id>'}],'runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'foundry/rich-components','requestId':$string(inputs.refreshGeneration)}"
-                    },
-                    "acceptanceCriteria": [
-                      {
-                        "kind": "blueprint-capability-acceptance",
-                        "message": "Semantic portfolio report uses a capability outside its accepted set",
-                        "code": "semantic-report-capability-acceptance"
-                      },
-                      {
-                        "kind": "jsonata",
-                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
-                        "message": "Semantic portfolio report is missing a required section slot",
-                        "code": "semantic-report-section-slots"
-                      }
-                    ]
-                  }
-                ],
-                "compute": [
-                  {
-                    "id": "generated-portfolio-report",
-                    "expression": "sources.`portfolio-semantic-intelligence.source`",
-                    "assign": "generatedReport",
-                    "dependencies": [
-                      "sources.portfolio-semantic-intelligence.source"
-                    ]
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "id": "semantic-rich-components-copilot",
-            "when": "externalContext.`intelligence-model` = 'semantic' and externalContext.semantic = 'rich-components' and externalContext.ai = 'copilot'",
-            "cells": {
-              "portfolio-intelligence-context": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence-context.saved-report",
-                    "service": "portfolio-saved-reports",
-                    "operation": "getSavedReport",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'portfolio_key':$string(inputs.`portfolio-value`),'analysis_key':'copilot/rich-components'}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "{'found':response != null,'report':response ? response.report : null,'asOf':response ? response.asOf : null,'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}"
-                    }
-                  }
-                ],
-                "compute": [
-                  {
-                    "id": "portfolio-analysis-context",
-                    "expression": "{'portfolioKey':$string(inputs.`portfolio-value`),'analysisKey':'copilot/rich-components'}",
-                    "assign": "portfolio.analysisContext",
-                    "dependencies": [
-                      "inputs.portfolio-value"
-                    ]
-                  },
-                  {
-                    "id": "saved-portfolio-report-envelope",
-                    "expression": "sources.`portfolio-intelligence-context.saved-report`",
-                    "assign": "savedReportEnvelope",
-                    "dependencies": [
-                      "sources.portfolio-intelligence-context.saved-report"
-                    ]
-                  }
-                ]
-              },
-              "portfolio-intelligence": {
-                "sources": [
-                  {
-                    "id": "portfolio-intelligence.source",
-                    "service": "portfolio-intelligence",
-                    "operation": "requestIntelligence",
-                    "when": "false",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'portfolioValue':inputs.`portfolio-value`,'investorProfile':null}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "response"
-                    }
-                  },
-                  {
-                    "id": "portfolio-semantic-intelligence.source",
-                    "service": "portfolio-semantic-intelligence",
-                    "operation": "generateReport",
-                    "when": "inputs.`portfolio-value`.summary.marketValue > 0 and inputs.refreshGeneration > 0",
-                    "input": {
-                      "kind": "jsonata",
-                      "expr": "{'refreshGeneration':inputs.refreshGeneration,'positions':inputs.`portfolio-value`.positions,'summary':inputs.`portfolio-value`.summary,'investorProfile':null,'presentationMode':'rich-components','acceptedCapabilities':['semantic:narrative','semantic:measure-set','semantic:argument','semantic:entity-set','semantic:relationship-set','semantic:decision','primitive:container','primitive:chart','fluent:text','fluent:list','fluent:table'],'authoringBrief':{'objective':'Help the investor understand this portfolio snapshot.','sectionMap':{'overview':'Orient the user quickly.','composition':'Explain value and exposure distribution.','performance':'Show supported gains, losses, and comparisons.','risks':'Surface concentration, downside, and uncertainty.','interpretation':'Separate defensible conclusions from facts.'},'positiveCurrency':['make material concentration and exposure immediately clear','use complementary views only for distinct insights'],'negativeCurrency':['infer historical performance from a current snapshot','give personalized fiduciary advice','add visual variety without analytical value'],'constraints':['each section slot may contain one or more Cells'],'blueprintProfile':{'artifactScaffold':{'gik':'0.1','type':'blueprint','payload':{'id':'generated-semantic-report','kind':'semantic-report','version':'1.0.0','structureMode':'fixed','tiers':[{'id':'report-semantic','kind':'semantic-report-model'},{'id':'runtime-document','kind':'runtime-document'}],'recipes':[{'id':'semantic-report-to-runtime','from':'report-semantic','to':'runtime-document','representations':'<compose one representation with views, a presentation with slots/root, and an allowedCapabilities array listing every capability used>','fallback':'<representation id>'}],'runtime':{'externals':{'projectionViews':'<matching imports>'},'state':'<analytical presentation data>'},'cells':'<semantic responsibility cells>'}},'slotPolicy':'Replace every angle-bracket slot with a valid artifact fragment; preserve the enclosing scaffold.','presentation':{'root':'portfolio-report','sectionSlots':['overview','composition','performance','risks','interpretation']},'behavior':'inert'}}}"
-                    },
-                    "output": {
-                      "kind": "jsonata",
-                      "expr": "{'found':true,'report':response,'asOf':$now(),'portfolioKey':inputs.analysisContext.portfolioKey,'analysisKey':'copilot/rich-components','requestId':$string(inputs.refreshGeneration)}"
-                    },
-                    "acceptanceCriteria": [
-                      {
-                        "kind": "blueprint-capability-acceptance",
-                        "message": "Semantic portfolio report uses a capability outside its accepted set",
-                        "code": "semantic-report-capability-acceptance"
-                      },
-                      {
-                        "kind": "jsonata",
-                        "expr": "($sectionSlots := $request.authoringBrief.blueprintProfile.presentation.sectionSlots; $slotNames := data.payload.recipes.representations.presentation.slots.($exists(id) ? id : $); $count($sectionSlots[$not($ in $slotNames)]) = 0)",
-                        "message": "Semantic portfolio report is missing a required section slot",
-                        "code": "semantic-report-section-slots"
-                      }
-                    ]
-                  }
-                ],
-                "compute": [
-                  {
-                    "id": "generated-portfolio-report",
-                    "expression": "sources.`portfolio-semantic-intelligence.source`",
-                    "assign": "generatedReport",
-                    "dependencies": [
-                      "sources.portfolio-semantic-intelligence.source"
-                    ]
-                  }
-                ]
-              }
-            },
-            "services": {
-              "portfolio-semantic-intelligence": {
-                "kind": "copilot-agent",
-                "version": "1",
-                "operations": {
-                  "generateReport": {
-                    "operation": "chat",
-                    "contract": "portfolio-semantic-intelligence/v1",
-                    "request": {
-                      "transform": {
-                        "kind": "jsonata",
-                        "expr": "({'message':'Assignment: ' & $string(input.authoringBrief) & (input.presentationMode = 'rich-components' ? ' RICH SHAPE: use at most seven Cells. A representation has only id, views, presentation. views maps Cell ids to {primary:{capability,bindings,props,region}}. Every binding value is an object such as {from:\"report.positions\"}, never a string. presentation owns slots, root, allowedCapabilities. Emit payload.cells before payload.runtime; cells is never nested inside runtime and maps ids to {id}. runtime.externals.projectionViews is an object keyed by namespace with {from,use}; each from value must be exactly semantic, primitive, or fluent. Never emit representation roots or composition, and never put capability directly under a view id. ' : ' ') & ' Data: ' & $string({'positions':input.positions,'summary':input.summary,'investorProfile':input.investorProfile}) & ' Allowed capabilities: ' & $string(input.acceptedCapabilities),'maxOutputTokens':input.presentationMode = 'rich-components' ? 8000 : 5000,'presentationMode':input.presentationMode,'acceptedCapabilities':input.acceptedCapabilities,'authoringBrief':input.authoringBrief})"
-                      }
-                    },
-                    "response": {
-                      "validators": [
-                        {
-                          "kind": "blueprint",
-                          "code": "semantic-report-blueprint",
-                          "message": "Semantic portfolio intelligence response is not a valid Blueprint"
-                        },
-                        {
-                          "kind": "ajv-schema",
-                          "code": "semantic-report-capability-catalog",
-                          "message": "Semantic portfolio intelligence response is not an inert authorized Blueprint",
-                          "schema": {
-                            "type": "object",
-                            "required": [
-                              "gik",
-                              "type",
-                              "payload"
-                            ],
-                            "properties": {
-                              "gik": {
-                                "type": "string",
-                                "const": "0.1"
-                              },
-                              "type": {
-                                "type": "string",
-                                "const": "blueprint"
-                              },
-                              "payload": {
-                                "type": "object",
-                                "required": [
-                                  "id",
-                                  "kind",
-                                  "version",
-                                  "structureMode",
-                                  "tiers",
-                                  "recipes",
-                                  "runtime",
-                                  "cells"
-                                ],
-                                "properties": {
-                                  "id": {
-                                    "type": "string",
-                                    "const": "generated-semantic-report"
-                                  },
-                                  "kind": {
-                                    "type": "string",
-                                    "const": "semantic-report"
-                                  },
-                                  "version": {
-                                    "type": "string",
-                                    "const": "1.0.0"
-                                  },
-                                  "structureMode": {
-                                    "type": "string",
-                                    "const": "fixed"
-                                  },
-                                  "tiers": {
-                                    "type": "array",
-                                    "minItems": 2,
-                                    "maxItems": 2,
-                                    "items": {
-                                      "type": "object",
-                                      "required": [
-                                        "id",
-                                        "kind"
-                                      ],
-                                      "properties": {
-                                        "id": {
-                                          "type": "string"
-                                        },
-                                        "kind": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "additionalProperties": false
-                                    }
-                                  },
-                                  "recipes": {
-                                    "type": "array",
-                                    "minItems": 1,
-                                    "maxItems": 1,
-                                    "items": {
-                                      "type": "object",
-                                      "required": [
-                                        "id",
-                                        "from",
-                                        "to",
-                                        "representations",
-                                        "fallback"
-                                      ],
-                                      "properties": {
-                                        "id": {
-                                          "type": "string",
-                                          "const": "semantic-report-to-runtime"
-                                        },
-                                        "from": {
-                                          "type": "string",
-                                          "const": "report-semantic"
-                                        },
-                                        "to": {
-                                          "type": "string",
-                                          "const": "runtime-document"
-                                        },
-                                        "representations": {
-                                          "type": "array",
-                                          "minItems": 1,
-                                          "maxItems": 1,
-                                          "items": {
-                                            "type": "object",
-                                            "required": [
-                                              "id",
-                                              "views",
-                                              "presentation"
-                                            ],
-                                            "properties": {
-                                              "id": {
-                                                "type": "string"
-                                              },
-                                              "views": {
-                                                "type": "object",
-                                                "minProperties": 1,
-                                                "additionalProperties": {
-                                                  "type": "object",
-                                                  "minProperties": 1,
-                                                  "additionalProperties": {
-                                                    "type": "object",
-                                                    "required": [
-                                                      "capability"
-                                                    ],
-                                                    "properties": {
-                                                      "capability": {
-                                                        "type": "string",
-                                                        "enum": [
-                                                          "semantic:narrative",
-                                                          "semantic:measure-set",
-                                                          "semantic:argument",
-                                                          "semantic:entity-set",
-                                                          "semantic:relationship-set",
-                                                          "semantic:decision",
-                                                          "primitive:container",
-                                                          "primitive:chart",
-                                                          "primitive:markdown",
-                                                          "fluent:text",
-                                                          "fluent:list",
-                                                          "fluent:table"
-                                                        ]
-                                                      },
-                                                      "props": {
-                                                        "type": "object"
-                                                      },
-                                                      "bindings": {
-                                                        "type": "object"
-                                                      },
-                                                      "region": {
-                                                        "oneOf": [
-                                                          {
-                                                            "type": "string"
-                                                          },
-                                                          {
-                                                            "type": "array",
-                                                            "minItems": 1,
-                                                            "items": {
-                                                              "type": "string"
-                                                            }
-                                                          }
-                                                        ]
-                                                      }
-                                                    },
-                                                    "additionalProperties": false
-                                                  }
-                                                }
-                                              },
-                                              "presentation": {
-                                                "type": "object",
-                                                "required": [
-                                                  "slots",
-                                                  "root",
-                                                  "allowedCapabilities"
-                                                ],
-                                                "properties": {
-                                                  "slots": {
-                                                    "type": "array",
-                                                    "minItems": 1,
-                                                    "items": {
-                                                      "oneOf": [
-                                                        {
-                                                          "type": "string"
-                                                        },
-                                                        {
-                                                          "type": "object",
-                                                          "required": [
-                                                            "id"
-                                                          ],
-                                                          "additionalProperties": false,
-                                                          "properties": {
-                                                            "id": {
-                                                              "type": "string"
-                                                            },
-                                                            "region": {
-                                                              "type": "string"
-                                                            }
-                                                          }
-                                                        }
-                                                      ]
-                                                    }
-                                                  },
-                                                  "root": {
-                                                    "type": "string"
-                                                  },
-                                                  "allowedCapabilities": {
-                                                    "type": "array",
-                                                    "minItems": 1,
-                                                    "items": {
-                                                      "type": "string"
-                                                    }
-                                                  }
-                                                },
-                                                "additionalProperties": false
-                                              }
-                                            },
-                                            "additionalProperties": false
-                                          }
-                                        },
-                                        "fallback": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "additionalProperties": false
-                                    }
-                                  },
-                                  "runtime": {
-                                    "type": "object",
-                                    "required": [
-                                      "state"
-                                    ],
-                                    "properties": {
-                                      "externals": {
-                                        "type": "object",
-                                        "required": [
-                                          "projectionViews"
-                                        ],
-                                        "properties": {
-                                          "projectionViews": {
-                                            "type": "object",
-                                            "additionalProperties": {
-                                              "type": "object",
-                                              "required": [
-                                                "from",
-                                                "use"
-                                              ],
-                                              "properties": {
-                                                "from": {
-                                                  "type": "string",
-                                                  "enum": [
-                                                    "semantic",
-                                                    "primitive",
-                                                    "fluent"
-                                                  ]
-                                                },
-                                                "use": {
-                                                  "type": "array",
-                                                  "minItems": 1,
-                                                  "items": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "container",
-                                                      "chart",
-                                                      "markdown",
-                                                      "text",
-                                                      "list",
-                                                      "table",
-                                                      "narrative",
-                                                      "measure-set",
-                                                      "argument",
-                                                      "entity-set",
-                                                      "relationship-set",
-                                                      "decision"
-                                                    ]
-                                                  }
-                                                }
-                                              },
-                                              "additionalProperties": false
-                                            }
-                                          }
-                                        },
-                                        "additionalProperties": false
-                                      },
-                                      "state": {
-                                        "type": "object"
-                                      }
-                                    },
-                                    "additionalProperties": false
-                                  },
-                                  "cells": {
-                                    "type": "object",
-                                    "minProperties": 1,
-                                    "additionalProperties": {
-                                      "type": "object",
-                                      "required": [
-                                        "id"
-                                      ],
-                                      "properties": {
-                                        "id": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "additionalProperties": false
-                                    }
-                                  }
-                                },
-                                "additionalProperties": false
-                              }
-                            },
-                            "additionalProperties": false
-                          }
-                        },
-                        {
-                          "kind": "jsonata",
-                          "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
-                          "message": "Semantic portfolio report violates its tier or inertness policy",
-                          "code": "semantic-report-admission"
-                        }
-                      ]
-                    },
-                    "settlement": {
-                      "transform": {
-                        "kind": "jsonata",
-                        "expr": "{'ops':[],'detail':{'provider':'copilot-agent','agentName':'Portfolio-Semantic-Intelligence-Agent'}}"
-                      }
-                    },
-                    "onViolation": {
-                      "action": "fail"
-                    }
-                  }
-                },
-                "config": {
-                  "server": "http://127.0.0.1:7801/mcp",
-                  "model": "gpt-5.4",
-                  "workspaceRef": ".copilot-workspace",
-                  "agent": "Portfolio-Semantic-Intelligence-Agent",
-                  "responseMode": "json"
-                },
-                "scope": "per-blueprint"
-              }
-            }
-          }
-        ],
-        "implementationFallback": "simple-foundry"
+        "fallback": "simple-desktop"
       }
     ],
     "services": {
@@ -2029,8 +2133,10 @@
                           "kind",
                           "version",
                           "structureMode",
-                          "tiers",
-                          "recipes",
+                          "serviceTiers",
+                          "serviceRecipes",
+                          "projectionTiers",
+                          "projectionRecipes",
                           "runtime",
                           "cells"
                         ],
@@ -2051,7 +2157,32 @@
                             "type": "string",
                             "const": "fixed"
                           },
-                          "tiers": {
+                          "serviceTiers": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "kind"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "serviceRecipes": {
+                            "type": "array",
+                            "maxItems": 0
+                          },
+                          "projectionTiers": {
                             "type": "array",
                             "minItems": 2,
                             "maxItems": 2,
@@ -2072,7 +2203,7 @@
                               "additionalProperties": false
                             }
                           },
-                          "recipes": {
+                          "projectionRecipes": {
                             "type": "array",
                             "minItems": 1,
                             "maxItems": 1,
@@ -2313,7 +2444,7 @@
                 },
                 {
                   "kind": "jsonata",
-                  "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.tiers) = 2 and data.payload.tiers[0].id = 'report-semantic' and data.payload.tiers[0].kind = 'semantic-report-model' and data.payload.tiers[1].id = 'runtime-document' and data.payload.tiers[1].kind = 'runtime-document')",
+                  "expr": "($behaviorActions := data.payload.cells.*.behavior.on.*.do; $count($behaviorActions) = 0 and $not($exists(data.payload.services)) and $count(data.payload.serviceRecipes) = 0 and $count(data.payload.projectionTiers) = 2 and data.payload.projectionTiers[0].id = 'report-semantic' and data.payload.projectionTiers[0].kind = 'semantic-report-model' and data.payload.projectionTiers[1].id = 'runtime-document' and data.payload.projectionTiers[1].kind = 'runtime-document')",
                   "message": "Semantic portfolio report violates its tier or inertness policy",
                   "code": "semantic-report-admission"
                 }

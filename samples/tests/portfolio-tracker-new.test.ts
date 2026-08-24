@@ -95,7 +95,12 @@ test("portfolio-tracker-new declares the canonical Cells and parent report metad
     blueprint.payload.runtime.externals.projectionViews.primitive.use.includes("datetime"),
   );
 
-  assert.deepEqual(blueprint.payload.tiers, [
+  assert.deepEqual(blueprint.payload.serviceTiers, [
+    { id: "portfolio-logic", kind: "portfolio-domain" },
+    { id: "portfolio-market", kind: "portfolio-domain" },
+    { id: "portfolio-presentation", kind: "runtime-document" },
+  ]);
+  assert.deepEqual(blueprint.payload.projectionTiers, [
     { id: "portfolio-logic", kind: "portfolio-domain" },
     { id: "portfolio-market", kind: "portfolio-domain" },
     { id: "portfolio-presentation", kind: "runtime-document" },
@@ -130,7 +135,7 @@ test("portfolio semantic intelligence hydrates saved output and runs only after 
     "inputs.generatedReport != null",
   );
 
-  const implementationPrograms = blueprint.payload.recipes[1].implementationPrograms ?? [];
+  const implementationPrograms = blueprint.payload.serviceRecipes[1].implementationPrograms ?? [];
   const semanticPrograms = implementationPrograms.filter(({ id }) => id.startsWith("semantic-"));
   assert.equal(semanticPrograms.length, 4);
   for (const program of semanticPrograms) {
@@ -642,11 +647,13 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
       kind: "semantic-report",
       version: "1.0.0",
       structureMode: "fixed",
-      tiers: [
+      serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      serviceRecipes: [],
+      projectionTiers: [
         { id: "report-semantic", kind: "semantic-report-model" },
         { id: "runtime-document", kind: "runtime-document" },
       ],
-      recipes: [{
+      projectionRecipes: [{
         id: "semantic-report-to-runtime",
         from: "report-semantic",
         to: "runtime-document",
@@ -684,7 +691,8 @@ test("portfolio semantic response contract admits a self-contained report Bluepr
           acceptedCapabilities: ["primitive:markdown"],
           authoringBrief: {
             blueprintProfile: {
-              tiers: [
+              serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+              projectionTiers: [
                 { id: "report-semantic", kind: "semantic-report-model" },
                 { id: "runtime-document", kind: "runtime-document" },
               ],
@@ -720,11 +728,13 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
       kind: "semantic-report",
       version: "1.0.0",
       structureMode: "fixed",
-      tiers: [
+      serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      serviceRecipes: [],
+      projectionTiers: [
         { id: "report-semantic", kind: "semantic-report-model" },
         { id: "runtime-document", kind: "runtime-document" },
       ],
-      recipes: [{
+      projectionRecipes: [{
         id: "semantic-report-to-runtime",
         from: "report-semantic",
         to: "runtime-document",
@@ -831,7 +841,7 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   // The capability-acceptance and section-slot checks live on the calling Cell source's own
   // acceptanceCriteria (per-usage-site data), not the shared operation's response.validators --
   // DefaultServiceHost merges both before gating a response, so tests do the same.
-  const richProgram = (portfolio.payload.recipes[1].implementationPrograms ?? [])
+  const richProgram = (portfolio.payload.serviceRecipes[1].implementationPrograms ?? [])
     .find(({ id }) => id === "semantic-rich-components-foundry");
   const acceptanceCriteria = richProgram?.cells?.["portfolio-intelligence"]?.sources
     ?.find((source) => source.id === "portfolio-semantic-intelligence.source")
@@ -851,7 +861,8 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
         ],
         authoringBrief: {
           blueprintProfile: {
-            tiers: [
+            serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+            projectionTiers: [
               { id: "report-semantic", kind: "semantic-report-model" },
               { id: "runtime-document", kind: "runtime-document" },
             ],
@@ -873,7 +884,7 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   );
 
   const semanticComposition = structuredClone(richBlueprint);
-  semanticComposition.payload.recipes[0].representations[0].views.facts = {
+  semanticComposition.payload.projectionRecipes[0].representations[0].views.facts = {
     primary: {
       capability: "semantic:narrative",
       bindings: { sections: { from: "report.facts" } },
@@ -884,7 +895,7 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
       region: "performance",
     },
   };
-  semanticComposition.payload.recipes[0].representations[0].presentation.allowedCapabilities.push("semantic:narrative");
+  semanticComposition.payload.projectionRecipes[0].representations[0].presentation.allowedCapabilities.push("semantic:narrative");
   semanticComposition.payload.runtime.externals.projectionViews.semantic = {
     from: "semantic",
     use: ["narrative"],
@@ -902,8 +913,8 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   );
 
   const forbidden = structuredClone(richBlueprint);
-  forbidden.payload.recipes[0].representations[0].presentation.allowedCapabilities.push("primitive:alert");
-  forbidden.payload.recipes[0].representations[0].views.headline.primary.capability = "primitive:alert";
+  forbidden.payload.projectionRecipes[0].representations[0].presentation.allowedCapabilities.push("primitive:alert");
+  forbidden.payload.projectionRecipes[0].representations[0].views.headline.primary.capability = "primitive:alert";
   const report = runDeclarativeValidators(allValidators, forbidden, validatorOptions);
   assert.equal(report.ok, false);
   assert.equal(
@@ -912,8 +923,8 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   );
 
   const unauthorizedButKnown = structuredClone(richBlueprint);
-  unauthorizedButKnown.payload.recipes[0].representations[0].presentation.allowedCapabilities.push("primitive:markdown");
-  unauthorizedButKnown.payload.recipes[0].representations[0].views.headline.primary.capability = "primitive:markdown";
+  unauthorizedButKnown.payload.projectionRecipes[0].representations[0].presentation.allowedCapabilities.push("primitive:markdown");
+  unauthorizedButKnown.payload.projectionRecipes[0].representations[0].views.headline.primary.capability = "primitive:markdown";
   const authorizationReport = runDeclarativeValidators(allValidators, unauthorizedButKnown, validatorOptions);
   assert.equal(authorizationReport.ok, false);
   assert.equal(
@@ -922,8 +933,8 @@ test("portfolio rich semantic admission enforces its capability catalog", () => 
   );
 
   const missingSection = structuredClone(richBlueprint);
-  missingSection.payload.recipes[0].representations[0].presentation.slots =
-    missingSection.payload.recipes[0].representations[0].presentation.slots.filter(
+  missingSection.payload.projectionRecipes[0].representations[0].presentation.slots =
+    missingSection.payload.projectionRecipes[0].representations[0].presentation.slots.filter(
       (slot) => (typeof slot === "string" ? slot : slot.id) !== "interpretation",
     );
   const sectionReport = runDeclarativeValidators(allValidators, missingSection, validatorOptions);

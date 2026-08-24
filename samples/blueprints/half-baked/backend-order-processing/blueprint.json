@@ -8,7 +8,6 @@
     "interface": {
       "events": ["submit", "approve", "charged", "declined"]
     },
-    "recipes": [],
     "runtime": {
       "expression": "jsonata",
       "namespaces": ["order", "payment"],
@@ -31,13 +30,22 @@
         }
       }
     },
-    "tiers": [
+    "serviceTiers": [
       {
         "id": "runtime-document",
         "kind": "runtime-document",
         "description": "Headless order workflow driven by backend events and orchestrator effects."
       }
     ],
+    "serviceRecipes": [],
+    "projectionTiers": [
+      {
+        "id": "runtime-document",
+        "kind": "runtime-document",
+        "description": "Headless order workflow driven by backend events and orchestrator effects."
+      }
+    ],
+    "projectionRecipes": [],
     "cells": {
       "order-controller": {
         "id": "order-controller",

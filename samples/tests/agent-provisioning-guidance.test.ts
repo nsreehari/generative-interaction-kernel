@@ -58,8 +58,9 @@ test("coaches the semantic portfolio agent without assigning sections to compone
   // sources/services and potentialViews model rewrites, then to 32_000 for the
   // CellSource.acceptanceCriteria addition, then to 33_000 for the headless-hosting
   // correction, then to 34_000 for the wrap mechanism closing the nested-composition
-  // gap; provisioning should be re-tightened.
-  assert.ok(instructions.length < 34_000, `Provisioned instructions grew to ${instructions.length} characters`);
+  // gap, then to 36_000 for the independent service/projection lowering contract;
+  // provisioning should be re-tightened.
+  assert.ok(instructions.length < 36_000, `Provisioned instructions grew to ${instructions.length} characters`);
 });
 
 test("provisions the capability catalog required by the Copilot describe tool", () => {

@@ -71,8 +71,10 @@ function structuralBlueprint(
         allowedProgramOperations: ["setRoot"],
       },
     } : {}),
-    tiers: [{ id: "runtime", kind: "runtime-document" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-document" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-document" }],
+    projectionRecipes: [],
     runtime: {},
     cells: {
       root: {
@@ -113,8 +115,10 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
       id: "cell-example",
       kind: "runtime-blueprint",
       version: "1",
-      tiers: [{ id: "runtime-document", kind: "runtime-document" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionRecipes: [],
       runtime: {},
       cells: {
           root: {
@@ -149,7 +153,26 @@ test("ControlFace defines zero-recipe JSON cell Blueprints without product code"
     ...artifact,
     payload: {
       ...artifact.payload,
-      recipes: [{ id: "compile", from: "runtime-document", to: "runtime-document" }],
+      projectionRecipes: [{
+        id: "compile",
+        from: "runtime-document",
+        to: "runtime-document",
+        representations: [{ id: "default" }],
+        fallback: "default",
+      }],
+    },
+  }), undefined);
+  assert.equal(defineDeclarativeBlueprint({
+    ...artifact,
+    payload: {
+      ...artifact.payload,
+      serviceRecipes: [{
+        id: "compile",
+        from: "runtime-document",
+        to: "runtime-document",
+        implementationPrograms: [{ id: "default" }],
+        implementationFallback: "default",
+      }],
     },
   }), undefined);
 });
@@ -162,8 +185,10 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
       id: "example",
       kind: "example",
       version: "1",
-      tiers: [{ id: "runtime-document", kind: "runtime-document" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionRecipes: [],
       runtime: {
         state: { example: { ready: true } },
       },
@@ -202,7 +227,13 @@ test("ControlFace opens an authored Blueprint into a runtime", () => {
       ...artifact,
       payload: {
         ...artifact.payload,
-        recipes: [{ id: "compile", from: "runtime-document", to: "runtime-document" }],
+        projectionRecipes: [{
+          id: "compile",
+          from: "runtime-document",
+          to: "runtime-document",
+          representations: [{ id: "default" }],
+          fallback: "default",
+        }],
       },
     }),
     /recipe|executor|invalid/i
@@ -214,8 +245,10 @@ test("ControlFace drives a projection-free Blueprint but rejects render access",
     id: "headless-control",
     kind: "runtime-blueprint",
     version: "1",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: { state: { counter: { value: 1 } } },
     cells: {
       counter: {
@@ -251,8 +284,10 @@ test("ControlFace applies initialSeed from blueprint context", () => {
       id: "seeded",
       kind: "example",
       version: "1",
-      tiers: [{ id: "runtime-document", kind: "runtime-document" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionRecipes: [],
       runtime: {
         state: { example: { ready: false, nested: { before: true } } },
       },
@@ -300,8 +335,10 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
       id: "child",
       kind: "example",
       version: "2",
-      tiers: [{ id: "runtime-document", kind: "runtime-document" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionRecipes: [],
       runtime: { state: { child: { count: 1 } } },
       cells: { root: { id: "root", potentialViews: { primary: { capability: "ui:text", region: "root" } } } },
       presentation: singleSlotPresentation("root"),
@@ -314,8 +351,10 @@ test("ControlFace opens Blueprint-backed Cells as independent child runtimes", (
       id: "parent",
       kind: "example",
       version: "1",
-      tiers: [{ id: "runtime-document", kind: "runtime-document" }],
-      recipes: [],
+      serviceTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-document" }],
+      projectionRecipes: [],
       runtime: { state: { parent: { ready: true } } },
       cells: {
         child: {
@@ -347,8 +386,10 @@ test("ControlFace rejects Blueprints without runtime", () => {
       id: "missing-runtime",
       kind: "example",
       version: "1",
-      tiers: [{ id: "workflow", kind: "workflow" }],
-      recipes: [],
+      serviceTiers: [{ id: "workflow", kind: "workflow" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "workflow", kind: "workflow" }],
+      projectionRecipes: [],
     },
   };
 

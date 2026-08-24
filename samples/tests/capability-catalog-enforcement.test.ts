@@ -18,8 +18,10 @@ function blueprintWithInvalidTextProps(): BlueprintArtifact {
     id: "capability-catalog-enforcement",
     kind: "runtime-blueprint",
     version: "1.0.0",
-    tiers: [{ id: "runtime", kind: "runtime-program" }],
-    recipes: [],
+    serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+    serviceRecipes: [],
+    projectionTiers: [{ id: "runtime", kind: "runtime-program" }],
+    projectionRecipes: [],
     runtime: {
       externals: { projectionViews: { fluent: { from: "fluent", use: ["text"] } } },
       state: {},

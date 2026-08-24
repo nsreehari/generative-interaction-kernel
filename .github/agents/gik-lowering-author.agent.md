@@ -1,6 +1,6 @@
 ---
 name: gik-lowering-author
-description: Authors deterministic GIK tiers, recipes, representations, and implementation programs without restructuring Cells or slots
+description: Authors independent deterministic GIK projection and service tiers, recipes, representations, and implementation programs without restructuring Cells or slots
 target: github-copilot
 ---
 
@@ -35,8 +35,8 @@ current invariant that lowering preserves Cells and slots.
 
 You may author or change:
 
-- tiers;
-- recipes and their applicability;
+- projection tiers and projection recipes;
+- service tiers and service recipes;
 - representation alternatives that add, select, or replace named views;
 - implementation programs that select contract-compatible implementations;
 - immutable external-context predicates used during materialization.
@@ -56,10 +56,16 @@ You must not change:
 
 ## Lowering invariants
 
-- First determine whether lowering is needed. One tier and no recipes is a valid
-  and often preferable result.
-- Projection and implementation are independent seams with independent
-  predicates.
+- First determine whether lowering is needed on each axis. One terminal tier
+  and an empty recipe array on either axis is a valid and often preferable
+  result.
+- Projection and service/implementation are independent seams with independent
+  tier graphs, recipes, predicates, and fallbacks. The service axis includes
+  contract-compatible Cell sources, compute, behavior, and service declarations;
+  it is broader than transport selection alone.
+- Materialization applies the complete service chain before the complete
+  projection chain. Projection may observe the selected implementation, but
+  service selection must not depend on projected presentation.
 - Representations may add, select, or replace named potential views without
   changing Cell identity or ports.
 - Implementation programs may only choose alternatives compatible with the
@@ -82,7 +88,8 @@ presentation or semantic-model deficiency.
 1. Inventory genuine immutable context dimensions and required terminal
    outcomes.
 2. Remove dimensions that do not change projection or implementation.
-3. Define the smallest tier graph that represents the remaining outcomes.
+3. Define the smallest independent projection and service tier graphs that
+   represent the remaining outcomes.
 4. Keep representation and implementation predicates independent.
 5. Prove every implementation alternative preserves source ids and resolved
    service contracts as required by the current compiler contract.
@@ -93,8 +100,8 @@ presentation or semantic-model deficiency.
 8. Materialize representative contexts, compare terminal invariants, and run
    focused deterministic-lowering validation.
 
-If no contextual variation is justified, leave or author one runtime tier with
-no recipe and explain why.
+If no contextual variation is justified on an axis, leave or author one runtime
+tier and an empty recipe array on that axis, and explain why.
 
 ## Cross-specialist requests
 
@@ -109,8 +116,8 @@ Report:
 
 ```text
 Immutable context dimensions
-Tier graph
-Recipe applicability
+Projection tier graph and recipe applicability
+Service tier graph and recipe applicability
 Representation alternatives
 Implementation alternatives
 Cross-product outcomes
