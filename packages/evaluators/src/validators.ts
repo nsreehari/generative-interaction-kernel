@@ -662,11 +662,11 @@ function validateProjectionRecipeSemantics(value: JsonValue): DeclarativeValidat
 function validateServiceRecipeSemantics(value: JsonValue): DeclarativeValidationResult["errors"] {
   const recipe = value as {
     implementationPrograms?: { id?: unknown; when?: unknown }[];
-    implementationFallback?: unknown;
+    fallback?: unknown;
   };
   const errors: DeclarativeValidationIssue[] = [];
   if (!Array.isArray(recipe.implementationPrograms)) return errors;
-  validateRecipeVariants(recipe.implementationPrograms, recipe.implementationFallback, "implementation program", errors);
+  validateRecipeVariants(recipe.implementationPrograms, recipe.fallback, "implementation program", errors);
   return errors;
 }
 

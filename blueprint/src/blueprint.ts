@@ -15,7 +15,7 @@ import type {
   ProjectionTierDefinition,
   TierDefinition,
 } from "./types";
-import { resolveBlueprintExecution } from "./execution";
+import { resolveBlueprintExecution, resolveLoweringAxis } from "./execution";
 
 export class BlueprintValidationError extends Error {
   constructor(message: string, readonly errors: readonly unknown[] = []) {
@@ -261,52 +261,24 @@ function validateLoweringAxis(blueprint: BlueprintDefinition, axis: "service" | 
     throw new BlueprintValidationError(`Blueprint ${axis}Recipes must be an array`);
   }
 
-  const tierIds = new Set<string>();
-  for (const tier of tiers) {
-    if (!tier.id || !tier.kind) throw new BlueprintValidationError(`Blueprint ${axis} tier identity is incomplete`);
-    if (tierIds.has(tier.id)) throw new BlueprintValidationError(`Duplicate blueprint ${axis} tier '${tier.id}'`);
-    tierIds.add(tier.id);
-    if (axis === "projection") {
-      const projectionTier = tier as ProjectionTierDefinition;
-      if (!Array.isArray(projectionTier.capabilities)) {
-        throw new BlueprintValidationError(`Blueprint projection tier '${tier.id}' requires a capabilities array`);
+  if (axis === "projection") {
+    const capabilityOwners = new Map<string, string>();
+    for (const tier of tiers as ProjectionTierDefinition[]) {
+      for (const capability of tier.capabilities) {
+        const owner = capabilityOwners.get(capability);
+        if (owner) {
+          throw new BlueprintValidationError(
+            `Blueprint projection capability '${capability}' is declared by both tiers '${owner}' and '${tier.id}'`,
+          );
+        }
+        capabilityOwners.set(capability, tier.id);
       }
-      if (new Set(projectionTier.capabilities).size !== projectionTier.capabilities.length) {
-        throw new BlueprintValidationError(`Blueprint projection tier '${tier.id}' declares duplicate capabilities`);
-      }
     }
   }
-
-  const recipeIds = new Set<string>();
-  const incoming = new Map<string, number>();
-  const outgoing = new Map<string, number>();
-  for (const recipe of recipes) {
-    if (!recipe.id || !recipe.from || !recipe.to) throw new BlueprintValidationError(`Blueprint ${axis} recipe is incomplete`);
-    if (recipeIds.has(recipe.id)) throw new BlueprintValidationError(`Duplicate blueprint ${axis} recipe '${recipe.id}'`);
-    if (!tierIds.has(recipe.from)) throw new BlueprintValidationError(`Blueprint ${axis} recipe '${recipe.id}' starts from unknown ${axis} tier '${recipe.from}'`);
-    if (!tierIds.has(recipe.to)) throw new BlueprintValidationError(`Blueprint ${axis} recipe '${recipe.id}' targets unknown ${axis} tier '${recipe.to}'`);
-    recipeIds.add(recipe.id);
-    outgoing.set(recipe.from, (outgoing.get(recipe.from) ?? 0) + 1);
-    incoming.set(recipe.to, (incoming.get(recipe.to) ?? 0) + 1);
-  }
-
-  if (recipes.length === 0) {
-    // A recipe-free axis has nothing to select, so it must already be terminal.
-    if (tiers.length !== 1) {
-      throw new BlueprintValidationError(`Blueprint with no ${axis} recipes must declare exactly one terminal ${axis} tier`);
-    }
-    return;
-  }
-
-  const sourceTiers = tiers.filter((tier) => !incoming.has(tier.id));
-  const terminalTiers = tiers.filter((tier) => !outgoing.has(tier.id));
-  if (sourceTiers.length !== 1 || terminalTiers.length !== 1) {
-    throw new BlueprintValidationError(`Blueprint ${axis} recipes must form one connected ${axis} tier chain`);
-  }
-  for (const tier of tiers) {
-    if ((incoming.get(tier.id) ?? 0) > 1 || (outgoing.get(tier.id) ?? 0) > 1) {
-      throw new BlueprintValidationError(`Blueprint ${axis} tier '${tier.id}' branches or merges`);
-    }
+  try {
+    resolveLoweringAxis(blueprint.id, axis, tiers, recipes);
+  } catch (error) {
+    throw new BlueprintValidationError(error instanceof Error ? error.message : String(error));
   }
 }
 

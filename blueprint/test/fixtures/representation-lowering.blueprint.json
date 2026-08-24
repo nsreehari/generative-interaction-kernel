@@ -43,7 +43,7 @@
             }
           }
         ],
-        "implementationFallback": "default"
+        "fallback": "default"
       }
     ],
     "projectionTiers": [

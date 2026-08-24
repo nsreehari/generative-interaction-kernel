@@ -14,10 +14,9 @@ import type { DeclarativeFormSpec, SystemInputToken } from "@gik/evaluators";
 
 export interface TierDefinition {
   id: string;
+  /** Reusable classification for authoring, policy, and tooling; `id` remains the chain identity. */
   kind: string;
-  schema?: string;
   description?: string;
-  input?: Record<string, Json>;
 }
 
 export interface ProjectionTierDefinition extends TierDefinition {
@@ -86,7 +85,7 @@ export interface ProjectionLoweringRecipeDefinition extends LoweringRecipeDefini
  * that choice. It never touches `potentialViews` or `presentation`. */
 export interface ServiceLoweringRecipeDefinition extends LoweringRecipeDefinition {
   implementationPrograms: BlueprintImplementationProgram[];
-  implementationFallback: string;
+  fallback: string;
 }
 
 export interface BlueprintRuntimeDefinition {

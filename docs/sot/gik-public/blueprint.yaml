@@ -156,14 +156,17 @@ artifact_contracts:
       - Manifest capabilities are populated from the capability names actually referenced by materialized Cell views and decorations, not authored on this record.
   - name: TierDefinition
     signature: >-
-      interface TierDefinition { id: string; kind: string; schema?: string;
-      description?: string; input?: Record<string, Json> }
+      interface TierDefinition { id: string; kind: string; description?: string }
+    guarantees:
+      - id is the unique identity used by recipe endpoints and chain resolution.
+      - kind is a reusable classification for authoring, policy, and tooling; it does not identify a chain node.
   - name: ProjectionTierDefinition
     signature: >-
       interface ProjectionTierDefinition extends TierDefinition {
       capabilities: readonly string[] }
     guarantees:
       - capabilities are Blueprint-local projection symbols available at this stage.
+      - Each capability name is owned by exactly one projection tier in a Blueprint.
       - semantic, primitive, Fluent, and domain component namespaces have no implicit tier ordering.
   - name: LoweringRecipeDefinition
     signature: >-
@@ -175,7 +178,7 @@ artifact_contracts:
     signature: >-
       interface ServiceLoweringRecipeDefinition extends LoweringRecipeDefinition {
       implementationPrograms: BlueprintImplementationProgram[];
-      implementationFallback: string }
+      fallback: string }
     purpose: >-
       Select the contract-compatible Cell implementation seam -- sources, compute, behavior, and
       top-level service declarations -- for one service-axis tier transition. The axis is named
@@ -573,11 +576,11 @@ resolution_api:
         - Clones service declarations.
     - name: resolveLoweringAxis
       signature: >-
-        resolveLoweringAxis<TRecipe extends LoweringRecipeDefinition>(blueprintId: string,
-        axis: "service" | "projection", tiers: readonly TierDefinition[],
-        recipes: readonly TRecipe[]): ResolvedBlueprintAxis<TRecipe>
+        resolveLoweringAxis<TTier extends TierDefinition, TRecipe extends LoweringRecipeDefinition>(
+        blueprintId: string, axis: "service" | "projection", tiers: readonly TTier[],
+        recipes: readonly TRecipe[]): ResolvedBlueprintAxis<TTier, TRecipe>
       behavior:
-        - The single shared implementation both axes resolve through; diagnostics name the axis.
+        - The single authoritative implementation both axes validate and resolve through; diagnostics name the axis.
 
 lowering_cell_api:
   types:

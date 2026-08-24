@@ -16,7 +16,7 @@ describe("incident analysis shell", () => {
     expect(payload.serviceRecipes).toEqual([
       expect.objectContaining({
         id: "incident-analysis-to-runtime",
-        implementationFallback: "semantic",
+        fallback: "semantic",
         implementationPrograms: [
           expect.objectContaining({ id: "semantic", when: "externalContext.model = 'semantic'" }),
           expect.objectContaining({

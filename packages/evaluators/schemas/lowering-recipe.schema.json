@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://genui.dev/schemas/lowering-recipe.schema.json",
   "title": "GIK Lowering Recipe",
-  "description": "The two independent lowering-recipe dialects. A projection recipe owns representations + fallback; a service recipe owns implementationPrograms + implementationFallback. There is no combined recipe.",
+  "description": "The two independent lowering-recipe dialects. A projection recipe owns representations + fallback; a service recipe owns implementationPrograms + fallback. There is no combined recipe.",
   "type": "object",
   "required": ["gik", "type", "payload"],
   "additionalProperties": false,
@@ -38,7 +38,7 @@
     "serviceRecipe": {
       "description": "One service-axis tier transition: selects the contract-compatible Cell implementation seam (sources, compute, behavior, and service declarations).",
       "type": "object",
-      "required": ["id", "from", "to", "implementationPrograms", "implementationFallback"],
+      "required": ["id", "from", "to", "implementationPrograms", "fallback"],
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "minLength": 1 },
@@ -49,7 +49,7 @@
           "minItems": 1,
           "items": { "$ref": "#/definitions/implementationProgram" }
         },
-        "implementationFallback": { "type": "string", "minLength": 1 },
+        "fallback": { "type": "string", "minLength": 1 },
         "metadata": { "type": "object" }
       }
     },

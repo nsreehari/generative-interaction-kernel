@@ -284,7 +284,7 @@
                 }
               }
             ],
-            "implementationFallback": "foundry"
+            "fallback": "foundry"
           }
         ],
         "projectionTiers": [
@@ -2525,7 +2525,7 @@
                 }
               }
             ],
-            "implementationFallback": "semantic"
+            "fallback": "semantic"
           }
         ],
         "projectionTiers": [
@@ -3914,7 +3914,7 @@
                 }
               }
             ],
-            "implementationFallback": "mock-market"
+            "fallback": "mock-market"
           },
           {
             "id": "portfolio-market-to-presentation",
@@ -5281,7 +5281,7 @@
                 }
               }
             ],
-            "implementationFallback": "simple-foundry"
+            "fallback": "simple-foundry"
           }
         ],
         "projectionTiers": [
@@ -13155,7 +13155,7 @@
                         }
                       }
                     ],
-                    "implementationFallback": "foundry"
+                    "fallback": "foundry"
                   }
                 ],
                 "projectionTiers": [
@@ -15452,7 +15452,7 @@
                         }
                       }
                     ],
-                    "implementationFallback": "semantic"
+                    "fallback": "semantic"
                   }
                 ],
                 "projectionTiers": [
@@ -16883,7 +16883,7 @@
                         }
                       }
                     ],
-                    "implementationFallback": "mock-market"
+                    "fallback": "mock-market"
                   },
                   {
                     "id": "portfolio-market-to-presentation",
@@ -18250,7 +18250,7 @@
                         }
                       }
                     ],
-                    "implementationFallback": "simple-foundry"
+                    "fallback": "simple-foundry"
                   }
                 ],
                 "projectionTiers": [
@@ -19803,6 +19803,6 @@
       ]
     }
   },
-  "bundleVersion": "a543771e519c85f7",
-  "digest": "sha256:a543771e519c85f778bf6122d6ba57c3a2c54805714344ea5e530d523e66d9f4"
+  "bundleVersion": "8f0e7245136f2f33",
+  "digest": "sha256:8f0e7245136f2f33bc3fe74b908eb3ca0f4df7a9bf54b361ebf9b2a8e1b60753"
 }

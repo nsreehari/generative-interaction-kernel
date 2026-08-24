@@ -13,6 +13,8 @@ Each projection tier declares its Blueprint-local named `capabilities`. A presen
 capabilities, while `{ "tier": "<id>" }` admits that projection tier's complete vocabulary. Host
 component namespaces are flat and terminal; projection recipes specialize selection, filtering,
 layout, and composition rather than lowering semantic components into primitive or Fluent ones.
+Each Blueprint-local capability name belongs to exactly one projection tier, so Cells and recipes use
+plain, unqualified names without ambiguous tier ownership.
 
 ```bash
 npm install @gik/blueprint @gik/kernel @gik/evaluators @gik/durable-runtime
@@ -189,7 +191,7 @@ ownership, and effect outcomes return through the journal before changing Bluepr
 
 - `BlueprintArtifact` is the portable authored envelope. Its `payload` is a `BlueprintDefinition`.
 - `ServiceLoweringRecipeDefinition` selects contract-compatible Cell implementations through
-  `implementationPrograms` and a required `implementationFallback`. Despite the axis name, this seam
+  `implementationPrograms` and a required `fallback`. Despite the axis name, this seam
   covers Cell sources, compute, behavior, and top-level service declarations.
 - `ProjectionLoweringRecipeDefinition` selects named views and presentation through
   `representations` and a required `fallback`.
@@ -204,5 +206,5 @@ ownership, and effect outcomes return through the journal before changing Bluepr
   dormant unless its own `region` attaches to a slot reachable from the active presentation root; if
   `region` is an array, one independent instance is rendered per named slot.
 - `PresentationDefinition` is a closed, flat set of `slots` plus a `root`. Slot entries
-  self-declare nesting with `region`. `allowedCapabilities` is optional; when present, every
-  capability used by Cell views and view decorations must appear in it.
+  self-declare nesting with `region`. Its mandatory `allowedCapabilities` authorizes every
+  capability used by Cell views and view decorations.

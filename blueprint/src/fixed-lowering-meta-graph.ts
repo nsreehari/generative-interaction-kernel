@@ -169,8 +169,11 @@ interface LoweringChainInput {
 }
 
 interface ResolvedLoweringChain extends LoweringChainInput {
-  serviceStages: ResolvedBlueprintStage<ServiceLoweringRecipeDefinition>[];
-  projectionStages: ResolvedBlueprintStage<ProjectionLoweringRecipeDefinition>[];
+  serviceStages: ResolvedBlueprintStage<TierDefinition, ServiceLoweringRecipeDefinition>[];
+  projectionStages: ResolvedBlueprintStage<
+    ProjectionTierDefinition,
+    ProjectionLoweringRecipeDefinition
+  >[];
   serviceTerminalTier: TierDefinition;
   projectionTerminalTier: ProjectionTierDefinition;
 }
@@ -196,7 +199,7 @@ function executeFixedLoweringOperation(
             serviceStages: resolved.service.stages,
             projectionStages: resolved.projection.stages,
             serviceTerminalTier: resolved.service.terminalTier,
-            projectionTerminalTier: resolved.projection.terminalTier as ProjectionTierDefinition,
+            projectionTerminalTier: resolved.projection.terminalTier,
           }) as unknown as Json,
         },
       };
@@ -447,9 +450,9 @@ function applyServiceRecipe(
   const programs = new Map(recipe.implementationPrograms.map((program) => [program.id, program]));
   const selected = recipe.implementationPrograms.find((program) => program.when
     ? evalSyncJsonata(program.when, { externalContext } as Json) === true
-    : false) ?? programs.get(recipe.implementationFallback);
+    : false) ?? programs.get(recipe.fallback);
   if (!selected) {
-    throw new Error(`Blueprint service recipe '${recipe.id}' has unknown implementation fallback '${recipe.implementationFallback}'`);
+    throw new Error(`Blueprint service recipe '${recipe.id}' has unknown fallback '${recipe.fallback}'`);
   }
 
   applyCellImplementationOverrides(artifact, selected);

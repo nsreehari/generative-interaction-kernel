@@ -249,7 +249,7 @@
             }
           }
         ],
-        "implementationFallback": "foundry"
+        "fallback": "foundry"
       }
     ],
     "projectionTiers": [

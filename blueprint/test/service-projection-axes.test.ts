@@ -76,7 +76,7 @@ const serviceRecipe = (id: string, from: string, to: string, fallback = "mock-ba
       cells: { quotes: { sources: [{ id: "quotes.source", service: "live", operation: "read" }] } },
     },
   ],
-  implementationFallback: fallback,
+  fallback,
 });
 
 const projectionRecipe = (id: string, from: string, to: string, fallback = "compact") => ({
@@ -148,7 +148,7 @@ test("both axes resolve independently with unequal chain lengths", () => {
         from: "market",
         to: "runtime",
         implementationPrograms: [{ id: "pass-through" }],
-        implementationFallback: "pass-through",
+        fallback: "pass-through",
       },
     ],
     projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
@@ -231,7 +231,7 @@ test("the complete service chain applies before the complete projection chain", 
         id: "live-backed",
         cells: { quotes: { sources: [{ id: "quotes.source", service: "live", operation: "read" }] } },
       }],
-      implementationFallback: "live-backed",
+      fallback: "live-backed",
     }],
     projectionTiers: [{ id: "intent", kind: "intent" , capabilities: []}, { id: "runtime", kind: "runtime-document" , capabilities: []}],
     projectionRecipes: [{
@@ -344,6 +344,43 @@ test("an unknown projection tier reference in allowedCapabilities is rejected", 
       },
     })),
     /allowedCapabilities references unknown projection tier 'missing'/,
+  );
+});
+
+test("a named projection capability belongs to exactly one tier", () => {
+  assert.throws(
+    () => createBlueprint(twoAxisBlueprint({
+      projectionTiers: [
+        { id: "intent", kind: "intent", capabilities: ["portfolio-summary"] },
+        { id: "runtime", kind: "runtime-document", capabilities: ["portfolio-summary"] },
+      ],
+      projectionRecipes: [projectionRecipe("intent-to-runtime", "intent", "runtime")],
+      presentation: {
+        slots: ["board"],
+        root: "board",
+        allowedCapabilities: [{ tier: "intent" }],
+      },
+    })),
+    /projection capability 'portfolio-summary' is declared by both tiers 'intent' and 'runtime'/,
+  );
+});
+
+test("authoring validation rejects a disconnected cycle beside an otherwise valid tier chain", () => {
+  assert.throws(
+    () => createBlueprint(twoAxisBlueprint({
+      projectionTiers: [
+        { id: "intent", kind: "intent", capabilities: [] },
+        { id: "runtime", kind: "runtime-document", capabilities: [] },
+        { id: "cycle-a", kind: "internal", capabilities: [] },
+        { id: "cycle-b", kind: "internal", capabilities: [] },
+      ],
+      projectionRecipes: [
+        projectionRecipe("intent-to-runtime", "intent", "runtime"),
+        projectionRecipe("cycle-a-to-b", "cycle-a", "cycle-b"),
+        projectionRecipe("cycle-b-to-a", "cycle-b", "cycle-a"),
+      ],
+    })),
+    /projection recipes do not form a single connected chain/,
   );
 });
 
