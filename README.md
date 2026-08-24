@@ -263,3 +263,12 @@ Recommended reading path:
 4. [docs/decisions/ADR-0037-face-projections-and-transport-boundary.md](docs/decisions/ADR-0037-face-projections-and-transport-boundary.md) — the ownership boundary for face/projection/transport
 
 See [docs/01-vision.md](docs/01-vision.md) to start.
+
+## Community and support
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
+- Follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) in project spaces.
+- Use [SUPPORT.md](SUPPORT.md) to choose the appropriate support channel.
+- Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+- See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for vendored-code
+  provenance and licenses.

@@ -6,6 +6,18 @@ This follows the same discipline as [`kernel/src/vendor/`](../../kernel/src/vend
 JSONata) and the decision recorded in
 [ADR-0033](../../docs/decisions/ADR-0033-provider-engines-reactive-statemodel-step-orchestrator.md).
 
+## Provenance and license
+
+- **Source repository:** <https://github.com/nsreehari/yaml-flow>
+- **Source revision:** `59d90e03d788a27da80dc883b0a9f0f97c5ca08e`
+- **Imported by GIK commit:** `55ae905105046f45b0feda4248ff9938a47f34c6`
+- **License declared by the source project:** MIT
+
+The source repository and GIK are owned by the same author. The imported subset
+remains covered by the MIT terms declared by `yaml-flow`; GIK records it in
+[`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) so its separate origin
+is retained when the framework is distributed.
+
 ## What is here
 
 | Directory | Source (`yaml-flow/src/...`) | Purpose |
