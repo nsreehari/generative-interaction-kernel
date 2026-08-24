@@ -6,11 +6,13 @@ import {
   Field,
   Input,
   Option,
+  Spinner,
   Textarea,
   makeStyles,
   mergeClasses,
   tokens,
 } from "@fluentui/react-components";
+import { CheckmarkCircleRegular } from "@fluentui/react-icons";
 import type { Json } from "@gik/kernel";
 import {
   runDeclarativeValidators,
@@ -51,6 +53,30 @@ const useStyles = makeStyles({
   span9: { gridColumn: "span 9" }, span10: { gridColumn: "span 10" },
   span11: { gridColumn: "span 11" }, span12: { gridColumn: "span 12" },
   actions: { display: "flex", justifyContent: "flex-end", gap: tokens.spacingHorizontalS },
+  success: {
+    display: "flex",
+    alignItems: "center",
+    gap: tokens.spacingHorizontalXS,
+    color: tokens.colorPaletteGreenForeground1,
+  },
+  // Fixed-height footer slot reserved for the actions row / saving state / success confirmation /
+  // save error / nothing (a pristine, unsaved form shows neither). Keeping its height constant
+  // across every state -- rather than only rendering a row when there's something to show --
+  // avoids the surrounding layout jumping every time a save toggles between states.
+  footer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    height: "32px",
+  },
+  footerError: {
+    flex: 1,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    color: tokens.colorPaletteRedForeground1,
+  },
   errors: { display: "grid", gap: tokens.spacingVerticalXXS, color: tokens.colorPaletteRedForeground1 },
   fullWidth: { width: "100%" },
   checkbox: { alignSelf: "end" },
@@ -141,6 +167,14 @@ export const Form: ProjectionView = ({ node, emit }) => {
   const validationContext = props.obj<Record<string, Json>>("validationContext", {});
   const readOnly = props.bool("readOnly");
   const initiallyDirty = props.bool("initiallyDirty");
+  // Whether the host Blueprint actually binds `saving`/`saveError` (as opposed to those props
+  // simply being absent) -- present only when a Cell wires this Form to its own ordinary save
+  // state (an author-declared `assign` set true at dispatch, cleared to false by the operation's
+  // `settlement`/`failureSettlement` transform once it actually resolves). Untracked forms keep
+  // the prior optimistic behavior below (success shown as soon as `save` is emitted).
+  const savingTracked = node.props.saving !== undefined;
+  const saving = props.bool("saving");
+  const saveError = props.str("saveError");
   const { draft: values, setDraft: setValues, dirty, setDirty, reset } = useDraftState(incoming, initiallyDirty);
   const jsonKeys = Object.entries(fields).filter(([, field]) => isJsonField(field)).map(([key]) => key);
   const jsonSignature = jsonKeys.join("\u0000");
@@ -151,20 +185,46 @@ export const Form: ProjectionView = ({ node, emit }) => {
   const [jsonText, setJsonText] = React.useState<Record<string, string>>(() => jsonTextFrom(incoming));
   const [jsonErrors, setJsonErrors] = React.useState<Record<string, string>>({});
   const [validationErrors, setValidationErrors] = React.useState<string[]>([]);
+  // Local, transient confirmation shown in place of the action row right after a successful save --
+  // the commit itself (what `save` does with the values) is entirely the host Blueprint's concern;
+  // this only reflects that *this* component's own submit just completed without error. Cleared by
+  // any further edit, discard, or a genuinely new incoming value (the same signal that already resets
+  // jsonText/validationErrors below), never by a timer -- so it stays visible until the user acts again.
+  const [justSaved, setJustSaved] = React.useState(false);
 
   React.useEffect(() => {
     setJsonText(jsonTextFrom(incoming));
     setJsonErrors({});
     setValidationErrors([]);
+    setJustSaved(false);
   }, [JSON.stringify(incoming), jsonTextFrom]);
+
+  // Reacts to the tracked save this Form itself triggered actually settling -- not to `emit()`
+  // returning, which (in the durable runtime) only resolves once the triggering event is queued,
+  // long before the invoked service settles. The host Blueprint owns `saving` as ordinary state:
+  // an `assign` sets it true at dispatch, and the operation's own `settlement`/`failureSettlement`
+  // transform sets it back to false once the save actually resolves -- so a true-to-false edge on
+  // `saving` here means *this* save just completed. Success clears the draft and shows `justSaved`;
+  // failure leaves the draft (and its actions) in place so the user can retry, with `saveError`
+  // shown alongside.
+  const wasSavingRef = React.useRef(false);
+  React.useEffect(() => {
+    if (savingTracked && wasSavingRef.current && !saving && !saveError) {
+      setDirty(false);
+      setJustSaved(true);
+    }
+    wasSavingRef.current = saving;
+  }, [saving, saveError, savingTracked]);
 
   const setField = (key: string, value: unknown) => {
     setValues((current) => ({ ...current, [key]: value }));
     setDirty(true);
+    setJustSaved(false);
   };
   const setJsonField = (key: string, text: string) => {
     setJsonText((current) => ({ ...current, [key]: text }));
     setDirty(true);
+    setJustSaved(false);
     if (!text.trim()) {
       setJsonErrors((current) => ({ ...current, [key]: "" }));
       setValues((current) => ({ ...current, [key]: undefined }));
@@ -183,10 +243,11 @@ export const Form: ProjectionView = ({ node, emit }) => {
     setJsonText(jsonTextFrom(incoming));
     setJsonErrors({});
     setValidationErrors([]);
+    setJustSaved(false);
   };
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (readOnly) return;
+    if (readOnly || saving) return;
     if (Object.values(jsonErrors).some(Boolean)) return;
     const report = validateDeclarativeFormValues(
       schema,
@@ -196,7 +257,10 @@ export const Form: ProjectionView = ({ node, emit }) => {
     setValidationErrors(report.errors.map((issue) => issue.detail));
     if (!report.ok) return;
     void emit("save", { values });
-    setDirty(false);
+    if (!savingTracked) {
+      setDirty(false);
+      setJustSaved(true);
+    }
   };
   const spanClasses = [styles.span1, styles.span2, styles.span3, styles.span4, styles.span5, styles.span6,
     styles.span7, styles.span8, styles.span9, styles.span10, styles.span11, styles.span12];
@@ -260,10 +324,31 @@ export const Form: ProjectionView = ({ node, emit }) => {
         })}
       </div>)}
       {validationErrors.length > 0 ? <div className={styles.errors} role="alert">{validationErrors.map((error) => <span key={error}>{error}</span>)}</div> : null}
-      {dirty && !readOnly ? <div className={styles.actions}>
-        <Button type="button" onClick={discard}>{props.str("discardLabel", "Discard")}</Button>
-        <Button type="submit" appearance="primary" disabled={Object.values(jsonErrors).some(Boolean)}>{props.str("saveLabel", "Save")}</Button>
-      </div> : null}
+      {readOnly ? null : (
+        <div className={styles.footer}>
+          {justSaved && !dirty ? (
+            <div className={styles.success} role="status">
+              <CheckmarkCircleRegular aria-hidden="true" />
+              <span>{props.str("successLabel", "Saved")}</span>
+            </div>
+          ) : dirty ? (
+            <>
+              {saveError ? <span className={styles.footerError} role="alert" title={saveError}>{saveError}</span> : null}
+              <div className={styles.actions}>
+                <Button type="button" onClick={discard} disabled={saving}>{props.str("discardLabel", "Discard")}</Button>
+                <Button
+                  type="submit"
+                  appearance="primary"
+                  disabled={saving || Object.values(jsonErrors).some(Boolean)}
+                  icon={saving ? <Spinner size="tiny" /> : undefined}
+                >
+                  {saving ? props.str("savingLabel", "Saving…") : props.str("saveLabel", "Save")}
+                </Button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
     </form>
   );
 };
@@ -273,7 +358,9 @@ const schema = {
   additionalProperties: false,
   properties: {
     fields: { type: "object" }, schema: { type: "object" }, value: { type: "object" }, data: { type: "object" }, validationContext: { type: "object" },
-    saveLabel: { type: "string" }, discardLabel: { type: "string" }, initiallyDirty: { type: "boolean" }, readOnly: { type: "boolean" },
+    saveLabel: { type: "string" }, discardLabel: { type: "string" }, successLabel: { type: "string" }, savingLabel: { type: "string" },
+    saving: { type: "boolean" }, saveError: { type: "string" },
+    initiallyDirty: { type: "boolean" }, readOnly: { type: "boolean" },
     ...componentLayoutPropsSchema,
   },
 } as const;
@@ -289,7 +376,7 @@ const description: ComponentDescription = {
   authoring: {
     useWhen: ["Users edit a schema-defined object and explicitly commit or discard the draft"],
     avoidWhen: ["Each field must emit immediately without an explicit commit", "The data is naturally edited as rows; use editable-table"],
-    rules: ["Define fields through JSON Schema properties", "Handle save payload values", "Use readOnly for inspect-only forms", "Pass external validator bindings through validationContext", "Use initiallyDirty only for drafts not yet persisted", "Keep workflow effects outside the component"],
+    rules: ["Define fields through JSON Schema properties", "Handle save payload values", "Use readOnly for inspect-only forms", "Pass external validator bindings through validationContext", "Use initiallyDirty only for drafts not yet persisted", "Keep workflow effects outside the component", "The component itself shows a local success confirmation (successLabel) after a save with no further edits -- do not also author a separate saved-confirmation view for the common case", "For a save that resolves asynchronously in the host Blueprint (e.g. a durable service invoke), bind `saving`/`saveError` to ordinary Blueprint state the Cell's own behavior manages -- an `assign` sets `saving` true at dispatch, and the operation's `settlement`/`failureSettlement` transform sets it back to false (plus `saveError` on failure) -- rather than relying on the optimistic success shown as soon as `save` is emitted"],
   },
   agentFacing: {
     catalog: { interaction: "committed-input" },

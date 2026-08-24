@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import TestRenderer, { act } from "react-test-renderer";
 import { test } from "vitest";
 
 import type { Json, ResolvedNode } from "@gik/kernel";
@@ -154,3 +155,126 @@ test("form definition exposes a closed authoring contract", () => {
   assert.equal(formDefinition.describe().dataProp, "value");
   assert.ok(formDefinition.describe().authoring.rules.length > 0);
 });
+
+test("form shows a local success confirmation in place of the action row after a save, until the next edit", async () => {
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+  await act(async () => {
+    renderer = TestRenderer.create(
+      <Form
+        node={node({
+          fields: { properties: { name: { type: "string", title: "Name" } } },
+          value: { name: "Draft" },
+          initiallyDirty: true,
+          successLabel: "All set",
+        })}
+        emit={() => undefined}
+      >
+        {null}
+      </Form>,
+    );
+  });
+  const form = renderer!.root.findByType("form");
+
+  // Before any save: the action row shows, no success confirmation yet.
+  assert.ok(renderer!.root.findByProps({ children: "Save" }));
+  assert.throws(() => renderer!.root.findByProps({ children: "All set" }));
+
+  await act(async () => {
+    form.props.onSubmit({ preventDefault: () => undefined });
+  });
+
+  // After a successful save with no further edits: success confirmation replaces the action row.
+  assert.ok(renderer!.root.findByProps({ children: "All set" }));
+  assert.throws(() => renderer!.root.findByProps({ children: "Save" }));
+  assert.throws(() => renderer!.root.findByProps({ children: "Discard" }));
+
+  // Editing again clears the confirmation and brings the action row back.
+  const nameInput = renderer!.root.findByProps({ type: "text" });
+  await act(async () => {
+    nameInput.props.onChange(undefined, { value: "Draft 2" });
+  });
+  assert.ok(renderer!.root.findByProps({ children: "Save" }));
+  assert.throws(() => renderer!.root.findByProps({ children: "All set" }));
+
+  await act(async () => renderer!.unmount());
+});
+
+test("a tracked save shows a spinner while saving, then success once the host reports it settled", async () => {
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+  const baseProps = {
+    fields: { properties: { name: { type: "string", title: "Name" } } },
+    value: { name: "Draft" },
+    initiallyDirty: true,
+    saving: false,
+    saveError: "",
+  };
+  await act(async () => {
+    renderer = TestRenderer.create(
+      <Form node={node(baseProps)} emit={() => undefined}>{null}</Form>,
+    );
+  });
+  const form = () => renderer!.root.findByType("form");
+
+  await act(async () => {
+    form().props.onSubmit({ preventDefault: () => undefined });
+  });
+  // The optimistic success path is disabled for a tracked Form: still showing actions, not "Saved".
+  assert.ok(renderer!.root.findByProps({ children: "Save" }));
+  assert.throws(() => renderer!.root.findByProps({ children: "Saved" }));
+
+  // The host's own `assign` reports the save as running: the Save button becomes a spinner state.
+  await act(async () => {
+    renderer!.update(<Form node={node({ ...baseProps, saving: true })} emit={() => undefined}>{null}</Form>);
+  });
+  assert.ok(renderer!.root.findByProps({ children: "Saving…" }));
+  assert.throws(() => renderer!.root.findByProps({ children: "Save" }));
+
+  // The host's settlement transform reports success (saving back to false, no error): success
+  // confirmation replaces the action row.
+  await act(async () => {
+    renderer!.update(<Form node={node({ ...baseProps, saving: false })} emit={() => undefined}>{null}</Form>);
+  });
+  assert.ok(renderer!.root.findByProps({ children: "Saved" }));
+  assert.throws(() => renderer!.root.findByProps({ children: "Save" }));
+
+  await act(async () => renderer!.unmount());
+});
+
+test("a tracked save that fails keeps the draft editable and shows the host's error", async () => {
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+  const baseProps = {
+    fields: { properties: { name: { type: "string", title: "Name" } } },
+    value: { name: "Draft" },
+    initiallyDirty: true,
+    saving: false,
+    saveError: "",
+  };
+  await act(async () => {
+    renderer = TestRenderer.create(
+      <Form node={node(baseProps)} emit={() => undefined}>{null}</Form>,
+    );
+  });
+
+  await act(async () => {
+    renderer!.root.findByType("form").props.onSubmit({ preventDefault: () => undefined });
+  });
+  await act(async () => {
+    renderer!.update(<Form node={node({ ...baseProps, saving: true })} emit={() => undefined}>{null}</Form>);
+  });
+  await act(async () => {
+    renderer!.update(
+      <Form node={node({ ...baseProps, saving: false, saveError: "Server unavailable" })} emit={() => undefined}>
+        {null}
+      </Form>,
+    );
+  });
+
+  // Failure: no success confirmation, actions remain so the user can retry, and the error shows.
+  assert.throws(() => renderer!.root.findByProps({ children: "Saved" }));
+  assert.ok(renderer!.root.findByProps({ children: "Save" }));
+  assert.ok(renderer!.root.findByProps({ children: "Discard" }));
+  assert.ok(renderer!.root.findByProps({ children: "Server unavailable" }));
+
+  await act(async () => renderer!.unmount());
+});
+
