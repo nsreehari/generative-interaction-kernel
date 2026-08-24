@@ -1,5 +1,8 @@
-// The generic host app opens a Blueprint selected by `?b=<id>` through GikDemoBlueprintHost. The app
-// owns URL canonicalization and the switcher overlay.
+// The generic host app opens a Blueprint selected by an explicit `?b=<id>` through
+// GikDemoBlueprintHost. Without that parameter there is no single "current" Blueprint at all: the
+// host renders its own application root page, which composes named regions of an embedded Blueprint
+// Studio instead of silently opening a default Blueprint. The app owns URL canonicalization and the
+// switcher overlay.
 
 import React from "react";
 import { Spinner } from "@fluentui/react-components";
@@ -12,14 +15,6 @@ import {
 import { BlueprintHost as InMemoryBlueprintHost, buildCapabilityCatalogFromExternals, type CapabilityDescriptorResolver, type ProviderResolver } from "@gik/react";
 import { BlueprintHost as DurableBlueprintHost, createNativeBlueprintWorker } from "@gik/react/durable";
 import { createIndexedDbProvider } from "@gik/durable-runtime/storage/indexed-db";
-import { createDurableRuntime } from "@gik/durable-runtime";
-import {
-  createBlueprintProposalDurableTransitionAdapter,
-  createDurableBlueprintProposalStore,
-  createInMemoryBlueprintProposalStore,
-  type BlueprintProposalStore,
-} from "@gik/blueprint-agent-host";
-import type { UseProposal } from "./runtime/blueprint-agent-lifecycle";
 import { GikDemoBlueprintHost, type DemoTargetHostProps } from "@gik/demo-runner-host";
 import { resolveCapabilityDescriptors, resolveProjectionViews } from "./runtime/provider-registry";
 import {
@@ -27,84 +22,43 @@ import {
   readHostQuery,
 } from "./host-query";
 import {
-  resolveBlueprintInitialContext,
-  resolveBlueprintNative,
-  resolveBlueprintNativeFromMaterialized,
-} from "./runtime/sample-bundles";
-import {
   getSampleBlueprintCatalog,
-  resolveSampleBlueprintSource,
   resolveSampleLaunchExternalContext,
 } from "../../../catalog/blueprint-catalog";
-import { createSampleBlueprintHostRegistry } from "./runtime/hosted-blueprint-registry";
 import { HostServiceDependencyAccess } from "./runtime/service-dependency-access";
-import { createBrowserBlueprintStorageConnectionFactory } from "./runtime/blueprint-storage";
+import { ApplicationSwitcher } from "./ApplicationSwitcher";
+import { AppRootPage } from "./AppRootPage";
+import { durableRef, useBlueprintHostSetup } from "./blueprint-host-setup";
+
+export { createSampleBlueprintProposalStore } from "./blueprint-host-setup";
 
 const embeddedHostStyle: React.CSSProperties = { height: "100vh" };
 
 export function Host(): React.ReactElement {
   const query = readHostQuery(window.location.search, window.location.pathname);
-  const targetId = query.targetId ?? getSampleBlueprintCatalog().defaultBlueprint;
-  const HostComponent = query.durableEnabled ? DurableIndexedDbHost : InMemoryHost;
   React.useEffect(() => {
     const canonicalUrl = canonicalizeHostUrl(window.location.href);
     if (canonicalUrl !== window.location.href) window.history.replaceState(null, "", canonicalUrl);
   }, []);
+  // No selected Blueprint is not "the default Blueprint": it is the application root itself.
+  if (query.targetId === null) return <AppRootPage />;
   return (
     <HostView
-      targetId={targetId}
+      targetId={query.targetId}
       durableEnabled={query.durableEnabled}
       externalContext={query.externalContext}
-      HostComponent={HostComponent}
+      HostComponent={query.durableEnabled ? DurableIndexedDbHost : InMemoryHost}
       resolveLeavesProvider={resolveProjectionViews}
       resolveCapabilityDescriptors={resolveCapabilityDescriptors}
     />
   );
 }
-
 function hostedBlueprintLoading(): React.ReactElement {
   return <Spinner label={"Loading analysis\u00a0\u2026"} labelPosition="after" size="small" />;
 }
 
 function InMemoryHost(props: DemoTargetHostProps): React.ReactElement {
   return <InMemoryBlueprintHost {...props} renderHostedBlueprintLoading={hostedBlueprintLoading} />;
-}
-
-function durableRef(value: string): string {
-  const bytes = new TextEncoder().encode(JSON.stringify({ kind: "indexed-db", value }));
-  const encoded = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
-  return `b64:${encoded}`;
-}
-
-function lazyProposalStore(
-  store: Promise<BlueprintProposalStore<UseProposal>>,
-): BlueprintProposalStore<UseProposal> {
-  return {
-    create: async (receipt) => (await store).create(receipt),
-    get: async (id) => (await store).get(id),
-    update: async (receipt) => (await store).update(receipt),
-    list: async () => (await store).list(),
-  };
-}
-
-export function createSampleBlueprintProposalStore(options: {
-  durableEnabled: boolean;
-  blueprintId: string;
-  instanceId?: string | number;
-  databaseName?: string;
-}): BlueprintProposalStore<UseProposal> {
-  if (!options.durableEnabled) return createInMemoryBlueprintProposalStore<UseProposal>();
-  const identity = `${options.blueprintId}:${options.instanceId ?? "default"}`;
-  const ref = durableRef(`samples:blueprint-agent-host:${identity}`);
-  const refs = { stateRef: ref, journalRef: ref, effectsQueueRef: ref };
-  const runtime = createDurableRuntime({
-    runtimeId: `samples:blueprint-agent-host:${identity}`,
-    providers: {
-      "indexed-db": createIndexedDbProvider({ databaseName: options.databaseName ?? "gik-samples-host" }),
-    },
-    transitionAdapter: createBlueprintProposalDurableTransitionAdapter<UseProposal>(),
-  });
-  return lazyProposalStore(createDurableBlueprintProposalStore<UseProposal>({ runtime, refs }));
 }
 
 function DurableIndexedDbHost(props: DemoTargetHostProps): React.ReactElement {
@@ -190,39 +144,12 @@ function HostView({
   resolveCapabilityDescriptors: CapabilityDescriptorResolver;
 }): React.ReactElement {
   const id = targetId;
-  const blueprintStorageRootInstanceId = `${id}:default`;
-  const blueprintStorage = React.useMemo(
-    () => createBrowserBlueprintStorageConnectionFactory(durableEnabled),
-    [durableEnabled],
-  );
-  const proposalStore = React.useMemo(
-    () => createSampleBlueprintProposalStore({ durableEnabled, blueprintId: id }),
-    [durableEnabled, id],
-  );
-  const hostedBlueprintRegistry = React.useMemo(
-    () => createSampleBlueprintHostRegistry({
-      createProposalStore: (blueprintId, childContext) => createSampleBlueprintProposalStore({
-        durableEnabled,
-        blueprintId,
-        instanceId: `${childContext.parentInstanceId}/cells/${childContext.cellId}`,
-      }),
-      blueprintStorage,
-      blueprintStorageRootInstanceId,
-    }),
-    [blueprintStorage, blueprintStorageRootInstanceId, durableEnabled],
-  );
-  const { blueprint, native } = React.useMemo(() => ({
-    blueprint: resolveSampleBlueprintSource(id),
-    native: resolveBlueprintNative(id, {
-      proposalStore,
-      blueprintStorage,
-      instanceId: blueprintStorageRootInstanceId,
-    }),
-  }), [blueprintStorage, blueprintStorageRootInstanceId, id, proposalStore]);
-  const context = React.useMemo(
-    () => resolveBlueprintInitialContext(id, externalContext),
-    [externalContext, id],
-  );
+  const launchExternalContext = externalContext ?? resolveSampleLaunchExternalContext(id);
+  const { blueprint, native, context, blueprintRegistry, resolveNative } = useBlueprintHostSetup({
+    id,
+    durableEnabled,
+    externalContext,
+  });
   const demoRunnerDocument = getSampleBlueprintCatalog().demoScenarios[id];
 
   return (
@@ -230,69 +157,18 @@ function HostView({
       <GikDemoBlueprintHost
         HostComponent={HostComponent}
         blueprint={blueprint}
-        externalContext={externalContext ?? resolveSampleLaunchExternalContext(id)}
+        externalContext={launchExternalContext}
         native={native}
         context={context}
-        resolveNative={(materializedBlueprint) =>
-          resolveBlueprintNativeFromMaterialized(id, materializedBlueprint, {
-            proposalStore,
-            blueprintStorage,
-            instanceId: blueprintStorageRootInstanceId,
-          })}
+        resolveNative={resolveNative}
         scenariosJson={demoRunnerDocument}
         resolveLeavesProvider={resolveLeavesProvider}
         resolveCapabilityDescriptors={resolveCapabilityDescriptors}
-        blueprintRegistry={hostedBlueprintRegistry}
+        blueprintRegistry={blueprintRegistry}
         style={embeddedHostStyle}
       />
       <HostServiceDependencyAccess />
       <ApplicationSwitcher currentId={id} />
     </>
-  );
-}
-
-function ApplicationSwitcher({ currentId }: { currentId: string }): React.ReactElement {
-  const [open, setOpen] = React.useState(false);
-  const blueprintIds = getSampleBlueprintCatalog().blueprints;
-  const selectBlueprint = (id: string) => {
-    if (id === currentId) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("b", id);
-    window.location.assign(url.toString());
-  };
-
-  return (
-    <div className="gx-switcher" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      {open ? (
-        <div className="gx-switcher-panel" role="menu" aria-label="Switch application">
-          <div className="gx-switcher-head">Application</div>
-          {blueprintIds.map((id) => {
-            const selected = id === currentId;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="menuitemradio"
-                aria-checked={selected}
-                className={selected ? "gx-switcher-row selected" : "gx-switcher-row"}
-                onClick={() => selectBlueprint(id)}
-              >
-                <span className="gx-switcher-check" aria-hidden="true">{selected ? "\u2713" : ""}</span>
-                <span>{id}</span>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="gx-switcher-bubble"
-          aria-label={`Current application: ${currentId}. Hover to switch.`}
-          onClick={() => setOpen(true)}
-        >
-          <span aria-hidden="true">&nbsp;</span>
-        </button>
-      )}
-    </div>
   );
 }

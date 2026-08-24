@@ -11,8 +11,11 @@ npm test
 npm run build
 ```
 
-Run the generic browser host with `npm run dev`. Select a Blueprint with a URL such as
-`http://localhost:5175/?b=portfolio-tracker-new`.
+Run the generic browser host with `npm run dev`. Open a Blueprint with a URL such as
+`http://localhost:5175/?b=portfolio-tracker-new`. Without a `b` parameter the host renders
+`apps/browser-host/src/AppRootPage.tsx`, an ordinary React/Fluent page that mounts two named
+presentation regions (`blueprint-catalog` and `blueprint-preview`) exported by a single embedded
+`blueprint-studio` instance; it never falls back to the catalog's default Blueprint.
 
 `apps/browser-host` runs catalog Blueprints through `@gik/react`. `apps/node-host` composes
 `@gik/blueprint`, `@gik/kernel`, the Face packages, and transports directly; start it with

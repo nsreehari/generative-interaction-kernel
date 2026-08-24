@@ -2760,6 +2760,7 @@
             "from": "fluent",
             "use": [
               "button",
+              "spinner",
               "table"
             ]
           },

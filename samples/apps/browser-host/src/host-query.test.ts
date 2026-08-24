@@ -105,6 +105,32 @@ test("host query resolves cached Blueprint paths", () => {
   );
 });
 
+test("host query reports no Blueprint when no explicit selection names one", () => {
+  assert.equal(readHostQuery("").targetId, null);
+  assert.equal(readHostQuery("?durable=1").targetId, null);
+  assert.equal(readHostQuery("?demo=1&gik=1", "/").targetId, null);
+  assert.equal(readHostQuery("?b=", "/").targetId, null);
+  assert.equal(readHostQuery("?b=%20&bundle=%20", "/").targetId, null);
+  assert.equal(
+    readHostQuery("?context=%7B%22mode%22%3A%22embedded%22%7D").targetId,
+    null,
+  );
+  // Canonicalization is what turns every legacy selection into the one explicit `b` shape, so no
+  // route ever has to re-derive a target from a legacy parameter after the first replaceState.
+  assert.equal(
+    canonicalizeHostUrl("https://example.test/?durable=1"),
+    "https://example.test/?durable=1",
+  );
+  assert.equal(
+    canonicalizeHostUrl("https://example.test/?b=&durable=1"),
+    "https://example.test/?durable=1",
+  );
+  assert.equal(
+    canonicalizeHostUrl("https://example.test/?b=&bundle=live-workspace-soc"),
+    "https://example.test/?b=live-workspace-soc",
+  );
+});
+
 test("host query canonicalizes legacy controls and redundant presentation state", () => {
   assert.equal(
     canonicalizeHostUrl(

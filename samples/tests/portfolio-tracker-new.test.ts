@@ -94,6 +94,9 @@ test("portfolio-tracker-new declares the canonical Cells and parent report metad
   assert.ok(
     blueprint.payload.runtime.externals.projectionViews.primitive.use.includes("datetime"),
   );
+  assert.ok(
+    blueprint.payload.runtime.externals.projectionViews.fluent.use.includes("spinner"),
+  );
 
   assert.deepEqual(blueprint.payload.serviceTiers, [
     { id: "portfolio-logic", kind: "portfolio-domain" },
