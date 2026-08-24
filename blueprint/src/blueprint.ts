@@ -6,6 +6,7 @@ import {
   collectRepresentationCapabilityUses,
   resolveProjectionVocabulary,
 } from "./projection-vocabulary";
+import { collectPresentationRegionExportErrors } from "./presentation-regions";
 import type {
   BlueprintArtifact,
   BlueprintDefinition,
@@ -163,6 +164,11 @@ export function validateBlueprintArtifact(
         throw new BlueprintValidationError(`Blueprint presentation.layout references unknown slot '${slotId}'`);
       }
     }
+    // Exported regions are the only host-addressable presentation contract, so they are validated
+    // structurally here rather than discovered leniently at mount time: a host must be able to trust
+    // that every declared name resolves to exactly one reachable, non-overlapping slot subtree.
+    const regionErrors = collectPresentationRegionExportErrors(blueprint.presentation, blueprint.id);
+    if (regionErrors.length > 0) throw new BlueprintValidationError(regionErrors.join("; "));
   }
   // `blueprint` (hosting another Blueprint) is one of a Cell's own ordinary data-flow-owning
   // properties -- listed alongside ports/sources/compute/behavior, not alongside `potentialViews` --

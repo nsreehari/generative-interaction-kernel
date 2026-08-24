@@ -170,6 +170,43 @@ instance reads and writes through that one Cell. A representation may replace th
 presentation layout or append additional slot entries (`presentationAppend`, a plain array
 concatenation), but it cannot replace the Blueprint's authored `allowedCapabilities` authority.
 
+## Exported presentation regions
+
+A slot is internal, Blueprint-owned topology. An **exported region** is the explicit, named contract an
+application host may address, so nothing is exposed implicitly: a host can only discover and mount what
+`presentation.exportedRegions` declares.
+
+```json
+{
+  "presentation": {
+    "slots": [
+      "workspace",
+      { "id": "command-bar", "region": "workspace" },
+      { "id": "navigation", "region": "workspace" },
+      { "id": "content", "region": "workspace" }
+    ],
+    "root": "workspace",
+    "allowedCapabilities": [],
+    "exportedRegions": [
+      { "name": "command-bar", "slot": "command-bar", "required": true },
+      { "name": "sidebar", "slot": "navigation", "description": "Catalog browsing" },
+      { "name": "primary", "slot": "content", "required": true }
+    ]
+  }
+}
+```
+
+Ownership stays split. The Blueprint owns which regions exist, which Cell views attach to each one,
+their semantics and ordering, and whether each is `required`. The host owns where each region appears in
+its shell, the surrounding chrome, and whether it mounts an optional region at all.
+
+Exporting never changes how the presentation compiles: an exported slot keeps its one place in the
+Blueprint-owned tree and is never rendered twice merely because it is exported. Validation rejects
+exports with an invalid or duplicated `name`, an unknown `slot`, a slot unreachable from `root`, or a
+slot that overlaps another exported region's subtree. Because a representation may replace the whole
+presentation, the exported set is a property of the terminal Blueprint a materialization selected for
+the current external context — read it with `listExportedPresentationRegions(terminalBlueprint)`.
+
 ## Worker hosting
 
 `@gik/blueprint/worker` coordinates one journal/engine/effect cycle per wake. Connector-specific
@@ -193,8 +230,9 @@ ownership, and effect outcomes return through the journal before changing Bluepr
   the envelope, Blueprint identity and runtime declaration, per-axis tier and recipe shape and chain
   invariants, rejection of the removed `tiers`/`recipes` fields, Cell key/id
   agreement, service-operation references, presentation slot references,
-  `presentation.allowedCapabilities`, and required `interface.inputs` for inline hosted child
-  Blueprints.
+  `presentation.allowedCapabilities`, `presentation.exportedRegions` (legal unique names, known and
+  root-reachable slots, no overlapping subtrees), and required `interface.inputs` for inline hosted
+  child Blueprints.
 
 ### Materialization and transition
 
@@ -246,4 +284,11 @@ ownership, and effect outcomes return through the journal before changing Bluepr
   `region` is an array, one independent instance is rendered per named slot.
 - `PresentationDefinition` is a closed, flat set of `slots` plus a `root`. Slot entries
   self-declare nesting with `region`. Its mandatory `allowedCapabilities` authorizes every
-  capability used by Cell views and view decorations.
+  capability used by Cell views and view decorations. `exportedRegions` is optional;
+  when present, each `PresentationRegionExport` maps a unique host-addressable `name` to exactly one
+  declared `slot`, with optional `required` and `description` metadata.
+- `listExportedPresentationRegions(blueprint)` returns a terminal Blueprint's exported regions as
+  normalized `ExportedPresentationRegion` values, in declaration order.
+  `listPresentationRegionExports(presentation)`, `findExportedPresentationRegion(regions, name)`,
+  `collectPresentationRegionExportErrors(presentation, blueprintId)`, and
+  `PRESENTATION_REGION_NAME_PATTERN` are exported alongside it.

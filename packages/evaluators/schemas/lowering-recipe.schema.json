@@ -143,6 +143,13 @@
           "items": { "$ref": "#/definitions/presentationSlot" }
         },
         "root": { "type": "string", "minLength": 1 },
+        "exportedRegions": {
+          "description": "Host-addressable named regions this representation's presentation exports.",
+          "type": "array",
+          "items": {
+            "$ref": "https://genui.dev/schemas/blueprint.schema.json#/definitions/presentationRegionExport"
+          }
+        },
         "layout": {
           "description": "Optional arrangement for named slots' own children, keyed by slot id.",
           "type": "object",
