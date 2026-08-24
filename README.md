@@ -43,12 +43,13 @@ If you are deciding what to consume:
 
 ## Sample applications
 
-Run `npm run dev:host` in [generative-interaction-kernel](.) and select a hosted Blueprint with
-`/?b=<id>`. The default is `samples-overview`; the application switcher lists the approved Blueprint
-catalog. Open `/?b=manage-bundles` to inspect and preview ordinary Bundle artifacts.
-The same host serves the semantic component Storybook at `/storybook/`; no second development
-server is required. Host development and production builds generate the Storybook assets first and
-include them in the host artifact.
+Run `npm run dev:host` in [generative-interaction-kernel](.) and open a hosted Blueprint with
+`/?b=<id>`; the application switcher lists the approved Blueprint catalog. Without a `b` parameter
+the host renders its own application root page: a plain React/Fluent layout that places two named
+presentation regions — the Blueprint catalog and a live preview — exported by one embedded
+Blueprint Studio instance. The same host serves the semantic component Storybook at `/storybook/`;
+no second development server is required. Host development and production builds generate the
+Storybook assets first and include them in the host artifact.
 
 The sample host defaults to [`samples/config/host.production.json`](samples/config/host.production.json)
 in both development and production modes. Use `npm run dev:host:local` or
@@ -77,10 +78,11 @@ The portfolio tracker routes `analyze` and `propose-strategies` through QueueFac
 
 The endpoint accepts `POST` JSON containing `service`, `version`, `operation`, `input`, and `correlationId`, and returns `{ "output": ... }`. The proxy owns credentials and model/provider configuration; do not expose provider secrets through Vite environment variables. A configured live endpoint is never silently replaced by the deterministic provider when a request fails.
 
+- `/` — application root page: React chrome plus the embedded Studio's catalog and preview regions
 - `/?b=portfolio-tracker-new` — live portfolio intelligence
 - `/?b=live-workspace-soc` — governed SOC collaboration
 - `/?b=ai-agent` — provider-selected agent conversation (`ai=foundry` or `ai=copilot`)
-- `/?b=blueprint-studio` — Blueprint catalog studio
+- `/?b=blueprint-studio` — Blueprint catalog studio (the complete Studio, at its own root)
 - `/?b=manage-bundles` — Bundle artifact catalog and preview
 
 ## Status

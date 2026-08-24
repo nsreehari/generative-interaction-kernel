@@ -32,6 +32,56 @@ export const App = () => (
 Omit `worker` when middleware, a backend, or an Azure Function owns execution. Existing
 `@gik/blueprint-host` consumers should migrate to `BlueprintHost` from `@gik/react`.
 
+## Multi-region hosting
+
+`BlueprintHost` mounts a Blueprint's whole presentation at one React location. When an application
+shell needs to place parts of one live Blueprint in different places, use `BlueprintProvider` plus one
+`BlueprintRegion` per exported region:
+
+```tsx
+import { BlueprintProvider, BlueprintRegion } from "@gik/react";
+
+export const App = () => (
+	<BlueprintProvider blueprint={blueprint} native={native} externalContext={externalContext}>
+		<AppShell>
+			<AppShell.CommandBar><BlueprintRegion name="command-bar" /></AppShell.CommandBar>
+			<AppShell.Sidebar><BlueprintRegion name="sidebar" /></AppShell.Sidebar>
+			<AppShell.Main><BlueprintRegion name="primary" /></AppShell.Main>
+		</AppShell>
+	</BlueprintProvider>
+);
+```
+
+A **slot** is internal Blueprint-owned topology; an **exported region** is the explicit contract a host
+may address. The Blueprint owns which regions exist, what attaches to them, and which are `required`;
+the host owns placement, layout, and whether it mounts an optional region at all. A host can never
+address an arbitrary internal slot.
+
+One provider runs exactly one Blueprint: every region below it shares the same materialization,
+controller, state, journal, effects, and lifecycle, and every event a region emits is dispatched through
+that shared controller. Mounting a region is placement only — it never instantiates a second host or
+controller. `externalContext` therefore belongs on the provider, never on a region; changing it
+re-materializes with the same semantics `BlueprintHost` already has and republishes the region set of
+the newly selected terminal representation.
+
+Rules the host can rely on:
+
+- `useBlueprintRegions()` returns the exported regions (`name`, `slot`, `required`, `description`) of
+  the currently materialized Blueprint.
+- An unknown region name, a region mounted twice, or a region mounted outside a provider throws
+  `BlueprintRegionError` with an actionable message.
+- An optional region that is not mounted never instantiates its projection views.
+- A `required` region left unmounted reports a development diagnostic — `console.warn` by default, or
+  the provider's `onMissingRequiredRegions(regions, message)` callback when supplied.
+- Nested hosted Blueprints keep their own presentation: a child renders entirely inside the parent
+  region that hosts it and never contributes regions to the parent's exported set.
+
+The durable entrypoint exports the same pair, so region semantics are identical over a durable runtime:
+
+```tsx
+import { BlueprintProvider, BlueprintRegion, createNativeBlueprintWorker } from "@gik/react/durable";
+```
+
 ## Nested Blueprint hosting
 
 Pass a `BlueprintHostRegistry` when a parent uses `host:hosted-blueprint`. The registry synchronously
@@ -74,6 +124,12 @@ directly.
 - optional host-specific inputs: `context` (deprecated initial-state seed compatibility),
   `onTransition`, `blueprintRegistry`, `renderHostedBlueprintLoading`
 
+`BlueprintProvider` accepts every `BlueprintHostProps` input except the single-root-only `className`,
+`style`, and `companions`, and adds `children` plus optional `onMissingRequiredRegions`. `BlueprintRegion`
+takes one prop, `name`; it deliberately accepts no `externalContext` of its own. `useBlueprintRegions()`
+returns `readonly ExportedPresentationRegion[]`, and `BlueprintRegionError` is the error class thrown for
+unknown names, duplicate mounts, and mounts placed outside a provider.
+
 `BlueprintController` is constructed as `new BlueprintController(blueprint, options?)`. The exported
 `BlueprintControllerOptions` type includes `externalContext`, `materializedBlueprint`, `context`
 (deprecated), `contexts`, `native`, `onTransition`, and `resolveCapabilityDescriptors`. The class
@@ -95,8 +151,10 @@ Registry and capability helpers exported from `@gik/react`:
 
 ### `@gik/react/durable`
 
-`@gik/react/durable` exports a durable `BlueprintHost`, its `BlueprintHostProps` type, and
-`createNativeBlueprintWorker`.
+`@gik/react/durable` exports a durable `BlueprintHost`, its `BlueprintHostProps` type, a durable
+`BlueprintProvider` with its `BlueprintProviderProps` type, and `createNativeBlueprintWorker`.
+`BlueprintRegion` and `useBlueprintRegions` are shared with the root entrypoint and work identically
+under either provider.
 
 The durable `BlueprintHostProps` type extends the root host props and adds:
 

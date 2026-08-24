@@ -100,6 +100,11 @@
               "items": { "$ref": "#/definitions/presentationSlot" }
             },
             "root": { "type": "string", "minLength": 1 },
+            "exportedRegions": {
+              "description": "Host-addressable named regions this presentation exports. Absent or empty means the Blueprint is mountable only at its single root. Exporting never changes how the presentation compiles; it only names which slot subtrees an application host may place itself.",
+              "type": "array",
+              "items": { "$ref": "#/definitions/presentationRegionExport" }
+            },
             "allowedCapabilities": {
               "description": "The mandatory closed projection vocabulary. Strings authorize exact terminal host capabilities; tier references admit a projection tier's named vocabulary.",
               "type": "array",
@@ -174,6 +179,18 @@
           }
         }
       ]
+    },
+    "presentationRegionExport": {
+      "type": "object",
+      "required": ["name", "slot"],
+      "additionalProperties": false,
+      "description": "One host-addressable region: a unique name mapped to exactly one declared slot, plus whether a host is expected to mount it.",
+      "properties": {
+        "name": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+        "slot": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "description": { "type": "string" }
+      }
     },
     "presentationSlotLayout": {
       "type": "object",

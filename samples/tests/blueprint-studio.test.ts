@@ -1,16 +1,21 @@
 import assert from "node:assert/strict";
 import {
   analyzeCellComposition,
+  listExportedPresentationRegions,
   materializeBlueprint,
   runMaterializedTransition,
   type BlueprintArtifact,
   type CellDefinition,
+  type CellPotentialView,
+  type ExternalContext,
 } from "@gik/blueprint";
 import { openBlueprint } from "@gik/controlface/blueprint";
+import { resolveDeclarativeFormInitialValue } from "@gik/evaluators";
 import {
   createMemoryStorageApi,
   createMemoryStorageRef,
 } from "@gik/durable-runtime/storage/memory";
+import { JsonataExpressionProvider } from "@gik/kernel";
 import { expect, test } from "vitest";
 
 import studioBlueprintJson from "../blueprints/blueprint-studio/blueprint.json" with { type: "json" };
@@ -28,14 +33,19 @@ const payload = blueprint.payload;
 const cells = payload.cells as Record<string, CellDefinition>;
 const emptyOrchestrator = {} as Parameters<ReturnType<typeof nodeServiceOrchestrator>>[0];
 
-function createStudioHarness(blueprintStorage?: BlueprintStorageConnectionFactory) {
-  const materialized = materializeBlueprint({ blueprint });
+function createStudioHarness(
+  options: {
+    externalContext?: ExternalContext;
+    blueprintStorage?: BlueprintStorageConnectionFactory;
+  } = {},
+) {
+  const materialized = materializeBlueprint({ blueprint, externalContext: options.externalContext });
   const runtime = openBlueprint(materialized.payload.terminalBlueprint);
   return {
     materialized,
     runtime,
     createOrchestrator: (state: Parameters<typeof createNodeBlueprintServiceHost>[1]) => {
-      const host = createNodeBlueprintServiceHost(runtime, state, {}, {}, undefined, blueprintStorage);
+      const host = createNodeBlueprintServiceHost(runtime, state, {}, {}, undefined, options.blueprintStorage);
       return nodeServiceOrchestrator(runtime, host, state)(emptyOrchestrator, state);
     },
   };
@@ -55,10 +65,38 @@ function saveEvent(node: string, values: Record<string, unknown>) {
 }
 
 function blueprintCreateEventNode(materialized: ReturnType<typeof materializeBlueprint>): string {
+  return eventNodeFor(materialized, "blueprint-create");
+}
+
+function eventNodeFor(materialized: ReturnType<typeof materializeBlueprint>, cellId: string): string {
   const owners = materialized.payload.eventNodeOwners ?? {};
-  const node = Object.entries(owners).find(([, owner]) => owner === "blueprint-create")?.[0];
-  if (!node) throw new Error("blueprint-create has no compiled event node in this materialization");
+  const node = Object.entries(owners).find(([, owner]) => owner === cellId)?.[0];
+  if (!node) throw new Error(`${cellId} has no compiled event node in this materialization`);
   return node;
+}
+
+/** The one view a materialized Cell attaches to a given presentation slot. Read from the terminal
+ * artifact the materialization produced rather than restated here, so these tests observe what the
+ * representation actually selected instead of duplicating its authored shape. */
+function viewInSlot(
+  materialized: ReturnType<typeof materializeBlueprint>,
+  cellId: string,
+  slot: string,
+): [string, CellPotentialView] {
+  const views = materialized.payload.terminalBlueprint.payload.cells?.[cellId]?.potentialViews ?? {};
+  const found = Object.entries(views).find(([, view]) =>
+    (Array.isArray(view.region) ? view.region : [view.region]).includes(slot));
+  if (!found) throw new Error(`Cell '${cellId}' materialized no view in slot '${slot}'`);
+  return found;
+}
+
+const predicate = new JsonataExpressionProvider({ safe: true });
+
+/** Evaluates a materialized view's own visibility gate exactly the way the interpreter does. */
+async function gateSatisfied(view: CellPotentialView, state: Record<string, unknown>): Promise<boolean> {
+  if (!view.visibility) return true;
+  const value = await predicate.eval(view.visibility, state as never);
+  return value !== null && value !== undefined && value !== false;
 }
 
 
@@ -127,7 +165,7 @@ test("creating a new Blueprint through blueprint-create clears saving with no er
 
 test("creating a Blueprint with a duplicate id clears saving and surfaces the CRUD service's own error", async () => {
   const blueprintStorage = createBlueprintStorageConnectionFactory(createMemoryStorageApi(), createMemoryStorageRef);
-  const { materialized, createOrchestrator } = createStudioHarness(blueprintStorage);
+  const { materialized, createOrchestrator } = createStudioHarness({ blueprintStorage });
   const eventNode = blueprintCreateEventNode(materialized);
   const values = { id: "studio-create-dup", kind: "runtime-blueprint", version: "1.0.0", cloneFrom: "" };
 
@@ -154,4 +192,93 @@ test("creating a Blueprint with a duplicate id clears saving and surfaces the CR
   expect(studio.blueprintCreateError).toBe("Blueprint already exists");
   // The failed re-create must not clobber the Blueprint the first, successful create selected.
   expect(studio.selectedBlueprintId).toBe("studio-create-dup");
+});
+
+// Blueprint Studio carries an external presentation context, `mode`, on its own projection axis:
+// `normal` is the complete Studio at one root, `embedded` is the manifestation an application shell
+// places by name. Selection is a projection-axis representation choice under immutable external
+// context -- never a host reaching into Studio state to simulate a mode.
+test("blueprint-studio declares a mode presentation context that defaults to normal", () => {
+  const spec = payload.contextFormSpec;
+  assert.ok(spec, "blueprint-studio must declare a contextFormSpec");
+  const mode = (spec.fields.properties as Record<string, { enum?: string[] }>).mode;
+  expect(mode?.enum).toEqual(["normal", "embedded"]);
+  expect(resolveDeclarativeFormInitialValue(spec)).toEqual({ mode: "normal" });
+  // An unspecified mode is the same manifestation as an explicit normal one.
+  expect(resolveDeclarativeFormInitialValue(spec, { mode: "embedded" })).toEqual({ mode: "embedded" });
+});
+
+test("only the embedded mode exports host-addressable presentation regions", () => {
+  const regionNames = (externalContext?: ExternalContext) =>
+    listExportedPresentationRegions(
+      materializeBlueprint({ blueprint, externalContext }).payload.terminalBlueprint,
+    );
+
+  expect(regionNames()).toEqual([]);
+  expect(regionNames({ mode: "normal" })).toEqual([]);
+  expect(regionNames({ mode: "embedded" }).map(({ name, slot }) => ({ name, slot }))).toEqual([
+    { name: "blueprint-catalog", slot: "catalog-list" },
+    { name: "blueprint-preview", slot: "workspace-preview" },
+  ]);
+});
+
+test("the normal mode keeps the complete Studio surface the full host route renders", () => {
+  const normal = materializeBlueprint({ blueprint, externalContext: { mode: "normal" } });
+  const embedded = materializeBlueprint({ blueprint, externalContext: { mode: "embedded" } });
+  const terminalCells = (materialized: ReturnType<typeof materializeBlueprint>) =>
+    materialized.payload.terminalBlueprint.payload.cells ?? {};
+
+  // Normal keeps the authored Cell graph and every authored view, tabs and editor included.
+  expect(Object.keys(terminalCells(normal))).toEqual(Object.keys(cells));
+  for (const [cellId, cell] of Object.entries(cells)) {
+    expect(Object.keys(terminalCells(normal)[cellId].potentialViews ?? {})).toEqual(
+      Object.keys(cell.potentialViews ?? {}),
+    );
+  }
+  // Embedded changes only the projection seam: same Cells, same slots, only the preview Cell's own
+  // manifestation is replaced.
+  expect(Object.keys(terminalCells(embedded))).toEqual(Object.keys(cells));
+  expect(embedded.payload.terminalBlueprint.payload.presentation?.slots)
+    .toEqual(normal.payload.terminalBlueprint.payload.presentation?.slots);
+  const changed = Object.keys(cells).filter((cellId) =>
+    JSON.stringify(terminalCells(embedded)[cellId].potentialViews)
+      !== JSON.stringify(terminalCells(normal)[cellId].potentialViews));
+  expect(changed).toEqual(["blueprint-preview"]);
+});
+
+test("selecting a catalog entry shows the embedded live preview without the normal Preview tab", async () => {
+  const embedded = createStudioHarness({ externalContext: { mode: "embedded" } });
+  const normal = createStudioHarness({ externalContext: { mode: "normal" } });
+
+  const listed = await runMaterializedTransition({
+    materializedBlueprint: embedded.materialized,
+    state: embedded.materialized.payload.initialState,
+    syncExternal: true,
+    events: [],
+    createOrchestrator: embedded.createOrchestrator,
+  });
+  const selected = await runMaterializedTransition({
+    materializedBlueprint: embedded.materialized,
+    state: listed.state,
+    syncExternal: true,
+    events: [{
+      node: eventNodeFor(embedded.materialized, "blueprint-list"),
+      name: "select",
+      payload: { values: ["portfolio-tracker-new"] },
+    }],
+    createOrchestrator: embedded.createOrchestrator,
+  });
+
+  const studio = selected.state.studio as { selectedBlueprintId: string; activeTab: string };
+  expect(studio.selectedBlueprintId).toBe("portfolio-tracker-new");
+  // Nothing switched tabs: the embedded shell never mounts the workspace-tabs region at all.
+  expect(studio.activeTab).toBe("overview");
+
+  const [, embeddedPreview] = viewInSlot(embedded.materialized, "blueprint-preview", "workspace-preview");
+  const [, normalPreview] = viewInSlot(normal.materialized, "blueprint-preview", "workspace-preview");
+  expect(embeddedPreview.capability).toBe("gik:blueprint");
+  expect(await gateSatisfied(embeddedPreview, selected.state)).toBe(true);
+  // The normal manifestation still requires its own Preview tab, exactly as before.
+  expect(normalPreview.visibility).toContain("studio.activeTab = 'preview'");
+  expect(await gateSatisfied(normalPreview, selected.state)).toBe(false);
 });

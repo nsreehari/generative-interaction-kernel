@@ -579,12 +579,164 @@
         "serviceRecipes": [],
         "projectionTiers": [
           {
+            "id": "studio-composition",
+            "kind": "studio-composition",
+            "description": "The authored Studio composition, before an external presentation mode selects a manifestation.",
+            "capabilities": []
+          },
+          {
             "id": "runtime-document",
             "kind": "runtime-document",
             "capabilities": []
           }
         ],
-        "projectionRecipes": [],
+        "projectionRecipes": [
+          {
+            "id": "studio-composition-to-runtime",
+            "from": "studio-composition",
+            "to": "runtime-document",
+            "fallback": "normal",
+            "representations": [
+              {
+                "id": "normal"
+              },
+              {
+                "id": "embedded",
+                "when": "externalContext.mode = 'embedded'",
+                "removeViews": {
+                  "blueprint-preview": [
+                    "primary"
+                  ]
+                },
+                "views": {
+                  "blueprint-preview": {
+                    "embeddedPreview": {
+                      "capability": "gik:blueprint",
+                      "bindings": {
+                        "blueprint": {
+                          "expression": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null ? {'$ref':studio.selected.draft.ref} : {'$ref':studio.selectedBlueprintRef}"
+                        },
+                        "externalContext": {
+                          "expression": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null ? studio.draftPreviewExternalContext : studio.previewExternalContext"
+                        },
+                        "instanceKey": {
+                          "expression": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null ? studio.selected.draft.ref & ':' & studio.selected.draft.revision & ':' & $string(studio.draftPreviewExternalContext) : studio.selectedBlueprintRef & ':' & $string(studio.previewExternalContext)"
+                        }
+                      },
+                      "visibility": "(studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null) or (studio.blueprintPreviewVersion != 'draft' and studio.selected.artifact != null)",
+                      "region": "workspace-preview"
+                    }
+                  }
+                },
+                "presentation": {
+                  "slots": [
+                    "studio",
+                    {
+                      "id": "studio-header",
+                      "region": "studio"
+                    },
+                    {
+                      "id": "studio-body",
+                      "region": "studio"
+                    },
+                    {
+                      "id": "catalog",
+                      "region": "studio-body"
+                    },
+                    {
+                      "id": "catalog-actions",
+                      "region": "catalog"
+                    },
+                    {
+                      "id": "catalog-list",
+                      "region": "catalog"
+                    },
+                    {
+                      "id": "workspace",
+                      "region": "studio-body"
+                    },
+                    {
+                      "id": "workspace-tabs",
+                      "region": "workspace"
+                    },
+                    {
+                      "id": "workspace-editor",
+                      "region": "workspace"
+                    },
+                    {
+                      "id": "workspace-actions",
+                      "region": "workspace"
+                    },
+                    {
+                      "id": "workspace-preview",
+                      "region": "workspace"
+                    }
+                  ],
+                  "root": "studio",
+                  "layout": {
+                    "studio": {
+                      "direction": "column",
+                      "gap": "m"
+                    },
+                    "studio-body": {
+                      "direction": "row",
+                      "gap": "l",
+                      "align": "stretch"
+                    },
+                    "catalog": {
+                      "direction": "column",
+                      "gap": "s"
+                    },
+                    "workspace": {
+                      "direction": "column",
+                      "gap": "m"
+                    }
+                  },
+                  "exportedRegions": [
+                    {
+                      "name": "blueprint-catalog",
+                      "slot": "catalog-list",
+                      "description": "Blueprint list for placement in a host shell."
+                    },
+                    {
+                      "name": "blueprint-preview",
+                      "slot": "workspace-preview",
+                      "description": "Live preview of the Blueprint selected in the blueprint-catalog region."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "contextFormSpec": {
+          "fields": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "title": "Presentation mode",
+                "enum": [
+                  "normal",
+                  "embedded"
+                ],
+                "enumNames": [
+                  "Normal",
+                  "Embedded regions"
+                ]
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "additionalProperties": true
+          },
+          "initialValue": {
+            "mode": "normal"
+          },
+          "saveLabel": "Apply context",
+          "discardLabel": "Discard"
+        },
         "services": {
           "blueprint-studio-data": {
             "blueprint": {
@@ -6719,6 +6871,7 @@
                 "from": "fluent",
                 "use": [
                   "button",
+                  "spinner",
                   "table"
                 ]
               },
@@ -13782,12 +13935,164 @@
                 "serviceRecipes": [],
                 "projectionTiers": [
                   {
+                    "id": "studio-composition",
+                    "kind": "studio-composition",
+                    "description": "The authored Studio composition, before an external presentation mode selects a manifestation.",
+                    "capabilities": []
+                  },
+                  {
                     "id": "runtime-document",
                     "kind": "runtime-document",
                     "capabilities": []
                   }
                 ],
-                "projectionRecipes": [],
+                "projectionRecipes": [
+                  {
+                    "id": "studio-composition-to-runtime",
+                    "from": "studio-composition",
+                    "to": "runtime-document",
+                    "fallback": "normal",
+                    "representations": [
+                      {
+                        "id": "normal"
+                      },
+                      {
+                        "id": "embedded",
+                        "when": "externalContext.mode = 'embedded'",
+                        "removeViews": {
+                          "blueprint-preview": [
+                            "primary"
+                          ]
+                        },
+                        "views": {
+                          "blueprint-preview": {
+                            "embeddedPreview": {
+                              "capability": "gik:blueprint",
+                              "bindings": {
+                                "blueprint": {
+                                  "expression": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null ? {'$ref':studio.selected.draft.ref} : {'$ref':studio.selectedBlueprintRef}"
+                                },
+                                "externalContext": {
+                                  "expression": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null ? studio.draftPreviewExternalContext : studio.previewExternalContext"
+                                },
+                                "instanceKey": {
+                                  "expression": "studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null ? studio.selected.draft.ref & ':' & studio.selected.draft.revision & ':' & $string(studio.draftPreviewExternalContext) : studio.selectedBlueprintRef & ':' & $string(studio.previewExternalContext)"
+                                }
+                              },
+                              "visibility": "(studio.blueprintPreviewVersion = 'draft' and studio.selected.draft != null) or (studio.blueprintPreviewVersion != 'draft' and studio.selected.artifact != null)",
+                              "region": "workspace-preview"
+                            }
+                          }
+                        },
+                        "presentation": {
+                          "slots": [
+                            "studio",
+                            {
+                              "id": "studio-header",
+                              "region": "studio"
+                            },
+                            {
+                              "id": "studio-body",
+                              "region": "studio"
+                            },
+                            {
+                              "id": "catalog",
+                              "region": "studio-body"
+                            },
+                            {
+                              "id": "catalog-actions",
+                              "region": "catalog"
+                            },
+                            {
+                              "id": "catalog-list",
+                              "region": "catalog"
+                            },
+                            {
+                              "id": "workspace",
+                              "region": "studio-body"
+                            },
+                            {
+                              "id": "workspace-tabs",
+                              "region": "workspace"
+                            },
+                            {
+                              "id": "workspace-editor",
+                              "region": "workspace"
+                            },
+                            {
+                              "id": "workspace-actions",
+                              "region": "workspace"
+                            },
+                            {
+                              "id": "workspace-preview",
+                              "region": "workspace"
+                            }
+                          ],
+                          "root": "studio",
+                          "layout": {
+                            "studio": {
+                              "direction": "column",
+                              "gap": "m"
+                            },
+                            "studio-body": {
+                              "direction": "row",
+                              "gap": "l",
+                              "align": "stretch"
+                            },
+                            "catalog": {
+                              "direction": "column",
+                              "gap": "s"
+                            },
+                            "workspace": {
+                              "direction": "column",
+                              "gap": "m"
+                            }
+                          },
+                          "exportedRegions": [
+                            {
+                              "name": "blueprint-catalog",
+                              "slot": "catalog-list",
+                              "description": "Blueprint list for placement in a host shell."
+                            },
+                            {
+                              "name": "blueprint-preview",
+                              "slot": "workspace-preview",
+                              "description": "Live preview of the Blueprint selected in the blueprint-catalog region."
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "contextFormSpec": {
+                  "fields": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "title": "Presentation mode",
+                        "enum": [
+                          "normal",
+                          "embedded"
+                        ],
+                        "enumNames": [
+                          "Normal",
+                          "Embedded regions"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "initialValue": {
+                    "mode": "normal"
+                  },
+                  "saveLabel": "Apply context",
+                  "discardLabel": "Discard"
+                },
                 "services": {
                   "blueprint-studio-data": {
                     "blueprint": {
@@ -20006,6 +20311,7 @@
                         "from": "fluent",
                         "use": [
                           "button",
+                          "spinner",
                           "table"
                         ]
                       },
@@ -20439,6 +20745,6 @@
       ]
     }
   },
-  "bundleVersion": "e61fba01c8a00e20",
-  "digest": "sha256:e61fba01c8a00e2091174c18dc679aa6e4e7dfeb5ad908c02ea4bc573c41c880"
+  "bundleVersion": "e0ab1c79a0a8f52d",
+  "digest": "sha256:e0ab1c79a0a8f52d433f8b4825e3faa62aec95c781a47d1c8624383365da929c"
 }
