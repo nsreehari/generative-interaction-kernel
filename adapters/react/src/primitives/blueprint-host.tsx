@@ -24,6 +24,11 @@ import {
   type BundleContextBindings,
 } from "./bundle-registry";
 import {
+  BlueprintRegionBoundary,
+  BlueprintRegionRuntimeProvider,
+  type MissingRequiredRegionsReporter,
+} from "./blueprint-regions";
+import {
   BundleCompositionHost,
   type CompositionOrganism,
   type OrganismBridge,
@@ -87,6 +92,133 @@ export function BlueprintHost({
   blueprintRegistry,
   renderHostedBlueprintLoading,
 }: BlueprintHostProps): React.ReactElement {
+  const { bundleRegistry, hostResolveProvider, primary } = useBlueprintHostRuntime({
+    blueprint,
+    resolveLeavesProvider,
+    resolveCapabilityDescriptors,
+    native,
+    contexts,
+    fileServices,
+    primaryBridge,
+    primaryInstanceId,
+    externalContext,
+    context,
+    onTransition,
+    blueprintRegistry,
+    renderHostedBlueprintLoading,
+  });
+
+  return (
+    <BlueprintHostRegistryProvider registry={blueprintRegistry}>
+      <BundleRegistryProvider registry={bundleRegistry} resolveProvider={hostResolveProvider}>
+        <BlueprintRegionBoundary>
+          <BundleCompositionHost
+            primary={primary}
+            companions={companions}
+            contexts={contexts}
+            fileServices={fileServices}
+            className={className}
+            style={style}
+          />
+        </BlueprintRegionBoundary>
+      </BundleRegistryProvider>
+    </BlueprintHostRegistryProvider>
+  );
+}
+
+/** Props of the runtime-owning provider for host-placed regions. `externalContext` belongs here, never
+ * on an individual region mount: one provider materializes one Blueprint and every region under it
+ * shares that materialization, controller, state, journal, effects, and lifecycle. Layout and
+ * companion props are absent by design -- the application shell owns where each region physically
+ * appears, and a provider has no single root at which to place companion organisms. */
+export interface BlueprintProviderProps
+  extends Omit<BlueprintHostProps, "className" | "style" | "companions"> {
+  children: React.ReactNode;
+  /** Reports required exported regions no host mount claimed. Defaults to a `console.warn`. */
+  onMissingRequiredRegions?: MissingRequiredRegionsReporter;
+}
+
+/**
+ * Runs one Blueprint and exposes its exported presentation regions for host-controlled placement.
+ * Identical materialization, controller, and lifecycle semantics to `BlueprintHost` -- only the
+ * rendering location changes, from one root to the `<BlueprintRegion />` mounts below this provider.
+ */
+export function BlueprintProvider({
+  children,
+  onMissingRequiredRegions,
+  blueprint,
+  resolveLeavesProvider,
+  resolveCapabilityDescriptors,
+  native,
+  contexts = EMPTY_CONTEXTS,
+  fileServices,
+  primaryBridge,
+  primaryInstanceId,
+  externalContext,
+  context,
+  onTransition,
+  blueprintRegistry,
+  renderHostedBlueprintLoading,
+}: BlueprintProviderProps): React.ReactElement {
+  const { bundleRegistry, hostResolveProvider, primary, terminalBlueprint } = useBlueprintHostRuntime({
+    blueprint,
+    resolveLeavesProvider,
+    resolveCapabilityDescriptors,
+    native,
+    contexts,
+    fileServices,
+    primaryBridge,
+    primaryInstanceId,
+    externalContext,
+    context,
+    onTransition,
+    blueprintRegistry,
+    renderHostedBlueprintLoading,
+  });
+
+  return (
+    <BlueprintHostRegistryProvider registry={blueprintRegistry}>
+      <BundleRegistryProvider registry={bundleRegistry} resolveProvider={hostResolveProvider}>
+        <BlueprintRegionRuntimeProvider
+          organism={primary}
+          blueprint={terminalBlueprint}
+          contexts={contexts}
+          fileServices={fileServices}
+          {...(onMissingRequiredRegions ? { onMissingRequiredRegions } : {})}
+        >
+          {children}
+        </BlueprintRegionRuntimeProvider>
+      </BundleRegistryProvider>
+    </BlueprintHostRegistryProvider>
+  );
+}
+
+/** The whole single-instance Blueprint runtime -- materialization, bundle, controller, structural
+ * views, provider resolution -- with no opinion about where the resolved tree renders. Shared by the
+ * single-root `BlueprintHost` and the multi-region `BlueprintProvider` so the two can never drift in
+ * materialization or lifecycle semantics. */
+function useBlueprintHostRuntime({
+  blueprint,
+  resolveLeavesProvider,
+  resolveCapabilityDescriptors,
+  native,
+  contexts,
+  fileServices,
+  primaryBridge,
+  primaryInstanceId,
+  externalContext,
+  context,
+  onTransition,
+  blueprintRegistry,
+  renderHostedBlueprintLoading,
+}: Omit<BlueprintHostProps, "className" | "style" | "companions"> & {
+  contexts: BundleContextBindings;
+}): {
+  bundleRegistry: ReturnType<typeof createBundleRegistry>;
+  hostResolveProvider: ProviderResolver;
+  primary: CompositionOrganism;
+  terminalBlueprint: BlueprintArtifact;
+} {
   const registry = React.useMemo(() => createBundleRegistry(), []);
   const parentBlueprintId = blueprint.payload.id;
   const parentInstanceId = primaryInstanceId === undefined
@@ -176,20 +308,12 @@ export function BlueprintHost({
     [primaryInstanceIdResolved, bundle, source, primaryBridge, HostedBlueprint, PresentationFragment],
   );
 
-  return (
-    <BlueprintHostRegistryProvider registry={blueprintRegistry}>
-      <BundleRegistryProvider registry={registry} resolveProvider={hostResolveProvider}>
-        <BundleCompositionHost
-          primary={primary}
-          companions={companions}
-          contexts={contexts}
-          fileServices={fileServices}
-          className={className}
-          style={style}
-        />
-      </BundleRegistryProvider>
-    </BlueprintHostRegistryProvider>
-  );
+  return {
+    bundleRegistry: registry,
+    hostResolveProvider,
+    primary,
+    terminalBlueprint: materializedBlueprint.payload.terminalBlueprint,
+  };
 }
 
 export function createHostedBlueprintProjection({

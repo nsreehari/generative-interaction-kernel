@@ -215,6 +215,23 @@ export interface PresentationSlotLayout {
   wrap?: boolean;
 }
 
+/** One host-addressable presentation region this Blueprint explicitly exports. Exporting is a
+ * deliberate, additive contract: internal slot topology stays Blueprint-owned, and an application
+ * host may only address the names declared here — never an arbitrary internal slot. An exported
+ * region names exactly one declared slot, so the region renders that slot's own projection subtree
+ * and nothing else. */
+export interface PresentationRegionExport {
+  /** The host-addressable name. Unique within one presentation. */
+  name: string;
+  /** The declared slot whose projection subtree this region exposes. Must be reachable from `root`. */
+  slot: string;
+  /** Whether the Blueprint expects a host to mount this region. Optional regions (the default) may
+   * stay unmounted, in which case their projection views are never instantiated. */
+  required?: boolean;
+  /** Authoring note surfaced to hosts during region discovery. */
+  description?: string;
+}
+
 /** The whole presentation is a closed, flat set of named slots plus a root. It has no knowledge of
  * Cells and no tree of who contains whom — every attachment (slot-in-slot, or Cell-into-slot via
  * `CellView.region`) is self-declared on the thing attaching. */
@@ -224,6 +241,11 @@ export interface PresentationDefinition {
   /** The mandatory closed projection vocabulary. Exact strings authorize terminal host
    * capabilities; `{ tier }` admits every named capability declared by that projection tier. */
   allowedCapabilities: readonly AllowedCapabilityEntry[];
+  /** Host-addressable named regions this presentation exports. Absent or empty means the Blueprint
+   * exports nothing and is mountable only at its single root, exactly as before this field existed.
+   * Exporting a slot never changes how the presentation itself is compiled: the slot keeps its one
+   * place in the Blueprint-owned tree and is never rendered twice merely because it is exported. */
+  exportedRegions?: readonly PresentationRegionExport[];
   /** Optional layout for named slots' own children, keyed by slot id. A slot absent from this map
    * keeps rendering as a plain Fragment, exactly as before this field existed. Layout is a rendering
    * concern about one slot's own children, kept as one flat, easy-to-scan map here rather than

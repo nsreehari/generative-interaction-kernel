@@ -5,6 +5,7 @@ export * from "./hosted-blueprint-reconciler";
 export * from "./resolution";
 export * from "./cells";
 export * from "./lowering-cells";
+export * from "./presentation-regions";
 export * from "./types";
 export * from "./execution";
 export * from "./projection-vocabulary";

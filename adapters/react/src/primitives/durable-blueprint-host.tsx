@@ -3,6 +3,7 @@ import {
   materializeBlueprint,
   parseBlueprintReference,
   prepareBlueprintProgram,
+  type BlueprintArtifact,
   type MaterializedBlueprint,
 } from "@gik/blueprint";
 import type { BlueprintWorker } from "@gik/blueprint/worker";
@@ -12,8 +13,13 @@ import { createHostedBlueprintProjection } from "./blueprint-host";
 import { DurableBlueprintController, type DurableBlueprintRuntimeOptions } from "../durable-blueprint-controller";
 import { createNativeBlueprintWorker } from "../durable-blueprint-worker";
 import { bundleFromJson } from "./bundle";
-import { BundleRegistryProvider, createBundleRegistry } from "./bundle-registry";
+import { BundleRegistryProvider, createBundleRegistry, type BundleContextBindings } from "./bundle-registry";
 import { BundleCompositionHost, type CompositionOrganism } from "./bundle-composition-host";
+import {
+  BlueprintRegionBoundary,
+  BlueprintRegionRuntimeProvider,
+  type MissingRequiredRegionsReporter,
+} from "./blueprint-regions";
 import type { ProviderResolver } from "../registry";
 import { buildCapabilityCatalogFromExternals } from "../registry";
 import {
@@ -54,6 +60,137 @@ export function BlueprintHost({
   blueprintRegistry,
   renderHostedBlueprintLoading,
 }: BlueprintHostProps): React.ReactElement {
+  const { bundleRegistry, hostResolveProvider, primary } = useDurableBlueprintHostRuntime({
+    blueprint,
+    runtime,
+    worker,
+    resolveLeavesProvider,
+    resolveCapabilityDescriptors,
+    native,
+    contexts,
+    fileServices,
+    primaryBridge,
+    primaryInstanceId,
+    externalContext,
+    context,
+    onTransition,
+    materializedBlueprint,
+    blueprintRegistry,
+    renderHostedBlueprintLoading,
+  });
+
+  return (
+    <BlueprintHostRegistryProvider registry={blueprintRegistry}>
+      <BundleRegistryProvider registry={bundleRegistry} resolveProvider={hostResolveProvider}>
+        <BlueprintRegionBoundary>
+          <BundleCompositionHost
+            primary={primary}
+            companions={companions}
+            contexts={contexts}
+            fileServices={fileServices}
+            className={className}
+            style={style}
+          />
+        </BlueprintRegionBoundary>
+      </BundleRegistryProvider>
+    </BlueprintHostRegistryProvider>
+  );
+}
+
+/** Durable counterpart of the in-memory `BlueprintProviderProps`. Region semantics are identical
+ * because both providers publish the same runtime through the same `BlueprintRegionRuntimeProvider`;
+ * only how the single instance is executed and persisted differs. */
+export interface BlueprintProviderProps
+  extends Omit<BlueprintHostProps, "className" | "style" | "companions"> {
+  children: React.ReactNode;
+  onMissingRequiredRegions?: MissingRequiredRegionsReporter;
+}
+
+/** Durable multi-region provider: one durable controller, journal, and effects queue shared by every
+ * region mounted below, exactly as the in-memory provider shares its in-memory runtime. */
+export function BlueprintProvider({
+  children,
+  onMissingRequiredRegions,
+  blueprint,
+  runtime,
+  worker,
+  resolveLeavesProvider,
+  resolveCapabilityDescriptors,
+  native,
+  contexts = EMPTY_CONTEXTS,
+  fileServices,
+  primaryBridge,
+  primaryInstanceId,
+  externalContext,
+  context,
+  onTransition,
+  materializedBlueprint,
+  blueprintRegistry,
+  renderHostedBlueprintLoading,
+}: BlueprintProviderProps): React.ReactElement {
+  const { bundleRegistry, hostResolveProvider, primary, terminalBlueprint } = useDurableBlueprintHostRuntime({
+    blueprint,
+    runtime,
+    worker,
+    resolveLeavesProvider,
+    resolveCapabilityDescriptors,
+    native,
+    contexts,
+    fileServices,
+    primaryBridge,
+    primaryInstanceId,
+    externalContext,
+    context,
+    onTransition,
+    materializedBlueprint,
+    blueprintRegistry,
+    renderHostedBlueprintLoading,
+  });
+
+  return (
+    <BlueprintHostRegistryProvider registry={blueprintRegistry}>
+      <BundleRegistryProvider registry={bundleRegistry} resolveProvider={hostResolveProvider}>
+        <BlueprintRegionRuntimeProvider
+          organism={primary}
+          blueprint={terminalBlueprint}
+          contexts={contexts}
+          fileServices={fileServices}
+          {...(onMissingRequiredRegions ? { onMissingRequiredRegions } : {})}
+        >
+          {children}
+        </BlueprintRegionRuntimeProvider>
+      </BundleRegistryProvider>
+    </BlueprintHostRegistryProvider>
+  );
+}
+
+/** The whole durable single-instance runtime, with no opinion about where the resolved tree renders --
+ * the durable mirror of the in-memory `useBlueprintHostRuntime`. */
+function useDurableBlueprintHostRuntime({
+  blueprint,
+  runtime,
+  worker,
+  resolveLeavesProvider,
+  resolveCapabilityDescriptors,
+  native,
+  contexts,
+  fileServices,
+  primaryBridge,
+  primaryInstanceId,
+  externalContext,
+  context,
+  onTransition,
+  materializedBlueprint,
+  blueprintRegistry,
+  renderHostedBlueprintLoading,
+}: Omit<BlueprintHostProps, "className" | "style" | "companions"> & {
+  contexts: BundleContextBindings;
+}): {
+  bundleRegistry: ReturnType<typeof createBundleRegistry>;
+  hostResolveProvider: ProviderResolver;
+  primary: CompositionOrganism;
+  terminalBlueprint: BlueprintArtifact;
+} {
   const registry = React.useMemo(() => createBundleRegistry(), []);
   const blueprintId = blueprint.payload.id;
   const instanceId = primaryInstanceId === undefined ? blueprintId : `${blueprintId}:${primaryInstanceId}`;
@@ -149,20 +286,12 @@ export function BlueprintHost({
     [instanceId, bundle, source, primaryBridge, HostedBlueprint, PresentationFragment],
   );
 
-  return (
-    <BlueprintHostRegistryProvider registry={blueprintRegistry}>
-      <BundleRegistryProvider registry={registry} resolveProvider={hostResolveProvider}>
-        <BundleCompositionHost
-          primary={primary}
-          companions={companions}
-          contexts={contexts}
-          fileServices={fileServices}
-          className={className}
-          style={style}
-        />
-      </BundleRegistryProvider>
-    </BlueprintHostRegistryProvider>
-  );
+  return {
+    bundleRegistry: registry,
+    hostResolveProvider,
+    primary,
+    terminalBlueprint: payload.terminalBlueprint,
+  };
 }
 
 function NestedDurableBlueprintHost({
