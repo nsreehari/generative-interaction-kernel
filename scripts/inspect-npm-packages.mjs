@@ -6,7 +6,7 @@ if (process.env.GITHUB_ACTIONS !== "true") {
 
 const result = spawnSync(
   process.platform === "win32" ? "npm.cmd" : "npm",
-  ["publish", "--workspaces", "--dry-run"],
+  ["publish", "--workspaces", "--dry-run", "--tag", "next"],
   { stdio: "inherit" },
 );
 
