@@ -415,16 +415,17 @@ no special trust: the terminal Blueprint must pass the same validation as any ha
 
 ### Services = the declared contract a Cell's sources and invokes call through
 
-Top-level `services` maps a service id (e.g. `incident-data`) to its `operations`: a Blueprint-facing
-tool name mapped to a fully declarative pipeline — `operation` (the provider verb), `contract` (the
-wire shape), optional `request`/`response` stages, and a mandatory `settlement`, each stage a JSONata
-`transform` plus optional guardrail `validators`. A Cell's `source` names that same `service` id and
-`operation` — never a `contract`; the source's contract is always the one the named operation declares,
-resolved by the compiler rather than restated by the author. An `invoke` names the operations-map key
-as `control.tool` and the owning service as `control.serviceRef`. There is no way to embed a private,
-one-off service declaration directly on a Cell: every source must reference a real `services[...]`
-entry, and referencing an unknown service or operation is rejected at validation time. Declare a
-service once; every Cell that needs it references it by id.
+Top-level `services` maps an id to a native `kind`, concrete non-secret `config`, and `operations`.
+The kind defines `configSchema` and adapter behavior; the Blueprint supplies values such as an
+`endpoint`, model/agent selection, and opaque `credentialRef`. Never put a literal secret in
+`config`; the host authorizes endpoints and resolves referenced secrets at execution time.
+
+Each operation defines the provider `operation`, wire `contract`, optional request/response stages,
+mandatory `settlement`, transforms, and guardrails. A Cell source names only the service id and
+operation; the compiler resolves the contract rather than asking the author to restate it. An
+`invoke` uses the operations-map key as `control.tool` and the service id as `control.serviceRef`.
+Every source must reference a real top-level service and operation; private Cell-local declarations
+and unknown references are rejected. Declare a service once and reference it by id.
 
 ### CellSource.acceptanceCriteria = per-usage-site guardrails, additive to the operation's own
 

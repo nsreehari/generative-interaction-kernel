@@ -66,9 +66,11 @@ Apply these invariants:
   independent deterministic contextual lowering axes, not an escape hatch for
   structurally rewriting the semantic Cell graph. The complete service chain
   materializes before the complete projection chain.
-- Hosts own physical authority: credentials, providers, endpoints, admitted
-  capabilities, service execution, durable storage, decisions, and approvals.
-  Blueprints declare requirements and authorized operations.
+- Blueprints own concrete non-secret native service configuration, including
+  endpoints and opaque credential references. Service kinds own config schemas
+  and adapter behavior. Hosts own literal secrets, provider execution,
+  endpoint authorization, admitted capabilities, durable storage, decisions,
+  and approvals.
 - Validation is an authority boundary. Contracts, references, capability
   descriptors, event payloads, hosted-child inputs, guardrails, lowering
   invariants, and the terminal Kernel program must be validated before the

@@ -214,7 +214,7 @@
       }
     },
     "serviceDeclaration": {
-      "description": "One entry in `services`: a provider/kind (or nested-Blueprint) binding plus the named operations it exposes. Kind-specific settings (`config`) and per-operation request/response/settlement/validator content are deliberately left open here -- they vary per service kind and are not part of the cross-package structural contract.",
+      "description": "One Blueprint-owned entry in `services`: a provider kind (or nested-Blueprint) binding plus the named operations it exposes. A native declaration carries concrete non-secret kind configuration, such as endpoints and opaque credential references. Literal secrets and host execution policy are forbidden. Kind-specific config and per-operation request/response/settlement content remain open in this cross-package schema and are validated by the registered service kind and service host.",
       "type": "object",
       "required": ["version", "operations"],
       "additionalProperties": false,
@@ -226,7 +226,10 @@
         },
         "scope": { "enum": ["per-invocation", "per-cell", "per-blueprint", "per-session"] },
         "kind": { "type": "string", "minLength": 1 },
-        "config": { "type": "object" },
+        "config": {
+          "description": "Concrete, non-secret configuration owned by this Blueprint service declaration and validated against the registered service kind's configSchema. Endpoints and credentialRef values are allowed; literal keys, tokens, passwords, and other credentials are not.",
+          "type": "object"
+        },
         "blueprint": {
           "type": "object",
           "required": ["$ref"],

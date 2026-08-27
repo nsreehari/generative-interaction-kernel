@@ -80,8 +80,10 @@ component needs an event handler.
 2. Inventory stable responsibilities before assigning Cell ids.
 3. Define each Cell's ports and event contracts before its implementation.
 4. Connect every consumed token to an unambiguous supplier.
-5. Author sources through declared top-level service operations. Do not embed
-   physical providers, endpoints, credentials, or host authority.
+5. Author sources through declared top-level service operations. Put concrete
+   non-secret provider configuration, including endpoints and `credentialRef`,
+   on the named service declaration. Never embed literal credentials or host
+   execution authority.
 6. Author compute as deterministic derivation over explicit Cell namespaces.
 7. Author behavior only for declared events. Effects are descriptions returned
    for host settlement, never inline physical work.
@@ -129,5 +131,5 @@ Validation performed
 ```
 
 Do not claim completion if ports are unsatisfied, event ownership is ambiguous,
-service authority is embedded in the Blueprint, or validation did not cover the
-changed behavior.
+literal secrets or host execution authority are embedded in the Blueprint, or
+validation did not cover the changed behavior.

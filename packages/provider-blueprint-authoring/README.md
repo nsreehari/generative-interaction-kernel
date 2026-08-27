@@ -7,6 +7,12 @@ registry and summarizes canonical blueprints for authoring workflows.
 `serviceTiers`, `serviceRecipes`, `projectionTiers`, and `projectionRecipes`.
 It does not emit the removed combined `tiers` or `recipes` fields.
 
+When authoring native services, put concrete non-secret kind configuration on
+the named Blueprint service declaration. This includes endpoints and opaque
+`credentialRef` values. Service kinds define the config schema, while the host
+authorizes endpoints and resolves literal secrets; never author a key, token,
+or password into Blueprint data.
+
 ```bash
 npm install @gik-ai/provider-blueprint-authoring
 ```

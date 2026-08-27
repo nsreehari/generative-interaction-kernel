@@ -61,15 +61,17 @@ npm install @gik-ai/blueprint @gik-ai/kernel @gik-ai/evaluators @gik-ai/durable-
 
 ## External services
 
-A Blueprint may declare concrete logical services in `payload.services`. The Blueprint owns each
-service's kind, non-secret configuration, operation contract, request and response stages,
+A Blueprint may declare concrete services in `payload.services`. The Blueprint owns each
+service's kind, concrete non-secret configuration (including endpoints and opaque
+`credentialRef` values), operation contract, request and response stages,
 validation, violation behavior, settlement, and failure settlement. Cells may associate operations
 through `sources`, and behavior invokes a declared operation through the existing `invoke` action.
 
 The Blueprint does not execute services. An outer host admits trusted service-kind factories,
-constructs `DefaultServiceHost`, supplies credentials and endpoint policy, and connects it through
-the runtime Orchestrator. Literal credentials must never appear in Blueprint configuration or
-runtime state.
+constructs `DefaultServiceHost`, authorizes declared endpoints, resolves referenced secrets, and
+connects it through the runtime Orchestrator. Service kinds own their reusable `configSchema` and
+adapter behavior; they do not own deployment-specific endpoints. Literal credentials must never
+appear in Blueprint configuration or runtime state.
 
 See the repository's
 [external-services decision](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/decisions/ADR-0040-external-services-and-queueface.md)
@@ -233,6 +235,9 @@ ownership, and effect outcomes return through the journal before changing Bluepr
   `presentation.allowedCapabilities`, `presentation.exportedRegions` (legal unique names, known and
   root-reachable slots, no overlapping subtrees), and required `interface.inputs` for inline hosted
   child Blueprints.
+- Native service `config` remains kind-specific in the Blueprint schema. The host's registered
+  `ServiceKindRegistry` validates it against the service kind's `configSchema`, rejects literal
+  credential fields, authorizes endpoints, and resolves opaque credential references.
 
 ### Materialization and transition
 

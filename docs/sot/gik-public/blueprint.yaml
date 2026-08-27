@@ -144,8 +144,9 @@ artifact_contracts:
       - The serialized lowering-recipe collections are serviceRecipes and projectionRecipes in version 0.1; the pre-split recipes field is rejected.
       - structureMode is fixed, reconfigurable, or adaptive; the schema default and host interpretation treat omission as fixed.
       - structurePolicy allowlists semantic Blueprint operations and executable program operations for adaptive mode.
-      - services carry Blueprint-owned logical configuration and operation contracts, never literal credentials or host execution policy.
-      - Service declarations are preserved into the opened runtime; an outer host owns ServiceHost construction and trusted kind admission.
+      - services carry Blueprint-owned concrete non-secret kind configuration and operation contracts, including endpoints and opaque credential references.
+      - Literal credentials and host execution policy never appear in a Blueprint.
+      - Service declarations are preserved into the opened runtime; an outer host owns ServiceHost construction, trusted kind admission, endpoint authorization, and referenced-secret resolution.
   - name: BlueprintRuntimeDefinition
     signature: >-
       interface BlueprintRuntimeDefinition { externals?: Omit<ExternalsSpec, "services">;
