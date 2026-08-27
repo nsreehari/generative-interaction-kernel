@@ -111,16 +111,7 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Publish with bootstrap token
-        if: vars.NPM_TOKEN_BOOTSTRAP_ENABLED == 'true'
-        run: npm run release:publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_ACCESS: public
-          NPM_CONFIG_PROVENANCE: true
-
       - name: Publish with trusted publishing
-        if: vars.NPM_TOKEN_BOOTSTRAP_ENABLED != 'true'
         run: npm run release:publish
         env:
           NPM_CONFIG_ACCESS: public
@@ -139,5 +130,5 @@ jobs:
             echo "- Release: [$TAG]($RELEASE)"
             echo "- Channel: \`$CHANNEL\`"
             echo "- Policy: \`config/npm-release.json\`"
-            echo "- Bootstrap token enabled: \`${{ vars.NPM_TOKEN_BOOTSTRAP_ENABLED == 'true' }}\`"
+            echo "- Authentication: npm trusted publishing (GitHub OIDC)"
           } >> "$GITHUB_STEP_SUMMARY"
