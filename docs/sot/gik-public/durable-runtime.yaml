@@ -10,7 +10,7 @@ document:
     document and implementation disagree.
 
 package:
-  name: "@gik/durable-runtime"
+  name: "@gik-ai/durable-runtime"
   version: "0.8.0"
   publication_status: public-workspace-package
   purpose: >-
@@ -27,7 +27,7 @@ package:
     One public package uses explicit subpath exports for connectors, storage backends,
     and server transports so root browser imports do not load Cosmos or filesystem code.
   distribution:
-    build: "turbo run build --filter=@gik/durable-runtime"
+    build: "turbo run build --filter=@gik-ai/durable-runtime"
     publish: Standard public npm package through the GIK workspace release workflow.
     pack_command: npm run pack:durable-runtime
     artifact_policy: >-
@@ -38,28 +38,28 @@ package:
       repository's source directory exists.
     optional_dependencies: >-
       @azure/cosmos and @azure/storage-blob are optional peer dependencies of
-      @gik/durable-runtime and direct dependencies of Azure consumers. Browser and
+      @gik-ai/durable-runtime and direct dependencies of Azure consumers. Browser and
       filesystem-only consumers do not install them.
     runtime_dependencies: >-
       proper-lockfile is a package runtime dependency used by the filesystem storage
       library. @types/proper-lockfile is development-only declaration support.
   storage_exports:
-    - "@gik/durable-runtime/storage/memory"
-    - "@gik/durable-runtime/storage/cosmos"
-    - "@gik/durable-runtime/storage/cosmos/library"
-    - "@gik/durable-runtime/storage/cosmos/api"
-    - "@gik/durable-runtime/storage/filesystem"
-    - "@gik/durable-runtime/storage/filesystem/library"
-    - "@gik/durable-runtime/storage/filesystem/api"
-    - "@gik/durable-runtime/storage/indexed-db"
-    - "@gik/durable-runtime/storage/indexed-db/library"
-    - "@gik/durable-runtime/storage/indexed-db/api"
+    - "@gik-ai/durable-runtime/storage/memory"
+    - "@gik-ai/durable-runtime/storage/cosmos"
+    - "@gik-ai/durable-runtime/storage/cosmos/library"
+    - "@gik-ai/durable-runtime/storage/cosmos/api"
+    - "@gik-ai/durable-runtime/storage/filesystem"
+    - "@gik-ai/durable-runtime/storage/filesystem/library"
+    - "@gik-ai/durable-runtime/storage/filesystem/api"
+    - "@gik-ai/durable-runtime/storage/indexed-db"
+    - "@gik-ai/durable-runtime/storage/indexed-db/library"
+    - "@gik-ai/durable-runtime/storage/indexed-db/api"
   execution_contract: >-
     DurableTransitionAdapter is provider-neutral and has no Blueprint or Kernel semantics.
     The host supplies an opaque declarative spec, a pure transition function, and a pure
     applySpecUpdates function. Providers persist spec values and updates without interpreting them.
   blueprint_binding: >-
-    @gik/blueprint may supply a structurally compatible adapter whose opaque spec contains an
+    @gik-ai/blueprint may supply a structurally compatible adapter whose opaque spec contains an
     authored Blueprint, immutable external context, and portable MaterializedBlueprint. This is a
     caller binding, not a dependency or Blueprint semantic added to durable-runtime.
 
@@ -522,7 +522,7 @@ connectors_and_storage:
   - name: In-memory
     kind: memory
     factory: createMemoryStorage
-    storage_export: "@gik/durable-runtime/storage/memory"
+    storage_export: "@gik-ai/durable-runtime/storage/memory"
     source: packages/durable-runtime/src/storage/memory.ts
     purpose: >-
       Ephemeral host-local provider implementing the same journal, engine-wake, transition lease,
@@ -537,10 +537,10 @@ connectors_and_storage:
   - name: IndexedDB
     kind: indexed-db
     factory: createIndexedDbStorage
-    connector_export: "@gik/durable-runtime/connectors/browser-indexed-db"
-    storage_export: "@gik/durable-runtime/storage/indexed-db"
-    storage_library_export: "@gik/durable-runtime/storage/indexed-db/library"
-    storage_api_export: "@gik/durable-runtime/storage/indexed-db/api"
+    connector_export: "@gik-ai/durable-runtime/connectors/browser-indexed-db"
+    storage_export: "@gik-ai/durable-runtime/storage/indexed-db"
+    storage_library_export: "@gik-ai/durable-runtime/storage/indexed-db/library"
+    storage_api_export: "@gik-ai/durable-runtime/storage/indexed-db/api"
     source: packages/durable-runtime/src/storage/indexed-db
     default_database: gik-durable-runtime
     object_store: records
@@ -582,10 +582,10 @@ connectors_and_storage:
   - name: Filesystem MCP
     kind: fs-path
     factory: createFilesystemMcpConnector
-    connector_export: "@gik/durable-runtime/connectors/filesystem-mcp"
-    storage_export: "@gik/durable-runtime/storage/filesystem"
-    storage_library_export: "@gik/durable-runtime/storage/filesystem/library"
-    storage_api_export: "@gik/durable-runtime/storage/filesystem/api"
+    connector_export: "@gik-ai/durable-runtime/connectors/filesystem-mcp"
+    storage_export: "@gik-ai/durable-runtime/storage/filesystem"
+    storage_library_export: "@gik-ai/durable-runtime/storage/filesystem/library"
+    storage_api_export: "@gik-ai/durable-runtime/storage/filesystem/api"
     source: packages/durable-runtime/src/connectors/filesystem-mcp.ts
     transport: Host-injected MCP callTool function.
     tools:
@@ -641,11 +641,11 @@ connectors_and_storage:
   - name: Azure Functions
     kind: stores-proxy
     factory: createAzureFunctionConnector
-    connector_export: "@gik/durable-runtime/connectors/azure-function"
-    storage_export: "@gik/durable-runtime/storage/cosmos"
-    storage_library_export: "@gik/durable-runtime/storage/cosmos/library"
-    storage_api_export: "@gik/durable-runtime/storage/cosmos/api"
-    server_transport_export: "@gik/durable-runtime/server/transports/http"
+    connector_export: "@gik-ai/durable-runtime/connectors/azure-function"
+    storage_export: "@gik-ai/durable-runtime/storage/cosmos"
+    storage_library_export: "@gik-ai/durable-runtime/storage/cosmos/library"
+    storage_api_export: "@gik-ai/durable-runtime/storage/cosmos/api"
+    server_transport_export: "@gik-ai/durable-runtime/server/transports/http"
     source: packages/durable-runtime/src/connectors/azure-function.ts
     transport: HTTP POST with JSON request and response bodies.
     routes:
@@ -740,7 +740,7 @@ host_responsibilities:
   - Keep all refs in one operation on the same provider kind.
   - Decide when to call processEngineWake or runEngine.
   - Start and stop queue processors with the host lifecycle when notification-driven processing is required.
-  - Compose @gik/blueprint/worker when Blueprint engine and effect work needs host-owned execution.
+  - Compose @gik-ai/blueprint/worker when Blueprint engine and effect work needs host-owned execution.
   - Treat provider and transition-adapter errors as operational failures requiring host policy.
 
 non_goals:
@@ -773,7 +773,7 @@ limitations:
 validation:
   typecheck: "npx tsc -p packages/durable-runtime/tsconfig.json --noEmit"
   focused_tests: >-
-    npm test --workspace=@gik/durable-runtime
+    npm test --workspace=@gik-ai/durable-runtime
   build_result: Package build passed with all root, connector, and storage subpath declarations emitted.
   last_focused_result: 7 files and 32 tests passed
   coverage:

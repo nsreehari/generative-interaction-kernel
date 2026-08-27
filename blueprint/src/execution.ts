@@ -1,4 +1,4 @@
-import type { ServiceDeclaration } from "@gik/kernel";
+import type { ServiceDeclaration } from "@gik-ai/kernel";
 import type {
   BlueprintArtifact,
   LoweringRecipeDefinition,

@@ -1,4 +1,4 @@
-import { evalSyncJsonata } from "@gik/evaluators";
+import { evalSyncJsonata } from "@gik-ai/evaluators";
 import {
   Kernel,
   SyncJsonataExpressionProvider,
@@ -7,7 +7,7 @@ import {
   type GraphNodeExecutionOutcome,
   type Json,
   type ProgramNode,
-} from "@gik/kernel";
+} from "@gik-ai/kernel";
 import { createBlueprint, validateBlueprintArtifact } from "./blueprint";
 import { resolveBlueprintExecution, type ResolvedBlueprintStage } from "./execution";
 import {

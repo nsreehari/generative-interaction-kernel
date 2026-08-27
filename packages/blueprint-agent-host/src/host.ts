@@ -1,4 +1,4 @@
-import type { AgentHostLifecycleOps, AgentProposal } from "@gik/agent-lifecycle-exp";
+import type { AgentHostLifecycleOps, AgentProposal } from "@gik-ai/agent-lifecycle-exp";
 import {
   evaluateBlueprintJsonataApplicationPolicy,
   evaluateBlueprintJsonataPolicy,

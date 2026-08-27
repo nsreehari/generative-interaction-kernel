@@ -1,4 +1,4 @@
-# @gik/blueprint-agent-host
+# @gik-ai/blueprint-agent-host
 
 Blueprint-specific trusted host lifecycle for agent proposals.
 
@@ -19,8 +19,8 @@ services, middleware, and workers can provide structurally compatible authority 
 
 `createInMemoryBlueprintProposalStore` supports tests and local composition.
 `createDurableBlueprintProposalStore` and `createBlueprintProposalDurableTransitionAdapter` bind
-the same receipt model to `@gik/durable-runtime` journals and committed snapshots.
+the same receipt model to `@gik-ai/durable-runtime` journals and committed snapshots.
 
 The package is the Blueprint HBX implementation over neutral contracts from
-`@gik/agent-lifecycle-exp`. Agents still receive UBX, CBX, or ABX proposal tools; HBX remains a
+`@gik-ai/agent-lifecycle-exp`. Agents still receive UBX, CBX, or ABX proposal tools; HBX remains a
 trusted host surface.

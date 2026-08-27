@@ -1,15 +1,15 @@
-# @gik/agentface
+# @gik-ai/agentface
 
 Agent-facing projection surface for the **Generative Interaction Kernel** — an allowlisted, agent-safe
 projection over the shared face tool catalog. `agentface` is not a second engine; it applies the
 agent-safe filter to that shared catalog and exposes authoring plus read-oriented tools (`getState` / `getTree`).
 
 ```bash
-npm install @gik/agentface
+npm install @gik-ai/agentface
 ```
 
 ```ts
-import { createAgentFaceDispatcher, createStatelessAgentFaceDispatcher } from "@gik/agentface";
+import { createAgentFaceDispatcher, createStatelessAgentFaceDispatcher } from "@gik-ai/agentface";
 
 // Live, bounded surface over a running ControlFace:
 const dispatch = createAgentFaceDispatcher(controlFace);
@@ -22,9 +22,9 @@ Mount the returned dispatcher over a transport selected by the host.
 
 ## Exported API
 
-`@gik/agentface` exports the following public surface from `packages/agentface/src/index.ts`.
+`@gik-ai/agentface` exports the following public surface from `packages/agentface/src/index.ts`.
 The live helpers are declared with `face: RuntimeFace`; that type comes from
-`@gik/controlface` and is not re-exported from this package.
+`@gik-ai/controlface` and is not re-exported from this package.
 
 ### Functions
 

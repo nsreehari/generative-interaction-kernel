@@ -1,4 +1,4 @@
-import type { RuntimeFace } from "@gik/controlface";
+import type { RuntimeFace } from "@gik-ai/controlface";
 import { createMcpDispatcher, type McpDispatcher, type McpTool } from "../../../face/src/tool-surface";
 import { fullCatalogTools } from "../../../face/src/projections/full-catalog";
 

@@ -1,15 +1,15 @@
-# @gik/kernel
+# @gik-ai/kernel
 
 The embeddable **Generative Interaction Kernel**: it interprets a portable UI-intent document into a
 running, reactive interface, delegating everything domain- and framework-specific to pluggable
 providers. The kernel owns the invariants (grammar, validation, reduction) and is dependency-free.
 
 ```bash
-npm install @gik/kernel
+npm install @gik-ai/kernel
 ```
 
 ```ts
-import { Kernel, GIKClient, KernelTransportHost, InMemoryStateModel } from "@gik/kernel";
+import { Kernel, GIKClient, KernelTransportHost, InMemoryStateModel } from "@gik-ai/kernel";
 
 // Own the runtime in process: one dispatch produces one revision.
 const kernel = new Kernel(/* manifest, document */);

@@ -17,7 +17,7 @@ import type {
   OrchestratorResult,
   PatchOp,
   StateModel,
-} from "@gik/kernel";
+} from "@gik-ai/kernel";
 
 /** A store delta helper: set `path` to `value`. */
 export function setOp(path: string, value: Json): PatchOp {

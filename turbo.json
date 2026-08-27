@@ -5,17 +5,17 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
-    "@gik/blueprint#build": {
+    "@gik-ai/blueprint#build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/blueprint/**"],
       "outputs": ["dist/**"]
     },
-    "@gik/kernel#build": {
+    "@gik-ai/kernel#build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/kernel/**"],
       "outputs": ["dist/**"]
     },
-    "@gik/controlface#build": {
+    "@gik-ai/controlface#build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/face/**"],
       "outputs": ["dist/**"]

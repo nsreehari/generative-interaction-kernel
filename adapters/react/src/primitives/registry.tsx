@@ -1,5 +1,5 @@
 import React from "react";
-import { unwrap } from "@gik/kernel";
+import { unwrap } from "@gik-ai/kernel";
 import {
   buildRegistryFromImports,
   type ComponentRegistry,

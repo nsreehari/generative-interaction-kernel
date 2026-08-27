@@ -5,7 +5,7 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import { createElement } from "react";
-import type { CapabilityDescriptor, ProjectionViewImport } from "@gik/kernel";
+import type { CapabilityDescriptor, ProjectionViewImport } from "@gik-ai/kernel";
 import {
   buildCapabilityCatalogFromExternals,
   buildCapabilityCatalogFromImports,

@@ -1,5 +1,5 @@
 {
-  "name": "@gik/evaluators",
+  "name": "@gik-ai/evaluators",
   "version": "0.1.2-next.0",
   "description": "Shared JSONata evaluators and declarative validators for the Generative Interaction Kernel.",
   "license": "MIT",
@@ -40,7 +40,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@gik/kernel": "0.1.2-next.0",
+    "@gik-ai/kernel": "0.1.2-next.0",
     "ajv": "^8.17.1"
   },
   "scripts": {

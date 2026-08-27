@@ -1,4 +1,4 @@
-import { type EffectSettlement, type GIKEvent, type Json, type OrchestratorEffect, type StateModel } from "@gik/kernel";
+import { type EffectSettlement, type GIKEvent, type Json, type OrchestratorEffect, type StateModel } from "@gik-ai/kernel";
 import { prepareBlueprintProgram, runTransition, type BlueprintTransitionResult } from "./run-transition";
 import type { BlueprintArtifact } from "./types";
 

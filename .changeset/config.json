@@ -8,11 +8,11 @@
   "baseBranch": "master",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "@gik/agent-lifecycle-exp",
-    "@gik/blueprint-agent-host",
-    "@gik/provider-blueprint-authoring",
-    "@gik/provider-step-orchestrator",
-    "@gik/transport-mcp-http",
+    "@gik-ai/agent-lifecycle-exp",
+    "@gik-ai/blueprint-agent-host",
+    "@gik-ai/provider-blueprint-authoring",
+    "@gik-ai/provider-step-orchestrator",
+    "@gik-ai/transport-mcp-http",
     "gik"
   ],
   "privatePackages": {

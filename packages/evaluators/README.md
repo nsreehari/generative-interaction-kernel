@@ -1,17 +1,17 @@
-# @gik/evaluators
+# @gik-ai/evaluators
 
 JSONata-based Cell evaluation and declarative validation for the Generative
 Interaction Kernel.
 
 ```bash
-npm install @gik/evaluators @gik/kernel
+npm install @gik-ai/evaluators @gik-ai/kernel
 ```
 
 Use this package when a host needs to evaluate Cell inputs, derive system
 inputs, or validate declarative values before they enter a GIK runtime.
 
 ```ts
-import { evaluateCell, runDeclarativeValidators } from "@gik/evaluators";
+import { evaluateCell, runDeclarativeValidators } from "@gik-ai/evaluators";
 ```
 
 The package also owns the shared declarative form contract used by
@@ -107,7 +107,7 @@ field defaults, form defaults, and caller-provided values.
 ## Included schemas
 
 The package publishes its supported JSON schemas through
-`@gik/evaluators/schemas/*`. Consumers may load those files directly without
+`@gik-ai/evaluators/schemas/*`. Consumers may load those files directly without
 depending on repository-relative paths.
 
 `blueprint.schema.json` requires `serviceTiers`, `serviceRecipes`,
@@ -118,9 +118,9 @@ other axis' fields.
 
 ## Package boundary
 
-`@gik/evaluators` evaluates and validates declarative data. It does not own
+`@gik-ai/evaluators` evaluates and validates declarative data. It does not own
 runtime state, execute effects, render UI, or choose host policy. Those
-responsibilities remain with `@gik/kernel` and the embedding host.
+responsibilities remain with `@gik-ai/kernel` and the embedding host.
 
 ## License
 

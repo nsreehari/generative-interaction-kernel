@@ -1,5 +1,5 @@
-import type { AgentProposal } from "@gik/agent-lifecycle-exp";
-import { evalSyncJsonata, validateJsonataExpression } from "@gik/evaluators";
+import type { AgentProposal } from "@gik-ai/agent-lifecycle-exp";
+import { evalSyncJsonata, validateJsonataExpression } from "@gik-ai/evaluators";
 import type {
   BlueprintApplicationPolicyDecision,
   BlueprintHostDecision,

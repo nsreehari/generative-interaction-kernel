@@ -75,7 +75,7 @@ The initial adapters use `BroadcastChannel` after committed IndexedDB transactio
 notification driven by the filesystem server's checkpoint watcher, and Azure SignalR after
 successful Cosmos-backed commits. Notification publication failure never changes commit success.
 
-React is one possible consumer. `@gik/react/durable` translates durable-runtime changes into its
+React is one possible consumer. `@gik-ai/react/durable` translates durable-runtime changes into its
 existing `GenUISource` tree notification and stops its subscription with the source lifecycle, but
 neither the durable provider contract nor subscription semantics depend on React or another UI
 framework.

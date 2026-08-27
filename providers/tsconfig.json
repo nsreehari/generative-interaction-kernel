@@ -5,7 +5,7 @@
     "moduleResolution": "Bundler",
     "baseUrl": "..",
     "paths": {
-      "@gik/blueprint": ["blueprint/src/index.ts"]
+      "@gik-ai/blueprint": ["blueprint/src/index.ts"]
     },
     "strict": true,
     "skipLibCheck": true,

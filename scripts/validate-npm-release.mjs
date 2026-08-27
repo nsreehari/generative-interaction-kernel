@@ -34,7 +34,7 @@ for (const [name, { manifest, workspacePath }] of manifests) {
     if (!existsSync(join(root, workspacePath, "README.md"))) {
       errors.push(`${name} is missing README.md`);
     }
-    if (name === "@gik/kernel") {
+    if (name === "@gik-ai/kernel") {
       for (const notice of ["THIRD_PARTY_NOTICES.md", "jsonata.LICENSE"]) {
         if (!existsSync(join(root, workspacePath, notice))) {
           errors.push(`${name} is missing ${notice}`);
@@ -45,7 +45,7 @@ for (const [name, { manifest, workspacePath }] of manifests) {
       errors.push(`${name} must set publishConfig.access to 'public'`);
     }
     for (const [dependency, version] of Object.entries(manifest.dependencies ?? {})) {
-      if (!dependency.startsWith("@gik/")) continue;
+      if (!dependency.startsWith("@gik-ai/")) continue;
       if (groups.get(dependency) !== "stable") {
         errors.push(`${name} depends on non-stable package ${dependency}`);
       }

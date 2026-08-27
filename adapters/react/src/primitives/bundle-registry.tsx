@@ -11,7 +11,7 @@
 // name — it never tears an existing instance down.
 
 import React from "react";
-import type { StateModel } from "@gik/kernel";
+import type { StateModel } from "@gik-ai/kernel";
 import type { GenUISource } from "../useGenUI";
 import type { ProviderResolver } from "../registry";
 import type { Bundle } from "./bundle";

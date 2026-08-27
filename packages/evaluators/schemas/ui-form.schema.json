@@ -88,7 +88,7 @@
       }
     },
     "validator": {
-      "description": "The canonical structural schema for @gik/kernel's `GuardrailRule` vocabulary -- shared verbatim (by cross-file $ref) with cell.schema.json's `sources[*].acceptanceCriteria` and blueprint.schema.json's `request`/`response` operation validators, so a malformed rule is rejected at authoring-time everywhere this vocabulary is used, not just here.",
+      "description": "The canonical structural schema for @gik-ai/kernel's `GuardrailRule` vocabulary -- shared verbatim (by cross-file $ref) with cell.schema.json's `sources[*].acceptanceCriteria` and blueprint.schema.json's `request`/`response` operation validators, so a malformed rule is rejected at authoring-time everywhere this vocabulary is used, not just here.",
       "oneOf": [
         {
           "type": "array",

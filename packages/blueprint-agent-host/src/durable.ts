@@ -1,5 +1,5 @@
-import type { AgentProposal } from "@gik/agent-lifecycle-exp";
-import type { DurableTransitionAdapter } from "@gik/durable-runtime";
+import type { AgentProposal } from "@gik-ai/agent-lifecycle-exp";
+import type { DurableTransitionAdapter } from "@gik-ai/durable-runtime";
 import type { BlueprintProposalReceipt, BlueprintProposalStore } from "./types";
 
 export interface BlueprintProposalDurableState<TProposal extends AgentProposal = AgentProposal> {

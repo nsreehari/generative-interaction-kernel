@@ -1,7 +1,7 @@
 schema_version: 1
 
 package:
-  name: "@gik/react"
+  name: "@gik-ai/react"
   version: "0.3.0"
   status: current
   purpose: >-
@@ -14,8 +14,8 @@ package:
 api_policy:
   signature_authority: generated TypeScript declarations
   imports:
-    in_memory: 'import { BlueprintHost } from "@gik/react"'
-    durable: 'import { BlueprintHost } from "@gik/react/durable"'
+    in_memory: 'import { BlueprintHost } from "@gik-ai/react"'
+    durable: 'import { BlueprintHost } from "@gik-ai/react/durable"'
   categories:
     rendering: Component registry, resolved-node renderer, useGenUI, and GenUIRoot.
     sources: GenUISource, GenUIController, BlueprintController, and source lifecycle contracts.
@@ -37,18 +37,18 @@ architecture:
     - Durable checkpoint persistence, leasing, revisions, snapshot patches, or subscriptions.
     - Storage, transport, credentials, deployment, or provider selection policy.
   dependency_direction:
-    - "@gik/react -> @gik/blueprint"
-    - "@gik/react -> @gik/kernel"
-    - "@gik/react/durable -> @gik/durable-runtime"
+    - "@gik-ai/react -> @gik-ai/blueprint"
+    - "@gik-ai/react -> @gik-ai/kernel"
+    - "@gik-ai/react/durable -> @gik-ai/durable-runtime"
   invariants:
     - Rendering depends on the structural GenUISource contract, not a concrete transport or store.
-    - Both Blueprint hosts materialize through @gik/blueprint and render through BundleCompositionHost.
+    - Both Blueprint hosts materialize through @gik-ai/blueprint and render through BundleCompositionHost.
     - The durable subpath changes transition-state ownership, not the React composition model.
     - React controllers never implement queue leasing, acknowledgement, retries, or engine-wake loops.
-    - Infrastructure adapters stay below @gik/durable-runtime and are supplied through runtime options.
+    - Infrastructure adapters stay below @gik-ai/durable-runtime and are supplied through runtime options.
 
 blueprint_host:
-  import: "@gik/react"
+  import: "@gik-ai/react"
   implementation: adapters/react/src/primitives/blueprint-host.tsx
   controller: adapters/react/src/blueprint-controller.ts
   state_ownership: Process-local durable state owned by an ephemeral in-memory provider.
@@ -58,7 +58,7 @@ blueprint_host:
     - Append UI events to the in-memory journal inbox.
     - Run materialized transitions and effects through the same BlueprintWorker contract as durable hosts.
     - Append effect settlements to the journal and apply them through a later transition.
-    - Resolve the resulting program through @gik/kernel.
+    - Resolve the resulting program through @gik-ai/kernel.
     - Notify the React binding and render through the shared bundle-composition host.
   props:
     required:
@@ -80,7 +80,7 @@ blueprint_host:
       - onTransition
 
 durable_blueprint_host:
-  import: "@gik/react/durable"
+  import: "@gik-ai/react/durable"
   implementation: adapters/react/src/primitives/durable-blueprint-host.tsx
   controller: adapters/react/src/durable-blueprint-controller.ts
   exported_surface:
@@ -89,7 +89,7 @@ durable_blueprint_host:
     - createNativeBlueprintWorker
   state_ownership: Committed state and materialized spec owned by the configured durable provider.
   transition_flow:
-    - Materialize the Blueprint for bundle rendering through the shared @gik/blueprint path.
+    - Materialize the Blueprint for bundle rendering through the shared @gik-ai/blueprint path.
     - Create a provider-neutral durable runtime with the Blueprint transition adapter.
     - Initialize the runtime and append the bootstrap event when newly created.
     - Append UI events to the durable journal and notify an optional locally mounted worker.
@@ -108,7 +108,7 @@ durable_blueprint_host:
       omitted because durable-runtime owns state and commit results.
   synchronization:
     available_below_host: >-
-      @gik/durable-runtime exposes readSnapshotChanges, applyRuntimeSnapshotChanges, and subscribe
+      @gik-ai/durable-runtime exposes readSnapshotChanges, applyRuntimeSnapshotChanges, and subscribe
       as framework-neutral APIs.
     current_host_behavior: >-
       DurableBlueprintController subscribes after startup, refreshes from authoritative snapshot

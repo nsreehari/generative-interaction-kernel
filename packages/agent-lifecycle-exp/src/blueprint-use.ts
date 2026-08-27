@@ -185,9 +185,9 @@ export function authorBlueprint<TDiscover = unknown, TTarget = unknown, TIntent 
   return defineBlueprintLifecycleProfile(options.blueprint, "author", "author_blueprint", ops).tools;
 }
 
-/** Mirrors `@gik/blueprint`'s own runtime derivation (namespaces = the declared runtime state's own
+/** Mirrors `@gik-ai/blueprint`'s own runtime derivation (namespaces = the declared runtime state's own
  * keys; actions = every verb a Cell's `behavior.on` handlers invoke) without importing that package --
- * this package is deliberately decoupled from `@gik/blueprint`'s types, so a Blueprint is described
+ * this package is deliberately decoupled from `@gik-ai/blueprint`'s types, so a Blueprint is described
  * from whatever shape it structurally carries. */
 function deriveNamespaces(state: Readonly<Record<string, unknown>> | undefined): string[] {
   return Object.keys(state ?? {});

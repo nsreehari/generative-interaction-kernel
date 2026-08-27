@@ -1,4 +1,4 @@
-import type { Json } from "@gik/kernel";
+import type { Json } from "@gik-ai/kernel";
 
 import uiFormSchema from "../schemas/ui-form.schema.json" with { type: "json" };
 import {

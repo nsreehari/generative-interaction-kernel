@@ -18,7 +18,7 @@ authored Blueprint, $C$ is immutable external context, and $T$ is one portable
 snapshot, prepared vocabulary and program, and initial state. It is derived data, not a second
 authored authority, but may be retained in memory or persisted opaquely for stateless execution.
 
-`@gik/blueprint` exposes three execution paths:
+`@gik-ai/blueprint` exposes three execution paths:
 
 - `materializeBlueprint({ blueprint, externalContext })` creates the portable value once;
 - `runMaterializedTransition({ materializedBlueprint, state, events })` trusts that value and does
@@ -35,7 +35,7 @@ Blueprints reject semantic patches; reconfigurable Blueprints rematerialize only
 authorized patch; adaptive Blueprints may propose policy-admitted authored patches. Executable
 `ProgramPatch` remains revision-local and distinct.
 
-`@gik/react` materializes once per controller and reuses the trusted path. `@gik/durable-runtime`
+`@gik-ai/react` materializes once per controller and reuses the trusted path. `@gik-ai/durable-runtime`
 remains generic: a Blueprint host stores authored Blueprint, external context, and portable
 materialization inside its opaque spec and commits spec updates atomically with state, cursor, and
 effects. A cold Azure Function can therefore read the value and execute without process memory.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { createBlueprint } from "@gik/blueprint";
+import { createBlueprint } from "@gik-ai/blueprint";
 import { BlueprintController } from "../src/index";
 
 async function eventually(assertion: () => void): Promise<void> {

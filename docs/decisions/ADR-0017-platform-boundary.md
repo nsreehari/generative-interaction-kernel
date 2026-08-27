@@ -67,5 +67,5 @@ not "render a two-column table." Keeping the UI DSL public leaves the platform o
 > Interaction/Presentation/Runtime stack. `Interaction -> Presentation -> Runtime` is just the
 > default GenUI profile's particular choice of layers, not a platform-wide invariant. The
 > `interaction/` source tree has also been retired: its generic profile machinery now lives in
-> `@gik/profile` (`packages/profile/`) and the GenUI flavor in `@gik/profile-genui`
+> `@gik-ai/profile` (`packages/profile/`) and the GenUI flavor in `@gik-ai/profile-genui`
 > (`packages/profile-genui/`). `kernel/` still owns the document + runtime.

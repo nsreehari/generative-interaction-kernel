@@ -5,12 +5,12 @@ document:
   status: current-implementation-with-policy-registry-evolution
   scope: Blueprint-specific trusted host lifecycle, declarative policy evaluation, proposal receipts, application, and durable-runtime persistence
   source_of_truth: >-
-    This file defines the public product contract for @gik/blueprint-agent-host. Declarative JSONata
+    This file defines the public product contract for @gik-ai/blueprint-agent-host. Declarative JSONata
     policy artifacts and evaluation are implemented; a general multi-dialect policy registry remains
     future evolution. This SOT is authoritative for the intended public contract.
 
 package:
-  name: "@gik/blueprint-agent-host"
+  name: "@gik-ai/blueprint-agent-host"
   version: "0.1.0"
   publication_status: public-workspace-package
   purpose: >-
@@ -25,14 +25,14 @@ package:
     - packages/blueprint-agent-host/src/durable.ts
   decision_source: docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md
   dependencies:
-    - "@gik/agent-lifecycle-exp"
-    - "@gik/durable-runtime"
+    - "@gik-ai/agent-lifecycle-exp"
+    - "@gik-ai/durable-runtime"
 
 architecture:
   ownership: host composition layer
   dependency_direction:
-    - The package imports neutral lifecycle and proposal contracts from @gik/agent-lifecycle-exp.
-    - The package imports provider-neutral durable transition contracts from @gik/durable-runtime.
+    - The package imports neutral lifecycle and proposal contracts from @gik-ai/agent-lifecycle-exp.
+    - The package imports provider-neutral durable transition contracts from @gik-ai/durable-runtime.
     - BlueprintHost and Blueprint core do not import this package.
     - A browser host, backend service, middleware, or worker composes this package around a BlueprintAuthority.
   boundaries:
@@ -133,7 +133,7 @@ durable_runtime_binding:
     - Read committed receipt maps from the runtime snapshot.
   provider_choice: >-
     The composing host selects IndexedDB, filesystem, Cosmos/stores-proxy, or another durable provider
-    through normal @gik/durable-runtime refs and provider configuration.
+    through normal @gik-ai/durable-runtime refs and provider configuration.
   recovery: >-
     An applying receipt may be submitted again to BlueprintAuthority.apply. The authority must use
     receipt.id as its idempotency key before reporting applied.
@@ -147,7 +147,7 @@ host_composition:
     - Use the package-owned safe JSONata evaluator for the current policy dialect.
     - Keep provider, credential, transport, and deployment policy outside this package.
   persistence: >-
-    The host may use the in-memory store or configure @gik/durable-runtime with a durable provider
+    The host may use the in-memory store or configure @gik-ai/durable-runtime with a durable provider
     and inject the resulting store. Provider selection is not part of agent input or Blueprint material.
 
 exclusions:

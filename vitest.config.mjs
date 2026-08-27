@@ -66,7 +66,7 @@ export default defineConfig({
       {
         resolve: {
           alias: {
-            "@gik/blueprint": blueprintPackage,
+            "@gik-ai/blueprint": blueprintPackage,
           },
         },
         test: {
@@ -78,7 +78,7 @@ export default defineConfig({
       {
         resolve: {
           alias: {
-            "@gik/blueprint": blueprintPackage,
+            "@gik-ai/blueprint": blueprintPackage,
           },
         },
         test: {

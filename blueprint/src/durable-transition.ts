@@ -5,7 +5,7 @@ import {
   type Json,
   type OrchestratorEffect,
   type OrchestratorResult,
-} from "@gik/kernel";
+} from "@gik-ai/kernel";
 import {
   applyBlueprintPatches,
   materializeBlueprint,

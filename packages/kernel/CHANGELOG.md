@@ -1,4 +1,4 @@
-# @gik/kernel
+# @gik-ai/kernel
 
 ## 0.1.2-next.0
 

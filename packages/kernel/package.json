@@ -1,5 +1,5 @@
 {
-  "name": "@gik/kernel",
+  "name": "@gik-ai/kernel",
   "version": "0.1.2-next.0",
   "description": "The embeddable Generative Interaction Kernel: interprets a portable UI-intent document into a running, reactive interface.",
   "license": "MIT",

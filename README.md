@@ -23,14 +23,14 @@ In this repo, the concrete shape is:
 
 - [kernel](kernel) = the engine
 - [face](face) = the internal shared composition layer behind the public projections
-- [packages/kernel](packages/kernel) = the public `@gik/kernel` package
-- [packages/controlface](packages/controlface) = the public `@gik/controlface` package
-- [packages/agentface](packages/agentface) = the public `@gik/agentface` package
-- [packages/react](packages/react) = the public `@gik/react` package
-- [packages/provider-step-orchestrator](packages/provider-step-orchestrator) = the public `@gik/provider-step-orchestrator` package
-- [packages/provider-profile-authoring](packages/provider-profile-authoring) = the public `@gik/provider-profile-authoring` package
-- [packages/transport-http-sse](packages/transport-http-sse) = the public `@gik/transport-http-sse` package
-- [packages/transport-mcp-http](packages/transport-mcp-http) = the public `@gik/transport-mcp-http` package
+- [packages/kernel](packages/kernel) = the public `@gik-ai/kernel` package
+- [packages/controlface](packages/controlface) = the public `@gik-ai/controlface` package
+- [packages/agentface](packages/agentface) = the public `@gik-ai/agentface` package
+- [packages/react](packages/react) = the public `@gik-ai/react` package
+- [packages/provider-step-orchestrator](packages/provider-step-orchestrator) = the public `@gik-ai/provider-step-orchestrator` package
+- [packages/provider-profile-authoring](packages/provider-profile-authoring) = the public `@gik-ai/provider-profile-authoring` package
+- [packages/transport-http-sse](packages/transport-http-sse) = the public `@gik-ai/transport-http-sse` package
+- [packages/transport-mcp-http](packages/transport-mcp-http) = the public `@gik-ai/transport-mcp-http` package
 - [transports](transports) = the internal transport implementations that the public transport packages wrap
 
 Sample applications and runnable hosts are maintained in
@@ -76,7 +76,7 @@ conformance matrix** of portable JSON cases with a per-kernel runner (Phase 9) �
 | Blueprint lowering | **Two independent deterministic axes**: `serviceTiers`/`serviceRecipes` select contract-compatible Cell implementations; `projectionTiers`/`projectionRecipes` select views and presentation. Materialization completes the service chain before the projection chain; the removed combined `tiers`/`recipes` fields are rejected. |
 | Layered DSL | **One kernel, lowering compilers above it**: Task → Domain → Interaction → UI (kernel doc) as pure `Stage`s; a **profile = a Domain DSL + its lowering**; layers optional; `lowerToDocument` reuses validate-before-commit |
 | Platform boundary | **Platform owns the profile layers + Runtime**. Authored Blueprints expose the independent service and projection lowering axes above; Intent (agents) and Domain semantics (app teams) sit outside and plug in through translation contracts. There is no fixed L3/L4/L5 numbering (see ADR-0038). |
-| Interaction / Presentation | **Two owned layers + a planner and a compiler** (`@gik/profile` + `profile/profile-templates/*`): Interaction Model (goal patterns + facet taxonomy) → `PresentationPlanner(spec, context)` → Presentation DSL (layout + enriched regions: priority / disclosure / presentation-type, schema-validated) → `lowerPresentation` compiler → kernel doc; *same interaction, different presentation by surface*. The planner is the slot an AI presentation planner fills |
+| Interaction / Presentation | **Two owned layers + a planner and a compiler** (`@gik-ai/profile` + `profile/profile-templates/*`): Interaction Model (goal patterns + facet taxonomy) → `PresentationPlanner(spec, context)` → Presentation DSL (layout + enriched regions: priority / disclosure / presentation-type, schema-validated) → `lowerPresentation` compiler → kernel doc; *same interaction, different presentation by surface*. The planner is the slot an AI presentation planner fills |
 | HITL confirm | **`confirm` contract** (`kernel/src/confirm.ts`): standard prompt payload, outcome vocabulary (`approved`/`denied`/`cancelled`/`timeout`), and `confirmed`/`dismissed` follow-up event names |
 | Observability | **Fixed trace points** (`TRACE_POINTS`) + reference `console`/`buffer`/`multi` sinks over the `TraceSink` seam; exporters stay out-of-core; traces are *not* on the behavioral conformance contract |
 | Optional layers | **No layer is mandatory**: a partial pipeline (e.g. single-stage `Domain → UI`) is valid; validation happens once at the UI-DSL boundary. **Streaming** of the initial document is deferred beyond v0.1 (complete document per message) |
@@ -150,18 +150,18 @@ generative-interaction-kernel/
     test/                       ← pure + live + projection integration tests
     tsconfig.json
   packages/                     ← workspace package surfaces (public and internal)
-    kernel/                     ← @gik/kernel
-    controlface/                ← @gik/controlface
-    agentface/                  ← @gik/agentface
-    evaluators/                 ← @gik/evaluators (JSONata evaluators + declarative validators)
-    react/                      ← @gik/react
-    profile/                    ← @gik/profile (generic profile machinery, GenUI interpreters, template loaders, authoring runner)
-    provider-step-orchestrator/ ← @gik/provider-step-orchestrator
-    provider-profile-authoring/ ← @gik/provider-profile-authoring
-    transport-http-sse/         ← @gik/transport-http-sse (browser-safe top-level, Node server subpath)
-    transport-mcp-http/         ← @gik/transport-mcp-http
+    kernel/                     ← @gik-ai/kernel
+    controlface/                ← @gik-ai/controlface
+    agentface/                  ← @gik-ai/agentface
+    evaluators/                 ← @gik-ai/evaluators (JSONata evaluators + declarative validators)
+    react/                      ← @gik-ai/react
+    profile/                    ← @gik-ai/profile (generic profile machinery, GenUI interpreters, template loaders, authoring runner)
+    provider-step-orchestrator/ ← @gik-ai/provider-step-orchestrator
+    provider-profile-authoring/ ← @gik-ai/provider-profile-authoring
+    transport-http-sse/         ← @gik-ai/transport-http-sse (browser-safe top-level, Node server subpath)
+    transport-mcp-http/         ← @gik-ai/transport-mcp-http
   profile/
-    profile-templates/         ← declarative template assets owned and exposed by @gik/profile
+    profile-templates/         ← declarative template assets owned and exposed by @gik-ai/profile
     src/                       ← generic profile machinery, GenUI interpreters, template loaders, authoring runner
   adapters/
     react/                      ← Phase 2 React render adapter

@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import React from "react";
 import { test } from "vitest";
 import TestRenderer, { act } from "react-test-renderer";
-import { createBlueprint, type BlueprintArtifact, type BlueprintDefinition } from "@gik/blueprint";
-import { createMemoryStorage } from "@gik/durable-runtime/storage/memory";
+import { createBlueprint, type BlueprintArtifact, type BlueprintDefinition } from "@gik-ai/blueprint";
+import { createMemoryStorage } from "@gik-ai/durable-runtime/storage/memory";
 import {
   BlueprintHost,
   BlueprintProvider,
