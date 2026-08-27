@@ -148,8 +148,8 @@ contradicted the Cell-identity invariant this same ADR and the authoring guidanc
 `addCell`/`replaceCell`/`removeCell` is a governance-gated edit to the *authored* Blueprint, admitted
 only under `reconfigurable`/`adaptive` structure mode via `admitBlueprintPatch` — never a lowering-time
 tool, and a recipe must never add, remove, or restructure which Cells exist. The recipe kind had zero
-real product consumers (only a quarantined `samples/blueprints/half-baked/` sample and one test
-fixture, both excluded from the build/test paths already).
+real product consumers (only an already-quarantined sample and one test fixture, both excluded from
+the build/test paths).
 
 Removed `VocabularyLoweringRecipeDefinition` and its handling entirely; `RepresentationLoweringRecipeDefinition`
 is now the sole lowering recipe kind (`blueprint/src/types.ts`, `lowering-recipe.schema.json`,

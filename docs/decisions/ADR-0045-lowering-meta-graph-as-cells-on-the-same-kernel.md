@@ -102,7 +102,8 @@ existing validated open/reconfigure path — exactly the risk ADR-0043 was writt
   existing "no nested child-Blueprint mutation" boundary in `applyBlueprintPatch` — to be confirmed
   during the first real spike.
 - Whether a shared, reusable "compiler bundle" (floor-style generic `transform`/`validate`/`approve`
-  Cells) ships under `samples/bundles/`, or each domain hand-authors its own compiler Blueprint.
+  Cells) ships in the dedicated `gik-samples` repository, or each domain hand-authors its own
+  compiler Blueprint.
 - Physical package placement of the host-side driver (`@gik/blueprint` vs. a new package) — deferred
   until the driver exists and its dependency shape is known.
 

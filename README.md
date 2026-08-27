@@ -27,7 +27,6 @@ In this repo, the concrete shape is:
 - [packages/controlface](packages/controlface) = the public `@gik/controlface` package
 - [packages/agentface](packages/agentface) = the public `@gik/agentface` package
 - [packages/react](packages/react) = the public `@gik/react` package
-- [packages/components](packages/components) = the public Fluent 2 `@gik/components` package
 - [packages/provider-step-orchestrator](packages/provider-step-orchestrator) = the public `@gik/provider-step-orchestrator` package
 - [packages/provider-profile-authoring](packages/provider-profile-authoring) = the public `@gik/provider-profile-authoring` package
 - [packages/transport-http-sse](packages/transport-http-sse) = the public `@gik/transport-http-sse` package

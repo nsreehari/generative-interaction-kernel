@@ -5,7 +5,6 @@
     "@gik/durable-runtime",
     "@gik/blueprint",
     "@gik/react",
-    "@gik/components",
     "@gik/controlface",
     "@gik/agentface",
     "@gik/transport-http-sse"
