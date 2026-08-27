@@ -113,7 +113,7 @@ jobs:
 
       - name: Publish with bootstrap token
         if: vars.NPM_TOKEN_BOOTSTRAP_ENABLED == 'true'
-        run: npm run release:publish -- --tag "${{ needs.validate.outputs.channel }}"
+        run: npm run release:publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_ACCESS: public
@@ -121,7 +121,7 @@ jobs:
 
       - name: Publish with trusted publishing
         if: vars.NPM_TOKEN_BOOTSTRAP_ENABLED != 'true'
-        run: npm run release:publish -- --tag "${{ needs.validate.outputs.channel }}"
+        run: npm run release:publish
         env:
           NPM_CONFIG_ACCESS: public
           NPM_CONFIG_PROVENANCE: true
