@@ -1,6 +1,6 @@
 // The standardized, declarative effect vocabulary.
 //
-// Mirrors the demo-boards-frontend model where a leaf never holds an effect handler — it declares
+// Mirrors the product-host pattern where a leaf never holds an effect handler - it declares
 // intent (`onSave(value, meta)`) and ONE central router maps that to the real effect. Here, a
 // bundle's program declares `invoke("<name>", args)`; this dispatcher routes the named effect to a
 // registered native handler. Handlers are the only place imperative/effectful work lives, they are

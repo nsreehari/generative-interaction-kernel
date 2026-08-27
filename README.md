@@ -35,28 +35,16 @@ In this repo, the concrete shape is:
 - [transports](transports) = the internal transport implementations that the public transport packages wrap
 
 Sample applications and runnable hosts are maintained in
-[gik-samples](https://github.com/nsreehari/gik-samples). The component package
-and Foundry/Copilot provisioning assets remain here temporarily until the
-standalone repository provides their replacement.
+[gik-samples](https://github.com/nsreehari/gik-samples), including Blueprint
+Studio, runnable scenarios, and local agent-provisioning examples. This core
+repository does not assume access to product repositories or deployment
+infrastructure.
 
 If you are deciding what to consume:
 
 - embed the **kernel** when your product should be the runtime authority;
 - consume **controlface** or **agentface** when you want a bounded surface over an already-running runtime;
 - add a **transport** only when that surface must cross a process/network boundary.
-
-### Live portfolio intelligence
-
-The portfolio tracker routes `analyze` and `propose-strategies` through QueueFace. Its Blueprint declares a `deterministic-agent` service for offline execution and attaches the operations to the producing cells. Live deployments replace that declaration with a host-supported kind such as `foundry-agent`; endpoints, model/agent selection, and credential references belong to the Blueprint declaration, while the host authorizes kinds, endpoint origins, and credential resolution.
-
-The endpoint accepts `POST` JSON containing `service`, `version`, `operation`, `input`, and `correlationId`, and returns `{ "output": ... }`. The proxy owns credentials and model/provider configuration; do not expose provider secrets through Vite environment variables. A configured live endpoint is never silently replaced by the deterministic provider when a request fails.
-
-- `/` — application root page: React chrome plus the embedded Studio's catalog and preview regions
-- `/?b=portfolio-tracker-new` — live portfolio intelligence
-- `/?b=live-workspace-soc` — governed SOC collaboration
-- `/?b=ai-agent` — provider-selected agent conversation (`ai=foundry` or `ai=copilot`)
-- `/?b=blueprint-studio` — Blueprint catalog studio (the complete Studio, at its own root)
-- `/?b=manage-bundles` — Bundle artifact catalog and preview
 
 ## Status
 

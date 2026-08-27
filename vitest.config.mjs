@@ -71,13 +71,6 @@ export default defineConfig({
         },
       },
       {
-        test: {
-          name: "provisioning",
-          environment: "node",
-          include: ["samples/tests/agent-provisioning-guidance.test.ts"],
-        },
-      },
-      {
         resolve: {
           alias: {
             "@gik/blueprint": blueprintPackage,

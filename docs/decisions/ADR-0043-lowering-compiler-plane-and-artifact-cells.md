@@ -235,7 +235,7 @@ Corrected the mechanism, replacing the prior amendment's view-based one entirely
 Confirmed via exhaustive repository search that no real product sample authors a Cell's own `blueprint`
 field directly (mechanism A) at all — every real sample dynamically binds a `gik:blueprint`-capability
 *view* prop to a Blueprint-shaped value computed as data (mechanism B, e.g.
-`samples/blueprints/incident-analysis-new-shell`'s `report-resolution` Cell). Mechanism B is
+a report fixture's `report-resolution` Cell). Mechanism B is
 inherently presentation-native (it is a rendering-time selection of what a view currently renders) and
 is unaffected by this amendment; only mechanism A (`CellDefinition.blueprint`, the ordinary
 data-flow-owning hosting property this ADR and the authoring guidance describe) was ever wrongly
