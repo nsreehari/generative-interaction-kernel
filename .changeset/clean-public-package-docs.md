@@ -4,7 +4,6 @@
 "@gik/durable-runtime": patch
 "@gik/blueprint": patch
 "@gik/react": patch
-"@gik/components": patch
 "@gik/controlface": patch
 "@gik/agentface": patch
 "@gik/transport-http-sse": patch

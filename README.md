@@ -27,63 +27,23 @@ In this repo, the concrete shape is:
 - [packages/controlface](packages/controlface) = the public `@gik/controlface` package
 - [packages/agentface](packages/agentface) = the public `@gik/agentface` package
 - [packages/react](packages/react) = the public `@gik/react` package
-- [packages/components](packages/components) = the public Fluent 2 `@gik/components` package
 - [packages/provider-step-orchestrator](packages/provider-step-orchestrator) = the public `@gik/provider-step-orchestrator` package
 - [packages/provider-profile-authoring](packages/provider-profile-authoring) = the public `@gik/provider-profile-authoring` package
 - [packages/transport-http-sse](packages/transport-http-sse) = the public `@gik/transport-http-sse` package
 - [packages/transport-mcp-http](packages/transport-mcp-http) = the public `@gik/transport-mcp-http` package
 - [transports](transports) = the internal transport implementations that the public transport packages wrap
-- [samples](samples) = thin outer composition showing how to mount those pieces together
+
+Sample applications and runnable hosts are maintained in
+[gik-samples](https://github.com/nsreehari/gik-samples), including Blueprint
+Studio, runnable scenarios, and local agent-provisioning examples. This core
+repository does not assume access to product repositories or deployment
+infrastructure.
 
 If you are deciding what to consume:
 
 - embed the **kernel** when your product should be the runtime authority;
 - consume **controlface** or **agentface** when you want a bounded surface over an already-running runtime;
 - add a **transport** only when that surface must cross a process/network boundary.
-
-## Sample applications
-
-Run `npm run dev:host` in [generative-interaction-kernel](.) and open a hosted Blueprint with
-`/?b=<id>`; the application switcher lists the approved Blueprint catalog. Without a `b` parameter
-the host renders its own application root page: a plain React/Fluent layout that places two named
-presentation regions — the Blueprint catalog and a live preview — exported by one embedded
-Blueprint Studio instance. The same host serves the semantic component Storybook at `/storybook/`;
-no second development server is required. Host development and production builds generate the
-Storybook assets first and include them in the host artifact.
-
-The sample host defaults to [`samples/config/host.production.json`](samples/config/host.production.json)
-in both development and production modes. Use `npm run dev:host:local` or
-`npm run build:host:local` to opt into [`samples/config/host.local.json`](samples/config/host.local.json).
-`VITE_GIK_HOST_ENV=local|production` is also available as an explicit override.
-For local Foundry-backed samples, start the sibling Function host with `npm run dev:foundry-proxy`
-in one terminal and run `npm run dev:host` in another. The local proxy listens on
-`http://localhost:7071`.
-
-To run every Function app declared by the local host configuration, use `npm run func:local`.
-The command reads each origin from `samples/config/host.local.json` and starts the sibling Function
-apps on those ports.
-
-Use `npm run dev` for the complete local stack. It starts those Function apps and the Vite host
-together, explicitly setting `VITE_GIK_HOST_ENV=local` for the host process. Stopping either process
-stops the other.
-
-Run `npx tsx samples/examples/structure-modes/structure-modes.ts` for a headless, deterministic demonstration
-of Blueprint structure modes through ControlFace. It shows fixed rejecting a structural change,
-reconfigurable ignoring ordinary runtime activity but accepting an authorized reconfiguration, and
-adaptive applying a policy-admitted runtime program patch and restoring it from a checkpoint.
-
-### Live portfolio intelligence
-
-The portfolio tracker routes `analyze` and `propose-strategies` through QueueFace. Its Blueprint declares a `deterministic-agent` service for offline execution and attaches the operations to the producing cells. Live deployments replace that declaration with a host-supported kind such as `foundry-agent`; endpoints, model/agent selection, and credential references belong to the Blueprint declaration, while the host authorizes kinds, endpoint origins, and credential resolution.
-
-The endpoint accepts `POST` JSON containing `service`, `version`, `operation`, `input`, and `correlationId`, and returns `{ "output": ... }`. The proxy owns credentials and model/provider configuration; do not expose provider secrets through Vite environment variables. A configured live endpoint is never silently replaced by the deterministic provider when a request fails.
-
-- `/` — application root page: React chrome plus the embedded Studio's catalog and preview regions
-- `/?b=portfolio-tracker-new` — live portfolio intelligence
-- `/?b=live-workspace-soc` — governed SOC collaboration
-- `/?b=ai-agent` — provider-selected agent conversation (`ai=foundry` or `ai=copilot`)
-- `/?b=blueprint-studio` — Blueprint catalog studio (the complete Studio, at its own root)
-- `/?b=manage-bundles` — Bundle artifact catalog and preview
 
 ## Status
 
@@ -195,7 +155,6 @@ generative-interaction-kernel/
     agentface/                  ← @gik/agentface
     evaluators/                 ← @gik/evaluators (JSONata evaluators + declarative validators)
     react/                      ← @gik/react
-    components/                 ← @gik/components (self-describing Fluent 2 projection components)
     profile/                    ← @gik/profile (generic profile machinery, GenUI interpreters, template loaders, authoring runner)
     provider-step-orchestrator/ ← @gik/provider-step-orchestrator
     provider-profile-authoring/ ← @gik/provider-profile-authoring

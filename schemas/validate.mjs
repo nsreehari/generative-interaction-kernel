@@ -123,22 +123,5 @@ for (const f of readdirSync(casesDir).filter((n) => n.endsWith(".case.json")).so
   check(`case ${f}`, vCase, JSON.parse(readFileSync(join(casesDir, f), "utf8")));
 }
 
-console.log("\nDeclarative Blueprint tests (case shape):");
-const blueprintCaseSchema = readSchema("blueprint-test-case.schema.json");
-const vBlueprintCase = new Ajv({ allErrors: true, strict: false }).compile(blueprintCaseSchema);
-const blueprintsDir = join(here, "../samples/blueprints");
-const blueprintCaseFiles = readdirSync(blueprintsDir, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .flatMap((entry) => readdirSync(join(blueprintsDir, entry.name))
-    .filter((name) => name.endsWith(".case.json"))
-    .map((name) => ({ blueprintId: entry.name, name })));
-for (const { blueprintId, name } of blueprintCaseFiles.sort((left, right) => left.blueprintId.localeCompare(right.blueprintId))) {
-  check(
-    `Blueprint case ${blueprintId}/${name}`,
-    vBlueprintCase,
-    JSON.parse(readFileSync(join(blueprintsDir, blueprintId, name), "utf8")),
-  );
-}
-
 console.log(`\n${failures === 0 ? "OK: all conformance checks passed." : `FAILED: ${failures} check(s).`}`);
 process.exit(failures === 0 ? 0 : 1);

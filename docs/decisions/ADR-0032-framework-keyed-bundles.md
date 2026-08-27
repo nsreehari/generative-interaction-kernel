@@ -1,6 +1,11 @@
 # ADR-0032 — Framework-keyed bundles: `samples/bundles/` as a first-class sibling, apps compose them
 
-**Status:** Proposed — 2026-07-07
+**Status:** Superseded — 2026-08-27
+
+Bundles and sample hosts now live in the dedicated
+[`gik-samples`](https://github.com/nsreehari/gik-samples) repository. The
+component package remains temporarily in this repository until its standalone
+publishing and provisioning replacement is complete.
 
 ## Context
 

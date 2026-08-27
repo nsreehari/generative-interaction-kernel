@@ -268,10 +268,10 @@ into an invisible node's children), so hiding a wrap layer hides the wrapped pri
 common intended case (the primary only exists to be that layer's content) but is worth stating
 explicitly since `before`/`after` visibility is independent and sibling-scoped by contrast.
 
-**No change was needed anywhere in `kernel/src/interpret.ts`, `adapters/react/src/render.tsx`, or any
-component in `packages/components`** (including `FluentDialog` itself) — the mechanism produces an
-ordinary nested `DocNode`, and both the Kernel's already-generic child-walking and `FluentDialog`'s
-existing `{children}` consumption already handle it. That is the entire reason this stayed a small,
+**No change was needed anywhere in `kernel/src/interpret.ts`, `adapters/react/src/render.tsx`, or the
+component implementation** - the mechanism produces an ordinary nested `DocNode`, and both the
+Kernel's already-generic child-walking and the wrapper component's existing `{children}` consumption
+already handle it. That is the entire reason this stayed a small,
 `@gik/blueprint`-internal compiler/schema/type change.
 
 ## Amendment (2026-08-24): one recipe vocabulary becomes two axis-specific dialects

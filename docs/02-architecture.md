@@ -165,8 +165,8 @@ is mounted at `/gik`."
 | You want a bounded tool surface over a running runtime | **Face projection** |
 | You need to cross a process/network boundary | **Transport carrying a projection** |
 
-For a product such as `demo-boards-frontend`, "migrate to the GIK kernel" means deciding whether
-the frontend becomes a **runtime authority** (embed the kernel) or merely a **runtime client**
+For an existing product, "migrate to the GIK kernel" means deciding whether its frontend becomes
+a **runtime authority** (embed the kernel) or merely a **runtime client**
 (consume a face/projection over a transport). That is not a minor import choice; it is an ownership
 choice about where execution semantics live.
 
