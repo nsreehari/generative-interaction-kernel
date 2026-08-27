@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import type { Json } from "../../../kernel/src/index";
 import { StepOrchestrator } from "../../step-orchestrator/src/step-orchestrator";
 import { createBlueprintAuthoringRegistry, summarizeBlueprint } from "../src/blueprint-authoring";
-import blueprintStudioBlueprint from "../../../samples/blueprints/blueprint-studio/blueprint.json" with { type: "json" };
+import blueprintStudioBlueprint from "./fixtures/blueprint-studio.blueprint.json" with { type: "json" };
 
 function asJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
@@ -14,13 +14,16 @@ test("summarizeBlueprint exposes the canonical runtime Blueprint", () => {
   const summary = summarizeBlueprint(blueprintStudioBlueprint);
   assert.equal(summary?.id, "blueprint-studio");
   assert.deepEqual(summary?.serviceRecipes, []);
-  assert.deepEqual(summary?.projectionRecipes, []);
-  assert.deepEqual(summary?.serviceTiers, [{ id: "runtime-document", kind: "runtime-document" }]);
-  assert.deepEqual(summary?.projectionTiers, [{
-    id: "runtime-document",
-    kind: "runtime-document",
-    capabilities: [],
+  assert.deepEqual(summary?.projectionRecipes, [{
+    id: "studio-composition-to-runtime",
+    from: "studio-composition",
+    to: "runtime-document",
   }]);
+  assert.deepEqual(summary?.serviceTiers, [{ id: "runtime-document", kind: "runtime-document" }]);
+  assert.deepEqual(summary?.projectionTiers, [
+    { id: "studio-composition", kind: "studio-composition", capabilities: [] },
+    { id: "runtime-document", kind: "runtime-document", capabilities: [] },
+  ]);
 });
 
 test("blueprint authoring registry composes blueprint and recipes from graph outputs", async () => {
@@ -62,5 +65,8 @@ test("artifact-backed authoring mode proposes the blueprint's concrete recipe ch
   const payload = (res?.events?.[0].payload ?? {}) as Record<string, any>;
   assert.equal(payload.blueprint?.id, "blueprint-studio");
   assert.equal(payload.blueprintSeed?.source, "blueprint");
-  assert.deepEqual(payload.recipes?.map(({ id, from, to }: Record<string, unknown>) => ({ id, from, to })), []);
+  assert.deepEqual(
+    payload.recipes?.map(({ id, from, to }: Record<string, unknown>) => ({ id, from, to })),
+    [{ id: "studio-composition-to-runtime", from: "studio-composition", to: "runtime-document" }],
+  );
 });

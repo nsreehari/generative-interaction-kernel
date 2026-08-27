@@ -10,12 +10,10 @@
   "ignore": [
     "@gik/agent-lifecycle-exp",
     "@gik/blueprint-agent-host",
-    "@gik/demo-runner-host",
     "@gik/provider-blueprint-authoring",
     "@gik/provider-step-orchestrator",
     "@gik/transport-mcp-http",
-    "gik",
-    "@gik/samples"
+    "gik"
   ],
   "privatePackages": {
     "version": false,

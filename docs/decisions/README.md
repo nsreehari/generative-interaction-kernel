@@ -36,7 +36,7 @@ rejected options were set aside, and the consequences.
 | [0029](ADR-0029-winui-reactor-binding.md) | WinUI/Reactor render binding — the toolkit edge on the C# adapter core, with cross-adapter equivalence anchored by the shared walk | Accepted |
 | [0030](ADR-0030-bundle-composition.md) | The bundle — one host runs any app; apps compose via an `embed` leaf | Accepted |
 | [0031](ADR-0031-per-bundle-registries.md) | Per-bundle capability registries — shared floor + additive overlay | Accepted |
-| [0032](ADR-0032-framework-keyed-bundles.md) | Framework-keyed bundles — `samples/bundles/` sibling to `samples/apps/`, apps compose them | Proposed |
+| [0032](ADR-0032-framework-keyed-bundles.md) | Framework-keyed bundles — superseded by the dedicated `gik-samples` repository | Superseded |
 | [0033](ADR-0033-provider-engines-reactive-statemodel-step-orchestrator.md) | Provider engines — reactive `StateModel` and StepMachine `Orchestrator`, vendored from proven sources | Proposed |
 | [0034](ADR-0034-declarative-reactions-and-context.md) | Shared context and the retired declarative reaction experiment | Accepted (amended) |
 | [0035](ADR-0035-stop-dotnet-port.md) | Stop the C#/.NET port — master becomes TypeScript-only; the port is frozen on the `dotnet-port` branch | Accepted |

@@ -150,13 +150,13 @@ coupling. → [ADR-0006](decisions/ADR-0006-render-adapter-infra-agnostic.md).
 
 ## 13. First onboarding profile selected + first build artifact
 
-The **live-cards** profile (yaml-flow + demo-boards-ns-code + demo-boards-frontend) was selected as
-the **first profile to onboard** — a pragmatic pilot adopter, not a canonical reference — and mapped
+An existing application was selected as the **first profile to onboard** - a pragmatic pilot
+adopter, not a canonical reference - and mapped
 onto every provider seam ([04-first-onboarding-profile.md](04-first-onboarding-profile.md)), with a
 fit assessment (maps cleanly / needs adapter / genuine gap or residue) and the rule that the kernel
 is not bent to fit the profile. Remaining open decisions were parked in
 [not-yet-decided.md](not-yet-decided.md). The **first build artifact** was produced: the five
-normative GIK draft-07 schemas + envelope, and a golden conformance fixture drawn from live-cards,
+normative GIK draft-07 schemas + envelope, and a repository-owned golden conformance fixture,
 verified by a runner (`schemas/validate.mjs`) — all checks pass.
 
 ## 14. Phase 1 — the reference kernel (executable protocol)
@@ -170,8 +170,8 @@ validating it). Scope: interpreter (`gate → capability → props(read) → chi
 Ajv; an observability sink. Two decisions were recorded in
 [ADR-0007](decisions/ADR-0007-reference-kernel-implementation.md): **TypeScript/JS first** (matches
 the React renderer target and embedded placement) and **JSONata as the default `ExpressionProvider`**.
-During implementation, a security review rejected reusing the live-cards profile's vendored
-`jsonata-sync.cjs`: it is a profile-owned artifact (inverts the kernel→profile dependency), it is
+During implementation, a security review rejected reusing the pilot profile's vendored
+`jsonata-sync.cjs`: it was a profile-owned artifact (inverting the kernel-to-profile dependency), it was
 JSONata v1.x inside a **critical** prototype-pollution advisory, and its only rationale (a sync UMD
 build) is a profile deployment concern. The kernel instead depends on patched `jsonata@^2.2.1`
 (0 vulnerabilities); its async `evaluate` makes the kernel eval path async, which aligns with the
@@ -185,7 +185,7 @@ The protocol was driven as a **live UI**: a first `RenderAdapter` in `adapters/r
 capability → React component with a graceful fallback; a pure `renderNode` turns a `ResolvedNode`
 tree into elements (invisible nodes render nothing, read-bound values arrive as props); a
 framework-agnostic `GenUIController` runs the async `init → resolve → dispatch → re-resolve` loop; a
-thin `useGenUI`/`GenUIRoot` binding wires it into React. Default live-cards components
+thin `useGenUI`/`GenUIRoot` binding wires it into React. Default fixture components
 (`board`/`metric`/`table`/`actions`) emit `rowSelect`/`tap`. Verified headlessly (no browser):
 static-markup render of the seeded fixture, the gated `Approve` button appearing only after a row is
 selected, component handlers calling `emit` with the right name/payload, and the fallback view for a
@@ -271,7 +271,7 @@ typed constructors for the closed grammar (`node`, `document`, one per action fa
 event, undeclared namespace). The pivotal call: **structure throws, references lint.** Unknown
 capabilities are safe at runtime via graceful fallback (`fallback = !registry.has(cap)`), so making
 them fatal would break forward-compatibility — they are advisory. Verified headless: an authored
-live-cards document validates, lints clean, and round-trips over the wire; an unknown capability
+fixture document validates, lints clean, and round-trips over the wire; an unknown capability
 validates, is flagged, and renders as a fallback node without crashing; a malformed document throws;
 undeclared events/namespaces surface as warnings.
 ---
@@ -333,14 +333,14 @@ Interaction → UI (kernel doc) → Renderer`.
 **Decision** ([ADR-0016](decisions/ADR-0016-layered-dsl-stack.md)): keep one kernel and one grammar;
 every layer above is a pure `Stage<In, Out>` composing into a pipeline whose terminal output is a
 kernel `DocumentPayload`. A **profile is redefined** as *a Domain DSL + its lowering to the kernel*
-(live-cards becomes a board Domain DSL + one lowering stage). Ownership rule: **domains own
+(the pilot profile becomes a Domain DSL + one lowering stage). Ownership rule: **domains own
 semantics · the platform owns interaction patterns · renderers own visual implementation.** Layers
 are optional (a profile may go straight `Domain → UI`).
 
 Made real in code: `kernel/src/lower.ts` adds `Stage`, a type-aligned `pipeline(a).to(b)`, and
 `lowerToDocument()` — which reuses the exact validate-before-commit gate from Phase 7, so a bug in a
 higher-layer compiler is caught at the kernel boundary, not at render time. Verified headless
-(`kernel/test/lower.test.ts`): the live-cards board recast as a Domain DSL (no kernel capabilities,
+(`kernel/test/lower.test.ts`): the pilot fixture recast as a Domain DSL (no kernel capabilities,
 no layout primitives) lowers to a valid, kernel-interpretable document (metric reads its declared
 source; the Approve gate lowers from `enabledWhen` and opens on selection); a `Task → Domain → UI`
 pipeline stays type-aligned; and a lowering that emits a malformed document is rejected at the
@@ -382,7 +382,7 @@ honest): `interaction.ts` (the taxonomy + default facets), `presentation.ts` (th
 target facets it hasn't implemented yet), and `compileInteraction()` as the one-call upper pipeline.
 Verified headless (5 tests): the same `investigate` interaction compiles to different presentations by
 context; a `review` interaction lowers to a valid, kernel-interpretable document (the summary facet
-reads its data via the live-cards binding, the detail facet's select writes `card_data.selected`);
+reads its data via the fixture binding, the detail facet's select writes `card_data.selected`);
 `investigate`'s unbound facets resolve as graceful fallbacks while its `actions` facet resolves
 concretely; and a full `Domain → Interaction → Presentation → UI` pipe composes through the kernel's
 `pipeline`/`lowerToDocument` seam. No new grammar, no new wire message — the whole upper half stays
@@ -416,7 +416,7 @@ region trim keeps every required facet even when they exceed the cap (investigat
 facets under a cap of 3, dropping only the optional `relationships`). Facet roles also drive binding:
 `PresentationBinding` gains `roleCapability` (bind once per role) with `regionCapability` as a
 per-region override; resolution is `regionCapability[region] → roleCapability[role] → region name`
-(fallback). The live-cards binding switched to role-based and leaves `graph`/`form` unmapped on purpose,
+(fallback). The fixture binding switched to role-based and leaves `graph`/`form` unmapped on purpose,
 so `investigate`'s `graph`-role facet renders as a graceful fallback while its `actions`-role facet
 resolves. Verified headless — interaction tests grew from 5 → 7 (taxonomy roles/required + explicit
 override; context-driven templates; a capped template never dropping a required facet; role binding with

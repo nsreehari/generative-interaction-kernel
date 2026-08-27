@@ -3,7 +3,7 @@
 Open decisions parked here so they are not forgotten. Each will graduate to an ADR when resolved.
 Resolved items are removed from this list and recorded in [decisions/](decisions/README.md).
 
-> Resolved since the last replay: **first onboarding profile** → live-cards
+> Resolved since the last replay: **first onboarding profile** → a pilot application profile
 > ([04-first-onboarding-profile.md](04-first-onboarding-profile.md)); **kernel placement** → hybrid,
 > primarily embedded ([ADR-0005](decisions/ADR-0005-kernel-placement.md)); **reference kernel
 > implementation** → TypeScript/JS first, JSONata (v2, patched) as the default `ExpressionProvider`
@@ -49,8 +49,8 @@ Resolved items are removed from this list and recorded in [decisions/](decisions
    persistence across host restarts.
 
 5. **Canonical reference profile.** Whether to author a clean, minimal exemplar profile that
-   *defines* the platform's ideal shape, distinct from the first onboarding profile (live-cards,
-   which is a pragmatic pilot adopter, not a pristine reference). Note: a **profile** is now defined
+   *defines* the platform's ideal shape, distinct from the first onboarding profile (a pragmatic
+   pilot adopter, not a pristine reference). Note: a **profile** is now defined
    as a *Domain DSL + its lowering to the kernel* ([ADR-0016](decisions/ADR-0016-layered-dsl-stack.md)).
 
 6. **Interaction taxonomy (interaction layer).** The platform-owned interaction vocabulary
