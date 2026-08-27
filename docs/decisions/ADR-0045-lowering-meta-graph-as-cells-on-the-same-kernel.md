@@ -106,7 +106,7 @@ existing validated open/reconfigure path — exactly the risk ADR-0043 was writt
 - Physical package placement of the host-side driver (`@gik/blueprint` vs. a new package) — deferred
   until the driver exists and its dependency shape is known.
 
-## Amendment (2026-07-28): findings from the first spike (`samples/examples/lowering-meta-graph/lowering-meta-graph.ts`)
+## Amendment (2026-07-28): findings from the first lowering meta-graph spike
 
 Building a full, tested, end-to-end spike (host driver → Lowering Cell meta-graph → tier-2 artifact
 → `openBlueprint`) surfaced three platform findings and one deliberate implementation deviation from
@@ -149,10 +149,10 @@ expression or request config lives on that type today, and adding one is exactly
 `compilerBlueplateRef`-style schema question already flagged above as "Not decided here") — it only
 catches drift between the two once both are hand-authored.
 
-Proof: `samples/examples/lowering-meta-graph/lowering-meta-graph.ts` + `.test.ts` (8 tests) exercise all of the
-above — initial graph settling, approval gating via `request`, the tier-2 artifact opening
-through the unmodified `openBlueprint` path, and both a missing-Cell and a mismatched-token drift
-case for `validateLoweringCellGraph`.
+The package-owned proof now lives in
+[`blueprint/test/fixed-lowering-meta-graph.test.ts`](../../blueprint/test/fixed-lowering-meta-graph.test.ts).
+It exercises Kernel token flow, terminal artifact materialization, arbitrary tier-chain folding,
+and schema rejection for malformed lowering recipes.
 
 ## Amendment (2026-07-29): materialization becomes the stable execution boundary
 

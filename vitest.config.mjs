@@ -4,16 +4,6 @@ import { defineConfig } from "vitest/config";
 const blueprintPackage = fileURLToPath(
   new URL("./blueprint/src/index.ts", import.meta.url)
 );
-const blueprintWorkerPackage = fileURLToPath(
-  new URL("./blueprint/src/worker.ts", import.meta.url)
-);
-const providerStepOrchestrator = fileURLToPath(
-  new URL("./packages/provider-step-orchestrator/src/index.ts", import.meta.url)
-);
-const providerBlueprintAuthoring = fileURLToPath(
-  new URL("./packages/provider-blueprint-authoring/src/index.ts", import.meta.url)
-);
-
 export default defineConfig({
   test: {
     projects: [
@@ -81,6 +71,13 @@ export default defineConfig({
         },
       },
       {
+        test: {
+          name: "provisioning",
+          environment: "node",
+          include: ["samples/tests/agent-provisioning-guidance.test.ts"],
+        },
+      },
+      {
         resolve: {
           alias: {
             "@gik/blueprint": blueprintPackage,
@@ -109,33 +106,6 @@ export default defineConfig({
           name: "sse",
           environment: "node",
           include: ["transports/http-sse/test/**/*.test.ts"],
-        },
-      },
-      {
-        resolve: {
-          alias: {
-            "@gik/blueprint/worker": blueprintWorkerPackage,
-            "@gik/blueprint": blueprintPackage,
-            "@gik/provider-step-orchestrator": providerStepOrchestrator,
-            "@gik/provider-blueprint-authoring": providerBlueprintAuthoring,
-          },
-        },
-        test: {
-          name: "samples",
-          environment: "node",
-          testTimeout: 20_000,
-          setupFiles: ["samples/tests/setup-blueprint-catalog.ts"],
-          include: [
-            "samples/apps/node-host/**/*.test.ts",
-            "samples/examples/**/*.test.ts",
-            "samples/tests/**/*.test.ts",
-            "samples/apps/browser-host/**/*.test.ts",
-            "samples/apps/browser-host/**/*.test.tsx",
-            "samples/service-kinds/**/*.test.ts",
-            "samples/blueprints/**/native/projection_views/**/*.test.ts",
-            "samples/blueprints/**/native/projection_views/**/*.test.tsx",
-            "samples/blueprints/**/native/effect_handlers/**/*.test.ts",
-          ],
         },
       },
       {

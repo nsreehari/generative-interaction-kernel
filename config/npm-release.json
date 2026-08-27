@@ -16,10 +16,8 @@
     "@gik/transport-mcp-http"
   ],
   "internal": [
-    "@gik/demo-runner-host",
     "@gik/provider-blueprint-authoring",
     "@gik/provider-step-orchestrator",
-    "gik",
-    "@gik/samples"
+    "gik"
   ]
 }

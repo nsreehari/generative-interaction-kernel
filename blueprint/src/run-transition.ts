@@ -227,7 +227,7 @@ export interface MaterializeBlueprintInput {
   /** Real capability descriptors (propsSchema/dataProp/emits/slots) keyed by capability name, from
    * whatever component registry the host actually renders against. Blueprint itself declares no
    * component catalog and stays decoupled from any concrete registry package -- this is how a host
-   * that has one (e.g. @gik/components' generated registry) restores real per-node prop/event
+   * that has one (for example, a host-owned generated registry) restores real per-node prop/event
    * validation. Unsupplied names fall back to a fully permissive descriptor, matching the same
    * fallback Kernel's own generateVocabulary() uses for a document's unknown capabilities. */
   capabilityCatalog?: Record<string, CapabilityDescriptor>;
@@ -376,7 +376,7 @@ const SYSTEM_CAPABILITIES = new Set([
 
 /** Every capability name actually referenced by a materialized view or its decorations, paired with
  * its real descriptor from the caller-supplied catalog when available. Blueprint itself declares no
- * component catalog (a host's real registry -- e.g. @gik/components' generated one -- is the source
+ * component catalog (a host's real generated registry is the source
  * of truth for propsSchema/dataProp/emits/slots); the closed-world *name* contract, if a Blueprint
  * wants one, is `presentation.allowedCapabilities`.
  *
