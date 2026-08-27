@@ -12,7 +12,8 @@ jobs:
   dispatch:
     if: >-
       github.event.label.name == 'agent-ready' &&
-      contains(github.event.issue.labels.*.name, 'agent-route:cloud')
+      contains(github.event.issue.labels.*.name, 'agent-route:cloud') &&
+      !contains(github.event.issue.labels.*.name, 'agent-route:local')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

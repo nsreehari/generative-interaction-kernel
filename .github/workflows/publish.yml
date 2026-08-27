@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 30
     outputs:
       channel: ${{ steps.release.outputs.channel }}
+      commit: ${{ steps.release.outputs.commit }}
     steps:
       - name: Checkout release commit
         uses: actions/checkout@v5
@@ -46,6 +47,7 @@ jobs:
           fi
           git fetch origin master
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -84,8 +86,20 @@ jobs:
       - name: Checkout release commit
         uses: actions/checkout@v5
         with:
+          ref: ${{ needs.validate.outputs.commit }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Reverify release ref
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ needs.validate.outputs.commit }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG" master
+          test "$(git rev-list -n 1 "$TAG")" = "$EXPECTED_SHA"
+          test "$(git rev-parse origin/master)" = "$EXPECTED_SHA"
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -97,10 +111,18 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Publish unpublished package versions
+      - name: Publish with bootstrap token
+        if: vars.NPM_TOKEN_BOOTSTRAP_ENABLED == 'true'
         run: npm run release:publish -- --tag "${{ needs.validate.outputs.channel }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_ACCESS: public
+          NPM_CONFIG_PROVENANCE: true
+
+      - name: Publish with trusted publishing
+        if: vars.NPM_TOKEN_BOOTSTRAP_ENABLED != 'true'
+        run: npm run release:publish -- --tag "${{ needs.validate.outputs.channel }}"
+        env:
           NPM_CONFIG_ACCESS: public
           NPM_CONFIG_PROVENANCE: true
 
@@ -117,5 +139,5 @@ jobs:
             echo "- Release: [$TAG]($RELEASE)"
             echo "- Channel: \`$CHANNEL\`"
             echo "- Policy: \`config/npm-release.json\`"
-            echo "- Authentication: npm trusted publisher, with environment-scoped token fallback for initial package publication"
+            echo "- Bootstrap token enabled: \`${{ vars.NPM_TOKEN_BOOTSTRAP_ENABLED == 'true' }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
