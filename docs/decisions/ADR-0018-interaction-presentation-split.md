@@ -85,7 +85,7 @@ AI-native point) is lost. The compiler is deliberately a replaceable seam a prof
 - Two owned layers (`interaction/src/interaction.ts`, `interaction/src/presentation.ts`) and a
   planner seam (`defaultPresentationPlanner`) that a profile may replace with a richer one.
   <!-- 2026-07-13: these files moved to `packages/profile-genui/src/{interaction,presentation}.ts`
-  when the `interaction/` tree was split into `@gik/profile` + `@gik/profile-genui`. -->
+  when the `interaction/` tree was split into `@gik-ai/profile` + `@gik-ai/profile-genui`. -->
 - The interaction taxonomy is the platform's public vocabulary; the UI DSL stays internal.
 - The presentation compiler is the investment centre ("the moat" from ADR-0017); the reference
   compiler is intentionally simple to keep the seam concrete and testable.

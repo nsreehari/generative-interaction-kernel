@@ -1,7 +1,7 @@
 import {
   createBrowserIndexedDbConnector,
   type IndexedDbStorageOptions,
-} from "@gik/durable-runtime/connectors/browser-indexed-db";
+} from "@gik-ai/durable-runtime/connectors/browser-indexed-db";
 import { createBlueprintExecution, type BlueprintExecution, type BlueprintExecutionOptions } from "../worker";
 
 export function createIndexedDbBlueprintExecution(

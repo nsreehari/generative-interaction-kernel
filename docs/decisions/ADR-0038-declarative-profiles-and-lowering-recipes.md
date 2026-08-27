@@ -104,10 +104,10 @@ reviewed, diffed, and stored independently of handwritten TypeScript.
 ## Consequences
 
 - `PresentationBinding` is migration residue and should be removed.
-- The generic profile machinery (`@gik/profile`) gains explicit profile and recipe contracts,
+- The generic profile machinery (`@gik-ai/profile`) gains explicit profile and recipe contracts,
   validators/lints, GenUI interpreters, and template-driven authoring/runtime helpers. (2026-07-13:
   this superseded the former single `interaction/` source tree; later cleanup folded the GenUI
-  executable semantics into `@gik/profile` and left declarative assets under `profile/profile-templates/*`.)
+  executable semantics into `@gik-ai/profile` and left declarative assets under `profile/profile-templates/*`.)
 - The workbench pivots to a profile-first model.
 - Existing ADRs that described profile translation in terms of `binding` need refinement, not
   reversal.
@@ -118,7 +118,7 @@ reviewed, diffed, and stored independently of handwritten TypeScript.
 ADR-0046 fixes the execution invariant for these recipes: an authored Blueprint and immutable
 external context deterministically produce one terminal Blueprint. Context carries pinned profile,
 policy, capability, locale, and strategy decisions; mutable runtime state is not a recipe input.
-Recipe scheduling remains declarative lowering inside `@gik/blueprint`, not host-specific logic.
+Recipe scheduling remains declarative lowering inside `@gik-ai/blueprint`, not host-specific logic.
 
 ## Amendment (2026-07-29): one vocabulary-driven compiler meta-graph
 
@@ -272,7 +272,7 @@ explicitly since `before`/`after` visibility is independent and sibling-scoped b
 component implementation** - the mechanism produces an ordinary nested `DocNode`, and both the
 Kernel's already-generic child-walking and the wrapper component's existing `{children}` consumption
 already handle it. That is the entire reason this stayed a small,
-`@gik/blueprint`-internal compiler/schema/type change.
+`@gik-ai/blueprint`-internal compiler/schema/type change.
 
 ## Amendment (2026-08-24): one recipe vocabulary becomes two axis-specific dialects
 

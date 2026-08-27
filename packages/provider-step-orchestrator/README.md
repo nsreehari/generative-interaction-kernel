@@ -1,14 +1,14 @@
-# @gik/provider-step-orchestrator
+# @gik-ai/provider-step-orchestrator
 
 Step/flow `Orchestrator` provider for the **Generative Interaction Kernel**. Registers named flows and
 drives multi-step effects through the kernel dispatch seam.
 
 ```bash
-npm install @gik/provider-step-orchestrator
+npm install @gik-ai/provider-step-orchestrator
 ```
 
 ```ts
-import { StepOrchestrator, type FlowRegistry } from "@gik/provider-step-orchestrator";
+import { StepOrchestrator, type FlowRegistry } from "@gik-ai/provider-step-orchestrator";
 
 // A FlowRegistry is a map of flow name -> registration.
 const registry: FlowRegistry = {

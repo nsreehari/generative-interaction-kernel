@@ -1,4 +1,4 @@
-# @gik/durable-runtime
+# @gik-ai/durable-runtime
 
 ## 0.8.1-next.0
 

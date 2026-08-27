@@ -1,5 +1,5 @@
 {
-  "name": "@gik/controlface",
+  "name": "@gik-ai/controlface",
   "version": "0.1.5-next.0",
   "description": "Control-plane projection surface (full capability catalog) for the Generative Interaction Kernel.",
   "license": "MIT",
@@ -49,9 +49,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@gik/blueprint": "0.2.1-next.0",
-    "@gik/evaluators": "0.1.2-next.0",
-    "@gik/kernel": "0.1.2-next.0"
+    "@gik-ai/blueprint": "0.2.1-next.0",
+    "@gik-ai/evaluators": "0.1.2-next.0",
+    "@gik-ai/kernel": "0.1.2-next.0"
   },
   "scripts": {
     "build": "tsup src/index.ts src/blueprint.ts src/services.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",

@@ -35,7 +35,7 @@
     "test:mcp": "vitest run --project mcp",
     "test:vitest": "vitest run",
     "build:public-packages": "turbo run build",
-    "build:package:kernel": "npm run build --workspace=@gik/kernel",
+    "build:package:kernel": "npm run build --workspace=@gik-ai/kernel",
     "pack:durable-runtime": "node scripts/pack-durable-runtime.mjs",
     "typecheck": "tsc -p kernel/tsconfig.json --noEmit && tsc -p packages/durable-runtime/tsconfig.json --noEmit && tsc -p packages/evaluators/tsconfig.json --noEmit && tsc -p adapters/react/tsconfig.json --noEmit && tsc -p packages/blueprint/tsconfig.json --noEmit && tsc -p face/tsconfig.json --noEmit && tsc -p packages/agent-lifecycle-exp/tsconfig.json --noEmit && tsc -p packages/blueprint-agent-host/tsconfig.json --noEmit && tsc -p transports/http-sse/tsconfig.json --noEmit && tsc -p transports/mcp-http/tsconfig.json --noEmit && tsc -p providers/tsconfig.json --noEmit",
     "test": "npm run conformance && npm run typecheck && npm run test:jsonata && npm run test:vitest",

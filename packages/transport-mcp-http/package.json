@@ -1,5 +1,5 @@
 {
-  "name": "@gik/transport-mcp-http",
+  "name": "@gik-ai/transport-mcp-http",
   "private": true,
   "version": "0.1.0",
   "description": "Model Context Protocol (MCP) over HTTP transport for GIK projections.",

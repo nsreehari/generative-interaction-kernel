@@ -1,4 +1,4 @@
-# @gik/provider-blueprint-authoring
+# @gik-ai/provider-blueprint-authoring
 
 Blueprint-authoring provider engine for the **Generative Interaction Kernel**. Builds an authoring
 registry and summarizes canonical blueprints for authoring workflows.
@@ -8,7 +8,7 @@ registry and summarizes canonical blueprints for authoring workflows.
 It does not emit the removed combined `tiers` or `recipes` fields.
 
 ```bash
-npm install @gik/provider-blueprint-authoring
+npm install @gik-ai/provider-blueprint-authoring
 ```
 
 ```ts
@@ -16,7 +16,7 @@ import {
   blueprintAuthoringFlow,
   createBlueprintAuthoringRegistry,
   summarizeBlueprint,
-} from "@gik/provider-blueprint-authoring";
+} from "@gik-ai/provider-blueprint-authoring";
 ```
 
 ## Documentation

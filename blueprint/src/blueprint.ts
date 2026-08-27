@@ -1,5 +1,5 @@
-import { lowerToProgram, type ExecutableProgramDefinition, type ProgramMessageFor } from "@gik/kernel";
-import { runDeclarativeValidators } from "@gik/evaluators";
+import { lowerToProgram, type ExecutableProgramDefinition, type ProgramMessageFor } from "@gik-ai/kernel";
+import { runDeclarativeValidators } from "@gik-ai/evaluators";
 import { analyzeCellComposition } from "./cells";
 import {
   collectProjectionCapabilityUses,

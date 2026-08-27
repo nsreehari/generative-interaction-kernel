@@ -1,6 +1,6 @@
 import {
   type BlueprintHostRegistry,
-} from "@gik/blueprint";
+} from "@gik-ai/blueprint";
 import type { BundleNative } from "./bundle";
 import React from "react";
 
@@ -12,7 +12,7 @@ export {
   readHostedBlueprintDeclaration,
   resolveHostedBlueprint,
   resolveHostedBlueprintArtifact,
-} from "@gik/blueprint";
+} from "@gik-ai/blueprint";
 
 export type ReactBlueprintHostRegistry = BlueprintHostRegistry<BundleNative>;
 

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import "fake-indexeddb/auto";
 import { test } from "vitest";
-import { createBlueprint } from "@gik/blueprint";
-import { createIndexedDbStorage } from "@gik/durable-runtime/storage/indexed-db";
+import { createBlueprint } from "@gik-ai/blueprint";
+import { createIndexedDbStorage } from "@gik-ai/durable-runtime/storage/indexed-db";
 import { DurableBlueprintController } from "../src/durable-blueprint-controller";
 import { createNativeBlueprintWorker } from "../src/durable-blueprint-worker";
 import type { BundleNative } from "../src/primitives/bundle";

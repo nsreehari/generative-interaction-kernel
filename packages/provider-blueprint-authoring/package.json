@@ -1,5 +1,5 @@
 {
-  "name": "@gik/provider-blueprint-authoring",
+  "name": "@gik-ai/provider-blueprint-authoring",
   "private": true,
   "version": "0.1.0",
   "description": "Blueprint-authoring provider engine for the Generative Interaction Kernel.",

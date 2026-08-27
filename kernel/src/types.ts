@@ -500,7 +500,7 @@ export type ServiceScope = "per-invocation" | "per-cell" | "per-blueprint" | "pe
  * `"warning"` is recorded on the settled result but never blocks. */
 export type GuardrailLevel = "error" | "warning";
 
-/** A single declarative guardrail rule authored as data. Mirrors the `@gik/evaluators` declarative
+/** A single declarative guardrail rule authored as data. Mirrors the `@gik-ai/evaluators` declarative
  * validator shape (the same engine already used for authored-input validation) so a Blueprint
  * author uses one vocabulary for both. `jsonata` evaluates a boolean expression, `ajv-schema`
  * checks shape against a JSON Schema, `typedef` checks the basic JS type, the Blueprint kinds apply

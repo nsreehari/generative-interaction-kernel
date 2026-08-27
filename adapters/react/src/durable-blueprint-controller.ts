@@ -5,14 +5,14 @@ import {
   type DurableBlueprintSpec,
   type ExternalContext,
   type MaterializedBlueprint,
-} from "@gik/blueprint";
-import type { BlueprintWorker } from "@gik/blueprint/worker";
+} from "@gik-ai/blueprint";
+import type { BlueprintWorker } from "@gik-ai/blueprint/worker";
 import {
   createDurableRuntime,
   type DurableProvider,
   type RuntimeSnapshotChanges,
   type TransitionRefs,
-} from "@gik/durable-runtime";
+} from "@gik-ai/durable-runtime";
 import {
   CompositeStateModel,
   InMemoryStateModel,
@@ -21,7 +21,7 @@ import {
   type GIKEvent,
   type Json,
   type ResolvedNode,
-} from "@gik/kernel";
+} from "@gik-ai/kernel";
 import type { BundleContextBindings } from "./primitives/bundle-registry";
 import type { GenUISource } from "./useGenUI";
 

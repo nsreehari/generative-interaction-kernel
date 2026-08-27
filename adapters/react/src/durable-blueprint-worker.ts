@@ -2,8 +2,8 @@ import {
   createDurableBlueprintWorker,
   type BlueprintWorker,
   type QueueNotificationSubscription,
-} from "@gik/blueprint/worker";
-import type { BlueprintArtifact, ExternalContext, MaterializedBlueprint } from "@gik/blueprint";
+} from "@gik-ai/blueprint/worker";
+import type { BlueprintArtifact, ExternalContext, MaterializedBlueprint } from "@gik-ai/blueprint";
 import {
   CompositeStateModel,
   InMemoryStateModel,
@@ -12,7 +12,7 @@ import {
   type Json,
   type OrchestratorEffect,
   type OrchestratorResult,
-} from "@gik/kernel";
+} from "@gik-ai/kernel";
 import type { DurableBlueprintRuntimeOptions } from "./durable-blueprint-controller";
 import type { BundleContextBindings } from "./primitives/bundle-registry";
 import type { BundleNative } from "./primitives/bundle";

@@ -20,9 +20,9 @@ import {
   listExportedPresentationRegions,
   type BlueprintArtifact,
   type ExportedPresentationRegion,
-} from "@gik/blueprint";
-export type { ExportedPresentationRegion } from "@gik/blueprint";
-import type { ResolvedNode } from "@gik/kernel";
+} from "@gik-ai/blueprint";
+export type { ExportedPresentationRegion } from "@gik-ai/blueprint";
+import type { ResolvedNode } from "@gik-ai/kernel";
 import type { ComponentRegistry } from "../registry";
 import { renderNode, type EmitFn } from "../render";
 import { useGenUI, type GenUISource } from "../useGenUI";

@@ -2,7 +2,7 @@
 // init -> resolve -> (on event) dispatch -> re-resolve -> notify.
 // The React binding is a thin layer over this; the loop itself is testable headlessly.
 
-import type { Kernel, Patch, ResolvedNode } from "@gik/kernel";
+import type { Kernel, Patch, ResolvedNode } from "@gik-ai/kernel";
 
 export type TreeListener = (tree: ResolvedNode) => void;
 

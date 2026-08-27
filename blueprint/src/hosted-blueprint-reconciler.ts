@@ -1,4 +1,4 @@
-import type { Json, ResolvedNode } from "@gik/kernel";
+import type { Json, ResolvedNode } from "@gik-ai/kernel";
 import {
   BLUEPRINT_CAPABILITY,
   readBlueprintNodeDeclaration,

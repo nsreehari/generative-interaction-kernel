@@ -33,7 +33,7 @@ the tool package.
 
 ### Publish one neutral lifecycle package
 
-Introduce `@gik/agent-lifecycle-exp` as a new public package. It does not replace agentface or
+Introduce `@gik-ai/agent-lifecycle-exp` as a new public package. It does not replace agentface or
 controlface in place. It establishes a new contract and migration path without importing their
 audience-specific API model.
 
@@ -52,7 +52,7 @@ transport protocols, or agent providers.
 
 ### Publish one Blueprint-specific host package
 
-Introduce `@gik/blueprint-agent-host` as the HBX implementation over the neutral contracts. It owns
+Introduce `@gik-ai/blueprint-agent-host` as the HBX implementation over the neutral contracts. It owns
 Blueprint proposal receipts, lifecycle status transitions, audit history, authorization and
 admission policy composition, authoritative application delegation, rejection, status, idempotency
 coordination, and the durable-runtime receipt binding.
@@ -62,8 +62,8 @@ BlueprintHost. A browser host, backend service, middleware, worker, or another p
 layer imports the package and supplies its authority, identity, policies, and durable provider.
 BlueprintHost may be adapted as an authority but does not import or call HBX itself.
 
-`@gik/blueprint-agent-host` depends on `@gik/agent-lifecycle-exp` and
-`@gik/durable-runtime`. The neutral lifecycle package has no reverse dependency.
+`@gik-ai/blueprint-agent-host` depends on `@gik-ai/agent-lifecycle-exp` and
+`@gik-ai/durable-runtime`. The neutral lifecycle package has no reverse dependency.
 
 ### Use one standard agent lifecycle vocabulary
 
@@ -127,7 +127,7 @@ the authoritative transition.
 
 HBX receipt states are `received`, `authorized`, `admitted`, `applying`, `applied`, `rejected`, and
 `failed`. Receipt transitions and audit history are persisted through a `BlueprintProposalStore`.
-The durable store binding appends receipt events and commits them through `@gik/durable-runtime`.
+The durable store binding appends receipt events and commits them through `@gik-ai/durable-runtime`.
 An authority must make `apply` idempotent by receipt ID because persistence cannot atomically cover
 an arbitrary external side effect and its subsequent applied-status write.
 
@@ -288,7 +288,7 @@ profile family; transports and agent providers are outer adapters.
   required in the new package.
 - Hosts must implement proposal storage, authorization, admission, application, and status where
   those capabilities are exposed.
-- Product composition layers use `@gik/blueprint-agent-host`; Blueprint core and BlueprintHost stay
+- Product composition layers use `@gik-ai/blueprint-agent-host`; Blueprint core and BlueprintHost stay
   independent of agent and durable orchestration.
 - Provider adapters must translate neutral `AgentTool` metadata into their wire format and keep
   provisioned tool definitions synchronized with the generated catalog.
@@ -305,7 +305,7 @@ profile family; transports and agent providers are outer adapters.
 
 `BlueprintDefinition.agentLifecycle` (and the `BlueprintAgentLifecycleDefinition`/
 `BlueprintAgentLifecycleProfile`/`BlueprintAgentLifecycleProfileManifest` types, and the
-`blueprint.schema.json` property that validated them) is removed from `@gik/blueprint`. Evidence
+`blueprint.schema.json` property that validated them) is removed from `@gik-ai/blueprint`. Evidence
 driving this: zero real sample Blueprint ever declared it — not even a Blueprint whose entire
 purpose is exposing an authoring surface to an agent. Its one live reader
 (`createBlueprintAgentLifecycle` in the browser-host sample) only ever built its comparison
@@ -316,12 +316,12 @@ a mismatch in that path — it compared a value to itself. The one place that se
 (the platform's own fixed lowering meta-graph) never had that declaration read by anything, including
 its own tests.
 
-This is a schema-level removal only. `@gik/agent-lifecycle-exp`'s Blueprint-lifecycle-material types
+This is a schema-level removal only. `@gik-ai/agent-lifecycle-exp`'s Blueprint-lifecycle-material types
 (`BlueprintLifecycleMaterialSource`, `BlueprintUseSource`, etc.) and binding functions
 (`defineBlueprintLifecycleProfile`, `requireBlueprintLifecycleMaterial`, `useBlueprint`,
 `customizeBlueprint`, `authorBlueprint`) are untouched and keep working exactly as before: they were
 always defined against their own independent, optional, structurally-typed shape
-(`payload.agentLifecycle?.profiles?...`) rather than importing `@gik/blueprint`'s types, so they
+(`payload.agentLifecycle?.profiles?...`) rather than importing `@gik-ai/blueprint`'s types, so they
 never depended on the field being part of the canonical schema. A host wanting to exercise this
 machinery still supplies an object carrying that material — it simply can no longer be a canonical,
 schema-validated `BlueprintArtifact`.
@@ -360,7 +360,7 @@ applied.
 
 ### Materialization-time lowering vs. live structural and binding decisions
 
-`describeBlueprint` (`@gik/agent-lifecycle-exp`) now surfaces service/projection tier and recipe
+`describeBlueprint` (`@gik-ai/agent-lifecycle-exp`) now surfaces service/projection tier and recipe
 summaries together with `structureMode`/`structurePolicy`, so an agent can discover the target's
 materialization and structural capabilities before proposing a change. Authors must distinguish
 three mechanisms:

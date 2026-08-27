@@ -6,7 +6,7 @@ import type {
   HostedBlueprintDefinition,
   HostedBlueprintResolutionContext,
 } from "./types";
-import type { Json } from "@gik/kernel";
+import type { Json } from "@gik-ai/kernel";
 
 export const BLUEPRINT_CAPABILITY = "gik:blueprint";
 export const PRESENTATION_FRAGMENT_CAPABILITY = "gik:presentation-fragment";

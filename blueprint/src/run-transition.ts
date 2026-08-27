@@ -19,14 +19,14 @@ import {
   initialSourceRunState,
   type GraphNodeExecutor,
   type BlueprintRunState,
-} from "@gik/kernel";
+} from "@gik-ai/kernel";
 import {
   evaluateCell,
   resolveDeclarativeFormInitialValue,
   validateDeclarativeFormValues,
   type CellSourceEffect,
   type EvaluatorCellDefinition,
-} from "@gik/evaluators";
+} from "@gik-ai/evaluators";
 import { assembleBlueprint } from "./blueprint";
 import { compileCellTopology } from "./cells";
 import { composeCellProgram, deriveCellEventOwners } from "./cell-projection";
