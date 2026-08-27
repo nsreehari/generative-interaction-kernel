@@ -69,11 +69,9 @@ Configure each existing npm package to trust:
 - Workflow: `publish.yml`
 - Environment: `npm-publish`
 
-Trusted publishing uses short-lived GitHub OIDC credentials. Initial publication of a new package name requires an environment-scoped
-granular npm token named `NPM_TOKEN`. Once a package exists, configure its
-trusted publisher before removing the token fallback. Provenance remains
-enabled for token-authenticated publication when the source repository is
-public.
+Publication uses short-lived GitHub OIDC credentials. Every stable package must
+have the trusted publisher above configured before its first release through
+this workflow. No npm token is used or accepted as a fallback.
 
 Production provenance requires the source repository to be public. Do not
 publish the first production release while GIK remains private.
