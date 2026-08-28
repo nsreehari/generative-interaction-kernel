@@ -37,12 +37,12 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@gik-ai/evaluators": "0.1.2-next.0",
-    "@gik-ai/kernel": "0.1.2-next.0",
-    "@gik-ai/react": "0.3.1-next.0",
-    "@gik-ai/agentface": "0.1.2-next.0",
-    "@gik-ai/controlface": "0.1.5-next.0",
-    "@gik-ai/transport-http-sse": "0.1.1-next.0",
+    "@gik-ai/evaluators": "0.1.2-next.1",
+    "@gik-ai/kernel": "0.1.2-next.1",
+    "@gik-ai/react": "0.3.1-next.1",
+    "@gik-ai/agentface": "0.1.2-next.1",
+    "@gik-ai/controlface": "0.1.5-next.1",
+    "@gik-ai/transport-http-sse": "0.1.1-next.1",
     "@gik-ai/transport-mcp-http": "0.1.0"
   },
   "peerDependencies": {

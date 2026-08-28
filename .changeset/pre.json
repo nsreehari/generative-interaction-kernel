@@ -18,6 +18,8 @@
     "@gik-ai/transport-mcp-http": "0.1.0"
   },
   "changesets": [
-    "clean-public-package-docs"
+    "clean-public-package-docs",
+    "extract-samples-and-components",
+    "republish-package-build-output"
   ]
 }
