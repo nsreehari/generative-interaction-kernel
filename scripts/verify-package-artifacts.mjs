@@ -51,6 +51,7 @@ export function verifyPackageArtifacts(root, listPackedFiles = packedFiles) {
   const release = JSON.parse(readFileSync(join(root, "config", "npm-release.json"), "utf8"));
   const stable = new Set(release.stable);
   const errors = [];
+  const inspected = new Set();
   const verified = [];
 
   for (const workspacePath of workspace.workspaces) {
@@ -61,6 +62,7 @@ export function verifyPackageArtifacts(root, listPackedFiles = packedFiles) {
       continue;
     }
     if (!stable.has(manifest.name)) continue;
+    inspected.add(manifest.name);
 
     const entries = declaredEntryPoints(manifest);
     if (entries.length === 0) {
@@ -76,10 +78,8 @@ export function verifyPackageArtifacts(root, listPackedFiles = packedFiles) {
     verified.push({ name: manifest.name, entries: entries.length });
   }
 
-  if (stable.size !== verified.length && errors.length === 0) {
-    errors.push(
-      `Expected ${stable.size} stable packages, verified ${verified.length}`,
-    );
+  for (const name of stable) {
+    if (!inspected.has(name)) errors.push(`${name} has no workspace to verify`);
   }
   return { errors, verified };
 }
