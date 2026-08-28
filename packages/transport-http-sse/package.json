@@ -1,6 +1,6 @@
 {
   "name": "@gik-ai/transport-http-sse",
-  "version": "0.1.1-next.0",
+  "version": "0.1.1-next.1",
   "description": "HTTP + Server-Sent Events transport for GIK projections.",
   "license": "MIT",
   "author": "nsreehari",
@@ -53,7 +53,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@gik-ai/kernel": "0.1.2-next.0"
+    "@gik-ai/kernel": "0.1.2-next.1"
   },
   "scripts": {
     "build": "tsup src/index.ts src/client.ts src/codec.ts src/server.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
