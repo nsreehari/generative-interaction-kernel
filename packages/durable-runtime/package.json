@@ -1,6 +1,6 @@
 {
   "name": "@gik-ai/durable-runtime",
-  "version": "0.8.1-next.0",
+  "version": "0.8.1-next.1",
   "description": "Provider-neutral durable runtime, queue processing, connectors, and storage backends for GIK.",
   "license": "MIT",
   "author": "nsreehari",

@@ -33,6 +33,7 @@
     "test:providers": "vitest run --project providers",
     "test:sse": "vitest run --project sse",
     "test:mcp": "vitest run --project mcp",
+    "test:release": "vitest run --project release",
     "test:vitest": "vitest run",
     "build:public-packages": "turbo run build",
     "build:package:kernel": "npm run build --workspace=@gik-ai/kernel",
@@ -43,6 +44,7 @@
     "release:gate": "npm run sync:package-licenses && npm run build:public-packages && npm run test",
     "release:validate": "node scripts/validate-npm-release.mjs",
     "release:inspect": "node scripts/inspect-npm-packages.mjs",
+    "release:verify-artifacts": "node scripts/verify-package-artifacts.mjs",
     "release:version": "changeset version && node scripts/sync-workspace-dependencies.mjs",
     "release:publish": "changeset publish",
     "changeset": "changeset"

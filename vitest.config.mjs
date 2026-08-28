@@ -16,6 +16,13 @@ export default defineConfig({
       },
       {
         test: {
+          name: "release",
+          environment: "node",
+          include: ["scripts/test/**/*.test.ts"],
+        },
+      },
+      {
+        test: {
           name: "kernel",
           environment: "node",
           include: ["kernel/test/**/*.test.ts"],
