@@ -11,7 +11,9 @@ import { fileURLToPath } from "node:url";
 // @ts-expect-error - plain ESM release script without type declarations.
 import {
   declaredEntryPoints,
+  resolveEntryPoints,
   verifyPackageArtifacts,
+  workspaceFiles,
 } from "../verify-package-artifacts.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
@@ -24,7 +26,8 @@ function packedEntryPoints(workspacePath: string): string[] {
   const manifest = JSON.parse(
     readFileSync(new URL(`../../${workspacePath}/package.json`, import.meta.url), "utf8"),
   );
-  return ["package.json", ...declaredEntryPoints(manifest)];
+  const { targets } = resolveEntryPoints(manifest, workspaceFiles(workspacePath, root));
+  return ["package.json", ...targets];
 }
 
 test("declared entry points cover exports, main, types, and bin targets", () => {
@@ -49,19 +52,75 @@ test("declared entry points cover exports, main, types, and bin targets", () => 
   ]);
 });
 
-test("wildcard and parent-relative export targets are not verifiable entry points", () => {
-  const entries = declaredEntryPoints({
-    exports: { "./*": "./dist/*.js", "./shared": "../shared/index.js" },
-  });
+test("parent-relative export targets are not verifiable entry points", () => {
+  const entries = declaredEntryPoints({ exports: { "./shared": "../shared/index.js" } });
 
   assert.deepEqual(entries, []);
 });
 
+test("wildcard export targets expand to every matching workspace file", () => {
+  const { targets, errors } = resolveEntryPoints(
+    { main: "./dist/index.js", exports: { "./schemas/*": "./schemas/*" } },
+    ["dist/index.js", "schemas/cell.schema.json", "schemas/tier.schema.json", "src/index.ts"],
+  );
+
+  assert.deepEqual(errors, []);
+  assert.deepEqual(targets.sort(), [
+    "dist/index.js",
+    "schemas/cell.schema.json",
+    "schemas/tier.schema.json",
+  ]);
+});
+
+test("a wildcard export matching no workspace file fails closed", () => {
+  const { targets, errors } = resolveEntryPoints(
+    { exports: { "./schemas/*": "./schemas/*" } },
+    ["dist/index.js"],
+  );
+
+  assert.deepEqual(targets, []);
+  assert.deepEqual(errors, ["export pattern 'schemas/*' matches no workspace file"]);
+});
+
+test("@gik-ai/evaluators resolves its published schema files through its wildcard export", () => {
+  const manifest = JSON.parse(
+    readFileSync(new URL("../../packages/evaluators/package.json", import.meta.url), "utf8"),
+  );
+  const { targets, errors } = resolveEntryPoints(
+    manifest,
+    workspaceFiles("packages/evaluators", root),
+  );
+
+  assert.deepEqual(errors, []);
+  assert.ok(targets.includes("schemas/cell.schema.json"));
+  assert.ok(targets.filter((target: string) => target.startsWith("schemas/")).length > 1);
+});
+
+test("verification fails closed when a wildcard-exported file is omitted from the tarball", () => {
+  const { errors } = verifyPackageArtifacts(
+    root,
+    (workspacePath: string) =>
+      workspacePath === "packages/evaluators"
+        ? packedEntryPoints(workspacePath).filter(
+            (file) => file !== "schemas/cell.schema.json",
+          )
+        : packedEntryPoints(workspacePath),
+    workspaceFiles,
+  );
+
+  assert.deepEqual(errors, [
+    "@gik-ai/evaluators package would omit declared entry point 'schemas/cell.schema.json'",
+  ]);
+});
+
 test("verification fails closed when a packed package omits declared build output", () => {
-  const { errors } = verifyPackageArtifacts(root, (workspacePath: string) =>
-    workspacePath === "packages/blueprint"
-      ? ["package.json", "README.md"]
-      : packedEntryPoints(workspacePath),
+  const { errors } = verifyPackageArtifacts(
+    root,
+    (workspacePath: string) =>
+      workspacePath === "packages/blueprint"
+        ? ["package.json", "README.md"]
+        : packedEntryPoints(workspacePath),
+    workspaceFiles,
   );
 
   assert.ok(errors.length > 0);
@@ -73,7 +132,7 @@ test("verification fails closed when a packed package omits declared build outpu
 });
 
 test("verification covers every stable package and passes when entry points are packed", () => {
-  const { errors, verified } = verifyPackageArtifacts(root, packedEntryPoints);
+  const { errors, verified } = verifyPackageArtifacts(root, packedEntryPoints, workspaceFiles);
   const stable = JSON.parse(
     readFileSync(new URL("../../config/npm-release.json", import.meta.url), "utf8"),
   ).stable as string[];

@@ -1,7 +1,9 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+const ignoredDirectories = new Set(["node_modules", ".git", ".turbo"]);
 
 const entryFields = ["main", "module", "types", "typings", "browser"];
 
@@ -27,9 +29,58 @@ export function declaredEntryPoints(manifest) {
   }
   collectExportTargets(manifest.exports, targets);
   return [...targets]
-    .filter((target) => !target.startsWith("../") && !target.includes("*"))
+    .filter((target) => !target.startsWith("../"))
     .map((target) => target.replace(/^\.\//, ""))
     .filter((target) => target.length > 0);
+}
+
+function wildcardPattern(target) {
+  const source = target
+    .split("*")
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("(.*)");
+  return new RegExp(`^${source}$`);
+}
+
+// Subpath patterns such as './schemas/*' export whatever the workspace holds, so
+// they are resolved against the workspace tree rather than the packed tarball.
+// Resolving them against the tarball would let an omitted file silently pass.
+export function resolveEntryPoints(manifest, workspaceFileList) {
+  const targets = new Set();
+  const errors = [];
+
+  for (const target of declaredEntryPoints(manifest)) {
+    if (!target.includes("*")) {
+      targets.add(target);
+      continue;
+    }
+    const pattern = wildcardPattern(target);
+    const matches = workspaceFileList.filter((file) => pattern.test(file));
+    if (matches.length === 0) {
+      errors.push(`export pattern '${target}' matches no workspace file`);
+      continue;
+    }
+    for (const match of matches) targets.add(match);
+  }
+
+  return { targets: [...targets], errors };
+}
+
+export function workspaceFiles(workspacePath, root) {
+  const base = join(root, workspacePath);
+  const files = [];
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (ignoredDirectories.has(entry.name)) continue;
+        walk(join(directory, entry.name));
+      } else if (entry.isFile()) {
+        files.push(relative(base, join(directory, entry.name)).split(sep).join("/"));
+      }
+    }
+  };
+  walk(base);
+  return files;
 }
 
 export function packedFiles(workspacePath, root) {
@@ -46,7 +97,11 @@ export function packedFiles(workspacePath, root) {
   return (packed?.files ?? []).map((file) => file.path);
 }
 
-export function verifyPackageArtifacts(root, listPackedFiles = packedFiles) {
+export function verifyPackageArtifacts(
+  root,
+  listPackedFiles = packedFiles,
+  listWorkspaceFiles = workspaceFiles,
+) {
   const workspace = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const release = JSON.parse(readFileSync(join(root, "config", "npm-release.json"), "utf8"));
   const stable = new Set(release.stable);
@@ -64,18 +119,22 @@ export function verifyPackageArtifacts(root, listPackedFiles = packedFiles) {
     if (!stable.has(manifest.name)) continue;
     inspected.add(manifest.name);
 
-    const entries = declaredEntryPoints(manifest);
-    if (entries.length === 0) {
+    const { targets, errors: resolutionErrors } = resolveEntryPoints(
+      manifest,
+      listWorkspaceFiles(workspacePath, root),
+    );
+    for (const error of resolutionErrors) errors.push(`${manifest.name} ${error}`);
+    if (targets.length === 0) {
       errors.push(`${manifest.name} declares no entry points`);
       continue;
     }
     const files = new Set(listPackedFiles(workspacePath, root));
-    for (const entry of entries) {
+    for (const entry of targets) {
       if (!files.has(entry)) {
         errors.push(`${manifest.name} package would omit declared entry point '${entry}'`);
       }
     }
-    verified.push({ name: manifest.name, entries: entries.length });
+    verified.push({ name: manifest.name, entries: targets.length });
   }
 
   for (const name of stable) {

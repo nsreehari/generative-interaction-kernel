@@ -55,7 +55,9 @@ The stable workflow rejects prerelease package versions and publishes with the
 
 The workflow rebuilds and tests the complete repository, validates the explicit
 package policy, verifies that every packed tarball contains the entry points its
-manifest declares, and inspects every npm tarball. The publication job repeats
+manifest declares, and inspects every npm tarball. Wildcard subpath exports such
+as `./schemas/*` are expanded against the workspace tree, so every file they
+expose must also be packed. The publication job repeats
 the build, artifact verification, and tarball inspection on the verified release
 commit before Changesets publishes only versions that do not already exist.
 
