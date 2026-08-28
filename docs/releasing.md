@@ -54,8 +54,12 @@ The stable workflow rejects prerelease package versions and publishes with the
 `latest` npm dist-tag.
 
 The workflow rebuilds and tests the complete repository, validates the explicit
-package policy, inspects every npm tarball, and then uses Changesets to publish
-only versions that do not already exist.
+package policy, verifies that every packed tarball contains the entry points its
+manifest declares, and inspects every npm tarball. Wildcard subpath exports such
+as `./schemas/*` are expanded against the workspace tree, so every file they
+expose must also be packed. The publication job repeats
+the build, artifact verification, and tarball inspection on the verified release
+commit before Changesets publishes only versions that do not already exist.
 
 Package inspection uses npm's publication dry run and is deliberately guarded
 to GitHub Actions. Do not run npm publication or registry-inspection commands
@@ -83,6 +87,9 @@ publish the first production release while GIK remains private.
   npm dist-tag must identify the same channel.
 - A release tag must point to the current `master` commit.
 - Only one publication runs at a time.
+- Publication fails closed when a package would ship without a declared entry
+  point, because the publishing job builds and verifies the release commit it
+  publishes.
 - The full release gate and package dry run complete before environment
   approval.
 - Publication never runs for a manually dispatched workflow; manual dispatch
