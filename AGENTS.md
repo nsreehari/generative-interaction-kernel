@@ -31,6 +31,10 @@ These instructions apply to every coding agent working in this repository.
 - Do not modify dependencies, lockfiles, package versions, release workflows,
   or deployment workflows unless the issue explicitly requires it.
 - Do not include unrelated cleanup or refactoring.
+- Native Blueprint service declarations own concrete non-secret kind
+  configuration, including endpoints and opaque `credentialRef` values.
+  Service kinds own config schemas; hosts own literal secrets, endpoint
+  authorization, and execution authority.
 - Never read, print, copy, or commit credentials or local environment files.
 
 ## Validation

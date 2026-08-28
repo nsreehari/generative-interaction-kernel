@@ -492,8 +492,9 @@ export interface ProjectionViewImport {
   use?: string[]; // optional whitelist of capability names borrowed under this alias
 }
 
-/** A logical external-service contract required by an authored artifact. Physical providers,
- * endpoints, credentials, queues, and executor bindings are host-owned and never appear here. */
+/** Reuse scope for a Blueprint-owned service declaration. The declaration may identify a concrete
+ * provider kind and carry non-secret configuration such as endpoints and credential references;
+ * literal secrets, execution authority, queues, and executor bindings remain host-owned. */
 export type ServiceScope = "per-invocation" | "per-cell" | "per-blueprint" | "per-session";
 
 /** Severity of a single guardrail rule: `"error"` blocks settlement and triggers `onViolation`;
@@ -608,7 +609,8 @@ export interface NativeServiceDeclaration extends ServiceDeclarationBase {
   /** Host-registered executable kind, for example `copilot-agent` or `foundry-agent`. */
   kind: string;
   blueprint?: never;
-  /** Kind-specific, schema-validated configuration. Literal credentials are forbidden. */
+  /** Blueprint-owned, kind-specific configuration validated by the registered service kind.
+   * Endpoints and opaque credential references are permitted; literal credentials are forbidden. */
   config?: Json;
 }
 
@@ -644,7 +646,7 @@ export interface ExternalsSpec {
   projectionViews?: Record<string, ProjectionViewImport>;
   /** Names of effect handlers the host must supply for this bundle's `invoke` actions. */
   effectHandlers?: string[];
-  /** Logical service requirements resolved to provider adapters by the outer host. */
+  /** Blueprint-owned service declarations resolved to trusted provider adapters by the outer host. */
   services?: Record<string, ServiceDeclaration>;
 }
 

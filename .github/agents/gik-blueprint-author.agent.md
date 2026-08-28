@@ -224,7 +224,8 @@ Do not:
 - create Cells for wrappers, dialogs, forms, tabs, panels, or layout;
 - use recipes on either axis to add, remove, replace, merge, split, or route around Cells;
 - add or remove presentation slots during lowering;
-- embed credentials, endpoints, or physical provider authority;
+- omit concrete non-secret service configuration from a native service
+  declaration, or embed literal credentials or host execution authority;
 - use mutable runtime state as materialization context;
 - introduce Blueprint-specific TypeScript product logic or product tests;
 - exploit permissive schemas to bypass the accepted architecture;
