@@ -69,6 +69,9 @@ jobs:
       - name: Run complete release gate
         run: npm run release:gate
 
+      - name: Verify packaged build output
+        run: npm run release:verify-artifacts
+
       - name: Inspect package contents
         run: npm run release:inspect
 
@@ -110,6 +113,15 @@ jobs:
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Build publishable packages
+        run: npm run build:public-packages
+
+      - name: Verify packaged build output
+        run: npm run release:verify-artifacts
+
+      - name: Inspect package contents
+        run: npm run release:inspect
 
       - name: Publish with trusted publishing
         run: npm run release:publish
