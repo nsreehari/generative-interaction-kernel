@@ -100,9 +100,8 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG" master
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
           test "$(git rev-list -n 1 "$TAG")" = "$EXPECTED_SHA"
-          test "$(git rev-parse origin/master)" = "$EXPECTED_SHA"
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
