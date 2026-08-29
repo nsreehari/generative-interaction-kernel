@@ -1,7 +1,7 @@
 {
   "name": "@gik-ai/provider-step-orchestrator",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Step-orchestrator provider engine for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",

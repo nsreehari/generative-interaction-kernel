@@ -44,8 +44,8 @@
     "prepack": "node ../../scripts/sync-package-license.mjs packages/blueprint-agent-host"
   },
   "dependencies": {
-    "@gik-ai/agent-lifecycle-exp": "0.1.0",
-    "@gik-ai/durable-runtime": "0.8.1-next.1",
-    "@gik-ai/evaluators": "0.1.2-next.1"
+    "@gik-ai/agent-lifecycle-exp": "0.1.1",
+    "@gik-ai/durable-runtime": "0.8.1",
+    "@gik-ai/evaluators": "0.1.2"
   }
 }
