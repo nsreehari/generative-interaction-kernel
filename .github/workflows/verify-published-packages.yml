@@ -1,0 +1,36 @@
+name: Verify published packages
+
+# Clean external-consumer gate: installs the stable @gik-ai packages at the exact
+# workspace versions from the public npm registry on GitHub-hosted infrastructure
+# and proves an external consumer can install, typecheck, import, and run them.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-published-packages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  consume:
+    name: Consume published packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+
+      - name: Verify published packages as an external consumer
+        run: npm run release:verify-published

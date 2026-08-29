@@ -45,6 +45,7 @@
     "release:validate": "node scripts/validate-npm-release.mjs",
     "release:inspect": "node scripts/inspect-npm-packages.mjs",
     "release:verify-artifacts": "node scripts/verify-package-artifacts.mjs",
+    "release:verify-published": "node scripts/verify-published-packages.mjs",
     "release:version": "changeset version && node scripts/sync-workspace-dependencies.mjs",
     "release:publish": "changeset publish",
     "changeset": "changeset"
