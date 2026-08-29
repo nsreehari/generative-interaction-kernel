@@ -180,6 +180,68 @@ function run(command, args, cwd) {
   }
 }
 
+// `npm audit signatures` verifies every installed package against the registry
+// signing keys and Sigstore, so it is the authoritative provenance check for the
+// whole dependency graph. It needs no credentials and never mutates the project.
+export function auditSignatures(project) {
+  const result = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", [
+    "audit",
+    "signatures",
+    "--json",
+    "--include-attestations",
+    "--registry",
+    publicRegistry,
+  ], { cwd: project, encoding: "utf8" });
+  if (result.error) throw result.error;
+  let report;
+  try {
+    report = JSON.parse(result.stdout);
+  } catch {
+    throw new Error(
+      `npm audit signatures produced no verifiable report:\n${result.stdout}\n${result.stderr}`,
+    );
+  }
+  if (report?.error) {
+    throw new Error(`npm audit signatures failed: ${report.error.summary ?? report.error.code}`);
+  }
+  return report;
+}
+
+export const provenancePredicateType = "https://slsa.dev/provenance/v1";
+
+// Every stable package is published with npm trusted publishing, so a package
+// without a verified provenance attestation is a release integrity failure even
+// when its registry signature is valid.
+export function verifyProvenance(report, packages) {
+  const errors = [];
+
+  for (const entry of report?.invalid ?? []) {
+    errors.push(`${entry.name}@${entry.version} has an invalid signature or attestation`);
+  }
+  for (const entry of report?.missing ?? []) {
+    errors.push(`${entry.name}@${entry.version} has a missing registry signature`);
+  }
+
+  const verified = new Map(
+    (report?.verified ?? []).map((entry) => [`${entry.name}@${entry.version}`, entry]),
+  );
+  for (const { name, version } of packages) {
+    const entry = verified.get(`${name}@${version}`);
+    if (!entry) {
+      errors.push(`${name}@${version} has no verified attestation`);
+      continue;
+    }
+    if (entry.attestations?.provenance?.predicateType !== provenancePredicateType) {
+      errors.push(
+        `${name}@${version} attestation predicate ` +
+          `'${entry.attestations?.provenance?.predicateType}' is not ${provenancePredicateType}`,
+      );
+    }
+  }
+
+  return errors;
+}
+
 export function verifyPublishedPackages(root) {
   const workspace = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const packages = expectedPackages(root);
@@ -250,6 +312,8 @@ export function verifyPublishedPackages(root) {
     subpaths.push(...importSubpaths(installed));
   }
 
+  errors.push(...verifyProvenance(auditSignatures(project), packages));
+
   if (errors.length) {
     throw new Error(`Published packages failed consumer verification:\n- ${errors.join("\n- ")}`);
   }
@@ -269,6 +333,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const { packages, subpaths } = verifyPublishedPackages(root);
   console.log(
     `Verified ${packages.length} published packages from ${publicRegistry} ` +
-      `(${subpaths.length} entry points) as an external consumer.`,
+      `(${subpaths.length} entry points, signatures and provenance attestations) ` +
+      "as an external consumer.",
   );
 }

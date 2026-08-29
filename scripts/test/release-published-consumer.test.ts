@@ -14,10 +14,12 @@ import {
   consumerPeerDependencies,
   expectedPackages,
   importSubpaths,
+  provenancePredicateType,
   publicRegistry,
   runtimeConsumerSource,
   typescriptConsumerSource,
   verifyInstalledPackage,
+  verifyProvenance,
 } from "../verify-published-packages.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
@@ -184,10 +186,98 @@ test("the generated consumer sources exercise every published subpath", () => {
   assert.ok(runtime.includes("createInMemoryTransportPair"), "runtime behaviour must be exercised");
 });
 
+const attested = (name: string, version: string) => ({
+  name,
+  version,
+  attestations: { provenance: { predicateType: provenancePredicateType } },
+});
+
+test("verified signatures and provenance attestations pass the gate", () => {
+  const errors = verifyProvenance(
+    {
+      invalid: [],
+      missing: [],
+      verified: [attested("@gik-ai/kernel", "0.1.2-next.1"), attested("other", "1.0.0")],
+    },
+    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+  );
+
+  assert.deepEqual(errors, []);
+});
+
+test("an invalid signature or attestation anywhere in the graph fails the gate", () => {
+  const errors = verifyProvenance(
+    {
+      invalid: [{ name: "transitive", version: "2.0.0", code: "EINTEGRITYSIGNATURE" }],
+      missing: [],
+      verified: [attested("@gik-ai/kernel", "0.1.2-next.1")],
+    },
+    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+  );
+
+  assert.deepEqual(errors, [
+    "transitive@2.0.0 has an invalid signature or attestation",
+  ]);
+});
+
+test("a missing registry signature anywhere in the graph fails the gate", () => {
+  const errors = verifyProvenance(
+    {
+      invalid: [],
+      missing: [{ name: "transitive", version: "2.0.0" }],
+      verified: [attested("@gik-ai/kernel", "0.1.2-next.1")],
+    },
+    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+  );
+
+  assert.deepEqual(errors, ["transitive@2.0.0 has a missing registry signature"]);
+});
+
+test("a stable package published without a provenance attestation fails the gate", () => {
+  const errors = verifyProvenance(
+    { invalid: [], missing: [], verified: [] },
+    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+  );
+
+  assert.deepEqual(errors, ["@gik-ai/kernel@0.1.2-next.1 has no verified attestation"]);
+});
+
+test("a stable package attested with a non-provenance predicate fails the gate", () => {
+  const errors = verifyProvenance(
+    {
+      invalid: [],
+      missing: [],
+      verified: [
+        {
+          name: "@gik-ai/kernel",
+          version: "0.1.2-next.1",
+          attestations: { provenance: { predicateType: "https://example.invalid/other" } },
+        },
+      ],
+    },
+    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+  );
+
+  assert.deepEqual(errors, [
+    "@gik-ai/kernel@0.1.2-next.1 attestation predicate " +
+      "'https://example.invalid/other' is not " +
+      provenancePredicateType,
+  ]);
+});
+
+test("an empty or unreadable signature report fails closed", () => {
+  const errors = verifyProvenance(undefined, [
+    { name: "@gik-ai/kernel", version: "0.1.2-next.1" },
+  ]);
+
+  assert.deepEqual(errors, ["@gik-ai/kernel@0.1.2-next.1 has no verified attestation"]);
+});
+
 test("the consumer gate runs on GitHub-hosted infrastructure without publishing", () => {
   assert.ok(workflow.includes("runs-on: ubuntu-latest"));
   assert.ok(workflow.includes("npm run release:verify-published"));
   assert.ok(workflow.includes(publicRegistry));
   assert.ok(!workflow.includes("release:publish"));
   assert.ok(!workflow.includes("id-token"));
+  assert.ok(!/NODE_AUTH_TOKEN|NPM_TOKEN|secrets\./.test(workflow), "the gate needs no credentials");
 });
