@@ -27,7 +27,8 @@ branch.
 ## Publish a prerelease
 
 1. Merge the version pull request after `CI / Validate` passes.
-2. Confirm `master` is green.
+2. Confirm the merged version pull request passed `CI / Validate`; the release
+   workflow repeats the complete release gate against the tagged `master` commit.
 3. Confirm `.changeset/pre.json` is in `next` prerelease mode and that the
    version PR contains `-next.N` package versions.
 4. Create a GitHub prerelease from the current `master` commit.
@@ -44,7 +45,9 @@ After the prerelease has been consumed successfully, exit Changesets
 prerelease mode in a reviewed change and merge the resulting stable version
 PR. Then:
 
-1. Confirm `master` is green.
+1. Confirm the merged stable version pull request passed `CI / Validate`; the
+   release workflow repeats the complete release gate against the tagged
+   `master` commit.
 2. Create a non-prerelease GitHub Release from the current `master` commit.
 3. Use a tag in the form `npm-YYYY-MM-DD.N`, for example
    `npm-2026-08-16.1`.
