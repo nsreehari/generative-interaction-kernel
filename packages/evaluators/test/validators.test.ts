@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import Ajv from "ajv";
+import { test, vi } from "vitest";
 
 import {
   resolveDeclarativeFormInitialValue,
@@ -10,6 +11,24 @@ import {
   validateServiceRecipe,
   validateTier,
 } from "../src";
+
+test("repeated built-in Blueprint validation reuses a compiled AJV validator instead of recompiling", () => {
+  const compileSpy = vi.spyOn(Ajv.prototype, "compile");
+  try {
+    const tier = { cellIds: [] };
+    const before = compileSpy.mock.calls.length;
+    validateTier(tier);
+    const afterFirst = compileSpy.mock.calls.length;
+    assert.ok(afterFirst > before, "first call should compile the tier schema");
+    for (let i = 0; i < 10; i += 1) {
+      validateTier(tier);
+    }
+    const afterRepeated = compileSpy.mock.calls.length;
+    assert.equal(afterRepeated, afterFirst, "repeated calls must not recompile the identical built-in schema");
+  } finally {
+    compileSpy.mockRestore();
+  }
+});
 
 test("declarative form specs support typed fields, defaults, and validators", () => {
   const spec = {

@@ -222,6 +222,50 @@ const compiledSchemaValidatorFor = (validator: AjvSchemaDeclarativeValidator): V
   return compiled;
 };
 
+type BuiltinBlueprintValidatorKind =
+  | "blueprint"
+  | "blueprint-cell"
+  | "blueprint-tier"
+  | "blueprint-service-recipe"
+  | "blueprint-projection-recipe";
+
+// Built-in Blueprint/schema/tier/recipe validators use a schema and reference
+// set determined entirely by `kind`. Cache the compiled AJV validator per
+// kind so `materializeBlueprint` does not recompile identical schemas on
+// every invocation. Keying by `kind` (rather than a freshly constructed
+// wrapper object) keeps the cache identity stable across calls while
+// remaining impossible to conflate with a different schema/ref set.
+const compiledBuiltinValidators = new Map<BuiltinBlueprintValidatorKind, ValidateFunction>();
+
+const compiledBuiltinValidatorFor = (kind: BuiltinBlueprintValidatorKind): ValidateFunction => {
+  const cached = compiledBuiltinValidators.get(kind);
+  if (cached) return cached;
+  const schema = kind === "blueprint"
+    ? blueprintSchema
+    : kind === "blueprint-cell"
+      ? cellSchema
+      : kind === "blueprint-tier"
+        ? tierSchema
+        : kind === "blueprint-service-recipe"
+          ? { $ref: `${loweringRecipeSchema.$id}#/definitions/serviceRecipe` }
+          : { $ref: `${loweringRecipeSchema.$id}#/definitions/projectionRecipe` };
+  const ajv = new Ajv({ allErrors: true, strict: false });
+  const refs = [
+    { schema: blueprintSchema, key: blueprintSchema.$id },
+    { schema: cellSchema, key: cellSchema.$id },
+    { schema: programSchema, key: programSchema.$id },
+    { schema: tierSchema, key: tierSchema.$id },
+    { schema: loweringRecipeSchema, key: loweringRecipeSchema.$id },
+    { schema: uiFormSchema, key: uiFormSchema.$id },
+  ].filter(({ key }) => key !== ("$id" in schema ? schema.$id : undefined));
+  for (const ref of refs) {
+    ajv.addSchema(ref.schema, ref.key);
+  }
+  const compiled = ajv.compile(schema);
+  compiledBuiltinValidators.set(kind, compiled);
+  return compiled;
+};
+
 const issueMetadata = (candidate: Record<string, unknown>) => ({
   ...(typeof candidate.code === "string" ? { code: candidate.code } : {}),
   ...(typeof candidate.node === "string" ? { node: candidate.node } : {}),
@@ -362,32 +406,7 @@ export function runDeclarativeValidators(
       validator.kind === "blueprint-projection-recipe" ||
       validator.kind === "blueprint"
     ) {
-      const schema = validator.kind === "blueprint"
-        ? blueprintSchema
-        : validator.kind === "blueprint-cell"
-          ? cellSchema
-          : validator.kind === "blueprint-tier"
-            ? tierSchema
-            : validator.kind === "blueprint-service-recipe"
-              ? { $ref: `${loweringRecipeSchema.$id}#/definitions/serviceRecipe` }
-              : { $ref: `${loweringRecipeSchema.$id}#/definitions/projectionRecipe` };
-      const schemaValidator: AjvSchemaDeclarativeValidator = {
-        kind: "ajv-schema",
-        schema,
-        refs: [
-          { schema: blueprintSchema, key: blueprintSchema.$id },
-          { schema: cellSchema, key: cellSchema.$id },
-          { schema: programSchema, key: programSchema.$id },
-          { schema: tierSchema, key: tierSchema.$id },
-          { schema: loweringRecipeSchema, key: loweringRecipeSchema.$id },
-          { schema: uiFormSchema, key: uiFormSchema.$id },
-        ].filter(({ key }) => key !== ("$id" in schema ? schema.$id : undefined)),
-        message: validator.message,
-        level: validator.level,
-        ...(validator.code ? { code: validator.code } : {}),
-        ...(validator.node ? { node: validator.node } : {}),
-      };
-      const validate = compiledSchemaValidatorFor(schemaValidator);
+      const validate = compiledBuiltinValidatorFor(validator.kind);
       if (!validate(value)) {
         const details = ajvErrorDetails(validate.errors);
         for (const detail of details.length > 0 ? details : [validator.message]) {
