@@ -242,6 +242,19 @@ test("a stable package published without a provenance attestation fails the gate
   assert.deepEqual(errors, ["@gik-ai/kernel@0.1.2-next.1 has no verified attestation"]);
 });
 
+test("a signed stable package carrying no provenance attestation fails the gate", () => {
+  const errors = verifyProvenance(
+    {
+      invalid: [],
+      missing: [],
+      verified: [{ name: "@gik-ai/kernel", version: "0.1.2-next.1", attestations: {} }],
+    },
+    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+  );
+
+  assert.deepEqual(errors, ["@gik-ai/kernel@0.1.2-next.1 has no provenance attestation"]);
+});
+
 test("a stable package attested with a non-provenance predicate fails the gate", () => {
   const errors = verifyProvenance(
     {

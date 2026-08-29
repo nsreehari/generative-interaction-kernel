@@ -231,10 +231,13 @@ export function verifyProvenance(report, packages) {
       errors.push(`${name}@${version} has no verified attestation`);
       continue;
     }
-    if (entry.attestations?.provenance?.predicateType !== provenancePredicateType) {
+    const provenance = entry.attestations?.provenance;
+    if (!provenance) {
+      errors.push(`${name}@${version} has no provenance attestation`);
+    } else if (provenance.predicateType !== provenancePredicateType) {
       errors.push(
         `${name}@${version} attestation predicate ` +
-          `'${entry.attestations?.provenance?.predicateType}' is not ${provenancePredicateType}`,
+          `'${provenance.predicateType}' is not ${provenancePredicateType}`,
       );
     }
   }
