@@ -158,6 +158,20 @@ test("the publish job builds and verifies the release commit before publishing",
   assert.ok(publish > verify, "publication must run after verification");
 });
 
+test("the publish job reverifies the release tag without requiring master to stay unchanged", () => {
+  const publishJob = workflow.slice(workflow.indexOf("\n  publish:"));
+  const reverifyStep = publishJob.slice(
+    publishJob.indexOf("      - name: Reverify release ref"),
+    publishJob.indexOf("      - name: Setup Node.js"),
+  );
+
+  assert.ok(
+    reverifyStep.includes('git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"'),
+  );
+  assert.ok(reverifyStep.includes('git rev-list -n 1 "$TAG"'));
+  assert.ok(!reverifyStep.includes("origin/master"));
+});
+
 test("the validate job keeps the release gate, verification, and inspection", () => {
   const validateJob = workflow.slice(
     workflow.indexOf("\n  validate:"),
