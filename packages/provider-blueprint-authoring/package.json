@@ -1,7 +1,7 @@
 {
   "name": "@gik-ai/provider-blueprint-authoring",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Blueprint-authoring provider engine for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
