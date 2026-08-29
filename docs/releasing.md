@@ -65,6 +65,33 @@ Package inspection uses npm's publication dry run and is deliberately guarded
 to GitHub Actions. Do not run npm publication or registry-inspection commands
 from restricted corporate networks.
 
+## Verify a publication from the public registry
+
+Publication-side verification cannot prove that an external consumer can use
+the published packages. After a publication completes, run the
+`Verify published packages` workflow. It runs `npm run release:verify-published`
+on GitHub-hosted infrastructure, which installs the stable packages at the exact
+workspace versions from `https://registry.npmjs.org` into a clean project and
+fails closed when any of the following does not hold:
+
+- every stable package resolves to its exact expected version,
+- published metadata carries `name`, `version`, `license`, and `repository`,
+- every declared entry point exists in the installed package,
+- every pinned `@gik-ai` dependency resolves to the pinned version,
+- `npm audit signatures` reports no invalid or missing registry signature or
+  attestation anywhere in the installed dependency graph, and every stable
+  package carries a verified npm provenance attestation,
+- the installed type declarations typecheck for a consumer that imports every
+  published subpath,
+- every published subpath imports in Node.js and exposes exports, and
+- minimal runtime behaviour works through the published build output.
+
+The gate never publishes, requires no npm credentials, and does not use the
+`npm-publish` environment. Do not run it from restricted corporate networks,
+because it installs packages from the public registry and verifies signatures
+and provenance against the public registry keys and Sigstore
+(`tuf-repo-cdn.sigstore.dev`); it fails closed when either is unreachable.
+
 ## Authentication
 
 Configure each existing npm package to trust:
@@ -95,6 +122,9 @@ publish the first production release while GIK remains private.
 - Publication never runs for a manually dispatched workflow; manual dispatch
   is validation-only.
 - Experimental and internal packages remain private.
+- A separate credential-free consumer gate verifies published packages from the
+  public registry after publication, including registry signatures and
+  provenance attestations for the whole installed dependency graph.
 
 Package publication is not transactional. If npm accepts one package and a
 later package fails, fix the cause and rerun the same workflow. Changesets
