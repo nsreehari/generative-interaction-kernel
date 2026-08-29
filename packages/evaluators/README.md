@@ -116,6 +116,13 @@ depending on repository-relative paths.
 `serviceRecipe` and `projectionRecipe` definitions; neither dialect accepts the
 other axis' fields.
 
+The Blueprint schema intentionally leaves each native service declaration's
+`config` object structurally open because its fields are service-kind specific.
+The Blueprint owns concrete non-secret values such as endpoints and opaque
+`credentialRef` strings. `ServiceKindRegistry` validates that object against
+the registered kind's `configSchema` and rejects literal credential fields;
+the host separately authorizes endpoints and resolves referenced secrets.
+
 ## Package boundary
 
 `@gik-ai/evaluators` evaluates and validates declarative data. It does not own

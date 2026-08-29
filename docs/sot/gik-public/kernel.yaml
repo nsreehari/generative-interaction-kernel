@@ -291,6 +291,10 @@ contracts:
       interface BlueprintServiceDeclaration { blueprint: { $ref: string }; version: string;
       operations: Record<string, ServiceOperationDeclaration>; scope?: ServiceScope }
     purpose: Declare operation contracts backed by either a trusted native kind or a host-resolved keyed Blueprint.
+    guarantees:
+      - Native config is concrete, Blueprint-owned, and kind-specific; endpoints and opaque credential references are permitted.
+      - Registered service kinds validate native config against their configSchema.
+      - Literal credentials, endpoint authorization, and execution authority remain host-owned.
   - name: ServiceOperationDeclaration
     signature: >-
       interface ServiceOperationDeclaration { operation: string; contract: string;

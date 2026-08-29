@@ -40,6 +40,21 @@ copied into Blueprint/Bundle code, Kernel state or events, queue records, logs, 
 or provenance. A trusted browser-host credential projection may transiently collect and store the
 secret as host state; it emits only availability and discovery results into the Blueprint runtime.
 
+### Amendment (2026-08-28): concrete non-secret config is not a host substitution layer
+
+The Blueprint-owned `config` object is the single source of concrete, non-secret service-instance
+configuration. Deployment-specific endpoints, model or agent selection, workspace references, and
+opaque `credentialRef` values belong on the named native service declaration. The reusable service
+kind owns the schema and adapter semantics for those fields, but it does not own a deployment
+endpoint or configured service-instance catalog.
+
+Hosts must not rewrite placeholder tokens in Blueprint service config from environment variables or
+maintain a parallel endpoint-binding precedence layer. A host may admit or reject the endpoint
+declared by the Blueprint according to provenance and environment policy, and it resolves the
+referenced secret only when execution requires it. Environment variables or credential stores may
+hold literal secret values for a particular host, but they do not replace Blueprint-owned
+non-secret config.
+
 ### Compact contracts
 
 - `ServiceKindFactory` — trusted host implementation: kind id, configuration schema, validation,
@@ -279,5 +294,4 @@ this finding), and `request`/`response`'s other fields (`transform`, `validatorI
 open, matching this ADR's existing "provider-specific content stays open" stance -- only the fixed,
 provider-independent `validators` shape is now enforced. A regression test asserting rejection of a
 malformed rule and acceptance of a well-formed one lives in `blueprint/test/blueprint.test.ts`.
-
 
