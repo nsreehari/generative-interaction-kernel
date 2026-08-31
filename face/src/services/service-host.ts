@@ -22,6 +22,7 @@ import type {
   ServiceInvocationAuthorizationDecision,
   ServiceInvocationAuthorizer,
   ServiceProbeResult,
+  MaterializedServiceRequest,
   ServiceRequest,
   ServiceRequestContext,
   ServiceRequestInput,
@@ -129,17 +130,26 @@ function deeplyImmutableClone<T>(value: T): T {
 }
 
 function immutableInvocation(invocation: ServiceInvocation): ServiceInvocation {
-  return Object.freeze(invocation.kind === "service-request"
-    ? {
+  if (invocation.kind === "service-request") {
+    if (invocation.phase === "pre-materialization") {
+      return Object.freeze({
         kind: invocation.kind,
+        phase: invocation.phase,
         request: deeplyImmutableClone(invocation.request),
-      }
-    : {
-        kind: invocation.kind,
-        request: deeplyImmutableClone(invocation.request),
-        tool: invocation.tool,
-        args: deeplyImmutableClone(invocation.args),
       });
+    }
+    return Object.freeze({
+      kind: invocation.kind,
+      phase: invocation.phase,
+      request: deeplyImmutableClone(invocation.request),
+    });
+  }
+  return Object.freeze({
+    kind: invocation.kind,
+    request: deeplyImmutableClone(invocation.request),
+    tool: invocation.tool,
+    args: deeplyImmutableClone(invocation.args),
+  });
 }
 
 function asRecord(value: Json, label: string): Record<string, Json> {
@@ -474,14 +484,21 @@ export class DefaultServiceHost implements ServiceHost {
   ): Promise<ServiceRequestRecord> {
     const input = await this.requestInput(resolved, effect, context);
     const createdAt = this.now().toISOString();
+    const providerId = this.options.authorizeInvocation
+      ? undefined
+      : (await this.adapter(resolved.serviceId)).provider.id;
     const request: ServiceRequest = {
       ...input,
       id: this.idFactory(),
-      providerId: (await this.adapter(resolved.serviceId)).provider.id,
+      ...(providerId ? { providerId } : {}),
       capabilityId: resolved.operation.contract,
       createdAt,
     };
-    const authorization = await this.authorizeInvocation({ kind: "service-request", request });
+    const authorization = await this.authorizeInvocation({
+      kind: "service-request",
+      phase: "pre-materialization",
+      request,
+    });
     const status = authorization.outcome === "authorized" ? "accepted" : authorization.outcome;
     const record: ServiceRequestRecord = {
       request,
@@ -501,13 +518,34 @@ export class DefaultServiceHost implements ServiceHost {
     effect: OrchestratorEffect
   ): Promise<ServiceRequestRecord> {
     const adapter = await this.adapter(resolved.serviceId);
-    const authorized = await this.revalidateExecutionAuthorization(record);
-    if (authorized.status === "rejected" || authorized.status === "confirmation-required") {
-      return authorized;
+    const request: MaterializedServiceRequest = {
+      ...record.request,
+      providerId: adapter.provider.id,
+    };
+    const authorization = await this.authorizeInvocation({
+      kind: "service-request",
+      phase: "execution",
+      request,
+    });
+    const materialized: ServiceRequestRecord & { request: MaterializedServiceRequest } = {
+      ...record,
+      request,
+      status: authorization.outcome === "authorized" ? record.status : authorization.outcome,
+      ...(this.options.authorizeInvocation ? { authorization } : {}),
+      updatedAt: this.now().toISOString(),
+    };
+    await this.store.put(materialized);
+    if (materialized.status === "rejected" || materialized.status === "confirmation-required") {
+      return materialized;
     }
     const controller = new AbortController();
     this.controllers.set(record.request.id, controller);
-    const running = { ...authorized, status: "running" as const, attempts: authorized.attempts + 1, updatedAt: this.now().toISOString() };
+    const running = {
+      ...materialized,
+      status: "running" as const,
+      attempts: materialized.attempts + 1,
+      updatedAt: this.now().toISOString(),
+    };
     await this.store.put(running);
     try {
       const trustedRequest = deeplyImmutableClone(running.request);
@@ -558,7 +596,7 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   private async validateResponse(
-    running: ServiceRequestRecord,
+    running: ServiceRequestRecord & { request: MaterializedServiceRequest },
     result: ServiceExecutionResult,
     resolved: ResolvedOperation,
     effect: OrchestratorEffect,
@@ -584,7 +622,7 @@ export class DefaultServiceHost implements ServiceHost {
         ? { ...running.request, eventPayload: { ...(running.request.eventPayload ?? {}), guardrailCorrection: { issues: report.errors } as unknown as Json } }
         : running.request;
       const trustedRequest = deeplyImmutableClone(request);
-      let retrying: ServiceRequestRecord = {
+      let retrying: ServiceRequestRecord & { request: MaterializedServiceRequest } = {
         ...running,
         request,
         guardrailAttempts: attempts,
@@ -593,6 +631,7 @@ export class DefaultServiceHost implements ServiceHost {
       if (this.options.authorizeInvocation) {
         const authorization = await this.authorizeInvocation({
           kind: "service-request",
+          phase: "execution",
           request: trustedRequest,
         });
         retrying = { ...retrying, authorization };
@@ -723,7 +762,7 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   private projectAgentTools(
-    request: Readonly<ServiceRequest>,
+    request: Readonly<MaterializedServiceRequest>,
     signal: AbortSignal
   ): readonly ServiceAgentTool[] {
     const context: ServiceAgentToolExecutionContext = Object.freeze({

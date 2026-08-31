@@ -61,9 +61,13 @@ export interface ServiceRequestInput {
 
 export interface ServiceRequest extends ServiceRequestInput {
   id: string;
-  providerId: string;
+  providerId?: string;
   capabilityId: string;
   createdAt: string;
+}
+
+export interface MaterializedServiceRequest extends ServiceRequest {
+  providerId: string;
 }
 
 export interface ServiceValidationReport {
@@ -140,11 +144,17 @@ export type ServiceInvocationAuthorizationDecision =
 export type ServiceInvocation =
   | {
       readonly kind: "service-request";
+      readonly phase: "pre-materialization";
       readonly request: Readonly<ServiceRequest>;
     }
   | {
+      readonly kind: "service-request";
+      readonly phase: "execution";
+      readonly request: Readonly<MaterializedServiceRequest>;
+    }
+  | {
       readonly kind: "agent-tool";
-      readonly request: Readonly<ServiceRequest>;
+      readonly request: Readonly<MaterializedServiceRequest>;
       readonly tool: string;
       readonly args: unknown;
     };
@@ -177,7 +187,7 @@ export interface ServiceAdapter {
   ): ServiceSimulationResult | Promise<ServiceSimulationResult>;
   probe?(context: ServiceAdapterContext): ServiceProbeResult | Promise<ServiceProbeResult>;
   execute(
-    request: ServiceRequest,
+    request: MaterializedServiceRequest,
     context: ServiceAdapterContext
   ): ServiceExecutionResult | Promise<ServiceExecutionResult>;
   cancel?(request: ServiceRequest, context: ServiceAdapterContext): void | Promise<void>;

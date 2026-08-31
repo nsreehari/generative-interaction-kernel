@@ -28,6 +28,7 @@ function createHost(
     dependencyFailurePolicy?: "settle" | "throw";
     now?: () => Date;
     onMaterialize?: () => void;
+    providerId?: () => string;
     serviceScope?: "per-invocation";
   } = {}
 ): DefaultServiceHost {
@@ -43,9 +44,10 @@ function createHost(
     },
     create: () => {
       options.onMaterialize?.();
+      const providerId = options.providerId?.() ?? "deterministic:test";
       return {
-        provider: { id: "deterministic:test", version: "1" },
-        discover: async () => ({ provider: { id: "deterministic:test", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
+        provider: { id: providerId, version: "1" },
+        discover: async () => ({ provider: { id: providerId, version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
         validate: async (request) => ({ ok: request.input !== undefined }),
         simulate: async () => ({ output: { recommendation: "hold" } }),
         probe: async () => ({ ok: true }),
@@ -144,8 +146,10 @@ test("host projects agent tools per request and supplies trusted request context
   assert.equal(projectedContext?.requestId, "request-1");
   assert.equal(handlerContext, projectedContext);
   assert.equal(handlerContext?.actorId, "portfolio-owner");
-  assert.deepEqual(invocations.map(({ kind }) => kind), ["service-request", "agent-tool"]);
-  assert.deepEqual(invocations[1], {
+  assert.deepEqual(invocations.map((invocation) =>
+    invocation.kind === "service-request" ? invocation.phase : invocation.kind
+  ), ["pre-materialization", "execution", "agent-tool"]);
+  assert.deepEqual(invocations[2], {
     kind: "agent-tool",
     request: adapterRequest,
     tool: "read_portfolio",
@@ -267,6 +271,68 @@ test("service authorization returns structured rejected and confirmation-require
   assert.equal(executions, 0);
 });
 
+test("pre-materialization rejection never invokes the service factory", async () => {
+  let materializations = 0;
+  let executions = 0;
+  const host = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, {}, {
+    onMaterialize: () => {
+      materializations += 1;
+    },
+    authorizeInvocation: (invocation) => {
+      assert.equal(invocation.kind, "service-request");
+      if (invocation.kind !== "service-request") return { outcome: "rejected", reason: "unexpected-tool" };
+      assert.equal(invocation.phase, "pre-materialization");
+      assert.equal(invocation.request.providerId, undefined);
+      return { outcome: "rejected", reason: "service-not-authorized" };
+    },
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "service-not-authorized" },
+  });
+  assert.equal(materializations, 0);
+  assert.equal(executions, 0);
+});
+
+test("materialized dynamic provider identity must be explicitly authorized", async () => {
+  let materializations = 0;
+  let executions = 0;
+  const phases: string[] = [];
+  const host = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, {}, {
+    serviceScope: "per-invocation",
+    onMaterialize: () => {
+      materializations += 1;
+    },
+    providerId: () => "dynamic:untrusted",
+    authorizeInvocation: (invocation) => {
+      if (invocation.kind !== "service-request") return { outcome: "authorized" };
+      phases.push(invocation.phase);
+      return invocation.phase === "pre-materialization"
+        ? { outcome: "authorized" }
+        : { outcome: "rejected", reason: `provider-not-authorized:${invocation.request.providerId}` };
+    },
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "rejected",
+    detail: {
+      requestId: "request-1",
+      reason: "provider-not-authorized:dynamic:untrusted",
+    },
+  });
+  assert.deepEqual(phases, ["pre-materialization", "execution"]);
+  assert.equal(materializations, 1);
+  assert.equal(executions, 0);
+  assert.equal((await host.getRequest("request-1"))?.request.providerId, "dynamic:untrusted");
+});
+
 test("queued execution rejects authorization that expired after enqueue", async () => {
   let now = Date.parse("2026-08-31T10:00:00.000Z");
   let executions = 0;
@@ -306,7 +372,7 @@ test("queued execution revalidates authorization after awaited adapter materiali
     serviceScope: "per-invocation",
     onMaterialize: () => {
       materializations += 1;
-      if (materializations === 2) now = Date.parse("2026-08-31T10:02:00.000Z");
+      if (materializations === 1) now = Date.parse("2026-08-31T10:02:00.000Z");
     },
     authorizeInvocation: () => ({
       outcome: "authorized",
@@ -317,7 +383,7 @@ test("queued execution revalidates authorization after awaited adapter materiali
   assert.equal((await queue.submit(effect)).status, "accepted");
 
   const rejected = await host.runNext();
-  assert.equal(materializations, 2);
+  assert.equal(materializations, 1);
   assert.equal(rejected?.status, "rejected");
   assert.deepEqual(rejected?.authorization, {
     outcome: "rejected",
@@ -358,6 +424,7 @@ test("QueueFace delegates queued lifecycle to the shared host", async () => {
   });
   assert.equal(accepted.status, "accepted");
   assert.deepEqual(accepted.request.input, { ticker: "MSFT" });
+  assert.equal(accepted.request.providerId, "deterministic:test");
   assert.equal(accepted.request.correlationId, "queue-correlation-1");
   assert.equal(accepted.request.idempotencyKey, "queue-idempotency-1");
   assert.equal(accepted.request.deadline, "2030-01-01T00:00:00.000Z");
@@ -635,13 +702,13 @@ test("correction-prompt retry authorizes the exact immutable correction request"
     detail: { requestId: "request-1", reason: "review-correction" },
   });
   assert.equal(executions, 1);
-  assert.equal(authorizedRequests.length, 2);
-  const correction = authorizedRequests[1]?.eventPayload?.guardrailCorrection as {
+  assert.equal(authorizedRequests.length, 3);
+  const correction = authorizedRequests[2]?.eventPayload?.guardrailCorrection as {
     issues: Array<{ detail: string }>;
   };
   assert.equal(correction.issues[0]?.detail, "weight must not exceed 1");
-  assert.equal(Object.isFrozen(authorizedRequests[1]), true);
-  assert.equal(Object.isFrozen(authorizedRequests[1]?.eventPayload), true);
+  assert.equal(Object.isFrozen(authorizedRequests[2]), true);
+  assert.equal(Object.isFrozen(authorizedRequests[2]?.eventPayload), true);
   assert.equal(Object.isFrozen(correction), true);
 });
 
