@@ -20,6 +20,7 @@ import {
   type ServiceInvocation,
   type ServiceInvocationAuthorizer,
   type ServiceRequest,
+  type ServiceRequestRecord,
 } from "../src/index";
 
 function createHost(
@@ -98,6 +99,10 @@ const effect = {
 
 function providerIdOf(request: ServiceRequest): string {
   return request.providerId;
+}
+
+function requestOf(record: ServiceRequestRecord): ServiceRequest {
+  return record.request;
 }
 
 test("host rejects non-agent tools at the provider boundary", () => {
@@ -340,6 +345,56 @@ test("adapter request mutation cannot forge trusted tool authorization context",
   assert.equal(Object.isFrozen((authorizedRequest?.input as { target: object }).target), true);
 });
 
+test("each guardrail attempt revokes its projected tools before correction", async () => {
+  let calls = 0;
+  let toolExecutions = 0;
+  let firstHandler: ServiceAgentTool["handler"] | undefined;
+  let secondHandler: ServiceAgentTool["handler"] | undefined;
+  let staleResult: unknown;
+  const host = createHost(async (_request, context): Promise<ServiceExecutionResult> => {
+    calls += 1;
+    if (calls === 1) {
+      firstHandler = context.agentTools?.[0]?.handler;
+      return { output: { weight: 1.4 } };
+    }
+    assert.ok(firstHandler);
+    staleResult = await firstHandler({ accountId: "portfolio-1" });
+    secondHandler = context.agentTools?.[0]?.handler;
+    return { output: { weight: 0.9 } };
+  }, {
+    response: {
+      validators: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
+    },
+    onViolation: { action: "retry", maxAttempts: 3 },
+  }, {
+    maxGuardrailAttempts: 3,
+    agentTools: [{
+      name: "read_portfolio",
+      description: "Read one portfolio.",
+      inputSchema: { type: "object" },
+      lifecycle: "agent",
+      handler: () => {
+        toolExecutions += 1;
+        return { positions: 3 };
+      },
+    }],
+  });
+
+  await host.invoke(effect);
+  assert.equal(calls, 2);
+  assert.deepEqual(staleResult, {
+    outcome: "rejected",
+    detail: { reason: "invocation-inactive" },
+  });
+  assert.ok(secondHandler);
+  assert.notEqual(firstHandler, secondHandler);
+  assert.deepEqual(await secondHandler({ accountId: "portfolio-1" }), {
+    outcome: "rejected",
+    detail: { reason: "invocation-inactive" },
+  });
+  assert.equal(toolExecutions, 0);
+});
+
 test("service authorization returns structured rejected and confirmation-required outcomes", async () => {
   let executions = 0;
   const rejected = createHost(async () => {
@@ -402,6 +457,7 @@ test("pre-materialization rejection never invokes the service factory", async ()
   });
   assert.equal(materializations, 0);
   assert.equal(executions, 0);
+  assert.equal((await host.getRequest("request-1"))?.request.providerId, "declared:analysis");
 });
 
 test("materialized dynamic provider identity must be explicitly authorized", async () => {
@@ -496,7 +552,7 @@ test("queued execution revalidates authorization after awaited adapter materiali
     outcome: "rejected",
     reason: "authorization-stale",
   });
-  assert.equal(rejected?.attempts, 0);
+  assert.equal(rejected?.attempts, 1);
   assert.equal(executions, 0);
 });
 
@@ -531,7 +587,7 @@ test("QueueFace delegates queued lifecycle to the shared host", async () => {
   });
   assert.equal(accepted.status, "accepted");
   assert.deepEqual(accepted.request.input, { ticker: "MSFT" });
-  assert.equal("providerId" in accepted.request ? providerIdOf(accepted.request) : undefined, "deterministic:test");
+  assert.equal(providerIdOf(requestOf(accepted)), "declared:analysis");
   assert.equal(accepted.request.correlationId, "queue-correlation-1");
   assert.equal(accepted.request.idempotencyKey, "queue-idempotency-1");
   assert.equal(accepted.request.deadline, "2030-01-01T00:00:00.000Z");
@@ -554,7 +610,7 @@ test("no-policy queued execution binds one per-invocation adapter and provider i
   });
   const queue = new QueueFace(host);
   const accepted = await queue.submit(effect);
-  assert.equal("providerId" in accepted.request ? providerIdOf(accepted.request) : undefined, "dynamic:1");
+  assert.equal(providerIdOf(accepted.request), "declared:analysis");
 
   const completed = await host.runNext();
   assert.equal(completed?.status, "completed");
@@ -563,6 +619,63 @@ test("no-policy queued execution binds one per-invocation adapter and provider i
   assert.equal(completed && "providerId" in completed.request
     ? providerIdOf(completed.request)
     : undefined, "dynamic:1");
+});
+
+test("queued adapter materialization failures participate in transport retry limits", async () => {
+  let materializations = 0;
+  let executions = 0;
+  const host = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, { mode: "queued" }, {
+    maxAttempts: 2,
+    serviceScope: "per-invocation",
+    onMaterialize: () => {
+      materializations += 1;
+      throw new Error("credential resolution unavailable");
+    },
+  });
+  const queue = new QueueFace(host);
+  assert.equal((await queue.submit(effect)).status, "accepted");
+
+  const retrying = await host.runNext();
+  assert.equal(retrying?.status, "accepted");
+  assert.equal(retrying?.attempts, 1);
+  assert.equal(retrying?.error, "credential resolution unavailable");
+  const terminal = await host.runNext();
+  assert.equal(terminal?.status, "dead-lettered");
+  assert.equal(terminal?.attempts, 2);
+  assert.equal(terminal?.error, "credential resolution unavailable");
+  assert.equal(materializations, 2);
+  assert.equal(executions, 0);
+});
+
+test("transport retries preserve the exact per-invocation adapter binding", async () => {
+  let materializations = 0;
+  let executions = 0;
+  const providers: string[] = [];
+  const host = createHost(async (request) => {
+    executions += 1;
+    providers.push(request.providerId);
+    if (executions === 1) throw new Error("temporary provider failure");
+    return { output: { ok: true } };
+  }, { mode: "queued" }, {
+    maxAttempts: 2,
+    serviceScope: "per-invocation",
+    onMaterialize: () => {
+      materializations += 1;
+    },
+    providerId: () => `dynamic:${materializations}`,
+  });
+  const queue = new QueueFace(host);
+  await queue.submit(effect);
+
+  assert.equal((await host.runNext())?.status, "accepted");
+  assert.equal((await host.runNext())?.status, "completed");
+  assert.equal(executions, 2);
+  assert.equal(materializations, 1);
+  assert.deepEqual(providers, ["dynamic:1", "dynamic:1"]);
+  assert.equal((await host.getRequest("request-1"))?.request.providerId, "dynamic:1");
 });
 
 test("host executes immediate operations and owns declarative settlement", async () => {

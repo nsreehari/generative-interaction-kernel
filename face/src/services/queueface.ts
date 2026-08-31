@@ -208,7 +208,7 @@ export type ServiceRequestStatus =
   | "confirmation-required";
 
 export interface ServiceRequestRecord {
-  request: ServiceRequest | PreMaterializationServiceRequest;
+  request: ServiceRequest;
   mode: ServiceExecutionMode;
   status: ServiceRequestStatus;
   attempts: number;

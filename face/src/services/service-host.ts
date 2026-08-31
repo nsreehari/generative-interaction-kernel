@@ -106,12 +106,6 @@ type PendingRequest = {
 };
 
 type PreMaterializationServiceRequest = Omit<ServiceRequest, "providerId">;
-type MaterializedServiceRequestRecord = ServiceRequestRecord & { request: ServiceRequest };
-
-type CreatedServiceRequest = {
-  record: ServiceRequestRecord;
-  adapter?: ServiceAdapter;
-};
 
 type InvocationLifetime = {
   readonly controller: AbortController;
@@ -280,10 +274,9 @@ export class DefaultServiceHost implements ServiceHost {
     }
     let completed: ServiceRequestRecord;
     try {
-      const created = await this.createRecord(resolved, trustedEffect, "immediate", context);
-      const { record } = created;
+      const record = await this.createRecord(resolved, trustedEffect, "immediate", context);
       if (record.status !== "accepted") return this.requestOutcome(record);
-      completed = await this.execute(record, resolved, trustedEffect, created.adapter);
+      completed = await this.execute(record, resolved, trustedEffect);
     } catch (error) {
       if (error instanceof UnsatisfiedServiceDependencyError
         && this.options.dependencyFailurePolicy === "throw") {
@@ -326,16 +319,15 @@ export class DefaultServiceHost implements ServiceHost {
   async enqueue(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceRequestRecord> {
     const trustedEffect = deeplyImmutableClone(effect);
     const resolved = this.resolve(trustedEffect);
-    const created = await this.createRecord(resolved, trustedEffect, "queued", context);
-    if (created.record.status === "accepted") {
+    const record = await this.createRecord(resolved, trustedEffect, "queued", context);
+    if (record.status === "accepted") {
       this.pending.push({
-        id: created.record.request.id,
+        id: record.request.id,
         effect: trustedEffect,
         resolved,
-        adapter: created.adapter,
       });
     }
-    return created.record;
+    return record;
   }
 
   async authorizeInvocation(invocation: ServiceInvocation): Promise<ServiceInvocationAuthorizationDecision> {
@@ -506,7 +498,7 @@ export class DefaultServiceHost implements ServiceHost {
     effect: OrchestratorEffect,
     mode: "immediate" | "queued",
     context?: ServiceRequestContext
-  ): Promise<CreatedServiceRequest> {
+  ): Promise<ServiceRequestRecord> {
     const input = await this.requestInput(resolved, effect, context);
     const createdAt = this.now().toISOString();
     const authorizationRequest: PreMaterializationServiceRequest = {
@@ -521,12 +513,10 @@ export class DefaultServiceHost implements ServiceHost {
       request: authorizationRequest,
     });
     const status = authorization.outcome === "authorized" ? "accepted" : authorization.outcome;
-    let adapter: ServiceAdapter | undefined;
-    let request: ServiceRequest | PreMaterializationServiceRequest = authorizationRequest;
-    if (status === "accepted" && !this.options.authorizeInvocation) {
-      adapter = await this.adapter(resolved.serviceId);
-      request = { ...authorizationRequest, providerId: adapter.provider.id };
-    }
+    const request: ServiceRequest = {
+      ...authorizationRequest,
+      providerId: `declared:${resolved.serviceId}`,
+    };
     const record: ServiceRequestRecord = {
       request,
       mode,
@@ -536,7 +526,7 @@ export class DefaultServiceHost implements ServiceHost {
       ...(this.options.authorizeInvocation ? { authorization } : {}),
     };
     await this.store.put(record);
-    return { record, adapter };
+    return record;
   }
 
   private async execute(
@@ -545,76 +535,97 @@ export class DefaultServiceHost implements ServiceHost {
     effect: OrchestratorEffect,
     boundAdapter?: ServiceAdapter
   ): Promise<ServiceRequestRecord> {
-    const adapter = boundAdapter ?? await this.adapter(resolved.serviceId);
-    const request: ServiceRequest = {
-      ...record.request,
-      providerId: adapter.provider.id,
-    };
-    const authorization = await this.authorizeInvocation({
-      kind: "service-request",
-      phase: "execution",
-      request,
-    });
-    const materialized: MaterializedServiceRequestRecord = {
+    let adapter = boundAdapter;
+    let active: ServiceRequestRecord = {
       ...record,
-      request,
-      status: authorization.outcome === "authorized" ? record.status : authorization.outcome,
-      ...(this.options.authorizeInvocation ? { authorization } : {}),
-      updatedAt: this.now().toISOString(),
-    };
-    await this.store.put(materialized);
-    if (materialized.status === "rejected" || materialized.status === "confirmation-required") {
-      return materialized;
-    }
-    const controller = new AbortController();
-    const lifetime: InvocationLifetime = { controller, active: true };
-    this.controllers.set(record.request.id, controller);
-    const running = {
-      ...materialized,
       status: "running" as const,
-      attempts: materialized.attempts + 1,
+      attempts: record.attempts + 1,
       updatedAt: this.now().toISOString(),
     };
     try {
-      await this.store.put(running);
-      const trustedRequest = deeplyImmutableClone(running.request);
-      const adapterRequest = structuredClone(running.request);
-      const adapterContext = {
-        signal: controller.signal,
-        effect: structuredClone(effect),
-        responseValidators: structuredClone(this.responseValidatorsFor(resolved, effect)),
-        agentTools: this.projectAgentTools(trustedRequest, lifetime),
+      await this.store.put(active);
+      adapter ??= await this.adapter(resolved.serviceId);
+      const request: ServiceRequest = {
+        ...active.request,
+        providerId: adapter.provider.id,
       };
-      const immediatelyAuthorized = await this.revalidateExecutionAuthorization(running);
-      if (immediatelyAuthorized.status === "rejected"
-        || immediatelyAuthorized.status === "confirmation-required") {
-        return immediatelyAuthorized;
+      const authorization = await this.authorizeInvocation({
+        kind: "service-request",
+        phase: "execution",
+        request,
+      });
+      active = {
+        ...active,
+        request,
+        status: authorization.outcome === "authorized" ? active.status : authorization.outcome,
+        ...(this.options.authorizeInvocation ? { authorization } : {}),
+        updatedAt: this.now().toISOString(),
+      };
+      await this.store.put(active);
+      if (active.status === "rejected" || active.status === "confirmation-required") {
+        return active;
       }
-      const result = await adapter.execute(adapterRequest, adapterContext);
-      return await this.validateResponse(running, result, resolved, effect, adapter, lifetime);
+      const attempt = await this.executeAdapterAttempt(
+        adapter,
+        active,
+        effect,
+        this.responseValidatorsFor(resolved, effect),
+      );
+      if (!attempt.result) return attempt.record;
+      return await this.validateResponse(attempt.record, attempt.result, resolved, effect, adapter);
     } catch (error) {
       const original = error instanceof ServiceExecutionAttemptError ? error.original : error;
-      const active = error instanceof ServiceExecutionAttemptError ? error.record : running;
-      const retry = active.mode === "queued" && active.attempts < this.maxAttempts;
+      const failedAttempt = error instanceof ServiceExecutionAttemptError ? error.record : active;
+      const retry = failedAttempt.mode === "queued" && failedAttempt.attempts < this.maxAttempts;
       const failed: ServiceRequestRecord = {
-        ...active,
-        status: retry ? "accepted" : active.mode === "queued" ? "dead-lettered" : "failed",
+        ...failedAttempt,
+        status: retry ? "accepted" : failedAttempt.mode === "queued" ? "dead-lettered" : "failed",
         error: original instanceof Error ? original.message : String(original),
         errorDetail: errorDetail(original),
         updatedAt: this.now().toISOString(),
       };
       await this.store.put(failed);
-      if (active.mode === "immediate"
+      if (failedAttempt.mode === "immediate"
         && original instanceof UnsatisfiedServiceDependencyError
         && this.options.dependencyFailurePolicy === "throw") {
         throw original;
       }
-      if (retry) this.pending.push({ id: active.request.id, effect, resolved });
+      if (retry) this.pending.push({ id: failedAttempt.request.id, effect, resolved, adapter });
       return failed;
+    }
+  }
+
+  private async executeAdapterAttempt(
+    adapter: ServiceAdapter,
+    record: ServiceRequestRecord,
+    effect: OrchestratorEffect,
+    validators: readonly GuardrailRule[]
+  ): Promise<{ record: ServiceRequestRecord; result?: ServiceExecutionResult }> {
+    const controller = new AbortController();
+    const lifetime: InvocationLifetime = { controller, active: true };
+    this.controllers.set(record.request.id, controller);
+    try {
+      const trustedRequest = deeplyImmutableClone(record.request);
+      const adapterRequest = structuredClone(record.request);
+      const adapterContext = {
+        signal: controller.signal,
+        effect: structuredClone(effect),
+        responseValidators: structuredClone(validators),
+        agentTools: this.projectAgentTools(trustedRequest, lifetime),
+      };
+      const immediatelyAuthorized = await this.revalidateExecutionAuthorization(record);
+      if (immediatelyAuthorized.status === "rejected"
+        || immediatelyAuthorized.status === "confirmation-required") {
+        return { record: immediatelyAuthorized };
+      }
+      const result = await adapter.execute(adapterRequest, adapterContext);
+      return { record, result };
     } finally {
       lifetime.active = false;
       if (!controller.signal.aborted) controller.abort();
-      this.controllers.delete(record.request.id);
+      if (this.controllers.get(record.request.id) === controller) {
+        this.controllers.delete(record.request.id);
+      }
     }
   }
 
@@ -627,12 +638,11 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   private async validateResponse(
-    running: MaterializedServiceRequestRecord,
+    running: ServiceRequestRecord,
     result: ServiceExecutionResult,
     resolved: ResolvedOperation,
     effect: OrchestratorEffect,
-    adapter: ServiceAdapter,
-    lifetime: InvocationLifetime
+    adapter: ServiceAdapter
   ): Promise<ServiceRequestRecord> {
     const response = resolved.operation.response?.transform
       ? await this.evaluate(resolved.operation.response.transform.expr, { response: result.output, effect })
@@ -653,7 +663,7 @@ export class DefaultServiceHost implements ServiceHost {
         ? { ...running.request, eventPayload: { ...(running.request.eventPayload ?? {}), guardrailCorrection: { issues: report.errors } as unknown as Json } }
         : running.request;
       const trustedRequest = deeplyImmutableClone(request);
-      let retrying: MaterializedServiceRequestRecord = {
+      let retrying: ServiceRequestRecord = {
         ...running,
         request,
         guardrailAttempts: attempts,
@@ -677,26 +687,15 @@ export class DefaultServiceHost implements ServiceHost {
         }
       }
       await this.store.put(retrying);
-      let next: ServiceExecutionResult;
+      let next: { record: ServiceRequestRecord; result?: ServiceExecutionResult };
       try {
-        const adapterRequest = structuredClone(request);
-        const adapterContext = {
-          signal: lifetime.controller.signal,
-          effect: structuredClone(effect),
-          responseValidators: structuredClone(validators),
-          agentTools: this.projectAgentTools(trustedRequest, lifetime),
-        };
-        const immediatelyAuthorized = await this.revalidateExecutionAuthorization(retrying);
-        if (immediatelyAuthorized.status === "rejected"
-          || immediatelyAuthorized.status === "confirmation-required") {
-          return immediatelyAuthorized;
-        }
-        next = await adapter.execute(adapterRequest, adapterContext);
+        next = await this.executeAdapterAttempt(adapter, retrying, effect, validators);
       } catch (error) {
         throw new ServiceExecutionAttemptError(error, retrying);
       }
+      if (!next.result) return next.record;
       try {
-        return await this.validateResponse(retrying, next, resolved, effect, adapter, lifetime);
+        return await this.validateResponse(next.record, next.result, resolved, effect, adapter);
       } catch (error) {
         if (error instanceof ServiceExecutionAttemptError) throw error;
         throw new ServiceExecutionAttemptError(error, retrying);
