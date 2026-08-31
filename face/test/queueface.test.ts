@@ -27,6 +27,8 @@ function createHost(
     authorizeInvocation?: ServiceInvocationAuthorizer;
     dependencyFailurePolicy?: "settle" | "throw";
     now?: () => Date;
+    onMaterialize?: () => void;
+    serviceScope?: "per-invocation";
   } = {}
 ): DefaultServiceHost {
   const registry = new ServiceKindRegistry();
@@ -39,19 +41,23 @@ function createHost(
       subjects: ["cell"],
       supports: { probe: true, simulate: true, cancel: true },
     },
-    create: () => ({
-      provider: { id: "deterministic:test", version: "1" },
-      discover: async () => ({ provider: { id: "deterministic:test", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
-      validate: async (request) => ({ ok: request.input !== undefined }),
-      simulate: async () => ({ output: { recommendation: "hold" } }),
-      probe: async () => ({ ok: true }),
-      execute,
-    }),
+    create: () => {
+      options.onMaterialize?.();
+      return {
+        provider: { id: "deterministic:test", version: "1" },
+        discover: async () => ({ provider: { id: "deterministic:test", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
+        validate: async (request) => ({ ok: request.input !== undefined }),
+        simulate: async () => ({ output: { recommendation: "hold" } }),
+        probe: async () => ({ ok: true }),
+        execute,
+      };
+    },
   });
   const declarations: Record<string, ServiceDeclaration> = {
     analysis: {
       kind: "deterministic-agent",
       version: "1",
+      ...(options.serviceScope ? { scope: options.serviceScope } : {}),
       operations: {
         analyzePortfolio: {
           operation: "analyze",
@@ -279,6 +285,39 @@ test("queued execution rejects authorization that expired after enqueue", async 
 
   now = Date.parse("2026-08-31T10:02:00.000Z");
   const rejected = await host.runNext();
+  assert.equal(rejected?.status, "rejected");
+  assert.deepEqual(rejected?.authorization, {
+    outcome: "rejected",
+    reason: "authorization-stale",
+  });
+  assert.equal(rejected?.attempts, 0);
+  assert.equal(executions, 0);
+});
+
+test("queued execution revalidates authorization after awaited adapter materialization", async () => {
+  let now = Date.parse("2026-08-31T10:00:00.000Z");
+  let materializations = 0;
+  let executions = 0;
+  const host = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, { mode: "queued" }, {
+    now: () => new Date(now),
+    serviceScope: "per-invocation",
+    onMaterialize: () => {
+      materializations += 1;
+      if (materializations === 2) now = Date.parse("2026-08-31T10:02:00.000Z");
+    },
+    authorizeInvocation: () => ({
+      outcome: "authorized",
+      validUntil: "2026-08-31T10:01:00.000Z",
+    }),
+  });
+  const queue = new QueueFace(host);
+  assert.equal((await queue.submit(effect)).status, "accepted");
+
+  const rejected = await host.runNext();
+  assert.equal(materializations, 2);
   assert.equal(rejected?.status, "rejected");
   assert.deepEqual(rejected?.authorization, {
     outcome: "rejected",
@@ -604,6 +643,46 @@ test("correction-prompt retry authorizes the exact immutable correction request"
   assert.equal(Object.isFrozen(authorizedRequests[1]), true);
   assert.equal(Object.isFrozen(authorizedRequests[1]?.eventPayload), true);
   assert.equal(Object.isFrozen(correction), true);
+});
+
+test("retry failure preserves the active correction and authorization record", async () => {
+  let executions = 0;
+  const host = createHost(async (): Promise<ServiceExecutionResult> => {
+    executions += 1;
+    if (executions === 1) return { output: { weight: 1.4 } };
+    throw new Error("correction provider unavailable");
+  }, {
+    mode: "queued",
+    response: {
+      validators: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
+    },
+    onViolation: { action: "correction-prompt", maxAttempts: 3 },
+  }, {
+    maxAttempts: 2,
+    maxGuardrailAttempts: 3,
+    authorizeInvocation: (invocation) => invocation.kind === "service-request"
+      && invocation.request.eventPayload?.guardrailCorrection
+      ? { outcome: "authorized", detail: { phase: "correction" } }
+      : { outcome: "authorized", detail: { phase: "initial" } },
+  });
+  await new QueueFace(host).submit(effect);
+
+  const retryable = await host.runNext();
+  assert.equal(executions, 2);
+  assert.equal(retryable?.status, "accepted");
+  assert.equal(retryable?.attempts, 1);
+  assert.equal(retryable?.guardrailAttempts, 1);
+  assert.equal(retryable?.guardrailViolations?.[0]?.detail, "weight must not exceed 1");
+  assert.equal(retryable?.error, "correction provider unavailable");
+  assert.deepEqual(retryable?.authorization, {
+    outcome: "authorized",
+    detail: { phase: "correction" },
+  });
+  const correction = retryable?.request.eventPayload?.guardrailCorrection as {
+    issues: Array<{ detail: string }>;
+  };
+  assert.equal(correction.issues[0]?.detail, "weight must not exceed 1");
+  assert.deepEqual(await host.getRequest("request-1"), retryable);
 });
 
 test("host response validators can enforce trusted request constraints", async () => {

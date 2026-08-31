@@ -104,6 +104,15 @@ type PendingRequest = {
   resolved: ResolvedOperation;
 };
 
+class ServiceExecutionAttemptError extends Error {
+  constructor(
+    readonly original: unknown,
+    readonly record: ServiceRequestRecord
+  ) {
+    super(original instanceof Error ? original.message : String(original));
+  }
+}
+
 function asJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
 }
@@ -318,23 +327,30 @@ export class DefaultServiceHost implements ServiceHost {
     return decision;
   }
 
+  private async revalidateExecutionAuthorization(
+    record: ServiceRequestRecord
+  ): Promise<ServiceRequestRecord> {
+    if (!this.options.authorizeInvocation) return record;
+    const authorization = this.authorizationDecision(record.authorization);
+    if (authorization.outcome === "authorized") return record;
+    const rejected: ServiceRequestRecord = {
+      ...record,
+      status: authorization.outcome,
+      authorization,
+      updatedAt: this.now().toISOString(),
+    };
+    await this.store.put(rejected);
+    return rejected;
+  }
+
   async runNext(): Promise<ServiceRequestRecord | undefined> {
     const pending = this.pending.shift();
     if (!pending) return undefined;
     const record = await this.store.get(pending.id);
     if (!record || record.status !== "accepted") return record;
     if (this.options.authorizeInvocation) {
-      const authorization = this.authorizationDecision(record.authorization);
-      if (authorization.outcome !== "authorized") {
-        const rejected: ServiceRequestRecord = {
-          ...record,
-          status: authorization.outcome,
-          authorization,
-          updatedAt: this.now().toISOString(),
-        };
-        await this.store.put(rejected);
-        return rejected;
-      }
+      const authorized = await this.revalidateExecutionAuthorization(record);
+      if (authorized.status !== "accepted") return authorized;
     }
     return this.execute(record, pending.resolved, pending.effect);
   }
@@ -485,35 +501,48 @@ export class DefaultServiceHost implements ServiceHost {
     effect: OrchestratorEffect
   ): Promise<ServiceRequestRecord> {
     const adapter = await this.adapter(resolved.serviceId);
+    const authorized = await this.revalidateExecutionAuthorization(record);
+    if (authorized.status === "rejected" || authorized.status === "confirmation-required") {
+      return authorized;
+    }
     const controller = new AbortController();
     this.controllers.set(record.request.id, controller);
-    const running = { ...record, status: "running" as const, attempts: record.attempts + 1, updatedAt: this.now().toISOString() };
+    const running = { ...authorized, status: "running" as const, attempts: authorized.attempts + 1, updatedAt: this.now().toISOString() };
     await this.store.put(running);
     try {
       const trustedRequest = deeplyImmutableClone(running.request);
-      const result = await adapter.execute(structuredClone(running.request), {
+      const adapterRequest = structuredClone(running.request);
+      const adapterContext = {
         signal: controller.signal,
         effect,
         responseValidators: this.responseValidatorsFor(resolved, effect),
         agentTools: this.projectAgentTools(trustedRequest, controller.signal),
-      });
+      };
+      const immediatelyAuthorized = await this.revalidateExecutionAuthorization(running);
+      if (immediatelyAuthorized.status === "rejected"
+        || immediatelyAuthorized.status === "confirmation-required") {
+        return immediatelyAuthorized;
+      }
+      const result = await adapter.execute(adapterRequest, adapterContext);
       return await this.validateResponse(running, result, resolved, effect, adapter, controller);
     } catch (error) {
-      const retry = running.mode === "queued" && running.attempts < this.maxAttempts;
+      const original = error instanceof ServiceExecutionAttemptError ? error.original : error;
+      const active = error instanceof ServiceExecutionAttemptError ? error.record : running;
+      const retry = active.mode === "queued" && active.attempts < this.maxAttempts;
       const failed: ServiceRequestRecord = {
-        ...running,
-        status: retry ? "accepted" : running.mode === "queued" ? "dead-lettered" : "failed",
-        error: error instanceof Error ? error.message : String(error),
-        errorDetail: errorDetail(error),
+        ...active,
+        status: retry ? "accepted" : active.mode === "queued" ? "dead-lettered" : "failed",
+        error: original instanceof Error ? original.message : String(original),
+        errorDetail: errorDetail(original),
         updatedAt: this.now().toISOString(),
       };
       await this.store.put(failed);
-      if (running.mode === "immediate"
-        && error instanceof UnsatisfiedServiceDependencyError
+      if (active.mode === "immediate"
+        && original instanceof UnsatisfiedServiceDependencyError
         && this.options.dependencyFailurePolicy === "throw") {
-        throw error;
+        throw original;
       }
-      if (retry) this.pending.push({ id: running.request.id, effect, resolved });
+      if (retry) this.pending.push({ id: active.request.id, effect, resolved });
       return failed;
     } finally {
       this.controllers.delete(record.request.id);
@@ -577,13 +606,31 @@ export class DefaultServiceHost implements ServiceHost {
           return rejected;
         }
       }
-      const next = await adapter.execute(structuredClone(request), {
-        signal: controller.signal,
-        effect,
-        responseValidators: validators,
-        agentTools: this.projectAgentTools(trustedRequest, controller.signal),
-      });
-      return this.validateResponse(retrying, next, resolved, effect, adapter, controller);
+      await this.store.put(retrying);
+      let next: ServiceExecutionResult;
+      try {
+        const adapterRequest = structuredClone(request);
+        const adapterContext = {
+          signal: controller.signal,
+          effect,
+          responseValidators: validators,
+          agentTools: this.projectAgentTools(trustedRequest, controller.signal),
+        };
+        const immediatelyAuthorized = await this.revalidateExecutionAuthorization(retrying);
+        if (immediatelyAuthorized.status === "rejected"
+          || immediatelyAuthorized.status === "confirmation-required") {
+          return immediatelyAuthorized;
+        }
+        next = await adapter.execute(adapterRequest, adapterContext);
+      } catch (error) {
+        throw new ServiceExecutionAttemptError(error, retrying);
+      }
+      try {
+        return await this.validateResponse(retrying, next, resolved, effect, adapter, controller);
+      } catch (error) {
+        if (error instanceof ServiceExecutionAttemptError) throw error;
+        throw new ServiceExecutionAttemptError(error, retrying);
+      }
     }
     const failed: ServiceRequestRecord = {
       ...running,
