@@ -14,10 +14,16 @@ import type {
 import type {
   ServiceAdapter,
   ServiceAgentTool,
+  ServiceAgentToolExecutionContext,
+  ServiceAgentToolProjection,
   ServiceCatalogSnapshot,
   ServiceExecutionResult,
+  ServiceInvocation,
+  ServiceInvocationAuthorizationDecision,
+  ServiceInvocationAuthorizer,
   ServiceProbeResult,
   ServiceRequest,
+  ServiceRequestContext,
   ServiceRequestInput,
   ServiceRequestRecord,
   ServiceRequestStore,
@@ -40,9 +46,10 @@ export interface ServiceHost {
   validateService(serviceId: string): Promise<ServiceValidationReport>;
   discoverService(serviceId: string): Promise<ServiceCatalogSnapshot>;
   probeService(serviceId: string): Promise<ServiceProbeResult>;
-  preflight(effect: OrchestratorEffect): Promise<ServiceSimulationResult>;
-  invoke(effect: OrchestratorEffect): Promise<OrchestratorResult | void>;
-  enqueue(effect: OrchestratorEffect): Promise<ServiceRequestRecord>;
+  preflight(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSimulationResult>;
+  invoke(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<OrchestratorResult | void>;
+  enqueue(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceRequestRecord>;
+  authorizeInvocation?(invocation: ServiceInvocation): Promise<ServiceInvocationAuthorizationDecision>;
   getRequest(id: string): Promise<ServiceRequestRecord | undefined>;
   listRequests(): Promise<ServiceRequestRecord[]>;
   cancel(id: string): Promise<ServiceRequestRecord>;
@@ -61,7 +68,10 @@ export interface DefaultServiceHostOptions {
   idFactory?: () => string;
   maxAttempts?: number;
   maxGuardrailAttempts?: number;
-  agentTools?: readonly ServiceAgentTool[];
+  /** Static tools remain supported; a projection can instead select tools from trusted request context. */
+  agentTools?: readonly ServiceAgentTool[] | ServiceAgentToolProjection;
+  /** Host policy for concrete service and projected-tool calls. Omission preserves allow-by-default behavior. */
+  authorizeInvocation?: ServiceInvocationAuthorizer;
   inProgressProposalSettlement?: (input: {
     proposalScopeId: string;
     settlement: OrchestratorResult;
@@ -149,7 +159,7 @@ export class DefaultServiceHost implements ServiceHost {
   private readonly idFactory: () => string;
   private readonly maxAttempts: number;
   private readonly maxGuardrailAttempts: number;
-  private readonly agentTools: readonly ServiceAgentTool[];
+  private readonly agentTools: readonly ServiceAgentTool[] | ServiceAgentToolProjection;
   private readonly pending: PendingRequest[] = [];
   private readonly controllers = new Map<string, AbortController>();
 
@@ -159,12 +169,10 @@ export class DefaultServiceHost implements ServiceHost {
     this.idFactory = options.idFactory ?? (() => crypto.randomUUID());
     this.maxAttempts = options.maxAttempts ?? 1;
     this.maxGuardrailAttempts = options.maxGuardrailAttempts ?? 2;
-    for (const tool of options.agentTools ?? []) {
-      if (tool.lifecycle !== "agent") {
-        throw new Error(`Service agent tool '${tool.name}' is '${tool.lifecycle}' and cannot execute with agent authority`);
-      }
-    }
-    this.agentTools = [...(options.agentTools ?? [])];
+    if (typeof options.agentTools !== "function") this.validateAgentTools(options.agentTools ?? []);
+    this.agentTools = typeof options.agentTools === "function"
+      ? options.agentTools
+      : [...(options.agentTools ?? [])];
   }
 
   describeKinds(): ServiceKindDescription[] {
@@ -195,24 +203,25 @@ export class DefaultServiceHost implements ServiceHost {
     return adapter.probe?.({}) ?? { ok: true };
   }
 
-  async preflight(effect: OrchestratorEffect): Promise<ServiceSimulationResult> {
+  async preflight(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSimulationResult> {
     const resolved = this.resolve(effect);
     const adapter = await this.adapter(resolved.serviceId);
-    const input = await this.requestInput(resolved, effect);
+    const input = await this.requestInput(resolved, effect, context);
     const validation = await adapter.validate?.(input, { effect });
     if (validation && !validation.ok) throw new Error(validation.errors?.join("; ") ?? "Service request validation failed");
     return adapter.simulate?.(input, { effect }) ?? { detail: { supported: false } };
   }
 
-  async invoke(effect: OrchestratorEffect): Promise<OrchestratorResult | void> {
+  async invoke(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<OrchestratorResult | void> {
     const resolved = this.resolve(effect);
     if (resolved.operation.mode === "queued") {
-      const record = await this.enqueue(effect);
-      return { outcome: record.status, detail: { requestId: record.request.id } };
+      const record = await this.enqueue(effect, context);
+      return this.requestOutcome(record);
     }
     let completed: ServiceRequestRecord;
     try {
-      const record = await this.createRecord(resolved, effect, "immediate");
+      const record = await this.createRecord(resolved, effect, "immediate", context);
+      if (record.status !== "accepted") return this.requestOutcome(record);
       completed = await this.execute(record, resolved, effect);
     } catch (error) {
       if (error instanceof UnsatisfiedServiceDependencyError
@@ -250,11 +259,31 @@ export class DefaultServiceHost implements ServiceHost {
     return settlement;
   }
 
-  async enqueue(effect: OrchestratorEffect): Promise<ServiceRequestRecord> {
+  async enqueue(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceRequestRecord> {
     const resolved = this.resolve(effect);
-    const record = await this.createRecord(resolved, effect, "queued");
-    this.pending.push({ id: record.request.id, effect, resolved });
+    const record = await this.createRecord(resolved, effect, "queued", context);
+    if (record.status === "accepted") this.pending.push({ id: record.request.id, effect, resolved });
     return record;
+  }
+
+  async authorizeInvocation(invocation: ServiceInvocation): Promise<ServiceInvocationAuthorizationDecision> {
+    if (!this.options.authorizeInvocation) return { outcome: "authorized" };
+    let decision: ServiceInvocationAuthorizationDecision;
+    try {
+      decision = await this.options.authorizeInvocation(invocation);
+    } catch {
+      return { outcome: "rejected", reason: "authorization-unavailable" };
+    }
+    if (!isAuthorizationDecision(decision)) {
+      return { outcome: "rejected", reason: "authorization-unavailable" };
+    }
+    if (decision.outcome === "authorized" && decision.validUntil !== undefined) {
+      const validUntil = Date.parse(decision.validUntil);
+      if (!Number.isFinite(validUntil) || validUntil <= this.now().getTime()) {
+        return { outcome: "rejected", reason: "authorization-stale" };
+      }
+    }
+    return decision;
   }
 
   async runNext(): Promise<ServiceRequestRecord | undefined> {
@@ -276,7 +305,9 @@ export class DefaultServiceHost implements ServiceHost {
   async cancel(id: string): Promise<ServiceRequestRecord> {
     const record = await this.store.get(id);
     if (!record) throw new Error(`Unknown service request '${id}'`);
-    if (["completed", "failed", "cancelled", "dead-lettered"].includes(record.status)) return record;
+    if (["completed", "failed", "cancelled", "dead-lettered", "rejected", "confirmation-required"].includes(record.status)) {
+      return record;
+    }
     this.controllers.get(id)?.abort();
     const cancelled = { ...record, status: "cancelled" as const, updatedAt: this.now().toISOString() };
     await this.store.put(cancelled);
@@ -336,7 +367,11 @@ export class DefaultServiceHost implements ServiceHost {
     return asJson(await this.options.expression.eval(expr, evaluationData));
   }
 
-  private async requestInput(resolved: ResolvedOperation, effect: OrchestratorEffect): Promise<ServiceRequestInput> {
+  private async requestInput(
+    resolved: ResolvedOperation,
+    effect: OrchestratorEffect,
+    context?: ServiceRequestContext
+  ): Promise<ServiceRequestInput> {
     const input = resolved.operation.request?.transform
       ? await this.evaluate(resolved.operation.request.transform.expr, {
           state: this.options.state.snapshot(),
@@ -359,7 +394,10 @@ export class DefaultServiceHost implements ServiceHost {
       service: resolved.serviceId,
       operation: resolved.operation.operation,
       input,
-      actorId: effect.actorId,
+      actorId: context?.actorId ?? effect.actorId,
+      ...(context?.correlationId !== undefined ? { correlationId: context.correlationId } : {}),
+      ...(context?.idempotencyKey !== undefined ? { idempotencyKey: context.idempotencyKey } : {}),
+      ...(context?.deadline !== undefined ? { deadline: context.deadline } : {}),
       blueprintId: this.options.blueprintId,
       blueprintRevision: this.options.blueprintRevision,
       serviceRef: resolved.serviceId,
@@ -370,9 +408,10 @@ export class DefaultServiceHost implements ServiceHost {
   private async createRecord(
     resolved: ResolvedOperation,
     effect: OrchestratorEffect,
-    mode: "immediate" | "queued"
+    mode: "immediate" | "queued",
+    context?: ServiceRequestContext
   ): Promise<ServiceRequestRecord> {
-    const input = await this.requestInput(resolved, effect);
+    const input = await this.requestInput(resolved, effect, context);
     const createdAt = this.now().toISOString();
     const request: ServiceRequest = {
       ...input,
@@ -381,7 +420,16 @@ export class DefaultServiceHost implements ServiceHost {
       capabilityId: resolved.operation.contract,
       createdAt,
     };
-    const record: ServiceRequestRecord = { request, mode, status: "accepted", attempts: 0, updatedAt: createdAt };
+    const authorization = await this.authorizeInvocation({ kind: "service-request", request });
+    const status = authorization.outcome === "authorized" ? "accepted" : authorization.outcome;
+    const record: ServiceRequestRecord = {
+      request,
+      mode,
+      status,
+      attempts: 0,
+      updatedAt: createdAt,
+      ...(this.options.authorizeInvocation ? { authorization } : {}),
+    };
     await this.store.put(record);
     return record;
   }
@@ -401,7 +449,7 @@ export class DefaultServiceHost implements ServiceHost {
         signal: controller.signal,
         effect,
         responseValidators: this.responseValidatorsFor(resolved, effect),
-        agentTools: this.agentTools,
+        agentTools: this.projectAgentTools(running.request, controller.signal),
       });
       return await this.validateResponse(running, result, resolved, effect, adapter, controller);
     } catch (error) {
@@ -465,7 +513,7 @@ export class DefaultServiceHost implements ServiceHost {
         signal: controller.signal,
         effect,
         responseValidators: validators,
-        agentTools: this.agentTools,
+        agentTools: this.projectAgentTools(request, controller.signal),
       });
       return this.validateResponse(retrying, next, resolved, effect, adapter, controller);
     }
@@ -532,10 +580,97 @@ export class DefaultServiceHost implements ServiceHost {
       error: errorDetail(error),
     }));
   }
+
+  private requestOutcome(record: ServiceRequestRecord): OrchestratorResult {
+    return {
+      outcome: record.status,
+      detail: {
+        requestId: record.request.id,
+        ...(record.authorization?.outcome !== "authorized"
+          ? {
+              ...(record.authorization?.detail ?? {}),
+              reason: record.authorization?.reason ?? "authorization-unavailable",
+            }
+          : {}),
+      },
+    };
+  }
+
+  private validateAgentTools(tools: readonly ServiceAgentTool[]): void {
+    const names = new Set<string>();
+    for (const tool of tools) {
+      if (tool.lifecycle !== "agent") {
+        throw new Error(`Service agent tool '${tool.name}' is '${tool.lifecycle}' and cannot execute with agent authority`);
+      }
+      if (names.has(tool.name)) throw new Error(`Duplicate service agent tool '${tool.name}'`);
+      names.add(tool.name);
+    }
+  }
+
+  private projectAgentTools(
+    request: ServiceRequest,
+    signal: AbortSignal
+  ): readonly ServiceAgentTool[] {
+    const context: ServiceAgentToolExecutionContext = Object.freeze({
+      requestId: request.id,
+      service: request.service,
+      operation: request.operation,
+      providerId: request.providerId,
+      capabilityId: request.capabilityId,
+      blueprintId: request.blueprintId,
+      blueprintRevision: request.blueprintRevision,
+      serviceRef: request.serviceRef,
+      actorId: request.actorId,
+      correlationId: request.correlationId,
+      idempotencyKey: request.idempotencyKey,
+      deadline: request.deadline,
+      signal,
+    });
+    const projected = typeof this.agentTools === "function"
+      ? this.agentTools(context)
+      : this.agentTools;
+    this.validateAgentTools(projected);
+    return projected.map((tool) => {
+      if (!this.options.authorizeInvocation) {
+        return { ...tool, handler: (args: unknown) => tool.handler(args, context) };
+      }
+      return {
+        ...tool,
+        handler: async (args: unknown) => {
+          const decision = await this.authorizeInvocation({
+            kind: "agent-tool",
+            request,
+            tool: tool.name,
+            args,
+          });
+          if (decision.outcome !== "authorized") {
+            return {
+              outcome: decision.outcome,
+              detail: {
+                ...(decision.detail ?? {}),
+                reason: decision.reason,
+              },
+            };
+          }
+          return tool.handler(args, context);
+        },
+      };
+    });
+  }
 }
 
 function isBlueprintService(
   declaration: ServiceDeclaration,
 ): declaration is BlueprintServiceDeclaration {
   return "blueprint" in declaration;
+}
+
+function isAuthorizationDecision(value: unknown): value is ServiceInvocationAuthorizationDecision {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const decision = value as Partial<ServiceInvocationAuthorizationDecision>;
+  if (decision.outcome === "authorized") {
+    return decision.validUntil === undefined || typeof decision.validUntil === "string";
+  }
+  return (decision.outcome === "rejected" || decision.outcome === "confirmation-required")
+    && typeof decision.reason === "string";
 }

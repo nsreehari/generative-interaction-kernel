@@ -89,13 +89,69 @@ export interface ServiceExecutionResult {
   orchestratorResult?: OrchestratorResult;
 }
 
+export type ServiceRequestContext = Pick<
+  ServiceRequestInput,
+  "actorId" | "correlationId" | "idempotencyKey" | "deadline"
+>;
+
+/** Host-created context passed out-of-band to projected tool handlers. Provider-supplied
+ * arguments cannot replace these request identity and provenance fields. */
+export interface ServiceAgentToolExecutionContext extends ServiceRequestContext {
+  readonly requestId: string;
+  readonly service: string;
+  readonly operation: string;
+  readonly providerId: string;
+  readonly capabilityId: string;
+  readonly blueprintId?: string;
+  readonly blueprintRevision?: string;
+  readonly serviceRef?: string;
+  readonly signal?: AbortSignal;
+}
+
 export interface ServiceAgentTool {
   readonly name: string;
   readonly description: string;
   readonly inputSchema: Readonly<Record<string, unknown>>;
   readonly lifecycle: "agent" | "host" | "control";
-  readonly handler: (args: unknown) => unknown | Promise<unknown>;
+  readonly handler: (
+    args: unknown,
+    context?: ServiceAgentToolExecutionContext
+  ) => unknown | Promise<unknown>;
 }
+
+export type ServiceAgentToolProjection = (
+  context: ServiceAgentToolExecutionContext
+) => readonly ServiceAgentTool[];
+
+/** Authorization applies to one concrete service request or tool call. Tool catalog
+ * visibility is intentionally not an authorization decision. */
+export type ServiceInvocationAuthorizationDecision =
+  | {
+      readonly outcome: "authorized";
+      readonly validUntil?: string;
+      readonly detail?: Record<string, Json>;
+    }
+  | {
+      readonly outcome: "rejected" | "confirmation-required";
+      readonly reason: string;
+      readonly detail?: Record<string, Json>;
+    };
+
+export type ServiceInvocation =
+  | {
+      readonly kind: "service-request";
+      readonly request: Readonly<ServiceRequest>;
+    }
+  | {
+      readonly kind: "agent-tool";
+      readonly request: Readonly<ServiceRequest>;
+      readonly tool: string;
+      readonly args: unknown;
+    };
+
+export type ServiceInvocationAuthorizer = (
+  invocation: ServiceInvocation
+) => ServiceInvocationAuthorizationDecision | Promise<ServiceInvocationAuthorizationDecision>;
 
 export interface ServiceAdapterContext {
   signal?: AbortSignal;
@@ -135,7 +191,9 @@ export type ServiceRequestStatus =
   | "completed"
   | "failed"
   | "cancelled"
-  | "dead-lettered";
+  | "dead-lettered"
+  | "rejected"
+  | "confirmation-required";
 
 export interface ServiceRequestRecord {
   request: ServiceRequest;
@@ -146,6 +204,7 @@ export interface ServiceRequestRecord {
   result?: ServiceExecutionResult;
   error?: string;
   errorDetail?: Record<string, Json>;
+  authorization?: ServiceInvocationAuthorizationDecision;
   /** Re-invocation count driven by guardrail violation policy, distinct from transport-level `attempts`. */
   guardrailAttempts?: number;
   /** The most recent guardrail evaluation's `"error"`-level issues, if any were ever raised. */
@@ -179,8 +238,8 @@ export class InMemoryServiceRequestStore implements ServiceRequestStore {
 export class QueueFace {
   constructor(private readonly host: ServiceHost) {}
 
-  submit(effect: OrchestratorEffect): Promise<ServiceRequestRecord> {
-    return this.host.enqueue(effect);
+  submit(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceRequestRecord> {
+    return this.host.enqueue(effect, context);
   }
 
   async getRequest(id: string): Promise<ServiceRequestRecord | undefined> {
@@ -195,4 +254,3 @@ export class QueueFace {
     return this.host.cancel(id);
   }
 }
-

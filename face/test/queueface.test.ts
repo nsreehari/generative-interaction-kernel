@@ -9,7 +9,11 @@ import {
   UnsatisfiedServiceDependencyError,
   type ServiceAdapter,
   type ServiceAgentTool,
+  type ServiceAgentToolExecutionContext,
+  type ServiceAgentToolProjection,
   type ServiceExecutionResult,
+  type ServiceInvocation,
+  type ServiceInvocationAuthorizer,
 } from "../src/index";
 
 function createHost(
@@ -18,7 +22,8 @@ function createHost(
   options: {
     maxAttempts?: number;
     maxGuardrailAttempts?: number;
-    agentTools?: readonly ServiceAgentTool[];
+    agentTools?: readonly ServiceAgentTool[] | ServiceAgentToolProjection;
+    authorizeInvocation?: ServiceInvocationAuthorizer;
     dependencyFailurePolicy?: "settle" | "throw";
   } = {}
 ): DefaultServiceHost {
@@ -88,12 +93,162 @@ test("host rejects non-agent tools at the provider boundary", () => {
   }), /cannot execute with agent authority/);
 });
 
+test("host projects agent tools per request and supplies trusted request context", async () => {
+  let projectedContext: ServiceAgentToolExecutionContext | undefined;
+  let handlerContext: ServiceAgentToolExecutionContext | undefined;
+  let adapterRequest: Parameters<ServiceAdapter["execute"]>[0] | undefined;
+  const invocations: ServiceInvocation[] = [];
+  const host = createHost(async (request, context) => {
+    adapterRequest = request;
+    const result = await context.agentTools?.[0]?.handler({ accountId: "portfolio-1" });
+    return { output: result as never };
+  }, {}, {
+    agentTools: (context) => {
+      projectedContext = context;
+      return [{
+        name: "read_portfolio",
+        description: "Read one portfolio.",
+        inputSchema: { type: "object" },
+        lifecycle: "agent",
+        handler: (_args, trustedContext) => {
+          handlerContext = trustedContext;
+          return { positions: 3 };
+        },
+      }];
+    },
+    authorizeInvocation: (invocation) => {
+      invocations.push(invocation);
+      return { outcome: "authorized" };
+    },
+  });
+
+  await host.invoke(effect, {
+    actorId: "portfolio-owner",
+    correlationId: "correlation-1",
+    idempotencyKey: "idempotency-1",
+    deadline: "2030-01-01T00:00:00.000Z",
+  });
+
+  assert.equal(adapterRequest?.actorId, "portfolio-owner");
+  assert.equal(adapterRequest?.correlationId, "correlation-1");
+  assert.equal(adapterRequest?.idempotencyKey, "idempotency-1");
+  assert.equal(adapterRequest?.deadline, "2030-01-01T00:00:00.000Z");
+  assert.equal(projectedContext?.requestId, "request-1");
+  assert.equal(handlerContext, projectedContext);
+  assert.equal(handlerContext?.actorId, "portfolio-owner");
+  assert.deepEqual(invocations.map(({ kind }) => kind), ["service-request", "agent-tool"]);
+  assert.deepEqual(invocations[1], {
+    kind: "agent-tool",
+    request: adapterRequest,
+    tool: "read_portfolio",
+    args: { accountId: "portfolio-1" },
+  });
+});
+
+test("visible agent tools authorize concrete arguments before execution", async () => {
+  let executions = 0;
+  const host = createHost(async (_request, context) => ({
+    output: await context.agentTools?.[0]?.handler({ accountId: "other-portfolio" }) as never,
+  }), {}, {
+    agentTools: [{
+      name: "read_portfolio",
+      description: "Read one portfolio.",
+      inputSchema: { type: "object" },
+      lifecycle: "agent",
+      handler: () => {
+        executions += 1;
+        return { positions: 3 };
+      },
+    }],
+    authorizeInvocation: (invocation) => invocation.kind === "agent-tool"
+      ? { outcome: "rejected", reason: "protected-target", detail: { target: "other-portfolio" } }
+      : { outcome: "authorized" },
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    ops: [{
+      op: "set",
+      path: "work.answer",
+      value: {
+        outcome: "rejected",
+        detail: { reason: "protected-target", target: "other-portfolio" },
+      },
+    }],
+  });
+  assert.equal(executions, 0);
+});
+
+test("service authorization returns structured rejected and confirmation-required outcomes", async () => {
+  let executions = 0;
+  const rejected = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, {}, {
+    authorizeInvocation: () => ({
+      outcome: "rejected",
+      reason: "actor-not-authorized",
+      detail: { policy: "portfolio-owner" },
+    }),
+  });
+  assert.deepEqual(await rejected.invoke(effect), {
+    outcome: "rejected",
+    detail: {
+      requestId: "request-1",
+      reason: "actor-not-authorized",
+      policy: "portfolio-owner",
+    },
+  });
+  assert.equal((await rejected.getRequest("request-1"))?.status, "rejected");
+
+  const confirmation = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, { mode: "queued" }, {
+    authorizeInvocation: () => ({
+      outcome: "confirmation-required",
+      reason: "human-approval-required",
+    }),
+  });
+  const record = await new QueueFace(confirmation).submit(effect);
+  assert.equal(record.status, "confirmation-required");
+  assert.equal(await confirmation.runNext(), undefined);
+  assert.equal(executions, 0);
+});
+
+test("configured authorization fails closed on unavailable and stale decisions", async () => {
+  const unavailable = createHost(async () => ({ output: null }), {}, {
+    authorizeInvocation: (() => undefined) as unknown as ServiceInvocationAuthorizer,
+  });
+  assert.deepEqual(await unavailable.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authorization-unavailable" },
+  });
+
+  const stale = createHost(async () => ({ output: null }), {}, {
+    authorizeInvocation: () => ({
+      outcome: "authorized",
+      validUntil: "2000-01-01T00:00:00.000Z",
+    }),
+  });
+  assert.deepEqual(await stale.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authorization-stale" },
+  });
+});
+
 test("QueueFace delegates queued lifecycle to the shared host", async () => {
   const host = createHost(async (request) => ({ output: request.input }), { mode: "queued" });
   const queue = new QueueFace(host);
-  const accepted = await queue.submit(effect);
+  const accepted = await queue.submit(effect, {
+    correlationId: "queue-correlation-1",
+    idempotencyKey: "queue-idempotency-1",
+    deadline: "2030-01-01T00:00:00.000Z",
+  });
   assert.equal(accepted.status, "accepted");
   assert.deepEqual(accepted.request.input, { ticker: "MSFT" });
+  assert.equal(accepted.request.correlationId, "queue-correlation-1");
+  assert.equal(accepted.request.idempotencyKey, "queue-idempotency-1");
+  assert.equal(accepted.request.deadline, "2030-01-01T00:00:00.000Z");
   assert.equal((await host.runNext())?.status, "completed");
   assert.equal((await queue.getRequest("request-1"))?.attempts, 1);
 });
