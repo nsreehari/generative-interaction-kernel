@@ -108,6 +108,31 @@ function asJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
 }
 
+function deeplyImmutableClone<T>(value: T): T {
+  const clone = structuredClone(value);
+  const freeze = (candidate: unknown): void => {
+    if (!candidate || typeof candidate !== "object" || Object.isFrozen(candidate)) return;
+    for (const child of Object.values(candidate)) freeze(child);
+    Object.freeze(candidate);
+  };
+  freeze(clone);
+  return clone;
+}
+
+function immutableInvocation(invocation: ServiceInvocation): ServiceInvocation {
+  return Object.freeze(invocation.kind === "service-request"
+    ? {
+        kind: invocation.kind,
+        request: deeplyImmutableClone(invocation.request),
+      }
+    : {
+        kind: invocation.kind,
+        request: deeplyImmutableClone(invocation.request),
+        tool: invocation.tool,
+        args: deeplyImmutableClone(invocation.args),
+      });
+}
+
 function asRecord(value: Json, label: string): Record<string, Json> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`Declarative service ${label} transform must return an object`);
@@ -268,12 +293,16 @@ export class DefaultServiceHost implements ServiceHost {
 
   async authorizeInvocation(invocation: ServiceInvocation): Promise<ServiceInvocationAuthorizationDecision> {
     if (!this.options.authorizeInvocation) return { outcome: "authorized" };
-    let decision: ServiceInvocationAuthorizationDecision;
+    let decision: unknown;
     try {
-      decision = await this.options.authorizeInvocation(invocation);
+      decision = await this.options.authorizeInvocation(immutableInvocation(invocation));
     } catch {
       return { outcome: "rejected", reason: "authorization-unavailable" };
     }
+    return this.authorizationDecision(decision);
+  }
+
+  private authorizationDecision(decision: unknown): ServiceInvocationAuthorizationDecision {
     if (!isAuthorizationDecision(decision)) {
       return { outcome: "rejected", reason: "authorization-unavailable" };
     }
@@ -291,6 +320,19 @@ export class DefaultServiceHost implements ServiceHost {
     if (!pending) return undefined;
     const record = await this.store.get(pending.id);
     if (!record || record.status !== "accepted") return record;
+    if (this.options.authorizeInvocation) {
+      const authorization = this.authorizationDecision(record.authorization);
+      if (authorization.outcome !== "authorized") {
+        const rejected: ServiceRequestRecord = {
+          ...record,
+          status: authorization.outcome,
+          authorization,
+          updatedAt: this.now().toISOString(),
+        };
+        await this.store.put(rejected);
+        return rejected;
+      }
+    }
     return this.execute(record, pending.resolved, pending.effect);
   }
 
@@ -445,11 +487,12 @@ export class DefaultServiceHost implements ServiceHost {
     const running = { ...record, status: "running" as const, attempts: record.attempts + 1, updatedAt: this.now().toISOString() };
     await this.store.put(running);
     try {
-      const result = await adapter.execute(running.request, {
+      const trustedRequest = deeplyImmutableClone(running.request);
+      const result = await adapter.execute(structuredClone(running.request), {
         signal: controller.signal,
         effect,
         responseValidators: this.responseValidatorsFor(resolved, effect),
-        agentTools: this.projectAgentTools(running.request, controller.signal),
+        agentTools: this.projectAgentTools(trustedRequest, controller.signal),
       });
       return await this.validateResponse(running, result, resolved, effect, adapter, controller);
     } catch (error) {
@@ -509,11 +552,12 @@ export class DefaultServiceHost implements ServiceHost {
         ? { ...running.request, eventPayload: { ...(running.request.eventPayload ?? {}), guardrailCorrection: { issues: report.errors } as unknown as Json } }
         : running.request;
       const retrying = { ...running, request, guardrailAttempts: attempts, guardrailViolations: report.errors };
-      const next = await adapter.execute(request, {
+      const trustedRequest = deeplyImmutableClone(request);
+      const next = await adapter.execute(structuredClone(request), {
         signal: controller.signal,
         effect,
         responseValidators: validators,
-        agentTools: this.projectAgentTools(request, controller.signal),
+        agentTools: this.projectAgentTools(trustedRequest, controller.signal),
       });
       return this.validateResponse(retrying, next, resolved, effect, adapter, controller);
     }
@@ -608,7 +652,7 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   private projectAgentTools(
-    request: ServiceRequest,
+    request: Readonly<ServiceRequest>,
     signal: AbortSignal
   ): readonly ServiceAgentTool[] {
     const context: ServiceAgentToolExecutionContext = Object.freeze({
@@ -637,11 +681,12 @@ export class DefaultServiceHost implements ServiceHost {
       return {
         ...tool,
         handler: async (args: unknown) => {
+          const trustedArgs = deeplyImmutableClone(args);
           const decision = await this.authorizeInvocation({
             kind: "agent-tool",
             request,
             tool: tool.name,
-            args,
+            args: trustedArgs,
           });
           if (decision.outcome !== "authorized") {
             return {
@@ -652,7 +697,7 @@ export class DefaultServiceHost implements ServiceHost {
               },
             };
           }
-          return tool.handler(args, context);
+          return tool.handler(trustedArgs, context);
         },
       };
     });

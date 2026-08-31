@@ -25,6 +25,7 @@ function createHost(
     agentTools?: readonly ServiceAgentTool[] | ServiceAgentToolProjection;
     authorizeInvocation?: ServiceInvocationAuthorizer;
     dependencyFailurePolicy?: "settle" | "throw";
+    now?: () => Date;
   } = {}
 ): DefaultServiceHost {
   const registry = new ServiceKindRegistry();
@@ -178,6 +179,50 @@ test("visible agent tools authorize concrete arguments before execution", async 
   assert.equal(executions, 0);
 });
 
+test("adapter request mutation cannot forge trusted tool authorization context", async () => {
+  let toolExecutions = 0;
+  let authorizedRequest: Readonly<Parameters<ServiceAdapter["execute"]>[0]> | undefined;
+  const host = createHost(async (request, context) => {
+    (request as { actorId?: string }).actorId = "forged-actor";
+    const input = request.input as { target: { accountId: string } };
+    input.target.accountId = "forged-portfolio";
+    return {
+      output: await context.agentTools?.[0]?.handler({ accountId: "portfolio-1" }) as never,
+    };
+  }, {}, {
+    agentTools: [{
+      name: "read_portfolio",
+      description: "Read one portfolio.",
+      inputSchema: { type: "object" },
+      lifecycle: "agent",
+      handler: () => {
+        toolExecutions += 1;
+        return { positions: 3 };
+      },
+    }],
+    authorizeInvocation: (invocation) => {
+      if (invocation.kind === "service-request") return { outcome: "authorized" };
+      authorizedRequest = invocation.request;
+      const input = invocation.request.input as { target: { accountId: string } };
+      return invocation.request.actorId === "author" && input.target.accountId === "portfolio-1"
+        ? { outcome: "authorized" }
+        : { outcome: "rejected", reason: "untrusted-target" };
+    },
+  });
+
+  await host.invoke({
+    ...effect,
+    data: { target: { accountId: "portfolio-1" } },
+  });
+
+  assert.equal(toolExecutions, 1);
+  assert.equal(authorizedRequest?.actorId, "author");
+  assert.deepEqual(authorizedRequest?.input, { target: { accountId: "portfolio-1" } });
+  assert.equal(Object.isFrozen(authorizedRequest), true);
+  assert.equal(Object.isFrozen(authorizedRequest?.input), true);
+  assert.equal(Object.isFrozen((authorizedRequest?.input as { target: object }).target), true);
+});
+
 test("service authorization returns structured rejected and confirmation-required outcomes", async () => {
   let executions = 0;
   const rejected = createHost(async () => {
@@ -212,6 +257,33 @@ test("service authorization returns structured rejected and confirmation-require
   const record = await new QueueFace(confirmation).submit(effect);
   assert.equal(record.status, "confirmation-required");
   assert.equal(await confirmation.runNext(), undefined);
+  assert.equal(executions, 0);
+});
+
+test("queued execution rejects authorization that expired after enqueue", async () => {
+  let now = Date.parse("2026-08-31T10:00:00.000Z");
+  let executions = 0;
+  const host = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, { mode: "queued" }, {
+    now: () => new Date(now),
+    authorizeInvocation: () => ({
+      outcome: "authorized",
+      validUntil: "2026-08-31T10:01:00.000Z",
+    }),
+  });
+  const queue = new QueueFace(host);
+  assert.equal((await queue.submit(effect)).status, "accepted");
+
+  now = Date.parse("2026-08-31T10:02:00.000Z");
+  const rejected = await host.runNext();
+  assert.equal(rejected?.status, "rejected");
+  assert.deepEqual(rejected?.authorization, {
+    outcome: "rejected",
+    reason: "authorization-stale",
+  });
+  assert.equal(rejected?.attempts, 0);
   assert.equal(executions, 0);
 });
 
