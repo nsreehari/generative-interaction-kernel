@@ -259,6 +259,9 @@ export class DefaultServiceHost implements ServiceHost {
       throw error;
     }
     if (completed.status !== "completed" || !completed.result) {
+      if (completed.status === "rejected" || completed.status === "confirmation-required") {
+        return this.requestOutcome(completed);
+      }
       if (resolved.operation.failureSettlement) {
         return this.settleFailure(resolved.operation, completed, effect);
       }
@@ -551,8 +554,29 @@ export class DefaultServiceHost implements ServiceHost {
       const request = action.action === "correction-prompt"
         ? { ...running.request, eventPayload: { ...(running.request.eventPayload ?? {}), guardrailCorrection: { issues: report.errors } as unknown as Json } }
         : running.request;
-      const retrying = { ...running, request, guardrailAttempts: attempts, guardrailViolations: report.errors };
       const trustedRequest = deeplyImmutableClone(request);
+      let retrying: ServiceRequestRecord = {
+        ...running,
+        request,
+        guardrailAttempts: attempts,
+        guardrailViolations: report.errors,
+      };
+      if (this.options.authorizeInvocation) {
+        const authorization = await this.authorizeInvocation({
+          kind: "service-request",
+          request: trustedRequest,
+        });
+        retrying = { ...retrying, authorization };
+        if (authorization.outcome !== "authorized") {
+          const rejected: ServiceRequestRecord = {
+            ...retrying,
+            status: authorization.outcome,
+            updatedAt: this.now().toISOString(),
+          };
+          await this.store.put(rejected);
+          return rejected;
+        }
+      }
       const next = await adapter.execute(structuredClone(request), {
         signal: controller.signal,
         effect,

@@ -14,6 +14,7 @@ import {
   type ServiceExecutionResult,
   type ServiceInvocation,
   type ServiceInvocationAuthorizer,
+  type ServiceRequest,
 } from "../src/index";
 
 function createHost(
@@ -534,6 +535,75 @@ test("host validates provider output and retries within its ceiling", async () =
   await host.invoke(effect);
   assert.equal(calls, 2);
   assert.equal((await host.listRequests())[0]?.guardrailAttempts, 1);
+});
+
+test("guardrail retry fails closed when authorization expires after the first execution", async () => {
+  let now = Date.parse("2026-08-31T10:00:00.000Z");
+  let executions = 0;
+  const host = createHost(async (): Promise<ServiceExecutionResult> => {
+    executions += 1;
+    now = Date.parse("2026-08-31T10:02:00.000Z");
+    return { output: { weight: 1.4 } };
+  }, {
+    response: {
+      validators: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
+    },
+    onViolation: { action: "retry", maxAttempts: 3 },
+  }, {
+    now: () => new Date(now),
+    maxGuardrailAttempts: 3,
+    authorizeInvocation: () => ({
+      outcome: "authorized",
+      validUntil: "2026-08-31T10:01:00.000Z",
+    }),
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authorization-stale" },
+  });
+  const [record] = await host.listRequests();
+  assert.equal(record?.status, "rejected");
+  assert.equal(record?.attempts, 1);
+  assert.equal(record?.guardrailAttempts, 1);
+  assert.equal(executions, 1);
+});
+
+test("correction-prompt retry authorizes the exact immutable correction request", async () => {
+  const authorizedRequests: Readonly<ServiceRequest>[] = [];
+  let executions = 0;
+  const host = createHost(async (): Promise<ServiceExecutionResult> => {
+    executions += 1;
+    return { output: { weight: 1.4 } };
+  }, {
+    response: {
+      validators: [{ kind: "jsonata", expr: "data.weight <= 1", message: "weight must not exceed 1" }],
+    },
+    onViolation: { action: "correction-prompt", maxAttempts: 3 },
+  }, {
+    maxGuardrailAttempts: 3,
+    authorizeInvocation: (invocation) => {
+      if (invocation.kind !== "service-request") return { outcome: "authorized" };
+      authorizedRequests.push(invocation.request);
+      return invocation.request.eventPayload?.guardrailCorrection
+        ? { outcome: "confirmation-required", reason: "review-correction" }
+        : { outcome: "authorized" };
+    },
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "confirmation-required",
+    detail: { requestId: "request-1", reason: "review-correction" },
+  });
+  assert.equal(executions, 1);
+  assert.equal(authorizedRequests.length, 2);
+  const correction = authorizedRequests[1]?.eventPayload?.guardrailCorrection as {
+    issues: Array<{ detail: string }>;
+  };
+  assert.equal(correction.issues[0]?.detail, "weight must not exceed 1");
+  assert.equal(Object.isFrozen(authorizedRequests[1]), true);
+  assert.equal(Object.isFrozen(authorizedRequests[1]?.eventPayload), true);
+  assert.equal(Object.isFrozen(correction), true);
 });
 
 test("host response validators can enforce trusted request constraints", async () => {
