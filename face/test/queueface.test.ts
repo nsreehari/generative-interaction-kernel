@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { InMemoryStateModel, JsonataExpressionProvider, type ServiceDeclaration } from "../../kernel/src/index";
+import {
+  InMemoryStateModel,
+  JsonataExpressionProvider,
+  type OrchestratorEffect,
+  type ServiceDeclaration,
+} from "../../kernel/src/index";
 import {
   DefaultServiceHost,
   QueueFace,
@@ -91,6 +96,10 @@ const effect = {
   actorId: "author",
 };
 
+function providerIdOf(request: ServiceRequest): string {
+  return request.providerId;
+}
+
 test("host rejects non-agent tools at the provider boundary", () => {
   assert.throws(() => createHost(async () => ({ output: null }), {}, {
     agentTools: [{
@@ -157,6 +166,75 @@ test("host projects agent tools per request and supplies trusted request context
   });
 });
 
+test("host snapshots invoke effects and isolates adapter effect mutation from transforms", async () => {
+  let adapterInput: unknown;
+  const host = createHost(async (request, context) => {
+    adapterInput = request.input;
+    if (context.effect) context.effect.data.expected = "adapter-forged";
+    return { output: null };
+  }, {
+    response: { transform: { kind: "jsonata", expr: "effect.data.expected" } },
+  });
+  const mutableEffect: OrchestratorEffect = {
+    ...effect,
+    data: { expected: "trusted" },
+  };
+
+  const invocation = host.invoke(mutableEffect);
+  mutableEffect.data.expected = "caller-forged";
+
+  assert.deepEqual(await invocation, {
+    ops: [{ op: "set", path: "work.answer", value: "trusted" }],
+  });
+  assert.deepEqual(adapterInput, { expected: "trusted" });
+});
+
+test("adapter and caller mutation cannot weaken snapshotted acceptance criteria", async () => {
+  const host = createHost(async (_request, context) => {
+    if (context.effect?.kind === "invoke") context.effect.control.sourceAcceptanceCriteria = [];
+    const [validator] = context.responseValidators ?? [];
+    if (validator) (validator as { expr: string }).expr = "true";
+    return { output: { ticker: "AAPL" } };
+  });
+  const mutableEffect: OrchestratorEffect = {
+    ...effect,
+    control: {
+      ...effect.control,
+      sourceAcceptanceCriteria: [{
+        kind: "jsonata",
+        expr: "data.ticker = 'MSFT'",
+        message: "trusted acceptance criterion",
+      }],
+    },
+  };
+
+  const invocation = host.invoke(mutableEffect);
+  if (mutableEffect.kind === "invoke") mutableEffect.control.sourceAcceptanceCriteria = [];
+
+  await assert.rejects(() => invocation, /trusted acceptance criterion/);
+});
+
+test("QueueFace retains an immutable effect snapshot after submit", async () => {
+  let adapterEffectValue: unknown;
+  const host = createHost(async (request, context) => {
+    adapterEffectValue = context.effect?.data.expected;
+    if (context.effect) context.effect.data.expected = "adapter-forged";
+    return { output: request.input };
+  }, { mode: "queued" });
+  const queue = new QueueFace(host);
+  const mutableEffect: OrchestratorEffect = {
+    ...effect,
+    data: { expected: "trusted" },
+  };
+  await queue.submit(mutableEffect);
+  mutableEffect.data.expected = "caller-forged";
+
+  const completed = await host.runNext();
+  assert.equal(adapterEffectValue, "trusted");
+  assert.deepEqual(completed?.request.input, { expected: "trusted" });
+  assert.deepEqual(completed?.result?.output, { expected: "trusted" });
+});
+
 test("visible agent tools authorize concrete arguments before execution", async () => {
   let executions = 0;
   const host = createHost(async (_request, context) => ({
@@ -186,6 +264,34 @@ test("visible agent tools authorize concrete arguments before execution", async 
         detail: { reason: "protected-target", target: "other-portfolio" },
       },
     }],
+  });
+  assert.equal(executions, 0);
+});
+
+test("retained projected tools are revoked after invocation settlement", async () => {
+  let retained: ServiceAgentTool["handler"] | undefined;
+  let executions = 0;
+  const host = createHost(async (_request, context) => {
+    retained = context.agentTools?.[0]?.handler;
+    return { output: null };
+  }, {}, {
+    agentTools: [{
+      name: "read_portfolio",
+      description: "Read one portfolio.",
+      inputSchema: { type: "object" },
+      lifecycle: "agent",
+      handler: () => {
+        executions += 1;
+        return { positions: 3 };
+      },
+    }],
+  });
+
+  await host.invoke(effect);
+  assert.ok(retained);
+  assert.deepEqual(await retained({ accountId: "portfolio-1" }), {
+    outcome: "rejected",
+    detail: { reason: "invocation-inactive" },
   });
   assert.equal(executions, 0);
 });
@@ -285,7 +391,7 @@ test("pre-materialization rejection never invokes the service factory", async ()
       assert.equal(invocation.kind, "service-request");
       if (invocation.kind !== "service-request") return { outcome: "rejected", reason: "unexpected-tool" };
       assert.equal(invocation.phase, "pre-materialization");
-      assert.equal(invocation.request.providerId, undefined);
+      assert.equal("providerId" in invocation.request, false);
       return { outcome: "rejected", reason: "service-not-authorized" };
     },
   });
@@ -330,7 +436,8 @@ test("materialized dynamic provider identity must be explicitly authorized", asy
   assert.deepEqual(phases, ["pre-materialization", "execution"]);
   assert.equal(materializations, 1);
   assert.equal(executions, 0);
-  assert.equal((await host.getRequest("request-1"))?.request.providerId, "dynamic:untrusted");
+  const stored = await host.getRequest("request-1");
+  assert.equal(stored && "providerId" in stored.request ? providerIdOf(stored.request) : undefined, "dynamic:untrusted");
 });
 
 test("queued execution rejects authorization that expired after enqueue", async () => {
@@ -424,12 +531,38 @@ test("QueueFace delegates queued lifecycle to the shared host", async () => {
   });
   assert.equal(accepted.status, "accepted");
   assert.deepEqual(accepted.request.input, { ticker: "MSFT" });
-  assert.equal(accepted.request.providerId, "deterministic:test");
+  assert.equal("providerId" in accepted.request ? providerIdOf(accepted.request) : undefined, "deterministic:test");
   assert.equal(accepted.request.correlationId, "queue-correlation-1");
   assert.equal(accepted.request.idempotencyKey, "queue-idempotency-1");
   assert.equal(accepted.request.deadline, "2030-01-01T00:00:00.000Z");
   assert.equal((await host.runNext())?.status, "completed");
   assert.equal((await queue.getRequest("request-1"))?.attempts, 1);
+});
+
+test("no-policy queued execution binds one per-invocation adapter and provider identity", async () => {
+  let materializations = 0;
+  let executedProviderId: string | undefined;
+  const host = createHost(async (request) => {
+    executedProviderId = request.providerId;
+    return { output: null };
+  }, { mode: "queued" }, {
+    serviceScope: "per-invocation",
+    onMaterialize: () => {
+      materializations += 1;
+    },
+    providerId: () => `dynamic:${materializations}`,
+  });
+  const queue = new QueueFace(host);
+  const accepted = await queue.submit(effect);
+  assert.equal("providerId" in accepted.request ? providerIdOf(accepted.request) : undefined, "dynamic:1");
+
+  const completed = await host.runNext();
+  assert.equal(completed?.status, "completed");
+  assert.equal(materializations, 1);
+  assert.equal(executedProviderId, "dynamic:1");
+  assert.equal(completed && "providerId" in completed.request
+    ? providerIdOf(completed.request)
+    : undefined, "dynamic:1");
 });
 
 test("host executes immediate operations and owns declarative settlement", async () => {
@@ -690,7 +823,7 @@ test("correction-prompt retry authorizes the exact immutable correction request"
     maxGuardrailAttempts: 3,
     authorizeInvocation: (invocation) => {
       if (invocation.kind !== "service-request") return { outcome: "authorized" };
-      authorizedRequests.push(invocation.request);
+      if (invocation.phase === "execution") authorizedRequests.push(invocation.request);
       return invocation.request.eventPayload?.guardrailCorrection
         ? { outcome: "confirmation-required", reason: "review-correction" }
         : { outcome: "authorized" };
@@ -702,13 +835,13 @@ test("correction-prompt retry authorizes the exact immutable correction request"
     detail: { requestId: "request-1", reason: "review-correction" },
   });
   assert.equal(executions, 1);
-  assert.equal(authorizedRequests.length, 3);
-  const correction = authorizedRequests[2]?.eventPayload?.guardrailCorrection as {
+  assert.equal(authorizedRequests.length, 2);
+  const correction = authorizedRequests[1]?.eventPayload?.guardrailCorrection as {
     issues: Array<{ detail: string }>;
   };
   assert.equal(correction.issues[0]?.detail, "weight must not exceed 1");
-  assert.equal(Object.isFrozen(authorizedRequests[2]), true);
-  assert.equal(Object.isFrozen(authorizedRequests[2]?.eventPayload), true);
+  assert.equal(Object.isFrozen(authorizedRequests[1]), true);
+  assert.equal(Object.isFrozen(authorizedRequests[1]?.eventPayload), true);
   assert.equal(Object.isFrozen(correction), true);
 });
 

@@ -61,13 +61,15 @@ export interface ServiceRequestInput {
 
 export interface ServiceRequest extends ServiceRequestInput {
   id: string;
-  providerId?: string;
+  providerId: string;
   capabilityId: string;
   createdAt: string;
 }
 
-export interface MaterializedServiceRequest extends ServiceRequest {
-  providerId: string;
+interface PreMaterializationServiceRequest extends ServiceRequestInput {
+  id: string;
+  capabilityId: string;
+  createdAt: string;
 }
 
 export interface ServiceValidationReport {
@@ -145,16 +147,16 @@ export type ServiceInvocation =
   | {
       readonly kind: "service-request";
       readonly phase: "pre-materialization";
-      readonly request: Readonly<ServiceRequest>;
+      readonly request: Readonly<PreMaterializationServiceRequest>;
     }
   | {
       readonly kind: "service-request";
       readonly phase: "execution";
-      readonly request: Readonly<MaterializedServiceRequest>;
+      readonly request: Readonly<ServiceRequest>;
     }
   | {
       readonly kind: "agent-tool";
-      readonly request: Readonly<MaterializedServiceRequest>;
+      readonly request: Readonly<ServiceRequest>;
       readonly tool: string;
       readonly args: unknown;
     };
@@ -187,7 +189,7 @@ export interface ServiceAdapter {
   ): ServiceSimulationResult | Promise<ServiceSimulationResult>;
   probe?(context: ServiceAdapterContext): ServiceProbeResult | Promise<ServiceProbeResult>;
   execute(
-    request: MaterializedServiceRequest,
+    request: ServiceRequest,
     context: ServiceAdapterContext
   ): ServiceExecutionResult | Promise<ServiceExecutionResult>;
   cancel?(request: ServiceRequest, context: ServiceAdapterContext): void | Promise<void>;
@@ -206,7 +208,7 @@ export type ServiceRequestStatus =
   | "confirmation-required";
 
 export interface ServiceRequestRecord {
-  request: ServiceRequest;
+  request: ServiceRequest | PreMaterializationServiceRequest;
   mode: ServiceExecutionMode;
   status: ServiceRequestStatus;
   attempts: number;

@@ -22,7 +22,6 @@ import type {
   ServiceInvocationAuthorizationDecision,
   ServiceInvocationAuthorizer,
   ServiceProbeResult,
-  MaterializedServiceRequest,
   ServiceRequest,
   ServiceRequestContext,
   ServiceRequestInput,
@@ -103,6 +102,20 @@ type PendingRequest = {
   id: string;
   effect: OrchestratorEffect;
   resolved: ResolvedOperation;
+  adapter?: ServiceAdapter;
+};
+
+type PreMaterializationServiceRequest = Omit<ServiceRequest, "providerId">;
+type MaterializedServiceRequestRecord = ServiceRequestRecord & { request: ServiceRequest };
+
+type CreatedServiceRequest = {
+  record: ServiceRequestRecord;
+  adapter?: ServiceAdapter;
+};
+
+type InvocationLifetime = {
+  readonly controller: AbortController;
+  active: boolean;
 };
 
 class ServiceExecutionAttemptError extends Error {
@@ -248,32 +261,36 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   async preflight(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSimulationResult> {
-    const resolved = this.resolve(effect);
+    const trustedEffect = deeplyImmutableClone(effect);
+    const resolved = this.resolve(trustedEffect);
     const adapter = await this.adapter(resolved.serviceId);
-    const input = await this.requestInput(resolved, effect, context);
-    const validation = await adapter.validate?.(input, { effect });
+    const input = await this.requestInput(resolved, trustedEffect, context);
+    const validation = await adapter.validate?.(structuredClone(input), { effect: structuredClone(trustedEffect) });
     if (validation && !validation.ok) throw new Error(validation.errors?.join("; ") ?? "Service request validation failed");
-    return adapter.simulate?.(input, { effect }) ?? { detail: { supported: false } };
+    return adapter.simulate?.(structuredClone(input), { effect: structuredClone(trustedEffect) })
+      ?? { detail: { supported: false } };
   }
 
   async invoke(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<OrchestratorResult | void> {
-    const resolved = this.resolve(effect);
+    const trustedEffect = deeplyImmutableClone(effect);
+    const resolved = this.resolve(trustedEffect);
     if (resolved.operation.mode === "queued") {
-      const record = await this.enqueue(effect, context);
+      const record = await this.enqueue(trustedEffect, context);
       return this.requestOutcome(record);
     }
     let completed: ServiceRequestRecord;
     try {
-      const record = await this.createRecord(resolved, effect, "immediate", context);
+      const created = await this.createRecord(resolved, trustedEffect, "immediate", context);
+      const { record } = created;
       if (record.status !== "accepted") return this.requestOutcome(record);
-      completed = await this.execute(record, resolved, effect);
+      completed = await this.execute(record, resolved, trustedEffect, created.adapter);
     } catch (error) {
       if (error instanceof UnsatisfiedServiceDependencyError
         && this.options.dependencyFailurePolicy === "throw") {
         throw error;
       }
       if (resolved.operation.failureSettlement) {
-        return this.settleFailureError(resolved.operation, error, effect);
+        return this.settleFailureError(resolved.operation, error, trustedEffect);
       }
       throw error;
     }
@@ -282,7 +299,7 @@ export class DefaultServiceHost implements ServiceHost {
         return this.requestOutcome(completed);
       }
       if (resolved.operation.failureSettlement) {
-        return this.settleFailure(resolved.operation, completed, effect);
+        return this.settleFailure(resolved.operation, completed, trustedEffect);
       }
       throw new Error(
         typeof completed.error === "string"
@@ -292,10 +309,10 @@ export class DefaultServiceHost implements ServiceHost {
             : `Service request '${completed.request.id}' ${completed.status}`,
       );
     }
-    if (effect.kind === "invoke" && effect.control.sourceId) {
+    if (trustedEffect.kind === "invoke" && trustedEffect.control.sourceId) {
       return { sourceOutput: asJson(completed.result.output ?? null) };
     }
-    const settlement = await this.settle(resolved.operation, completed.result, effect);
+    const settlement = await this.settle(resolved.operation, completed.result, trustedEffect);
     if (completed.result.detail?.inProgressProposal === true && this.options.inProgressProposalSettlement) {
       return this.options.inProgressProposalSettlement({
         proposalScopeId: completed.request.id,
@@ -307,10 +324,18 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   async enqueue(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceRequestRecord> {
-    const resolved = this.resolve(effect);
-    const record = await this.createRecord(resolved, effect, "queued", context);
-    if (record.status === "accepted") this.pending.push({ id: record.request.id, effect, resolved });
-    return record;
+    const trustedEffect = deeplyImmutableClone(effect);
+    const resolved = this.resolve(trustedEffect);
+    const created = await this.createRecord(resolved, trustedEffect, "queued", context);
+    if (created.record.status === "accepted") {
+      this.pending.push({
+        id: created.record.request.id,
+        effect: trustedEffect,
+        resolved,
+        adapter: created.adapter,
+      });
+    }
+    return created.record;
   }
 
   async authorizeInvocation(invocation: ServiceInvocation): Promise<ServiceInvocationAuthorizationDecision> {
@@ -362,7 +387,7 @@ export class DefaultServiceHost implements ServiceHost {
       const authorized = await this.revalidateExecutionAuthorization(record);
       if (authorized.status !== "accepted") return authorized;
     }
-    return this.execute(record, pending.resolved, pending.effect);
+    return this.execute(record, pending.resolved, pending.effect, pending.adapter);
   }
 
   getRequest(id: string): Promise<ServiceRequestRecord | undefined> {
@@ -481,25 +506,27 @@ export class DefaultServiceHost implements ServiceHost {
     effect: OrchestratorEffect,
     mode: "immediate" | "queued",
     context?: ServiceRequestContext
-  ): Promise<ServiceRequestRecord> {
+  ): Promise<CreatedServiceRequest> {
     const input = await this.requestInput(resolved, effect, context);
     const createdAt = this.now().toISOString();
-    const providerId = this.options.authorizeInvocation
-      ? undefined
-      : (await this.adapter(resolved.serviceId)).provider.id;
-    const request: ServiceRequest = {
+    const authorizationRequest: PreMaterializationServiceRequest = {
       ...input,
       id: this.idFactory(),
-      ...(providerId ? { providerId } : {}),
       capabilityId: resolved.operation.contract,
       createdAt,
     };
     const authorization = await this.authorizeInvocation({
       kind: "service-request",
       phase: "pre-materialization",
-      request,
+      request: authorizationRequest,
     });
     const status = authorization.outcome === "authorized" ? "accepted" : authorization.outcome;
+    let adapter: ServiceAdapter | undefined;
+    let request: ServiceRequest | PreMaterializationServiceRequest = authorizationRequest;
+    if (status === "accepted" && !this.options.authorizeInvocation) {
+      adapter = await this.adapter(resolved.serviceId);
+      request = { ...authorizationRequest, providerId: adapter.provider.id };
+    }
     const record: ServiceRequestRecord = {
       request,
       mode,
@@ -509,16 +536,17 @@ export class DefaultServiceHost implements ServiceHost {
       ...(this.options.authorizeInvocation ? { authorization } : {}),
     };
     await this.store.put(record);
-    return record;
+    return { record, adapter };
   }
 
   private async execute(
     record: ServiceRequestRecord,
     resolved: ResolvedOperation,
-    effect: OrchestratorEffect
+    effect: OrchestratorEffect,
+    boundAdapter?: ServiceAdapter
   ): Promise<ServiceRequestRecord> {
-    const adapter = await this.adapter(resolved.serviceId);
-    const request: MaterializedServiceRequest = {
+    const adapter = boundAdapter ?? await this.adapter(resolved.serviceId);
+    const request: ServiceRequest = {
       ...record.request,
       providerId: adapter.provider.id,
     };
@@ -527,7 +555,7 @@ export class DefaultServiceHost implements ServiceHost {
       phase: "execution",
       request,
     });
-    const materialized: ServiceRequestRecord & { request: MaterializedServiceRequest } = {
+    const materialized: MaterializedServiceRequestRecord = {
       ...record,
       request,
       status: authorization.outcome === "authorized" ? record.status : authorization.outcome,
@@ -539,6 +567,7 @@ export class DefaultServiceHost implements ServiceHost {
       return materialized;
     }
     const controller = new AbortController();
+    const lifetime: InvocationLifetime = { controller, active: true };
     this.controllers.set(record.request.id, controller);
     const running = {
       ...materialized,
@@ -546,15 +575,15 @@ export class DefaultServiceHost implements ServiceHost {
       attempts: materialized.attempts + 1,
       updatedAt: this.now().toISOString(),
     };
-    await this.store.put(running);
     try {
+      await this.store.put(running);
       const trustedRequest = deeplyImmutableClone(running.request);
       const adapterRequest = structuredClone(running.request);
       const adapterContext = {
         signal: controller.signal,
-        effect,
-        responseValidators: this.responseValidatorsFor(resolved, effect),
-        agentTools: this.projectAgentTools(trustedRequest, controller.signal),
+        effect: structuredClone(effect),
+        responseValidators: structuredClone(this.responseValidatorsFor(resolved, effect)),
+        agentTools: this.projectAgentTools(trustedRequest, lifetime),
       };
       const immediatelyAuthorized = await this.revalidateExecutionAuthorization(running);
       if (immediatelyAuthorized.status === "rejected"
@@ -562,7 +591,7 @@ export class DefaultServiceHost implements ServiceHost {
         return immediatelyAuthorized;
       }
       const result = await adapter.execute(adapterRequest, adapterContext);
-      return await this.validateResponse(running, result, resolved, effect, adapter, controller);
+      return await this.validateResponse(running, result, resolved, effect, adapter, lifetime);
     } catch (error) {
       const original = error instanceof ServiceExecutionAttemptError ? error.original : error;
       const active = error instanceof ServiceExecutionAttemptError ? error.record : running;
@@ -583,6 +612,8 @@ export class DefaultServiceHost implements ServiceHost {
       if (retry) this.pending.push({ id: active.request.id, effect, resolved });
       return failed;
     } finally {
+      lifetime.active = false;
+      if (!controller.signal.aborted) controller.abort();
       this.controllers.delete(record.request.id);
     }
   }
@@ -596,12 +627,12 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   private async validateResponse(
-    running: ServiceRequestRecord & { request: MaterializedServiceRequest },
+    running: MaterializedServiceRequestRecord,
     result: ServiceExecutionResult,
     resolved: ResolvedOperation,
     effect: OrchestratorEffect,
     adapter: ServiceAdapter,
-    controller: AbortController
+    lifetime: InvocationLifetime
   ): Promise<ServiceRequestRecord> {
     const response = resolved.operation.response?.transform
       ? await this.evaluate(resolved.operation.response.transform.expr, { response: result.output, effect })
@@ -622,7 +653,7 @@ export class DefaultServiceHost implements ServiceHost {
         ? { ...running.request, eventPayload: { ...(running.request.eventPayload ?? {}), guardrailCorrection: { issues: report.errors } as unknown as Json } }
         : running.request;
       const trustedRequest = deeplyImmutableClone(request);
-      let retrying: ServiceRequestRecord & { request: MaterializedServiceRequest } = {
+      let retrying: MaterializedServiceRequestRecord = {
         ...running,
         request,
         guardrailAttempts: attempts,
@@ -650,10 +681,10 @@ export class DefaultServiceHost implements ServiceHost {
       try {
         const adapterRequest = structuredClone(request);
         const adapterContext = {
-          signal: controller.signal,
-          effect,
-          responseValidators: validators,
-          agentTools: this.projectAgentTools(trustedRequest, controller.signal),
+          signal: lifetime.controller.signal,
+          effect: structuredClone(effect),
+          responseValidators: structuredClone(validators),
+          agentTools: this.projectAgentTools(trustedRequest, lifetime),
         };
         const immediatelyAuthorized = await this.revalidateExecutionAuthorization(retrying);
         if (immediatelyAuthorized.status === "rejected"
@@ -665,7 +696,7 @@ export class DefaultServiceHost implements ServiceHost {
         throw new ServiceExecutionAttemptError(error, retrying);
       }
       try {
-        return await this.validateResponse(retrying, next, resolved, effect, adapter, controller);
+        return await this.validateResponse(retrying, next, resolved, effect, adapter, lifetime);
       } catch (error) {
         if (error instanceof ServiceExecutionAttemptError) throw error;
         throw new ServiceExecutionAttemptError(error, retrying);
@@ -762,8 +793,8 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   private projectAgentTools(
-    request: Readonly<MaterializedServiceRequest>,
-    signal: AbortSignal
+    request: Readonly<ServiceRequest>,
+    lifetime: InvocationLifetime
   ): readonly ServiceAgentTool[] {
     const context: ServiceAgentToolExecutionContext = Object.freeze({
       requestId: request.id,
@@ -778,7 +809,7 @@ export class DefaultServiceHost implements ServiceHost {
       correlationId: request.correlationId,
       idempotencyKey: request.idempotencyKey,
       deadline: request.deadline,
-      signal,
+      signal: lifetime.controller.signal,
     });
     const projected = typeof this.agentTools === "function"
       ? this.agentTools(context)
@@ -786,11 +817,17 @@ export class DefaultServiceHost implements ServiceHost {
     this.validateAgentTools(projected);
     return projected.map((tool) => {
       if (!this.options.authorizeInvocation) {
-        return { ...tool, handler: (args: unknown) => tool.handler(args, context) };
+        return {
+          ...tool,
+          handler: (args: unknown) => this.invocationActive(lifetime)
+            ? tool.handler(args, context)
+            : this.inactiveInvocationResult(),
+        };
       }
       return {
         ...tool,
         handler: async (args: unknown) => {
+          if (!this.invocationActive(lifetime)) return this.inactiveInvocationResult();
           const trustedArgs = deeplyImmutableClone(args);
           const decision = await this.authorizeInvocation({
             kind: "agent-tool",
@@ -798,6 +835,7 @@ export class DefaultServiceHost implements ServiceHost {
             tool: tool.name,
             args: trustedArgs,
           });
+          if (!this.invocationActive(lifetime)) return this.inactiveInvocationResult();
           if (decision.outcome !== "authorized") {
             return {
               outcome: decision.outcome,
@@ -811,6 +849,17 @@ export class DefaultServiceHost implements ServiceHost {
         },
       };
     });
+  }
+
+  private invocationActive(lifetime: InvocationLifetime): boolean {
+    return lifetime.active && !lifetime.controller.signal.aborted;
+  }
+
+  private inactiveInvocationResult(): Record<string, Json> {
+    return {
+      outcome: "rejected",
+      detail: { reason: "invocation-inactive" },
+    };
   }
 }
 
