@@ -953,6 +953,14 @@ test("QueueFace delegates queued lifecycle to the shared host", async () => {
   assert.equal((await queue.getRequest("request-1"))?.attempts, 1);
 });
 
+test("no-policy queued invoke does not report an authorization failure", async () => {
+  const host = createHost(async (request) => ({ output: request.input }), { mode: "queued" });
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "accepted",
+    detail: { requestId: "request-1" },
+  });
+});
+
 test("no-policy queued execution binds one per-invocation adapter and provider identity", async () => {
   let materializations = 0;
   let executedProviderId: string | undefined;

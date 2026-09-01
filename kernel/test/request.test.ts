@@ -66,6 +66,15 @@ function kernelWithOutcome(outcome: "resolved" | "rejected") {
 }
 
 test("request settlements carry immutable triggering context without host synthesis", async () => {
+  const contextualResponseSchema = {
+    type: "object",
+    required: ["approved", "revision"],
+    additionalProperties: false,
+    properties: {
+      approved: { type: "boolean" },
+      revision: { type: "integer" },
+    },
+  };
   const contextualDocument = {
     gik: "0.1",
     type: "program",
@@ -73,13 +82,14 @@ test("request settlements carry immutable triggering context without host synthe
       root: node("button", "btn", {
         on: {
           tap: [request(
-            { kind: "decision", responseSchema },
+            { kind: "decision", responseSchema: contextualResponseSchema },
             { requestType: "order-approval", prompt: "Approve order?", approved: false },
+            { from: "{'revision':$event.revision,'correlationId':$event.correlationId}" },
           )],
           resolved: [
-            assignFrom("card_data.request", "$event.request"),
-            assignFrom("card_data.effectId", "$event.effectId"),
+            assignFrom("card_data.request", "$event.requestContext"),
             assignFrom("card_data.approved", "$event.approved"),
+            assignFrom("card_data.responseRevision", "$event.revision"),
           ],
         },
       }),
@@ -98,7 +108,7 @@ test("request settlements carry immutable triggering context without host synthe
         settlement: {
           effectId: effect.effectId!,
           outcome: "resolved",
-          data: { approved: true },
+          data: { approved: true, revision: 99 },
         },
       };
     },
@@ -111,7 +121,7 @@ test("request settlements carry immutable triggering context without host synthe
   await kernel.dispatch({
     node: "btn",
     name: "tap",
-    payload: { revision: 7, correlationId: "order-42" },
+    payload: { revision: 7, correlationId: "order-42", transient: "must-not-leak" },
   });
   assert.deepEqual((kernel.state() as any).card_data.request, {
     revision: 7,
@@ -119,9 +129,11 @@ test("request settlements carry immutable triggering context without host synthe
     requestType: "order-approval",
     prompt: "Approve order?",
     approved: false,
+    effectId: (kernel.state() as any).card_data.request.effectId,
   });
-  assert.equal(typeof (kernel.state() as any).card_data.effectId, "string");
+  assert.equal(typeof (kernel.state() as any).card_data.request.effectId, "string");
   assert.equal((kernel.state() as any).card_data.approved, true);
+  assert.equal((kernel.state() as any).card_data.responseRevision, 99);
 });
 
 test("a resolved request re-enters as an addressed event within one dispatch", async () => {

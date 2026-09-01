@@ -915,7 +915,7 @@ export class DefaultServiceHost implements ServiceHost {
       outcome: record.status,
       detail: {
         requestId: record.request.id,
-        ...(authorization?.outcome !== "authorized"
+        ...(authorization && authorization.outcome !== "authorized"
           ? {
               ...(authorization?.detail ?? {}),
               reason: authorization?.reason ?? "authorization-unavailable",

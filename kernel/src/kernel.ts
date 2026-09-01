@@ -1187,15 +1187,12 @@ export class Kernel {
       : value === undefined
         ? {}
         : { value };
-    const requestContext = effect.kind === "request"
+    const requestContext: Record<string, Json> = effect.kind === "request"
       ? {
-          ...(effect.data.requestType !== undefined ? { requestType: structuredClone(effect.data.requestType) } : {}),
-          ...(effect.data.correlationId !== undefined
-            ? { correlationId: structuredClone(effect.data.correlationId) }
-            : {}),
-          ...(effect.data.revision !== undefined ? { revision: structuredClone(effect.data.revision) } : {}),
-          request: structuredClone(effect.data),
-          ...(effect.effectId !== undefined ? { effectId: effect.effectId } : {}),
+          requestContext: {
+            ...structuredClone(effect.data),
+            ...(effect.effectId !== undefined ? { effectId: effect.effectId } : {}),
+          },
         }
       : {};
     return [{
