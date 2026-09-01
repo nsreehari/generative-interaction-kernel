@@ -445,7 +445,13 @@ export interface InvocationControl {
   emit(result?: OrchestratorResult): Promise<void>;
 }
 
-export type SourceCompletionStatus = "success" | "failure";
+export type SourceCompletionOutcome = "success" | "failure";
+
+export interface SourceCompletionStatus {
+  [key: string]: Json;
+  status: SourceCompletionOutcome;
+  error: Record<string, Json> | null;
+}
 
 export interface SourceRunState {
   id: string;
@@ -469,6 +475,7 @@ export interface ProjectedSourceRunState extends SourceRunState {
 export interface ProjectedCellRunState {
   sources: ProjectedSourceRunState[];
   numSourcesRunning: number;
+  sourceErrors: Record<string, Record<string, Json>>;
 }
 
 export interface BlueprintRunState {

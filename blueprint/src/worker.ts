@@ -244,6 +244,7 @@ export function createDurableBlueprintWorker(options: {
   externalContext?: ExternalContext;
   materializedBlueprint?: DurableBlueprintSpec["materializedBlueprint"];
   executeEffect: BlueprintEffectExecutor;
+  effectRetry?: Pick<BlueprintWorkerRequest, "leaseMs" | "visibilityMs" | "maxAttempts">;
   subscribe?: QueueNotificationSubscription;
   onError?: (error: unknown) => void;
 }): BlueprintWorker {
@@ -279,7 +280,7 @@ export function createDurableBlueprintWorker(options: {
 
   return createBlueprintWorker({
     runtime,
-    request: options.runtime.refs,
+    request: { ...options.runtime.refs, ...options.effectRetry },
     subscribe: options.subscribe ?? (() => undefined),
     onError: options.onError,
   });

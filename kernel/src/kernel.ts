@@ -340,6 +340,7 @@ export class Kernel {
         ops,
         fired,
         invokes,
+        result.detail,
       );
       for (const followUp of result.events ?? []) await this.settle(followUp, ops, 0, fired, invokes);
       this.rev += 1;
@@ -944,7 +945,7 @@ export class Kernel {
             invokes,
           );
         }
-        await this.completeAndPromoteSourceEffect(active.effect, completionStatus, ops, fired, invokes);
+        await this.completeAndPromoteSourceEffect(active.effect, completionStatus, ops, fired, invokes, result.detail);
         await this.collectRuntimeProgramPatch(result.program, {
           source: "effect",
           actorId: active.effect.actorId,
@@ -1085,6 +1086,7 @@ export class Kernel {
     effect: OrchestratorEffect,
     status: "success" | "failure",
     acc: PatchOp[],
+    detail?: Record<string, Json>,
   ): Promise<string | undefined> {
     if (effect.kind !== "invoke" || !effect.control.sourceId || !effect.control.sourceRequestToken) return undefined;
     const cellId = effect.control.sourceCellId ?? effect.node;
@@ -1101,9 +1103,12 @@ export class Kernel {
     if (!storedSource || typeof storedSource !== "object" || Array.isArray(storedSource)) return undefined;
     const source: SourceRunState = { ...initialSourceRunState(effect.control.sourceId), ...storedSource };
     if (source.lastRequestedToken !== effect.control.sourceRequestToken) return undefined;
-    const completed = completeSourceRequest(source, effect.control.sourceRequestToken, status);
+    const completed = completeSourceRequest(source, effect.control.sourceRequestToken, status, detail);
     sources[sourceIndex] = { ...completed };
-    cells[cellId] = { ...currentCell, sources };
+    cells[cellId] = {
+      ...currentCell,
+      sources,
+    };
     await this.applyAndDerive([{ op: "set", path: "blueprintRunState.cells", value: cells }], acc);
     return hasPendingSourceRequest(completed) ? completed.queueRequestedToken ?? undefined : undefined;
   }
@@ -1114,8 +1119,9 @@ export class Kernel {
     ops: PatchOp[],
     fired: OrchestratorEffect[],
     invokes: Array<{ effect: OrchestratorEffect; id: InvocationId }>,
+    detail?: Record<string, Json>,
   ): Promise<void> {
-    const pendingSourceToken = await this.completeSourceEffect(effect, status, ops);
+    const pendingSourceToken = await this.completeSourceEffect(effect, status, ops, detail);
     if (effect.kind !== "invoke" || !effect.control.sourceId || !effect.control.sourceRequestToken || !this.graph) return;
     const promotionKey = this.sourceKey(effect);
     if (pendingSourceToken) this.sourcePromotionTokens.set(promotionKey, pendingSourceToken);
