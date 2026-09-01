@@ -433,15 +433,22 @@ function cellEvents(cell: CellDefinition): Record<string, Action[]> {
 }
 
 function scopeCellAction(cell: CellDefinition, action: Action): Action {
-  const args = action.do === "assign" && typeof action.args.from === "string"
-    ? { from: scopeCellExpression(action.args.from, cell) }
-    : action.do === "assign"
-      ? structuredClone(action.args)
+  const guard = action.guard ? { guard: scopeCellExpression(action.guard, cell) } : {};
+  if (action.do === "assign") {
+    const args = typeof action.args.from === "string"
+      ? { from: scopeCellExpression(action.args.from, cell) }
+      : structuredClone(action.args);
+    return { ...action, args, ...guard };
+  }
+  if (action.do === "request") {
+    const args = action.args
+      ? { from: scopeCellExpression(action.args.from, cell) }
       : undefined;
-  const scoped = {
+    return { ...action, ...(args ? { args } : {}), ...guard };
+  }
+  const scoped: Action = {
     ...action,
-    ...(args ? { args } : {}),
-    ...(action.guard ? { guard: scopeCellExpression(action.guard, cell) } : {}),
+    ...guard,
   };
   if (scoped.do !== "invoke" || scoped.control.sourceId) return scoped;
   const matches = (cell.sources ?? []).filter(({ operation }) => operation === scoped.control.tool);

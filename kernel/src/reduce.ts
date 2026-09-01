@@ -53,6 +53,18 @@ async function resolveValue(args: Extract<Action, { do: "assign" }>["args"], c: 
   return c.expr.eval(args.from, c.data, c.bindings);
 }
 
+async function resolveRequestData(
+  action: Extract<Action, { do: "request" }>,
+  c: DispatchCtx,
+): Promise<Record<string, Json>> {
+  if (!action.args) return action.data;
+  const dynamicData = await c.expr.eval(action.args.from, c.data, c.bindings);
+  if (!dynamicData || typeof dynamicData !== "object" || Array.isArray(dynamicData)) {
+    throw new Error("Request action data expression must evaluate to an object");
+  }
+  return { ...(dynamicData as Record<string, Json>), ...action.data };
+}
+
 function traceDetail(c: DispatchCtx, detail: Record<string, unknown>): Record<string, unknown> {
   return c.currentEvent.actorId ? { ...detail, actorId: c.currentEvent.actorId } : detail;
 }
@@ -106,12 +118,13 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
       break;
     }
     case "request": {
+      const data = await resolveRequestData(a, c);
       c.effects.push({
         kind: "request",
         node: c.currentEvent.node,
         actorId: c.currentEvent.actorId,
         control: structuredClone(a.control),
-        data: structuredClone(a.data),
+        data: structuredClone(data),
       });
       c.traces.push({ event: "effect", detail: traceDetail(c, { do: "request", kind: a.control.kind }) });
       break;

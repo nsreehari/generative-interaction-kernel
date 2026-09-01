@@ -1187,11 +1187,24 @@ export class Kernel {
       : value === undefined
         ? {}
         : { value };
+    const requestContext: Record<string, Json> = effect.kind === "request"
+      ? {
+          requestContext: {
+            ...structuredClone(effect.data),
+            ...(effect.effectId !== undefined ? { effectId: effect.effectId } : {}),
+          },
+        }
+      : {};
     return [{
       node: effect.node,
       name: settlement.outcome,
       ...(effect.actorId !== undefined ? { actorId: effect.actorId } : {}),
-      payload: { ...data, ...(settlement.detail ?? {}), outcome: settlement.outcome },
+      payload: {
+        ...data,
+        ...(settlement.detail ?? {}),
+        ...requestContext,
+        outcome: settlement.outcome,
+      },
     }];
   }
 
