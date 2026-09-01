@@ -60,6 +60,7 @@ export function createNativeBlueprintWorker(options: {
   externalContext?: ExternalContext;
   materializedBlueprint?: MaterializedBlueprint;
   contexts?: BundleContextBindings;
+  effectRetry?: Parameters<typeof createDurableBlueprintWorker>[0]["effectRetry"];
   subscribe?: QueueNotificationSubscription;
   onError?: (error: unknown) => void;
 }): BlueprintWorker {
@@ -68,6 +69,7 @@ export function createNativeBlueprintWorker(options: {
     runtime: options.runtime,
     externalContext: options.externalContext,
     materializedBlueprint: options.materializedBlueprint,
+    effectRetry: options.effectRetry,
     subscribe: options.subscribe,
     onError: options.onError,
     executeEffect: async (effect, { state: snapshotState, spec, messageId, signal }) => {
