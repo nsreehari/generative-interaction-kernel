@@ -33,6 +33,7 @@ function createHost(
     agentTools?: readonly ServiceAgentTool[] | ServiceAgentToolProjection;
     authorizeInvocation?: ServiceInvocationAuthorizer;
     authorizationSnapshot?: (input: { request: unknown; context?: unknown }) => InvocationAuthorizationSnapshot | Promise<InvocationAuthorizationSnapshot>;
+    currentRevocationEpoch?: () => string | Promise<string>;
     killSwitch?: () => boolean | Promise<boolean>;
     dependencyFailurePolicy?: "settle" | "throw";
     now?: () => Date;
@@ -88,6 +89,9 @@ function createHost(
     state: new InMemoryStateModel(["work"]),
     expression: new JsonataExpressionProvider({ safe: true }),
     idFactory: () => "request-1",
+    ...(options.authorizationSnapshot && !Object.hasOwn(options, "currentRevocationEpoch")
+      ? { currentRevocationEpoch: () => "revocation-epoch-1" }
+      : {}),
     ...options,
   });
 }
@@ -598,6 +602,7 @@ function fullAuthorityProfile(id = "profile-1") {
 function baseSnapshot(overrides: Partial<InvocationAuthorizationSnapshot> = {}): InvocationAuthorizationSnapshot {
   return {
     issuedAt: "2026-08-31T10:00:00.000Z",
+    revocationEpoch: "revocation-epoch-1",
     authorityProfile: fullAuthorityProfile(),
     authorityProfileRevision: "profile-rev-1",
     policyRevision: "policy-rev-1",
@@ -651,6 +656,93 @@ test("authorization snapshot without a configured policy is a configuration erro
   assert.throws(() => createHost(async () => ({ output: null }), {}, {
     authorizationSnapshot: () => baseSnapshot(),
   }), /authorizeInvocation/);
+});
+
+test("authorization snapshot without a current revocation epoch reader is a configuration error", () => {
+  assert.throws(() => createHost(async () => ({ output: null }), {}, {
+    authorizationSnapshot: () => baseSnapshot(),
+    currentRevocationEpoch: undefined,
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  }), /currentRevocationEpoch/);
+});
+
+test("authorization snapshot rejects a revoked or unavailable epoch before policy evaluation", async () => {
+  let policyCalls = 0;
+  const authorizeInvocation = () => {
+    policyCalls += 1;
+    return { outcome: "authorized" as const };
+  };
+  const revoked = createHost(async () => ({ output: null }), {}, {
+    authorizationSnapshot: () => baseSnapshot(),
+    currentRevocationEpoch: () => "revocation-epoch-2",
+    authorizeInvocation,
+  });
+  assert.deepEqual(await revoked.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authorization-snapshot-revoked" },
+  });
+  assert.equal(policyCalls, 0);
+
+  const unavailable = createHost(async () => ({ output: null }), {}, {
+    authorizationSnapshot: () => baseSnapshot(),
+    currentRevocationEpoch: () => {
+      throw new Error("revocation store unavailable");
+    },
+    authorizeInvocation,
+  });
+  assert.deepEqual(await unavailable.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authorization-revocation-unavailable" },
+  });
+  assert.equal(policyCalls, 0);
+});
+
+test("revocation after enqueue blocks queued execution before the adapter runs", async () => {
+  let revocationEpoch = "revocation-epoch-1";
+  let executions = 0;
+  const host = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, { mode: "queued" }, {
+    authorizationSnapshot: () => baseSnapshot(),
+    currentRevocationEpoch: () => revocationEpoch,
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  });
+  const queue = new QueueFace(host);
+  assert.equal((await queue.submit(effect)).status, "accepted");
+
+  revocationEpoch = "revocation-epoch-2";
+  const rejected = await host.runNext();
+  assert.equal(rejected?.status, "rejected");
+  assert.deepEqual(rejected?.authorization, {
+    outcome: "rejected",
+    reason: "authorization-snapshot-revoked",
+  });
+  assert.equal(rejected?.attempts, 0);
+  assert.equal(executions, 0);
+});
+
+test("revocation after materialization blocks execution before the adapter runs", async () => {
+  let revocationEpoch = "revocation-epoch-1";
+  let executions = 0;
+  const host = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, {}, {
+    serviceScope: "per-invocation",
+    onMaterialize: () => {
+      revocationEpoch = "revocation-epoch-2";
+    },
+    authorizationSnapshot: () => baseSnapshot(),
+    currentRevocationEpoch: () => revocationEpoch,
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authorization-snapshot-revoked" },
+  });
+  assert.equal(executions, 0);
 });
 
 test("authorization snapshot enforces the idempotency requirement independent of the custom policy", async () => {
@@ -894,6 +986,43 @@ test("a kill switch engaged mid-turn blocks projected agent tool calls even with
     }],
   });
   assert.equal(executions, 0);
+});
+
+test("a revocation epoch change mid-turn blocks projected agent tool calls", async () => {
+  let revocationEpoch = "revocation-epoch-1";
+  let toolExecutions = 0;
+  const host = createHost(async (_request, context) => {
+    revocationEpoch = "revocation-epoch-2";
+    return {
+      output: await context.agentTools?.[0]?.handler({ accountId: "portfolio-1" }) as never,
+    };
+  }, {}, {
+    authorizationSnapshot: () => baseSnapshot(),
+    currentRevocationEpoch: () => revocationEpoch,
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+    agentTools: [{
+      name: "read_portfolio",
+      description: "Read one portfolio.",
+      inputSchema: { type: "object" },
+      lifecycle: "agent",
+      handler: () => {
+        toolExecutions += 1;
+        return { positions: 3 };
+      },
+    }],
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    ops: [{
+      op: "set",
+      path: "work.answer",
+      value: {
+        outcome: "rejected",
+        detail: { reason: "authorization-snapshot-revoked" },
+      },
+    }],
+  });
+  assert.equal(toolExecutions, 0);
 });
 
 test("a malformed confirmation-request intent fails the decision closed instead of smuggling extra fields", async () => {

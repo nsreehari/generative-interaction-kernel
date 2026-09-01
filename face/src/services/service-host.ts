@@ -88,6 +88,9 @@ export interface DefaultServiceHostOptions {
     request: Readonly<PreMaterializationServiceRequest>;
     context?: ServiceRequestContext;
   }) => InvocationAuthorizationSnapshot | Promise<InvocationAuthorizationSnapshot>;
+  /** Cheap, host-owned read of the current revocation epoch. Required with
+   * `authorizationSnapshot`; an unavailable or mismatched epoch fails authorization closed. */
+  currentRevocationEpoch?: () => string | Promise<string>;
   /** Cheap, live kill-switch read consulted at every authorization checkpoint (pre-materialization,
    * execution, agent-tool, guardrail retry, and queued dequeue), independent of any cached
    * authorization snapshot. A throwing or unavailable kill-switch fails closed (treated as
@@ -255,6 +258,9 @@ export class DefaultServiceHost implements ServiceHost {
     if (options.authorizationSnapshot && !options.authorizeInvocation) {
       throw new Error("'authorizationSnapshot' requires 'authorizeInvocation'; a snapshot with nothing to enforce it is a configuration error");
     }
+    if (options.authorizationSnapshot && !options.currentRevocationEpoch) {
+      throw new Error("'authorizationSnapshot' requires 'currentRevocationEpoch' so revoked snapshots fail closed");
+    }
   }
 
   describeKinds(): ServiceKindDescription[] {
@@ -369,7 +375,7 @@ export class DefaultServiceHost implements ServiceHost {
       return { outcome: "rejected", reason: "kill-switch-engaged" };
     }
     if (snapshot) {
-      const snapshotRejection = this.checkSnapshot(snapshot, invocation.request);
+      const snapshotRejection = await this.checkSnapshot(snapshot, invocation.request);
       if (snapshotRejection) return snapshotRejection;
     }
     if (!this.options.authorizeInvocation) return { outcome: "authorized" };
@@ -386,18 +392,25 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   /** Fresh, cheap checks run at every authorization checkpoint against the immutable
-   * per-request snapshot: expiry, the idempotency requirement, and target-revision drift. These
-   * never depend on the configured `authorizeInvocation` policy function, so they cannot be
-   * bypassed by a permissive or buggy policy. */
-  private checkSnapshot(
+   * per-request snapshot: expiry, revocation epoch, the idempotency requirement, and
+   * target-revision drift. These never depend on the configured `authorizeInvocation` policy
+   * function, so they cannot be bypassed by a permissive or buggy policy. */
+  private async checkSnapshot(
     snapshot: InvocationAuthorizationSnapshot,
     request: Readonly<ServiceRequestInput>
-  ): Extract<ServiceInvocationAuthorizationDecision, { outcome: "rejected" }> | undefined {
+  ): Promise<Extract<ServiceInvocationAuthorizationDecision, { outcome: "rejected" }> | undefined> {
     if (snapshot.expiresAt !== undefined) {
       const expiresAt = Date.parse(snapshot.expiresAt);
       if (!Number.isFinite(expiresAt) || expiresAt <= this.now().getTime()) {
         return { outcome: "rejected", reason: "authorization-snapshot-expired" };
       }
+    }
+    const currentRevocationEpoch = await this.readCurrentRevocationEpoch();
+    if (currentRevocationEpoch === undefined) {
+      return { outcome: "rejected", reason: "authorization-revocation-unavailable" };
+    }
+    if (snapshot.revocationEpoch !== currentRevocationEpoch) {
+      return { outcome: "rejected", reason: "authorization-snapshot-revoked" };
     }
     if (snapshot.requiresIdempotencyKey && !request.idempotencyKey) {
       return { outcome: "rejected", reason: "idempotency-key-required" };
@@ -412,6 +425,16 @@ export class DefaultServiceHost implements ServiceHost {
       }
     }
     return undefined;
+  }
+
+  private async readCurrentRevocationEpoch(): Promise<string | undefined> {
+    if (!this.options.currentRevocationEpoch) return undefined;
+    try {
+      const epoch = await this.options.currentRevocationEpoch();
+      return typeof epoch === "string" && epoch.length > 0 ? epoch : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   /** A throwing or unavailable kill-switch fails closed (treated as engaged): the kill switch is
@@ -446,7 +469,7 @@ export class DefaultServiceHost implements ServiceHost {
       return this.storeRejection(record, { outcome: "rejected", reason: "kill-switch-engaged" });
     }
     if (record.authorizationSnapshot) {
-      const rejection = this.checkSnapshot(record.authorizationSnapshot, record.request);
+      const rejection = await this.checkSnapshot(record.authorizationSnapshot, record.request);
       if (rejection) return this.storeRejection(record, rejection);
     }
     if (!this.options.authorizeInvocation) return record;
@@ -1108,6 +1131,7 @@ function isInvocationAuthorizationTarget(value: unknown): value is InvocationAut
 const AUTHORIZATION_SNAPSHOT_KEYS = [
   "issuedAt",
   "expiresAt",
+  "revocationEpoch",
   "subject",
   "actorId",
   "authorityProfile",
@@ -1131,6 +1155,7 @@ function isAuthorizationSnapshot(value: unknown): value is InvocationAuthorizati
   if (!hasOnlyKeys(value, AUTHORIZATION_SNAPSHOT_KEYS)) return false;
   if (typeof value.issuedAt !== "string") return false;
   if (value.expiresAt !== undefined && typeof value.expiresAt !== "string") return false;
+  if (typeof value.revocationEpoch !== "string" || value.revocationEpoch.length === 0) return false;
   if (value.subject !== undefined && !isServiceSubject(value.subject)) return false;
   if (value.actorId !== undefined && typeof value.actorId !== "string") return false;
   if (typeof value.authorityProfileRevision !== "string" || value.authorityProfileRevision.length === 0) return false;

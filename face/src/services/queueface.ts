@@ -205,6 +205,9 @@ export interface InvocationAuthorityProfile {
 export interface InvocationAuthorizationSnapshot {
   readonly issuedAt: string;
   readonly expiresAt?: string;
+  /** Host revocation epoch captured when this snapshot was issued. The service host compares it
+   * with its cheap live epoch reader at every authorization checkpoint. */
+  readonly revocationEpoch: string;
   readonly subject?: ServiceSubject;
   readonly actorId?: string;
   readonly authorityProfile: InvocationAuthorityProfile;
