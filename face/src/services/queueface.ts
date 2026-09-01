@@ -44,6 +44,15 @@ export interface ServiceCatalogSnapshot {
   warnings?: string[];
 }
 
+/** Bounded, JSON-safe descriptor of the concrete external target an operation acts on --
+ * deliberately separate from the opaque operation `input`, so the host can compare an
+ * authorization's `approvedTarget` against the invocation's actual target without needing to
+ * understand domain-specific payload shapes. */
+export interface InvocationAuthorizationTarget {
+  readonly ref: string;
+  readonly revision?: string;
+}
+
 export interface ServiceRequestInput {
   service: string;
   operation: string;
@@ -57,6 +66,10 @@ export interface ServiceRequestInput {
   blueprintRevision?: string;
   serviceRef?: string;
   subject?: ServiceSubject;
+  /** The concrete external target this request acts on, if any. Compared against an
+   * `InvocationAuthorizationSnapshot.approvedTarget` by the host, independent of any custom
+   * `ServiceInvocationAuthorizer`. */
+  target?: InvocationAuthorizationTarget;
 }
 
 export interface ServiceRequest extends ServiceRequestInput {
@@ -97,7 +110,7 @@ export interface ServiceExecutionResult {
 
 export type ServiceRequestContext = Pick<
   ServiceRequestInput,
-  "actorId" | "correlationId" | "idempotencyKey" | "deadline"
+  "actorId" | "correlationId" | "idempotencyKey" | "deadline" | "target"
 >;
 
 /** Host-created context passed out-of-band to projected tool handlers. Provider-supplied
@@ -138,27 +151,100 @@ export type ServiceInvocationAuthorizationDecision =
       readonly detail?: Record<string, Json>;
     }
   | {
-      readonly outcome: "rejected" | "confirmation-required";
+      readonly outcome: "rejected";
       readonly reason: string;
       readonly detail?: Record<string, Json>;
+    }
+  | {
+      readonly outcome: "confirmation-required";
+      readonly reason: string;
+      /** Bounded intent a Cell can turn into an actual `request` action. Recipients/audiences
+       * remain host-owned and are resolved later from `requestType` -- never supplied here. */
+      readonly requestIntent?: ServiceConfirmationRequestIntent;
+      readonly detail?: Record<string, Json>;
     };
+
+/** A bounded confirmation-request intent an authorization decision may carry so a Cell can emit a
+ * typed `request` action instead of parsing an arbitrary rejection string. Only these fields are
+ * permitted: the agent/participant cannot supply recipients, channels, or role names -- audience
+ * routing for `requestType` remains entirely host-owned. */
+export interface ServiceConfirmationRequestIntent {
+  readonly requestType: string;
+  readonly context?: Record<string, Json>;
+  readonly subject?: ServiceSubject;
+}
+
+export type AuthorityScope = "none" | "read" | "propose" | "apply";
+
+/** One decomposed boundary of a participant's authority -- for example its ability to read
+ * observations versus its ability to apply domain effects. Boundaries are evaluated
+ * independently so unrelated grants are never bundled together. */
+export interface AuthorityBoundary {
+  readonly scope: AuthorityScope;
+  readonly detail?: Record<string, Json>;
+}
+
+/** Host-authored, host-owned decomposition of what one participant/actor may do. The participant
+ * cannot select, modify, or widen its own profile; the host assigns it and the profile is always
+ * inspectable by name (`id`) and revision. */
+export interface InvocationAuthorityProfile {
+  readonly id: string;
+  readonly observation: AuthorityBoundary;
+  readonly planState: AuthorityBoundary;
+  readonly memory: AuthorityBoundary;
+  readonly producerArtifact: AuthorityBoundary;
+  readonly domainEffects: AuthorityBoundary;
+}
+
+/** Cheap, immutable, request-scoped authorization context computed once per service request so
+ * that repeated agent-tool and retry authorization checks stay local, bounded, and
+ * approximately O(1). It is deliberately not re-fetched mid-request -- remote policy/grant
+ * refresh happens out of band -- but every authorization checkpoint (pre-materialization,
+ * execution, agent-tool, guardrail retry) still fails closed on a live kill-switch read and on
+ * snapshot expiry, so approved-but-not-yet-applied work is always revalidated. */
+export interface InvocationAuthorizationSnapshot {
+  readonly issuedAt: string;
+  readonly expiresAt?: string;
+  readonly subject?: ServiceSubject;
+  readonly actorId?: string;
+  readonly authorityProfile: InvocationAuthorityProfile;
+  readonly authorityProfileRevision: string;
+  readonly policyRevision: string;
+  readonly grantRevision?: string;
+  /** Kill-switch state observed at snapshot creation. The host additionally re-reads a live
+   * kill-switch on every authorization checkpoint; this field is informational/audit only. */
+  readonly killSwitchEngaged: boolean;
+  /** When true, the host fails closed on any invocation whose request has no `idempotencyKey`,
+   * regardless of what a custom `ServiceInvocationAuthorizer` would otherwise decide. */
+  readonly requiresIdempotencyKey?: boolean;
+  /** The target and revision this authorization was actually approved against. The host rejects
+   * any invocation whose request `target` differs (by `ref` or by a defined `revision`), so an
+   * approval cannot be replayed against a since-changed target. */
+  readonly approvedTarget?: InvocationAuthorizationTarget;
+  readonly approvalRef?: string;
+  readonly budget?: { readonly limit?: number; readonly remaining?: number };
+  readonly detail?: Record<string, Json>;
+}
 
 export type ServiceInvocation =
   | {
       readonly kind: "service-request";
       readonly phase: "pre-materialization";
       readonly request: Readonly<PreMaterializationServiceRequest>;
+      readonly authorizationSnapshot?: InvocationAuthorizationSnapshot;
     }
   | {
       readonly kind: "service-request";
       readonly phase: "execution";
       readonly request: Readonly<ServiceRequest>;
+      readonly authorizationSnapshot?: InvocationAuthorizationSnapshot;
     }
   | {
       readonly kind: "agent-tool";
       readonly request: Readonly<ServiceRequest>;
       readonly tool: string;
       readonly args: unknown;
+      readonly authorizationSnapshot?: InvocationAuthorizationSnapshot;
     };
 
 export type ServiceInvocationAuthorizer = (
@@ -217,6 +303,10 @@ export interface ServiceRequestRecord {
   error?: string;
   errorDetail?: Record<string, Json>;
   authorization?: ServiceInvocationAuthorizationDecision;
+  /** Immutable, request-scoped authorization context computed once so retry/tool-call
+   * authorization checks stay local and cheap. Absent when the host is not configured with an
+   * `authorizationSnapshot` builder. */
+  authorizationSnapshot?: InvocationAuthorizationSnapshot;
   /** Re-invocation count driven by guardrail violation policy, distinct from transport-level `attempts`. */
   guardrailAttempts?: number;
   /** The most recent guardrail evaluation's `"error"`-level issues, if any were ever raised. */

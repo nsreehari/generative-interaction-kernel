@@ -9,14 +9,20 @@ import type {
   OrchestratorResult,
   ServiceDeclaration,
   ServiceOperationDeclaration,
+  ServiceSubject,
   StateModel,
 } from "../../../kernel/src/index";
 import type {
+  AuthorityBoundary,
+  InvocationAuthorityProfile,
+  InvocationAuthorizationSnapshot,
+  InvocationAuthorizationTarget,
   ServiceAdapter,
   ServiceAgentTool,
   ServiceAgentToolExecutionContext,
   ServiceAgentToolProjection,
   ServiceCatalogSnapshot,
+  ServiceConfirmationRequestIntent,
   ServiceExecutionResult,
   ServiceInvocation,
   ServiceInvocationAuthorizationDecision,
@@ -72,6 +78,21 @@ export interface DefaultServiceHostOptions {
   agentTools?: readonly ServiceAgentTool[] | ServiceAgentToolProjection;
   /** Host policy for concrete service and projected-tool calls. Omission preserves allow-by-default behavior. */
   authorizeInvocation?: ServiceInvocationAuthorizer;
+  /** Host-authored, request-scoped authorization context built once per service request (at
+   * pre-materialization) and reused -- immutably -- across every later authorization checkpoint
+   * for that request. Requires `authorizeInvocation`; a snapshot with nothing to enforce it
+   * against is a configuration error. A builder that throws, or returns a value that fails
+   * structural validation (an unrecognized authority profile, a missing policy/profile
+   * revision, and so on), fails the whole invocation closed. */
+  authorizationSnapshot?: (input: {
+    request: Readonly<PreMaterializationServiceRequest>;
+    context?: ServiceRequestContext;
+  }) => InvocationAuthorizationSnapshot | Promise<InvocationAuthorizationSnapshot>;
+  /** Cheap, live kill-switch read consulted at every authorization checkpoint (pre-materialization,
+   * execution, agent-tool, guardrail retry, and queued dequeue), independent of any cached
+   * authorization snapshot. A throwing or unavailable kill-switch fails closed (treated as
+   * engaged), matching "reactivation does not revive stale actions automatically". */
+  killSwitch?: () => boolean | Promise<boolean>;
   inProgressProposalSettlement?: (input: {
     proposalScopeId: string;
     settlement: OrchestratorResult;
@@ -79,6 +100,7 @@ export interface DefaultServiceHostOptions {
   }) => Promise<OrchestratorResult>;
   dependencyFailurePolicy?: "settle" | "throw";
 }
+
 
 export interface BlueprintServiceResolver {
   validate?(
@@ -137,18 +159,23 @@ function deeplyImmutableClone<T>(value: T): T {
 }
 
 function immutableInvocation(invocation: ServiceInvocation): ServiceInvocation {
+  const authorizationSnapshot = invocation.authorizationSnapshot
+    ? deeplyImmutableClone(invocation.authorizationSnapshot)
+    : undefined;
   if (invocation.kind === "service-request") {
     if (invocation.phase === "pre-materialization") {
       return Object.freeze({
         kind: invocation.kind,
         phase: invocation.phase,
         request: deeplyImmutableClone(invocation.request),
+        ...(authorizationSnapshot ? { authorizationSnapshot } : {}),
       });
     }
     return Object.freeze({
       kind: invocation.kind,
       phase: invocation.phase,
       request: deeplyImmutableClone(invocation.request),
+      ...(authorizationSnapshot ? { authorizationSnapshot } : {}),
     });
   }
   return Object.freeze({
@@ -156,6 +183,7 @@ function immutableInvocation(invocation: ServiceInvocation): ServiceInvocation {
     request: deeplyImmutableClone(invocation.request),
     tool: invocation.tool,
     args: deeplyImmutableClone(invocation.args),
+    ...(authorizationSnapshot ? { authorizationSnapshot } : {}),
   });
 }
 
@@ -224,6 +252,9 @@ export class DefaultServiceHost implements ServiceHost {
     this.agentTools = typeof options.agentTools === "function"
       ? options.agentTools
       : [...(options.agentTools ?? [])];
+    if (options.authorizationSnapshot && !options.authorizeInvocation) {
+      throw new Error("'authorizationSnapshot' requires 'authorizeInvocation'; a snapshot with nothing to enforce it is a configuration error");
+    }
   }
 
   describeKinds(): ServiceKindDescription[] {
@@ -330,15 +361,69 @@ export class DefaultServiceHost implements ServiceHost {
     return record;
   }
 
-  async authorizeInvocation(invocation: ServiceInvocation): Promise<ServiceInvocationAuthorizationDecision> {
+  async authorizeInvocation(
+    invocation: ServiceInvocation,
+    snapshot?: InvocationAuthorizationSnapshot
+  ): Promise<ServiceInvocationAuthorizationDecision> {
+    if (await this.killSwitchEngaged()) {
+      return { outcome: "rejected", reason: "kill-switch-engaged" };
+    }
+    if (snapshot) {
+      const snapshotRejection = this.checkSnapshot(snapshot, invocation.request);
+      if (snapshotRejection) return snapshotRejection;
+    }
     if (!this.options.authorizeInvocation) return { outcome: "authorized" };
+    const enriched: ServiceInvocation = snapshot
+      ? ({ ...invocation, authorizationSnapshot: snapshot } as ServiceInvocation)
+      : invocation;
     let decision: unknown;
     try {
-      decision = await this.options.authorizeInvocation(immutableInvocation(invocation));
+      decision = await this.options.authorizeInvocation(immutableInvocation(enriched));
     } catch {
       return { outcome: "rejected", reason: "authorization-unavailable" };
     }
     return this.authorizationDecision(decision);
+  }
+
+  /** Fresh, cheap checks run at every authorization checkpoint against the immutable
+   * per-request snapshot: expiry, the idempotency requirement, and target-revision drift. These
+   * never depend on the configured `authorizeInvocation` policy function, so they cannot be
+   * bypassed by a permissive or buggy policy. */
+  private checkSnapshot(
+    snapshot: InvocationAuthorizationSnapshot,
+    request: Readonly<ServiceRequestInput>
+  ): Extract<ServiceInvocationAuthorizationDecision, { outcome: "rejected" }> | undefined {
+    if (snapshot.expiresAt !== undefined) {
+      const expiresAt = Date.parse(snapshot.expiresAt);
+      if (!Number.isFinite(expiresAt) || expiresAt <= this.now().getTime()) {
+        return { outcome: "rejected", reason: "authorization-snapshot-expired" };
+      }
+    }
+    if (snapshot.requiresIdempotencyKey && !request.idempotencyKey) {
+      return { outcome: "rejected", reason: "idempotency-key-required" };
+    }
+    if (snapshot.approvedTarget) {
+      const target = request.target;
+      if (!target
+        || target.ref !== snapshot.approvedTarget.ref
+        || (snapshot.approvedTarget.revision !== undefined
+          && target.revision !== snapshot.approvedTarget.revision)) {
+        return { outcome: "rejected", reason: "approval-target-mismatch" };
+      }
+    }
+    return undefined;
+  }
+
+  /** A throwing or unavailable kill-switch fails closed (treated as engaged): the kill switch is
+   * a floor that must cover all activity, independent of whether a richer `authorizeInvocation`
+   * policy is even configured. */
+  private async killSwitchEngaged(): Promise<boolean> {
+    if (!this.options.killSwitch) return false;
+    try {
+      return await this.options.killSwitch();
+    } catch {
+      return true;
+    }
   }
 
   private authorizationDecision(decision: unknown): ServiceInvocationAuthorizationDecision {
@@ -357,9 +442,23 @@ export class DefaultServiceHost implements ServiceHost {
   private async revalidateExecutionAuthorization(
     record: ServiceRequestRecord
   ): Promise<ServiceRequestRecord> {
+    if (await this.killSwitchEngaged()) {
+      return this.storeRejection(record, { outcome: "rejected", reason: "kill-switch-engaged" });
+    }
+    if (record.authorizationSnapshot) {
+      const rejection = this.checkSnapshot(record.authorizationSnapshot, record.request);
+      if (rejection) return this.storeRejection(record, rejection);
+    }
     if (!this.options.authorizeInvocation) return record;
     const authorization = this.authorizationDecision(record.authorization);
     if (authorization.outcome === "authorized") return record;
+    return this.storeRejection(record, authorization);
+  }
+
+  private async storeRejection(
+    record: ServiceRequestRecord,
+    authorization: Extract<ServiceInvocationAuthorizationDecision, { outcome: "rejected" | "confirmation-required" }>
+  ): Promise<ServiceRequestRecord> {
     const rejected: ServiceRequestRecord = {
       ...record,
       status: authorization.outcome,
@@ -375,7 +474,7 @@ export class DefaultServiceHost implements ServiceHost {
     if (!pending) return undefined;
     const record = await this.store.get(pending.id);
     if (!record || record.status !== "accepted") return record;
-    if (this.options.authorizeInvocation) {
+    if (this.options.authorizeInvocation || this.options.killSwitch) {
       const authorized = await this.revalidateExecutionAuthorization(record);
       if (authorized.status !== "accepted") return authorized;
     }
@@ -420,11 +519,20 @@ export class DefaultServiceHost implements ServiceHost {
       }
       return { serviceId, declaration, invoke, operation };
     }
-    for (const [serviceId, declaration] of Object.entries(this.options.declarations)) {
-      const operation = declaration.operations[invoke];
-      if (operation) return { serviceId, declaration, invoke, operation };
+    const matches = Object.entries(this.options.declarations)
+      .filter(([, declaration]) => declaration.operations[invoke]);
+    if (matches.length === 0) {
+      throw new Error(`No Blueprint service operation is declared for invoke '${invoke}'`);
     }
-    throw new Error(`No Blueprint service operation is declared for invoke '${invoke}'`);
+    if (matches.length > 1) {
+      // Fail closed rather than silently binding to whichever service happens to be enumerated
+      // first: an ambiguous target must be disambiguated by the caller, not guessed by the host.
+      throw new Error(
+        `Invoke '${invoke}' is ambiguous across services [${matches.map(([serviceId]) => serviceId).join(", ")}]; specify 'serviceRef' to disambiguate`
+      );
+    }
+    const [serviceId, declaration] = matches[0]!;
+    return { serviceId, declaration, invoke, operation: declaration.operations[invoke]! };
   }
 
   private adapter(serviceId: string): Promise<ServiceAdapter> {
@@ -486,11 +594,24 @@ export class DefaultServiceHost implements ServiceHost {
       ...(context?.correlationId !== undefined ? { correlationId: context.correlationId } : {}),
       ...(context?.idempotencyKey !== undefined ? { idempotencyKey: context.idempotencyKey } : {}),
       ...(context?.deadline !== undefined ? { deadline: context.deadline } : {}),
+      ...(context?.target !== undefined ? { target: context.target } : {}),
       blueprintId: this.options.blueprintId,
       blueprintRevision: this.options.blueprintRevision,
       serviceRef: resolved.serviceId,
       subject: resolved.operation.subject,
     };
+  }
+
+  /** Whether to persist an authorization decision on the record: always when a custom policy is
+   * configured (existing behavior, including successful `authorized` decisions with metadata such
+   * as `validUntil`), and also whenever the decision itself is not a trivial "authorized" outcome
+   * -- for example a kill-switch rejection that fires even with no policy configured at all. */
+  private authorizationField(
+    authorization: ServiceInvocationAuthorizationDecision
+  ): { authorization?: ServiceInvocationAuthorizationDecision } {
+    return this.options.authorizeInvocation || authorization.outcome !== "authorized"
+      ? { authorization }
+      : {};
   }
 
   private async createRecord(
@@ -507,11 +628,14 @@ export class DefaultServiceHost implements ServiceHost {
       capabilityId: resolved.operation.contract,
       createdAt,
     };
-    const authorization = await this.authorizeInvocation({
-      kind: "service-request",
-      phase: "pre-materialization",
-      request: authorizationRequest,
-    });
+    const { snapshot, failed } = await this.buildAuthorizationSnapshot(authorizationRequest, context);
+    const authorization = failed
+      ? { outcome: "rejected" as const, reason: "authorization-unavailable" }
+      : await this.authorizeInvocation({
+          kind: "service-request",
+          phase: "pre-materialization",
+          request: authorizationRequest,
+        }, snapshot);
     const status = authorization.outcome === "authorized" ? "accepted" : authorization.outcome;
     const request: ServiceRequest = {
       ...authorizationRequest,
@@ -523,10 +647,30 @@ export class DefaultServiceHost implements ServiceHost {
       status,
       attempts: 0,
       updatedAt: createdAt,
-      ...(this.options.authorizeInvocation ? { authorization } : {}),
+      ...this.authorizationField(authorization),
+      ...(snapshot ? { authorizationSnapshot: snapshot } : {}),
     };
     await this.store.put(record);
     return record;
+  }
+
+  /** Builds the immutable, request-scoped authorization snapshot once (if a builder is
+   * configured). A builder that throws or returns a structurally invalid snapshot -- an
+   * unrecognized authority profile, a missing policy/profile revision, and so on -- fails the
+   * whole invocation closed rather than proceeding without one. */
+  private async buildAuthorizationSnapshot(
+    request: Readonly<PreMaterializationServiceRequest>,
+    context?: ServiceRequestContext
+  ): Promise<{ snapshot?: InvocationAuthorizationSnapshot; failed: boolean }> {
+    if (!this.options.authorizationSnapshot) return { failed: false };
+    let built: unknown;
+    try {
+      built = await this.options.authorizationSnapshot({ request, context });
+    } catch {
+      return { failed: true };
+    }
+    if (!isAuthorizationSnapshot(built)) return { failed: true };
+    return { snapshot: deeplyImmutableClone(built), failed: false };
   }
 
   private async execute(
@@ -553,12 +697,12 @@ export class DefaultServiceHost implements ServiceHost {
         kind: "service-request",
         phase: "execution",
         request,
-      });
+      }, active.authorizationSnapshot);
       active = {
         ...active,
         request,
         status: authorization.outcome === "authorized" ? active.status : authorization.outcome,
-        ...(this.options.authorizeInvocation ? { authorization } : {}),
+        ...this.authorizationField(authorization),
         updatedAt: this.now().toISOString(),
       };
       await this.store.put(active);
@@ -611,7 +755,7 @@ export class DefaultServiceHost implements ServiceHost {
         signal: controller.signal,
         effect: structuredClone(effect),
         responseValidators: structuredClone(validators),
-        agentTools: this.projectAgentTools(trustedRequest, lifetime),
+        agentTools: this.projectAgentTools(trustedRequest, lifetime, record.authorizationSnapshot),
       };
       const immediatelyAuthorized = await this.revalidateExecutionAuthorization(record);
       if (immediatelyAuthorized.status === "rejected"
@@ -669,13 +813,13 @@ export class DefaultServiceHost implements ServiceHost {
         guardrailAttempts: attempts,
         guardrailViolations: report.errors,
       };
-      if (this.options.authorizeInvocation) {
+      if (this.options.authorizeInvocation || this.options.killSwitch) {
         const authorization = await this.authorizeInvocation({
           kind: "service-request",
           phase: "execution",
           request: trustedRequest,
-        });
-        retrying = { ...retrying, authorization };
+        }, running.authorizationSnapshot);
+        retrying = { ...retrying, ...this.authorizationField(authorization) };
         if (authorization.outcome !== "authorized") {
           const rejected: ServiceRequestRecord = {
             ...retrying,
@@ -766,14 +910,18 @@ export class DefaultServiceHost implements ServiceHost {
   }
 
   private requestOutcome(record: ServiceRequestRecord): OrchestratorResult {
+    const authorization = record.authorization;
     return {
       outcome: record.status,
       detail: {
         requestId: record.request.id,
-        ...(record.authorization?.outcome !== "authorized"
+        ...(authorization?.outcome !== "authorized"
           ? {
-              ...(record.authorization?.detail ?? {}),
-              reason: record.authorization?.reason ?? "authorization-unavailable",
+              ...(authorization?.detail ?? {}),
+              reason: authorization?.reason ?? "authorization-unavailable",
+              ...(authorization?.outcome === "confirmation-required" && authorization.requestIntent
+                ? { requestIntent: asJson(authorization.requestIntent) }
+                : {}),
             }
           : {}),
       },
@@ -793,7 +941,8 @@ export class DefaultServiceHost implements ServiceHost {
 
   private projectAgentTools(
     request: Readonly<ServiceRequest>,
-    lifetime: InvocationLifetime
+    lifetime: InvocationLifetime,
+    snapshot?: InvocationAuthorizationSnapshot
   ): readonly ServiceAgentTool[] {
     const context: ServiceAgentToolExecutionContext = Object.freeze({
       requestId: request.id,
@@ -814,8 +963,9 @@ export class DefaultServiceHost implements ServiceHost {
       ? this.agentTools(context)
       : this.agentTools;
     this.validateAgentTools(projected);
+    const authorizationEnforced = Boolean(this.options.authorizeInvocation) || Boolean(this.options.killSwitch);
     return projected.map((tool) => {
-      if (!this.options.authorizeInvocation) {
+      if (!authorizationEnforced) {
         return {
           ...tool,
           handler: (args: unknown) => this.invocationActive(lifetime)
@@ -833,7 +983,7 @@ export class DefaultServiceHost implements ServiceHost {
             request,
             tool: tool.name,
             args: trustedArgs,
-          });
+          }, snapshot);
           if (!this.invocationActive(lifetime)) return this.inactiveInvocationResult();
           if (decision.outcome !== "authorized") {
             return {
@@ -868,12 +1018,134 @@ function isBlueprintService(
   return "blueprint" in declaration;
 }
 
+function isServiceSubject(value: unknown): value is ServiceSubject {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const subject = value as Record<string, unknown>;
+  if (typeof subject.blueprintId !== "string") return false;
+  switch (subject.kind) {
+    case "cell":
+      return typeof subject.cellId === "string";
+    case "substrate-agent":
+      return typeof subject.actorId === "string";
+    case "chat":
+      return typeof subject.turnId === "string";
+    case "task":
+      return typeof subject.taskId === "string";
+    default:
+      return false;
+  }
+}
+
+function isPlainRecord(value: unknown): value is Record<string, Json> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
+  const allowedKeys = new Set(allowed);
+  return Object.keys(value).every((key) => allowedKeys.has(key));
+}
+
+function isServiceConfirmationRequestIntent(value: unknown): value is ServiceConfirmationRequestIntent {
+  if (!isPlainRecord(value)) return false;
+  if (!hasOnlyKeys(value, ["requestType", "context", "subject"])) return false;
+  if (typeof value.requestType !== "string" || value.requestType.length === 0) return false;
+  if (value.context !== undefined && !isPlainRecord(value.context)) return false;
+  if (value.subject !== undefined && !isServiceSubject(value.subject)) return false;
+  return true;
+}
+
+/** A decision is only ever trusted structurally: rejecting on any unrecognized field or shape
+ * means a misbehaving or misconfigured policy function fails the invocation closed instead of
+ * silently widening it (for example, by smuggling a recipient/channel into `requestIntent`). */
 function isAuthorizationDecision(value: unknown): value is ServiceInvocationAuthorizationDecision {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const decision = value as Partial<ServiceInvocationAuthorizationDecision>;
+  const decision = value as Partial<ServiceInvocationAuthorizationDecision> & { requestIntent?: unknown };
   if (decision.outcome === "authorized") {
+    if (!hasOnlyKeys(decision as Record<string, unknown>, ["outcome", "validUntil", "detail"])) return false;
     return decision.validUntil === undefined || typeof decision.validUntil === "string";
   }
-  return (decision.outcome === "rejected" || decision.outcome === "confirmation-required")
-    && typeof decision.reason === "string";
+  if (decision.outcome === "rejected") {
+    if (!hasOnlyKeys(decision as Record<string, unknown>, ["outcome", "reason", "detail"])) return false;
+    return typeof decision.reason === "string";
+  }
+  if (decision.outcome === "confirmation-required") {
+    if (!hasOnlyKeys(decision as Record<string, unknown>, ["outcome", "reason", "requestIntent", "detail"])) return false;
+    if (typeof decision.reason !== "string") return false;
+    return decision.requestIntent === undefined || isServiceConfirmationRequestIntent(decision.requestIntent);
+  }
+  return false;
+}
+
+function isAuthorityBoundary(value: unknown): value is AuthorityBoundary {
+  if (!isPlainRecord(value)) return false;
+  if (!hasOnlyKeys(value, ["scope", "detail"])) return false;
+  if (!["none", "read", "propose", "apply"].includes(String(value.scope))) return false;
+  return value.detail === undefined || isPlainRecord(value.detail);
+}
+
+const AUTHORITY_PROFILE_BOUNDARY_KEYS = [
+  "observation",
+  "planState",
+  "memory",
+  "producerArtifact",
+  "domainEffects",
+] as const;
+
+function isInvocationAuthorityProfile(value: unknown): value is InvocationAuthorityProfile {
+  if (!isPlainRecord(value)) return false;
+  if (!hasOnlyKeys(value, ["id", ...AUTHORITY_PROFILE_BOUNDARY_KEYS])) return false;
+  if (typeof value.id !== "string" || value.id.length === 0) return false;
+  return AUTHORITY_PROFILE_BOUNDARY_KEYS.every((key) => isAuthorityBoundary(value[key]));
+}
+
+function isInvocationAuthorizationTarget(value: unknown): value is InvocationAuthorizationTarget {
+  if (!isPlainRecord(value)) return false;
+  if (!hasOnlyKeys(value, ["ref", "revision"])) return false;
+  if (typeof value.ref !== "string" || value.ref.length === 0) return false;
+  return value.revision === undefined || typeof value.revision === "string";
+}
+
+const AUTHORIZATION_SNAPSHOT_KEYS = [
+  "issuedAt",
+  "expiresAt",
+  "subject",
+  "actorId",
+  "authorityProfile",
+  "authorityProfileRevision",
+  "policyRevision",
+  "grantRevision",
+  "killSwitchEngaged",
+  "requiresIdempotencyKey",
+  "approvedTarget",
+  "approvalRef",
+  "budget",
+  "detail",
+] as const;
+
+/** Structural validation only -- this host has no opinion on what a valid policy/grant revision
+ * or authority-profile id *means*; it only guarantees the shape a policy function relies on is
+ * actually present. An authorization snapshot builder that returns anything else (or throws)
+ * fails the whole invocation closed rather than authorizing with missing/ambiguous context. */
+function isAuthorizationSnapshot(value: unknown): value is InvocationAuthorizationSnapshot {
+  if (!isPlainRecord(value)) return false;
+  if (!hasOnlyKeys(value, AUTHORIZATION_SNAPSHOT_KEYS)) return false;
+  if (typeof value.issuedAt !== "string") return false;
+  if (value.expiresAt !== undefined && typeof value.expiresAt !== "string") return false;
+  if (value.subject !== undefined && !isServiceSubject(value.subject)) return false;
+  if (value.actorId !== undefined && typeof value.actorId !== "string") return false;
+  if (typeof value.authorityProfileRevision !== "string" || value.authorityProfileRevision.length === 0) return false;
+  if (typeof value.policyRevision !== "string" || value.policyRevision.length === 0) return false;
+  if (value.grantRevision !== undefined && typeof value.grantRevision !== "string") return false;
+  if (typeof value.killSwitchEngaged !== "boolean") return false;
+  if (value.requiresIdempotencyKey !== undefined && typeof value.requiresIdempotencyKey !== "boolean") return false;
+  if (value.approvedTarget !== undefined && !isInvocationAuthorizationTarget(value.approvedTarget)) return false;
+  if (value.approvalRef !== undefined && typeof value.approvalRef !== "string") return false;
+  if (value.budget !== undefined) {
+    if (!isPlainRecord(value.budget) || !hasOnlyKeys(value.budget, ["limit", "remaining"])) return false;
+    const budget = value.budget as Record<string, unknown>;
+    if (budget.limit !== undefined && typeof budget.limit !== "number") return false;
+    if (budget.remaining !== undefined && typeof budget.remaining !== "number") return false;
+  }
+  if (value.detail !== undefined && !isPlainRecord(value.detail)) return false;
+  return isInvocationAuthorityProfile(value.authorityProfile);
 }

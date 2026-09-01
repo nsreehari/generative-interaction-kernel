@@ -5,6 +5,7 @@ import {
   InMemoryStateModel,
   Kernel,
   assign,
+  assignFrom,
   node,
   request,
   type Orchestrator,
@@ -63,6 +64,65 @@ function kernelWithOutcome(outcome: "resolved" | "rejected") {
     orchestrator,
   });
 }
+
+test("request settlements carry immutable triggering context without host synthesis", async () => {
+  const contextualDocument = {
+    gik: "0.1",
+    type: "program",
+    payload: {
+      root: node("button", "btn", {
+        on: {
+          tap: [request(
+            { kind: "decision", responseSchema },
+            { requestType: "order-approval", prompt: "Approve order?", approved: false },
+          )],
+          resolved: [
+            assignFrom("card_data.request", "$event.request"),
+            assignFrom("card_data.effectId", "$event.effectId"),
+            assignFrom("card_data.approved", "$event.approved"),
+          ],
+        },
+      }),
+    },
+  };
+  const orchestrator: Orchestrator = {
+    async request(effect) {
+      assert.deepEqual(effect.data, {
+        revision: 7,
+        correlationId: "order-42",
+        requestType: "order-approval",
+        prompt: "Approve order?",
+        approved: false,
+      });
+      return {
+        settlement: {
+          effectId: effect.effectId!,
+          outcome: "resolved",
+          data: { approved: true },
+        },
+      };
+    },
+  };
+  const kernel = new Kernel(manifest, contextualDocument, {
+    state: new InMemoryStateModel(["card_data"]),
+    orchestrator,
+  });
+  kernel.init();
+  await kernel.dispatch({
+    node: "btn",
+    name: "tap",
+    payload: { revision: 7, correlationId: "order-42" },
+  });
+  assert.deepEqual((kernel.state() as any).card_data.request, {
+    revision: 7,
+    correlationId: "order-42",
+    requestType: "order-approval",
+    prompt: "Approve order?",
+    approved: false,
+  });
+  assert.equal(typeof (kernel.state() as any).card_data.effectId, "string");
+  assert.equal((kernel.state() as any).card_data.approved, true);
+});
 
 test("a resolved request re-enters as an addressed event within one dispatch", async () => {
   const kernel = kernelWithOutcome("resolved");

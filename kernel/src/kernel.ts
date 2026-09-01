@@ -1187,11 +1187,27 @@ export class Kernel {
       : value === undefined
         ? {}
         : { value };
+    const requestContext = effect.kind === "request"
+      ? {
+          ...(effect.data.requestType !== undefined ? { requestType: structuredClone(effect.data.requestType) } : {}),
+          ...(effect.data.correlationId !== undefined
+            ? { correlationId: structuredClone(effect.data.correlationId) }
+            : {}),
+          ...(effect.data.revision !== undefined ? { revision: structuredClone(effect.data.revision) } : {}),
+          request: structuredClone(effect.data),
+          ...(effect.effectId !== undefined ? { effectId: effect.effectId } : {}),
+        }
+      : {};
     return [{
       node: effect.node,
       name: settlement.outcome,
       ...(effect.actorId !== undefined ? { actorId: effect.actorId } : {}),
-      payload: { ...data, ...(settlement.detail ?? {}), outcome: settlement.outcome },
+      payload: {
+        ...data,
+        ...(settlement.detail ?? {}),
+        ...requestContext,
+        outcome: settlement.outcome,
+      },
     }];
   }
 

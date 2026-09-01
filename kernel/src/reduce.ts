@@ -111,7 +111,10 @@ async function dispatchAction(a: Action, c: DispatchCtx): Promise<void> {
         node: c.currentEvent.node,
         actorId: c.currentEvent.actorId,
         control: structuredClone(a.control),
-        data: structuredClone(a.data),
+        data: structuredClone({
+          ...(c.currentEvent.payload ?? {}),
+          ...a.data,
+        }),
       });
       c.traces.push({ event: "effect", detail: traceDetail(c, { do: "request", kind: a.control.kind }) });
       break;

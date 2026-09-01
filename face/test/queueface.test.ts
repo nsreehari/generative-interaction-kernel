@@ -12,6 +12,7 @@ import {
   QueueFace,
   ServiceKindRegistry,
   UnsatisfiedServiceDependencyError,
+  type InvocationAuthorizationSnapshot,
   type ServiceAdapter,
   type ServiceAgentTool,
   type ServiceAgentToolExecutionContext,
@@ -31,6 +32,8 @@ function createHost(
     maxGuardrailAttempts?: number;
     agentTools?: readonly ServiceAgentTool[] | ServiceAgentToolProjection;
     authorizeInvocation?: ServiceInvocationAuthorizer;
+    authorizationSnapshot?: (input: { request: unknown; context?: unknown }) => InvocationAuthorizationSnapshot | Promise<InvocationAuthorizationSnapshot>;
+    killSwitch?: () => boolean | Promise<boolean>;
     dependencyFailurePolicy?: "settle" | "throw";
     now?: () => Date;
     onMaterialize?: () => void;
@@ -574,6 +577,361 @@ test("configured authorization fails closed on unavailable and stale decisions",
   assert.deepEqual(await stale.invoke(effect), {
     outcome: "rejected",
     detail: { requestId: "request-1", reason: "authorization-stale" },
+  });
+});
+
+function fullAuthorityBoundary(scope: "none" | "read" | "propose" | "apply") {
+  return { scope };
+}
+
+function fullAuthorityProfile(id = "profile-1") {
+  return {
+    id,
+    observation: fullAuthorityBoundary("read"),
+    planState: fullAuthorityBoundary("propose"),
+    memory: fullAuthorityBoundary("read"),
+    producerArtifact: fullAuthorityBoundary("propose"),
+    domainEffects: fullAuthorityBoundary("apply"),
+  };
+}
+
+function baseSnapshot(overrides: Partial<InvocationAuthorizationSnapshot> = {}): InvocationAuthorizationSnapshot {
+  return {
+    issuedAt: "2026-08-31T10:00:00.000Z",
+    authorityProfile: fullAuthorityProfile(),
+    authorityProfileRevision: "profile-rev-1",
+    policyRevision: "policy-rev-1",
+    killSwitchEngaged: false,
+    ...overrides,
+  };
+}
+
+test("host rejects an ambiguous invoke target instead of silently binding to the first declared service", async () => {
+  const registry = new ServiceKindRegistry();
+  registry.register({
+    manifest: {
+      id: "deterministic-agent",
+      version: "1",
+      configSchema: {},
+      executionModes: ["immediate"],
+      subjects: ["cell"],
+      supports: { probe: false, simulate: false, cancel: false },
+    },
+    create: () => ({
+      provider: { id: "deterministic:test", version: "1" },
+      discover: async () => ({ provider: { id: "deterministic:test", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
+      validate: async () => ({ ok: true }),
+      execute: async () => ({ output: null }),
+    }),
+  });
+  const operation = {
+    operation: "analyze",
+    contract: "portfolio-analysis/v1",
+    settlement: { transform: { kind: "jsonata" as const, expr: "response" } },
+  };
+  const host = new DefaultServiceHost({
+    blueprintId: "portfolio",
+    blueprintRevision: "1",
+    declarations: {
+      first: { kind: "deterministic-agent", version: "1", operations: { analyzePortfolio: operation } },
+      second: { kind: "deterministic-agent", version: "1", operations: { analyzePortfolio: operation } },
+    },
+    registry,
+    state: new InMemoryStateModel(["work"]),
+    expression: new JsonataExpressionProvider({ safe: true }),
+  });
+
+  await assert.rejects(host.invoke({
+    ...effect,
+    control: { tool: "analyzePortfolio" },
+  }), /ambiguous/);
+});
+
+test("authorization snapshot without a configured policy is a configuration error", () => {
+  assert.throws(() => createHost(async () => ({ output: null }), {}, {
+    authorizationSnapshot: () => baseSnapshot(),
+  }), /authorizeInvocation/);
+});
+
+test("authorization snapshot enforces the idempotency requirement independent of the custom policy", async () => {
+  let policyCalls = 0;
+  const host = createHost(async () => ({ output: null }), {}, {
+    authorizationSnapshot: () => baseSnapshot({ requiresIdempotencyKey: true }),
+    authorizeInvocation: () => {
+      policyCalls += 1;
+      return { outcome: "authorized" };
+    },
+  });
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "idempotency-key-required" },
+  });
+  assert.equal(policyCalls, 0);
+
+  const withKey = createHost(async () => ({ output: null }), {}, {
+    authorizationSnapshot: () => baseSnapshot({ requiresIdempotencyKey: true }),
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  });
+  assert.deepEqual(await withKey.invoke(effect, { idempotencyKey: "idem-1" }), {
+    ops: [{ op: "set", path: "work.answer", value: null }],
+  });
+});
+
+test("host fails closed when the authorization snapshot builder throws or returns a malformed authority profile", async () => {
+  const throwing = createHost(async () => ({ output: null }), {}, {
+    authorizationSnapshot: () => {
+      throw new Error("grant service unavailable");
+    },
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  });
+  assert.deepEqual(await throwing.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authorization-unavailable" },
+  });
+  assert.equal((await throwing.getRequest("request-1"))?.status, "rejected");
+
+  let policyCalls = 0;
+  const malformed = createHost(async () => ({ output: null }), {}, {
+    // Missing the required `domainEffects` boundary -- an unrecognized/incomplete authority profile.
+    authorizationSnapshot: () => ({
+      ...baseSnapshot(),
+      authorityProfile: {
+        id: "profile-1",
+        observation: { scope: "read" },
+        planState: { scope: "propose" },
+        memory: { scope: "read" },
+        producerArtifact: { scope: "propose" },
+      },
+    }) as unknown as InvocationAuthorizationSnapshot,
+    authorizeInvocation: () => {
+      policyCalls += 1;
+      return { outcome: "authorized" };
+    },
+  });
+  assert.deepEqual(await malformed.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authorization-unavailable" },
+  });
+  assert.equal(policyCalls, 0);
+});
+
+test("an approval granted against an old target revision is rejected even when the custom policy would authorize", async () => {
+  const host = createHost(async () => ({ output: null }), {}, {
+    authorizationSnapshot: () => baseSnapshot({
+      approvedTarget: { ref: "account-1", revision: "rev-1" },
+    }),
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  });
+
+  assert.deepEqual(
+    await host.invoke(effect, { target: { ref: "account-1", revision: "rev-2" } }),
+    {
+      outcome: "rejected",
+      detail: { requestId: "request-1", reason: "approval-target-mismatch" },
+    }
+  );
+  assert.deepEqual(
+    await createHost(async () => ({ output: null }), {}, {
+      authorizationSnapshot: () => baseSnapshot({
+        approvedTarget: { ref: "account-1", revision: "rev-1" },
+      }),
+      authorizeInvocation: () => ({ outcome: "authorized" }),
+    }).invoke(effect, { target: { ref: "account-2", revision: "rev-1" } }),
+    {
+      outcome: "rejected",
+      detail: { requestId: "request-1", reason: "approval-target-mismatch" },
+    }
+  );
+  assert.deepEqual(
+    await createHost(async () => ({ output: null }), {}, {
+      authorizationSnapshot: () => baseSnapshot({
+        approvedTarget: { ref: "account-1", revision: "rev-1" },
+      }),
+      authorizeInvocation: () => ({ outcome: "authorized" }),
+    }).invoke(effect, { target: { ref: "account-1" } }),
+    {
+      outcome: "rejected",
+      detail: { requestId: "request-1", reason: "approval-target-mismatch" },
+    }
+  );
+
+  const matching = createHost(async () => ({ output: null }), {}, {
+    authorizationSnapshot: () => baseSnapshot({
+      approvedTarget: { ref: "account-1", revision: "rev-1" },
+    }),
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  });
+  assert.deepEqual(await matching.invoke(effect, { target: { ref: "account-1", revision: "rev-1" } }), {
+    ops: [{ op: "set", path: "work.answer", value: null }],
+  });
+});
+
+test("a policy can detect a changed authority-profile or grant revision using the snapshot and reject on revalidation", async () => {
+  let currentProfileRevision = "profile-rev-1";
+  const phases: string[] = [];
+  const host = createHost(async () => ({ output: null }), {}, {
+    serviceScope: "per-invocation",
+    onMaterialize: () => {
+      // Simulate the host's authority profile changing between pre-materialization and execution.
+      currentProfileRevision = "profile-rev-2";
+    },
+    authorizationSnapshot: () => baseSnapshot({ authorityProfileRevision: "profile-rev-1" }),
+    authorizeInvocation: (invocation) => {
+      if (invocation.kind !== "service-request") return { outcome: "authorized" };
+      phases.push(invocation.phase);
+      if (invocation.authorizationSnapshot?.authorityProfileRevision !== currentProfileRevision) {
+        return { outcome: "rejected", reason: "authority-profile-revision-changed" };
+      }
+      return { outcome: "authorized" };
+    },
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authority-profile-revision-changed" },
+  });
+  assert.deepEqual(phases, ["pre-materialization", "execution"]);
+});
+
+test("kill switch engagement rejects invocations and is independent of the configured policy", async () => {
+  let executions = 0;
+  const engaged = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, {}, {
+    killSwitch: () => true,
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  });
+  assert.deepEqual(await engaged.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "kill-switch-engaged" },
+  });
+  assert.equal(executions, 0);
+
+  // No configured `authorizeInvocation` at all -- the kill switch must still be enforced.
+  const noPolicy = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, {}, {
+    killSwitch: () => true,
+  });
+  assert.deepEqual(await noPolicy.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "kill-switch-engaged" },
+  });
+  assert.equal(executions, 0);
+
+  // A throwing/unavailable kill switch fails closed, not open.
+  const unavailable = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, {}, {
+    killSwitch: () => {
+      throw new Error("kill-switch service unavailable");
+    },
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  });
+  assert.deepEqual(await unavailable.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "kill-switch-engaged" },
+  });
+  assert.equal(executions, 0);
+});
+
+test("a kill switch engaged after enqueue blocks queued execution on dequeue", async () => {
+  let killed = false;
+  let executions = 0;
+  const host = createHost(async () => {
+    executions += 1;
+    return { output: null };
+  }, { mode: "queued" }, {
+    killSwitch: () => killed,
+    authorizeInvocation: () => ({ outcome: "authorized" }),
+  });
+  const queue = new QueueFace(host);
+  assert.equal((await queue.submit(effect)).status, "accepted");
+
+  killed = true;
+  const rejected = await host.runNext();
+  assert.equal(rejected?.status, "rejected");
+  assert.deepEqual(rejected?.authorization, {
+    outcome: "rejected",
+    reason: "kill-switch-engaged",
+  });
+  assert.equal(rejected?.attempts, 0);
+  assert.equal(executions, 0);
+});
+
+test("a kill switch engaged mid-turn blocks projected agent tool calls even without a configured policy", async () => {
+  let killed = false;
+  let executions = 0;
+  const host = createHost(async (_request, context) => {
+    // The kill switch engages after the request's own execution-phase authorization already
+    // passed, but before the agent invokes its projected tool -- the tool call must still see it.
+    killed = true;
+    return {
+      output: await context.agentTools?.[0]?.handler({ accountId: "portfolio-1" }) as never,
+    };
+  }, {}, {
+    killSwitch: () => killed,
+    agentTools: [{
+      name: "read_portfolio",
+      description: "Read one portfolio.",
+      inputSchema: { type: "object" },
+      lifecycle: "agent",
+      handler: () => {
+        executions += 1;
+        return { positions: 3 };
+      },
+    }],
+  });
+
+  assert.deepEqual(await host.invoke(effect), {
+    ops: [{
+      op: "set",
+      path: "work.answer",
+      value: { outcome: "rejected", detail: { reason: "kill-switch-engaged" } },
+    }],
+  });
+  assert.equal(executions, 0);
+});
+
+test("a malformed confirmation-request intent fails the decision closed instead of smuggling extra fields", async () => {
+  const host = createHost(async () => ({ output: null }), {}, {
+    authorizeInvocation: () => ({
+      outcome: "confirmation-required",
+      reason: "human-approval-required",
+      requestIntent: {
+        requestType: "approve-trade",
+        // Not a permitted field: intents cannot supply routing/recipient information.
+        recipient: "compliance-team",
+      },
+    } as never),
+  });
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "rejected",
+    detail: { requestId: "request-1", reason: "authorization-unavailable" },
+  });
+});
+
+test("a well-formed confirmation-request intent is surfaced in the orchestrator result detail", async () => {
+  const host = createHost(async () => ({ output: null }), {}, {
+    authorizeInvocation: () => ({
+      outcome: "confirmation-required",
+      reason: "human-approval-required",
+      requestIntent: {
+        requestType: "approve-trade",
+        context: { ticker: "MSFT" },
+      },
+    }),
+  });
+  assert.deepEqual(await host.invoke(effect), {
+    outcome: "confirmation-required",
+    detail: {
+      requestId: "request-1",
+      reason: "human-approval-required",
+      requestIntent: { requestType: "approve-trade", context: { ticker: "MSFT" } },
+    },
   });
 });
 
