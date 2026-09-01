@@ -287,6 +287,7 @@ export interface RequestAction {
   do: "request";
   control: RequestControl;
   data: Record<string, Json>;
+  args?: { from: string };
   guard?: string;
 }
 

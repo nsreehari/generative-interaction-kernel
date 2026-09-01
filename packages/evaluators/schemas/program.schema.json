@@ -338,6 +338,14 @@
           }
         },
         "data": { "type": "object" },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from"],
+          "properties": {
+            "from": { "$ref": "#/definitions/expr" }
+          }
+        },
         "guard": { "$ref": "#/definitions/expr" }
       }
     },

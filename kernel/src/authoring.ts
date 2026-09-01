@@ -57,8 +57,9 @@ export function route(to: Json, data?: Record<string, Json>): Action {
 export function request(
   control: Extract<Action, { do: "request" }>["control"],
   data: Record<string, Json>,
-): Action {
-  return { do: "request", control, data };
+  args?: Extract<Action, { do: "request" }>["args"],
+): Extract<Action, { do: "request" }> {
+  return { do: "request", control, data, ...(args ? { args } : {}) };
 }
 
 /** Attach a guard expression to any action (skips it unless the guard is truthy). */
