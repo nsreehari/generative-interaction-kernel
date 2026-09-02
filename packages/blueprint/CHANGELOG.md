@@ -1,5 +1,13 @@
 # gik-blueprint
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [1e2a7b6]
+  - gik-kernel@0.2.0
+  - gik-evaluators@0.1.3
+
 ## 0.2.1
 
 ### Patch Changes

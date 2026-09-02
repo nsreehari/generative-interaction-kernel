@@ -1,5 +1,12 @@
 # gik-agentface
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [1e2a7b6]
+  - gik-controlface@0.2.0
+
 ## 0.1.2
 
 ### Patch Changes

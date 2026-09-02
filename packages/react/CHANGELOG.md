@@ -1,5 +1,13 @@
 # gik-react
 
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [1e2a7b6]
+  - gik-kernel@0.2.0
+  - gik-blueprint@0.2.2
+
 ## 0.3.1
 
 ### Patch Changes
