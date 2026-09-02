@@ -75,8 +75,35 @@ test("controlled invoke publishes ordered progress and one later terminal patch"
     id: "worker.source",
     lastRequestedToken: requestToken,
     lastCompletedToken: requestToken,
-    lastCompletionStatus: "success",
+    lastCompletionStatus: { status: "success", error: null },
     queueRequestedToken: requestToken,
+  });
+});
+
+test("failed source settlements retain the latest user-presentable error", async () => {
+  const orchestrator: Orchestrator = {
+    invoke() {
+      return Promise.resolve({
+        outcome: "failed",
+        detail: { error: "Too many requests" },
+      });
+    },
+  };
+  const kernel = new Kernel(manifest as any, document as any, { orchestrator });
+
+  await kernel.dispatch({ node: "worker", name: "run" });
+  await kernel.whenIdle();
+
+  const completedCell = (
+    kernel.state().blueprintRunState as unknown as { cells: Record<string, CellRunState> }
+  ).cells.worker;
+  assert.equal(projectCellRunState(completedCell).numSourcesRunning, 0);
+  assert.deepEqual(projectCellRunState(completedCell).sourceErrors, {
+    "worker.source": { error: "Too many requests" },
+  });
+  assert.deepEqual(completedCell.sources[0].lastCompletionStatus, {
+    status: "failure",
+    error: { error: "Too many requests" },
   });
 });
 
@@ -168,7 +195,10 @@ test("cancellation aborts the signal and revokes later provider output", async (
   assert.equal(kernel.state().work && (kernel.state().work as Record<string, unknown>).result, undefined);
   assert.equal(patches.length, 2);
   const cancelledCell = (kernel.state().blueprintRunState as unknown as { cells: Record<string, CellRunState> }).cells.worker;
-  assert.equal(cancelledCell.sources[0].lastCompletionStatus, "failure");
+  assert.deepEqual(cancelledCell.sources[0].lastCompletionStatus, {
+    status: "failure",
+    error: { error: "Source request failed" },
+  });
   await assert.rejects(control.emitProgress({ name: "late" }), InvocationClosedError);
 });
 

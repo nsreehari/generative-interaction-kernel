@@ -2,7 +2,7 @@ import type {
   CellRunState,
   ProjectedCellRunState,
   ProjectedSourceRunState,
-  SourceCompletionStatus,
+  SourceCompletionOutcome,
   SourceRunState,
 } from "./types";
 
@@ -35,12 +35,18 @@ export function nextSourceRequestToken(previous: string | null, now = new Date()
 export function completeSourceRequest(
   source: SourceRunState,
   token: string,
-  status: SourceCompletionStatus,
+  status: SourceCompletionOutcome,
+  detail?: Record<string, import("./types").Json>,
 ): SourceRunState {
   return {
     ...source,
     lastCompletedToken: token,
-    lastCompletionStatus: status,
+    lastCompletionStatus: status === "failure"
+      ? {
+          status,
+          error: structuredClone(detail ?? { error: "Source request failed" }),
+        }
+      : { status, error: null },
   };
 }
 
@@ -49,7 +55,7 @@ export function projectSourceRunState(source: SourceRunState): ProjectedSourceRu
     ...source,
     status: isSourceInFlight(source) ? "running" : "idle",
     hasPendingRequest: hasPendingSourceRequest(source),
-    lastRequestFailed: source.lastCompletionStatus === "failure",
+    lastRequestFailed: source.lastCompletionStatus?.status === "failure",
   };
 }
 
@@ -58,5 +64,9 @@ export function projectCellRunState(cell: CellRunState): ProjectedCellRunState {
   return {
     sources,
     numSourcesRunning: sources.filter(({ status }) => status === "running").length,
+    sourceErrors: Object.fromEntries(sources.flatMap((source) =>
+      source.lastCompletionStatus?.status === "failure"
+        ? [[source.id, structuredClone(source.lastCompletionStatus.error ?? {})]]
+        : [])),
   };
 }

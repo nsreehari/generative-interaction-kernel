@@ -4,7 +4,7 @@ import {
   type Json,
 } from "../../kernel/src/index";
 
-export const systemInputTokens = ["numSourcesRunning"] as const;
+export const systemInputTokens = ["numSourcesRunning", "sourceErrors"] as const;
 export type SystemInputToken = typeof systemInputTokens[number];
 
 export interface SystemInputContext {
@@ -27,6 +27,19 @@ export const systemInputDefinitions: Readonly<Record<SystemInputToken, SystemInp
     runtimeExpression: (cellId) => {
       const cell = `$lookup(blueprintRunState.cells, ${JSON.stringify(cellId)})`;
       return `$count((${cell}.sources)[lastRequestedToken != null and lastRequestedToken != lastCompletedToken])`;
+    },
+  },
+  sourceErrors: {
+    schema: {
+      type: "object",
+      additionalProperties: { type: "object" },
+    },
+    resolve: ({ blueprintRunState, cellId }) => projectCellRunState(
+      blueprintRunState.cells[cellId] ?? { sources: [] },
+    ).sourceErrors,
+    runtimeExpression: (cellId) => {
+      const cell = `$lookup(blueprintRunState.cells, ${JSON.stringify(cellId)})`;
+      return `$merge(((${cell}.sources)[lastCompletionStatus.status = 'failure']).{id: lastCompletionStatus.error})`;
     },
   },
 };

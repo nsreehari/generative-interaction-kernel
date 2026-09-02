@@ -149,7 +149,7 @@
   },
   "definitions": {
     "systemInputToken": {
-      "enum": ["numSourcesRunning"]
+      "enum": ["numSourcesRunning", "sourceErrors"]
     },
     "view": {
       "type": "object",

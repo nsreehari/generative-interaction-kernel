@@ -130,6 +130,48 @@ test("evaluateCell resolves only declared system inputs as pure Blueprint run-st
   assert.equal(activeCellRunState.sources[0].lastCompletedToken, null);
 });
 
+test("evaluateCell exposes terminal errors by source as a declared system input", () => {
+  const result = evaluateCell({
+    materializedProgramCell: {
+      id: "incident-analysis",
+      systemInputs: ["sourceErrors"],
+      compute: [{
+        id: "error",
+        expression: "systemInputs.sourceErrors",
+        assign: "error",
+      }],
+      outputs: [{ token: "error", from: "computed.error" }],
+    },
+    inputs: {},
+    settledSources: {},
+    systemContext: {
+      blueprintRunState: {
+        cells: {
+          "incident-analysis": {
+            sources: [{
+              id: "analysis",
+              lastRequestedToken: "request-1",
+              lastCompletedToken: "request-1",
+              lastCompletionStatus: {
+                status: "failure",
+                error: { error: "Too many requests" },
+              },
+              queueRequestedToken: "request-1",
+            }],
+          },
+        },
+      },
+      cellId: "incident-analysis",
+    },
+  });
+
+  assert.deepEqual(result.outputs, {
+    error: {
+      analysis: { error: "Too many requests" },
+    },
+  });
+});
+
 test("validateCell requires registered system tokens and rejects arbitrary evaluator roots", () => {
   assert.equal(validateCell({
     id: "valid-run-state",
