@@ -1,22 +1,22 @@
 {
   "stable": [
-    "@gik-ai/kernel",
-    "@gik-ai/evaluators",
-    "@gik-ai/durable-runtime",
-    "@gik-ai/blueprint",
-    "@gik-ai/react",
-    "@gik-ai/controlface",
-    "@gik-ai/agentface",
-    "@gik-ai/transport-http-sse"
+    "gik-kernel",
+    "gik-evaluators",
+    "gik-durable-runtime",
+    "gik-blueprint",
+    "gik-react",
+    "gik-controlface",
+    "gik-agentface",
+    "gik-transport-http-sse"
   ],
   "experimental": [
-    "@gik-ai/agent-lifecycle-exp",
-    "@gik-ai/blueprint-agent-host",
-    "@gik-ai/transport-mcp-http"
+    "gik-agent-lifecycle-exp",
+    "gik-blueprint-agent-host",
+    "gik-transport-mcp-http"
   ],
   "internal": [
-    "@gik-ai/provider-blueprint-authoring",
-    "@gik-ai/provider-step-orchestrator",
+    "gik-provider-blueprint-authoring",
+    "gik-provider-step-orchestrator",
     "gik"
   ]
 }

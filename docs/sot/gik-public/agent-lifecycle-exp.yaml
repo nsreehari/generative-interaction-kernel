@@ -5,12 +5,12 @@ document:
   status: current-contract-with-policy-authoring-evolution
   scope: transport-neutral agent lifecycle, host lifecycle, tool translation, and cumulative Blueprint experience projections
   source_of_truth: >-
-    This file defines the public product contract for @gik-ai/agent-lifecycle-exp, including the use
+    This file defines the public product contract for gik-agent-lifecycle-exp, including the use
     of AgentLifecycleOps for proposal-only authoring of declarative policy artifacts. TypeScript
     source describes current runtime behavior; this SOT is authoritative for the intended contract.
 
 package:
-  name: "@gik-ai/agent-lifecycle-exp"
+  name: "gik-agent-lifecycle-exp"
   version: "0.1.0"
   publication_status: public-workspace-package
   purpose: >-
@@ -27,7 +27,7 @@ package:
     - packages/agent-lifecycle-exp/src/blueprint-function-tools.ts
   decision_source: docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md
   distribution:
-    build: "turbo run build --filter=@gik-ai/agent-lifecycle-exp"
+    build: "turbo run build --filter=gik-agent-lifecycle-exp"
     publish: Standard public npm package through the GIK workspace release workflow.
 
 api_policy:
@@ -55,7 +55,7 @@ architecture:
     - Host lifecycle operations receive, authorize, admit, apply, reject, and report proposal status.
     - A host may auto-authorize a proposal without moving application authority into the agent lifecycle.
     - Tool carriers adapt AgentTool metadata and handlers but do not redefine lifecycle semantics.
-    - Blueprint profile binding structurally reads authored lifecycle material and requires no @gik-ai/blueprint import.
+    - Blueprint profile binding structurally reads authored lifecycle material and requires no gik-blueprint import.
     - AgentLifecycleOps may be bound to policy artifacts as targets without granting policy evaluation, activation, or enforcement authority.
     - Declarative manifests, schemas, and provider tool definitions are generated without executable placeholder callbacks.
     - AgentLifecycleOps, AgentHostLifecycleOps, AgentTool handlers, and BlueprintUseHost are trusted execution ports, not product configuration.
@@ -146,7 +146,7 @@ host_lifecycle:
     apply: Performs the authoritative transition.
 
 component_capability_describe:
-  ownership: "@gik-ai/agent-lifecycle-exp"
+  ownership: "gik-agent-lifecycle-exp"
   tool: describe
   kinds:
     catalog-capabilities:
@@ -184,7 +184,7 @@ policy_authoring_lifecycle:
     - The trusted host separately authorizes, admits, and applies any policy change.
     - A proposed policy is evaluated under the already-active governing policy and cannot authorize itself.
   package_boundary: >-
-    @gik-ai/agent-lifecycle-exp owns the neutral lifecycle and proposal contracts. Policy artifact,
+    gik-agent-lifecycle-exp owns the neutral lifecycle and proposal contracts. Policy artifact,
     evaluator, registry, activation, and enforcement contracts belong to the relevant trusted-host
     package and are projected into AgentLifecycleOps by composition.
 
@@ -254,7 +254,7 @@ blueprint_integration:
   authored_contract: >-
     A structurally-typed `payload.agentLifecycle.profiles` shape (this package's own
     `BlueprintLifecycleMaterialSource`/`BlueprintUseSource`), supplied independently of
-    `@gik-ai/blueprint`'s canonical `BlueprintDefinition` — that type no longer declares
+    `gik-blueprint`'s canonical `BlueprintDefinition` — that type no longer declares
     `agentLifecycle` (removed 2026-08-21: no real sample Blueprint ever populated it; see
     ADR-0048 amendment). A caller wanting to exercise this package's Blueprint-lifecycle
     binding still supplies an object carrying this material; it can no longer be a canonical,

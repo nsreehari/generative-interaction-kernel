@@ -1,4 +1,4 @@
-import type { AgentProposal, AgentTargetRef, MaybePromise } from "@gik-ai/agent-lifecycle-exp";
+import type { AgentProposal, AgentTargetRef, MaybePromise } from "gik-agent-lifecycle-exp";
 
 export type BlueprintProposalStatus =
   | "received"

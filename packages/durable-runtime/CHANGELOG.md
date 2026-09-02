@@ -1,4 +1,4 @@
-# @gik-ai/durable-runtime
+# gik-durable-runtime
 
 ## 0.8.1
 

@@ -1,5 +1,5 @@
 {
-  "name": "@gik-ai/agentface",
+  "name": "gik-agentface",
   "version": "0.1.2",
   "description": "Agent-facing projection surface over the shared face catalog for the Generative Interaction Kernel.",
   "license": "MIT",
@@ -41,7 +41,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@gik-ai/controlface": "0.1.5"
+    "gik-controlface": "0.1.5"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",

@@ -21,8 +21,8 @@ import {
   type ProjectedVocabularyManifest,
   type Orchestrator,
   type StateModel,
-} from "@gik-ai/kernel";
-import { createCellGraphNodeExecutor } from "@gik-ai/blueprint";
+} from "gik-kernel";
+import { createCellGraphNodeExecutor } from "gik-blueprint";
 import { GenUIController } from "../controller";
 import { createEffectDispatcher, type EffectHandlerMap } from "./effects";
 import type { ProjectionView } from "../registry";

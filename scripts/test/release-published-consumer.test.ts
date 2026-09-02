@@ -33,20 +33,20 @@ const workflow = readFileSync(
 
 const installedFiles = ["package.json", "dist/index.js", "dist/index.d.ts", "README.md"];
 const publishedManifest = {
-  name: "@gik-ai/example",
+  name: "gik-example",
   version: "1.2.3-next.1",
   license: "MIT",
   repository: { type: "git", url: "https://example.invalid/repo.git" },
-  dependencies: { "@gik-ai/kernel": "0.1.2-next.1" },
+  dependencies: { "gik-kernel": "0.1.2-next.1" },
   exports: { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } },
 };
 const expected = {
-  name: "@gik-ai/example",
+  name: "gik-example",
   version: "1.2.3-next.1",
-  dependencies: { "@gik-ai/kernel": "0.1.2-next.1" },
+  dependencies: { "gik-kernel": "0.1.2-next.1" },
   peerDependencies: {},
 };
-const installedVersions = new Map([["@gik-ai/kernel", "0.1.2-next.1"]]);
+const installedVersions = new Map([["gik-kernel", "0.1.2-next.1"]]);
 
 test("the consumer gate expects every stable package at its exact workspace version", () => {
   const packages = expectedPackages(root);
@@ -65,7 +65,7 @@ test("the consumer gate expects every stable package at its exact workspace vers
 
 test("import subpaths cover concrete exports and exclude wildcards and package.json", () => {
   const subpaths = importSubpaths({
-    name: "@gik-ai/example",
+    name: "gik-example",
     exports: {
       ".": "./dist/index.js",
       "./worker": "./dist/worker.js",
@@ -74,7 +74,7 @@ test("import subpaths cover concrete exports and exclude wildcards and package.j
     },
   });
 
-  assert.deepEqual(subpaths, ["@gik-ai/example", "@gik-ai/example/worker"]);
+  assert.deepEqual(subpaths, ["gik-example", "gik-example/worker"]);
 });
 
 test("a fully published package passes consumer verification", () => {
@@ -97,7 +97,7 @@ test("a version other than the expected one fails the consumer gate", () => {
   );
 
   assert.deepEqual(errors, [
-    "@gik-ai/example resolved to version 1.2.3-next.0, expected 1.2.3-next.1",
+    "gik-example resolved to version 1.2.3-next.0, expected 1.2.3-next.1",
   ]);
 });
 
@@ -111,7 +111,7 @@ test("missing published metadata fails the consumer gate", () => {
     installedVersions,
   );
 
-  assert.deepEqual(errors, ["@gik-ai/example published metadata omits 'license'"]);
+  assert.deepEqual(errors, ["gik-example published metadata omits 'license'"]);
 });
 
 test("a published package missing its build output fails the consumer gate", () => {
@@ -123,8 +123,8 @@ test("a published package missing its build output fails the consumer gate", () 
   );
 
   assert.deepEqual(errors.sort(), [
-    "@gik-ai/example published package omits declared entry point 'dist/index.d.ts'",
-    "@gik-ai/example published package omits declared entry point 'dist/index.js'",
+    "gik-example published package omits declared entry point 'dist/index.d.ts'",
+    "gik-example published package omits declared entry point 'dist/index.js'",
   ]);
 });
 
@@ -133,30 +133,30 @@ test("a dependency closure that resolves an unexpected version fails the consume
     expected,
     publishedManifest,
     installedFiles,
-    new Map([["@gik-ai/kernel", "0.1.2-next.0"]]),
+    new Map([["gik-kernel", "0.1.2-next.0"]]),
   );
 
   assert.deepEqual(errors, [
-    "@gik-ai/example dependency closure resolved @gik-ai/kernel@0.1.2-next.0, expected 0.1.2-next.1",
+    "gik-example dependency closure resolved gik-kernel@0.1.2-next.0, expected 0.1.2-next.1",
   ]);
 });
 
 test("the consumer project installs exact package versions and every declared peer", () => {
   const manifest = consumerManifest(
     [
-      { name: "@gik-ai/react", version: "0.3.1-next.1", peerDependencies: { react: "^18.3.1" } },
+      { name: "gik-react", version: "0.3.1-next.1", peerDependencies: { react: "^18.3.1" } },
       {
-        name: "@gik-ai/durable-runtime",
+        name: "gik-durable-runtime",
         version: "0.8.1-next.1",
-        peerDependencies: { "@azure/cosmos": "^4.4.1", "@gik-ai/kernel": "0.1.2-next.1" },
+        peerDependencies: { "@azure/cosmos": "^4.4.1", "gik-kernel": "0.1.2-next.1" },
       },
     ],
     { typescript: "^5.6.3" },
   );
 
   assert.deepEqual(manifest.dependencies, {
-    "@gik-ai/react": "0.3.1-next.1",
-    "@gik-ai/durable-runtime": "0.8.1-next.1",
+    "gik-react": "0.3.1-next.1",
+    "gik-durable-runtime": "0.8.1-next.1",
     react: "^18.3.1",
     "@azure/cosmos": "^4.4.1",
   });
@@ -169,12 +169,12 @@ test("workspace peers are installed while workspace packages are not duplicated 
 
   assert.ok(peers.react, "the React peer must be installed by the consumer");
   for (const peer of Object.keys(peers)) {
-    assert.ok(!peer.startsWith("@gik-ai/"), `${peer} must be installed as a package, not a peer`);
+    assert.ok(!peer.startsWith("gik-"), `${peer} must be installed as a package, not a peer`);
   }
 });
 
 test("the generated consumer sources exercise every published subpath", () => {
-  const subpaths = ["@gik-ai/kernel", "@gik-ai/blueprint/worker"];
+  const subpaths = ["gik-kernel", "gik-blueprint/worker"];
 
   const typescript = typescriptConsumerSource(subpaths);
   const runtime = runtimeConsumerSource(subpaths);
@@ -197,9 +197,9 @@ test("verified signatures and provenance attestations pass the gate", () => {
     {
       invalid: [],
       missing: [],
-      verified: [attested("@gik-ai/kernel", "0.1.2-next.1"), attested("other", "1.0.0")],
+      verified: [attested("gik-kernel", "0.1.2-next.1"), attested("other", "1.0.0")],
     },
-    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+    [{ name: "gik-kernel", version: "0.1.2-next.1" }],
   );
 
   assert.deepEqual(errors, []);
@@ -210,9 +210,9 @@ test("an invalid signature or attestation anywhere in the graph fails the gate",
     {
       invalid: [{ name: "transitive", version: "2.0.0", code: "EINTEGRITYSIGNATURE" }],
       missing: [],
-      verified: [attested("@gik-ai/kernel", "0.1.2-next.1")],
+      verified: [attested("gik-kernel", "0.1.2-next.1")],
     },
-    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+    [{ name: "gik-kernel", version: "0.1.2-next.1" }],
   );
 
   assert.deepEqual(errors, [
@@ -225,9 +225,9 @@ test("a missing registry signature anywhere in the graph fails the gate", () => 
     {
       invalid: [],
       missing: [{ name: "transitive", version: "2.0.0" }],
-      verified: [attested("@gik-ai/kernel", "0.1.2-next.1")],
+      verified: [attested("gik-kernel", "0.1.2-next.1")],
     },
-    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+    [{ name: "gik-kernel", version: "0.1.2-next.1" }],
   );
 
   assert.deepEqual(errors, ["transitive@2.0.0 has a missing registry signature"]);
@@ -236,10 +236,10 @@ test("a missing registry signature anywhere in the graph fails the gate", () => 
 test("a stable package published without a provenance attestation fails the gate", () => {
   const errors = verifyProvenance(
     { invalid: [], missing: [], verified: [] },
-    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+    [{ name: "gik-kernel", version: "0.1.2-next.1" }],
   );
 
-  assert.deepEqual(errors, ["@gik-ai/kernel@0.1.2-next.1 has no verified attestation"]);
+  assert.deepEqual(errors, ["gik-kernel@0.1.2-next.1 has no verified attestation"]);
 });
 
 test("a signed stable package carrying no provenance attestation fails the gate", () => {
@@ -247,12 +247,12 @@ test("a signed stable package carrying no provenance attestation fails the gate"
     {
       invalid: [],
       missing: [],
-      verified: [{ name: "@gik-ai/kernel", version: "0.1.2-next.1", attestations: {} }],
+      verified: [{ name: "gik-kernel", version: "0.1.2-next.1", attestations: {} }],
     },
-    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+    [{ name: "gik-kernel", version: "0.1.2-next.1" }],
   );
 
-  assert.deepEqual(errors, ["@gik-ai/kernel@0.1.2-next.1 has no provenance attestation"]);
+  assert.deepEqual(errors, ["gik-kernel@0.1.2-next.1 has no provenance attestation"]);
 });
 
 test("a stable package attested with a non-provenance predicate fails the gate", () => {
@@ -262,17 +262,17 @@ test("a stable package attested with a non-provenance predicate fails the gate",
       missing: [],
       verified: [
         {
-          name: "@gik-ai/kernel",
+          name: "gik-kernel",
           version: "0.1.2-next.1",
           attestations: { provenance: { predicateType: "https://example.invalid/other" } },
         },
       ],
     },
-    [{ name: "@gik-ai/kernel", version: "0.1.2-next.1" }],
+    [{ name: "gik-kernel", version: "0.1.2-next.1" }],
   );
 
   assert.deepEqual(errors, [
-    "@gik-ai/kernel@0.1.2-next.1 attestation predicate " +
+    "gik-kernel@0.1.2-next.1 attestation predicate " +
       "'https://example.invalid/other' is not " +
       provenancePredicateType,
   ]);
@@ -280,10 +280,10 @@ test("a stable package attested with a non-provenance predicate fails the gate",
 
 test("an empty or unreadable signature report fails closed", () => {
   const errors = verifyProvenance(undefined, [
-    { name: "@gik-ai/kernel", version: "0.1.2-next.1" },
+    { name: "gik-kernel", version: "0.1.2-next.1" },
   ]);
 
-  assert.deepEqual(errors, ["@gik-ai/kernel@0.1.2-next.1 has no verified attestation"]);
+  assert.deepEqual(errors, ["gik-kernel@0.1.2-next.1 has no verified attestation"]);
 });
 
 test("the consumer gate runs on GitHub-hosted infrastructure without publishing", () => {

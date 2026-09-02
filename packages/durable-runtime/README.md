@@ -1,10 +1,10 @@
-# @gik-ai/durable-runtime
+# gik-durable-runtime
 
 Provider-neutral durable state, journal, queue, and storage primitives for GIK
 hosts.
 
 ```bash
-npm install @gik-ai/durable-runtime
+npm install gik-durable-runtime
 ```
 
 The host supplies pure transitions and effect handlers. Durable providers own
@@ -15,17 +15,17 @@ settlement, and snapshot synchronization.
 import {
   createDurableQueueProcessor,
   createDurableRuntime,
-} from "@gik-ai/durable-runtime";
+} from "gik-durable-runtime";
 ```
 
 ## Storage backends
 
 | Import | Backend |
 |---|---|
-| `@gik-ai/durable-runtime/storage/memory` | In-process memory |
-| `@gik-ai/durable-runtime/storage/indexed-db` | Browser IndexedDB |
-| `@gik-ai/durable-runtime/storage/filesystem` | Filesystem service |
-| `@gik-ai/durable-runtime/storage/cosmos` | Azure Cosmos DB |
+| `gik-durable-runtime/storage/memory` | In-process memory |
+| `gik-durable-runtime/storage/indexed-db` | Browser IndexedDB |
+| `gik-durable-runtime/storage/filesystem` | Filesystem service |
+| `gik-durable-runtime/storage/cosmos` | Azure Cosmos DB |
 
 Backend-specific library and API entry points are available below the
 corresponding storage path. Azure packages are optional peer dependencies;
@@ -33,16 +33,16 @@ browser and filesystem consumers do not need to install them.
 
 ## Connectors
 
-- `@gik-ai/durable-runtime/connectors/browser-indexed-db`
-- `@gik-ai/durable-runtime/connectors/filesystem-mcp`
-- `@gik-ai/durable-runtime/connectors/azure-function`
-- `@gik-ai/durable-runtime/server/transports/http`
+- `gik-durable-runtime/connectors/browser-indexed-db`
+- `gik-durable-runtime/connectors/filesystem-mcp`
+- `gik-durable-runtime/connectors/azure-function`
+- `gik-durable-runtime/server/transports/http`
 
 ## Exported API
 
 ### Root entry point
 
-`@gik-ai/durable-runtime` exports `createDurableRuntime` (also aliased as
+`gik-durable-runtime` exports `createDurableRuntime` (also aliased as
 `createBrowserDurableRuntime`) and `createConfiguredBrowserDurableRuntime`.
 
 `createDurableRuntime({ runtimeId, providers, transitionAdapter,
@@ -95,14 +95,14 @@ those calls, including `DurableTransitionAdapter`, `DurableEffectHandler`,
 
 | Import | Verified exports |
 |---|---|
-| `@gik-ai/durable-runtime/storage/memory` | `createMemoryStorage`, `createMemoryStorageApi`, and `createMemoryStorageRef`. |
-| `@gik-ai/durable-runtime/storage/indexed-db` | `createIndexedDbStorage` / `createIndexedDbProvider`, `createIndexedDbStorageApi`, `createIndexedDbStorageRef`, and the IndexedDB option types; this subpath also re-exports its `library` and `api` entry points. |
-| `@gik-ai/durable-runtime/storage/filesystem` | `createFilesystemDurableStorage`, `FilesystemDurableStoragePrimitives`, and the filesystem library/API exports, including `createFilesystemStorageDispatcher` and `createFilesystemRef`. |
-| `@gik-ai/durable-runtime/storage/cosmos` | Azure-side storage exports including `createCosmosTransitionStorage`, `createCosmosEffectsQueue`, `createCosmosEngineWakeStorage`, `createCosmosStorageLibrary`, and the `api`/`library` entry points used for remote storage and HTTP dispatch. |
-| `@gik-ai/durable-runtime/connectors/browser-indexed-db` | `createBrowserIndexedDbConnector`, plus `createIndexedDbProvider` and the IndexedDB option types. |
-| `@gik-ai/durable-runtime/connectors/filesystem-mcp` | `createFilesystemMcpConnector` / `createFilesystemMcpProvider`, `createFilesystemMcpSnapshotInvalidationSubscription`, and the MCP connector types/constants. |
-| `@gik-ai/durable-runtime/connectors/azure-function` | `createAzureFunctionConnector` / `createAzureFunctionsProvider`, `createAzureSignalRSnapshotInvalidationSubscription`, and the Azure connector types/constants. |
-| `@gik-ai/durable-runtime/server/transports/http` | `DurableRuntimeServerDependencies` plus the HTTP dispatch helpers for initialize, snapshot reads, transition acquire/commit/abort, journal append, engine wake reads/updates, and effect lease/ack/nack. |
+| `gik-durable-runtime/storage/memory` | `createMemoryStorage`, `createMemoryStorageApi`, and `createMemoryStorageRef`. |
+| `gik-durable-runtime/storage/indexed-db` | `createIndexedDbStorage` / `createIndexedDbProvider`, `createIndexedDbStorageApi`, `createIndexedDbStorageRef`, and the IndexedDB option types; this subpath also re-exports its `library` and `api` entry points. |
+| `gik-durable-runtime/storage/filesystem` | `createFilesystemDurableStorage`, `FilesystemDurableStoragePrimitives`, and the filesystem library/API exports, including `createFilesystemStorageDispatcher` and `createFilesystemRef`. |
+| `gik-durable-runtime/storage/cosmos` | Azure-side storage exports including `createCosmosTransitionStorage`, `createCosmosEffectsQueue`, `createCosmosEngineWakeStorage`, `createCosmosStorageLibrary`, and the `api`/`library` entry points used for remote storage and HTTP dispatch. |
+| `gik-durable-runtime/connectors/browser-indexed-db` | `createBrowserIndexedDbConnector`, plus `createIndexedDbProvider` and the IndexedDB option types. |
+| `gik-durable-runtime/connectors/filesystem-mcp` | `createFilesystemMcpConnector` / `createFilesystemMcpProvider`, `createFilesystemMcpSnapshotInvalidationSubscription`, and the MCP connector types/constants. |
+| `gik-durable-runtime/connectors/azure-function` | `createAzureFunctionConnector` / `createAzureFunctionsProvider`, `createAzureSignalRSnapshotInvalidationSubscription`, and the Azure connector types/constants. |
+| `gik-durable-runtime/server/transports/http` | `DurableRuntimeServerDependencies` plus the HTTP dispatch helpers for initialize, snapshot reads, transition acquire/commit/abort, journal append, engine wake reads/updates, and effect lease/ack/nack. |
 
 ## Package boundary
 

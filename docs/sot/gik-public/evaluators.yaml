@@ -1,7 +1,7 @@
 schema_version: 1
 
 package:
-  name: "@gik-ai/evaluators"
+  name: "gik-evaluators"
   version: "0.1.1"
   purpose: >-
     Own canonical GIK schemas, evaluate JSONata expressions and Blueprint Cells, and run
@@ -24,7 +24,7 @@ api_policy:
     - JSONata expression validation.
     - Declarative validation dispatch.
     - Cell, Tier, service-recipe, projection-recipe, and Blueprint validation.
-    - Canonical JSON schemas published under @gik-ai/evaluators/schemas/*.
+    - Canonical JSON schemas published under gik-evaluators/schemas/*.
 
 architecture:
   owns:
@@ -48,9 +48,9 @@ architecture:
     - Kernel execution authority.
     - Throwing on ordinary declarative validation failures.
   dependency_direction:
-    - "@gik-ai/evaluators -> @gik-ai/kernel"
-    - "@gik-ai/evaluators -> ajv"
-    - "@gik-ai/kernel must not depend on @gik-ai/evaluators"
+    - "gik-evaluators -> gik-kernel"
+    - "gik-evaluators -> ajv"
+    - "gik-kernel must not depend on gik-evaluators"
 
 jsonata_api:
   - name: evalSyncJsonata
@@ -244,7 +244,7 @@ validator_kinds:
     accepted_form: "{ kind: blueprint, message?, level?, code?, node? }"
     behavior:
       - Validates the canonical Blueprint schema and every embedded Cell, service recipe, and projection recipe.
-      - Leaves cross-object references, chain connectivity, and composition policy to @gik-ai/blueprint.
+      - Leaves cross-object references, chain connectivity, and composition policy to gik-blueprint.
 
 validation_api:
   name: runDeclarativeValidators
@@ -278,7 +278,7 @@ specialized_validation_api:
 
 schema_assets:
   authority: packages/evaluators/schemas
-  package_exports: "@gik-ai/evaluators/schemas/*"
+  package_exports: "gik-evaluators/schemas/*"
   includes:
     - blueprint.schema.json
     - cell.schema.json

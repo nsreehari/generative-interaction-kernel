@@ -137,7 +137,7 @@ batch.
 
 ADR-0046 defines one Blueprint binding without changing this provider-neutral contract. A host may
 use `{ authoredBlueprint, externalContext, materializedBlueprint }` as `TSpec`, run the shared
-`@gik-ai/blueprint` materialized transition, and represent admitted authored patches as `TSpecUpdate`.
+`gik-blueprint` materialized transition, and represent admitted authored patches as `TSpecUpdate`.
 The provider atomically stores the caller-materialized next spec with state, cursor, and effects.
 It never parses the terminal Blueprint. Stateless workers read the portable materialization from
 the acquired spec and need no process-local cache.

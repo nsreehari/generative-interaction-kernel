@@ -1,5 +1,5 @@
 {
-  "name": "@gik-ai/blueprint-agent-host",
+  "name": "gik-blueprint-agent-host",
   "private": true,
   "version": "0.1.0",
   "description": "Blueprint-specific trusted host lifecycle for agent proposals in GIK.",
@@ -44,8 +44,8 @@
     "prepack": "node ../../scripts/sync-package-license.mjs packages/blueprint-agent-host"
   },
   "dependencies": {
-    "@gik-ai/agent-lifecycle-exp": "0.1.1",
-    "@gik-ai/durable-runtime": "0.8.1",
-    "@gik-ai/evaluators": "0.1.2"
+    "gik-agent-lifecycle-exp": "0.1.1",
+    "gik-durable-runtime": "0.8.1",
+    "gik-evaluators": "0.1.2"
   }
 }

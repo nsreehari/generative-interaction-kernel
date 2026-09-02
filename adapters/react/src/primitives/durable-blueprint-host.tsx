@@ -5,9 +5,9 @@ import {
   prepareBlueprintProgram,
   type BlueprintArtifact,
   type MaterializedBlueprint,
-} from "@gik-ai/blueprint";
-import type { BlueprintWorker } from "@gik-ai/blueprint/worker";
-import { parseRef } from "@gik-ai/durable-runtime";
+} from "gik-blueprint";
+import type { BlueprintWorker } from "gik-blueprint/worker";
+import { parseRef } from "gik-durable-runtime";
 import type { BlueprintHostProps as InMemoryBlueprintHostProps } from "./blueprint-host";
 import { createHostedBlueprintProjection } from "./blueprint-host";
 import { DurableBlueprintController, type DurableBlueprintRuntimeOptions } from "../durable-blueprint-controller";

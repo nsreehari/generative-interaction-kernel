@@ -7,7 +7,7 @@ import type {
   ProgramNode,
   RuntimeHandler,
 } from "../../kernel/src/index";
-import { isSystemInputToken, systemInputRuntimeExpression } from "@gik-ai/evaluators";
+import { isSystemInputToken, systemInputRuntimeExpression } from "gik-evaluators";
 import {
   BLUEPRINT_CAPABILITY,
   PRESENTATION_FRAGMENT_CAPABILITY,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "vitest";
-import { unwrap } from "@gik-ai/kernel";
+import { unwrap } from "gik-kernel";
 import {
   createBlueprint,
   fixedLoweringMetaGraphBlueprint,

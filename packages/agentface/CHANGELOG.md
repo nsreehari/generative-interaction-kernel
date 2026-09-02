@@ -1,4 +1,4 @@
-# @gik-ai/agentface
+# gik-agentface
 
 ## 0.1.2
 
@@ -12,7 +12,7 @@
   package manifests.
 - Updated dependencies [1217a63]
 - Updated dependencies [a11cb3f]
-  - @gik-ai/controlface@0.1.5
+  - gik-controlface@0.1.5
 
 ## 0.1.2-next.1
 
@@ -23,7 +23,7 @@
   installed packages were missing the `dist` entry points declared by their
   package manifests.
 - Updated dependencies [a11cb3f]
-  - @gik-ai/controlface@0.1.5-next.1
+  - gik-controlface@0.1.5-next.1
 
 ## 0.1.2-next.0
 
@@ -32,4 +32,4 @@
 - 49ef851: Prepare the supported public package set with package-owned consumer
   documentation and validated release metadata.
 - Updated dependencies [49ef851]
-  - @gik-ai/controlface@0.1.5-next.0
+  - gik-controlface@0.1.5-next.0

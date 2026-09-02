@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import type { AgentProposal } from "@gik-ai/agent-lifecycle-exp";
-import { createDurableRuntime } from "@gik-ai/durable-runtime";
-import { createMemoryStorage } from "@gik-ai/durable-runtime/storage/memory";
+import type { AgentProposal } from "gik-agent-lifecycle-exp";
+import { createDurableRuntime } from "gik-durable-runtime";
+import { createMemoryStorage } from "gik-durable-runtime/storage/memory";
 import {
   createBlueprintProposalDurableTransitionAdapter,
   createBlueprintProposalHost,

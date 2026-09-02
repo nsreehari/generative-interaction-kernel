@@ -34,7 +34,7 @@ export function expectedPackages(root) {
       version: manifest.version,
       dependencies: Object.fromEntries(
         Object.entries(manifest.dependencies ?? {}).filter(([dependency]) =>
-          dependency.startsWith("@gik-ai/"),
+          dependency.startsWith("gik-"),
         ),
       ),
       peerDependencies: { ...manifest.peerDependencies },
@@ -108,7 +108,7 @@ export function consumerPeerDependencies(packages) {
   const peers = {};
   for (const { peerDependencies } of packages) {
     for (const [peer, range] of Object.entries(peerDependencies ?? {})) {
-      if (peer.startsWith("@gik-ai/")) continue;
+      if (peer.startsWith("gik-")) continue;
       peers[peer] = range;
     }
   }
@@ -145,7 +145,7 @@ export function typescriptConsumerSource(subpaths) {
 export function runtimeConsumerSource(subpaths) {
   return [
     'import assert from "node:assert/strict";',
-    'import { createInMemoryTransportPair } from "@gik-ai/kernel";',
+    'import { createInMemoryTransportPair } from "gik-kernel";',
     "",
     `const subpaths = ${JSON.stringify(subpaths, undefined, 2)};`,
     "",

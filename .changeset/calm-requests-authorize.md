@@ -1,6 +1,6 @@
 ---
-"@gik-ai/kernel": minor
-"@gik-ai/controlface": minor
+"gik-kernel": minor
+"gik-controlface": minor
 ---
 
 Add host-owned invocation authorization snapshots and explicit durable request correlation context.

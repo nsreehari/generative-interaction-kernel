@@ -1,5 +1,5 @@
 {
-  "name": "@gik-ai/react",
+  "name": "gik-react",
   "version": "0.3.1",
   "description": "React renderer and in-memory Blueprint host for the Generative Interaction Kernel.",
   "license": "MIT",
@@ -49,9 +49,9 @@
     "react-dom": "^18.3.1"
   },
   "dependencies": {
-    "@gik-ai/blueprint": "0.2.1",
-    "@gik-ai/durable-runtime": "0.8.1",
-    "@gik-ai/kernel": "0.1.2"
+    "gik-blueprint": "0.2.1",
+    "gik-durable-runtime": "0.8.1",
+    "gik-kernel": "0.1.2"
   },
   "scripts": {
     "build": "tsup src/index.ts src/durable.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",

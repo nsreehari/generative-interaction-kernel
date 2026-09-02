@@ -1,4 +1,4 @@
-# @gik-ai/controlface
+# gik-controlface
 
 ## 0.1.5
 

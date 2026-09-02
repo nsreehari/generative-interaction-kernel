@@ -1,6 +1,6 @@
 # GIK Conformance Fixture
 
-The normative schemas are owned and published by `@gik-ai/evaluators` from
+The normative schemas are owned and published by `gik-evaluators` from
 [`../packages/evaluators/schemas`](../packages/evaluators/schemas). This directory retains the
 cross-package conformance runner and fixtures that exercise those schemas.
 

@@ -1,4 +1,4 @@
-import { runDeclarativeValidators } from "@gik-ai/evaluators";
+import { runDeclarativeValidators } from "gik-evaluators";
 import type { CellDefinition } from "./types";
 
 export interface CellDiagnostic {

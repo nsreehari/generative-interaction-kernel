@@ -5,11 +5,11 @@ package:
   published: false
   purpose: >-
     Define one shared callable surface and publish audience-specific projections of that
-    surface through @gik-ai/controlface and @gik-ai/agentface.
+    surface through gik-controlface and gik-agentface.
   implementation_entrypoint: face/src/index.ts
   public_packages:
-    - "@gik-ai/controlface"
-    - "@gik-ai/agentface"
+    - "gik-controlface"
+    - "gik-agentface"
 
 api_policy:
   signature_authority: Generated TypeScript declarations for each public package.
@@ -58,7 +58,7 @@ shared_contracts:
     value: "2025-06-18"
 
 public_packages:
-  - name: "@gik-ai/controlface"
+  - name: "gik-controlface"
     version: "0.1.4"
     entrypoint: packages/controlface/src/index.ts
     purpose: Publish the full Face projection and the public objects used to supply its live operations.
@@ -123,10 +123,10 @@ public_packages:
         - "listRequests() -> ServiceHost.listRequests()"
         - "cancel(id) -> ServiceHost.cancel(id)"
 
-  - name: "@gik-ai/agentface"
+  - name: "gik-agentface"
     version: "0.1.0"
     entrypoint: packages/agentface/src/index.ts
-    depends_on: "@gik-ai/controlface 0.1.2"
+    depends_on: "gik-controlface 0.1.2"
     purpose: Publish the agentSafe projection of the shared Face catalog.
     projection:
       function: "agentFaceProjection(face: RuntimeFace): McpTool[]"

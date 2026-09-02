@@ -1,3 +1,3 @@
-# @gik-ai/transport-mcp-http
+# gik-transport-mcp-http
 
 ## 0.1.1

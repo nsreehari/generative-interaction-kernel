@@ -5,9 +5,9 @@ import {
   type QueueNotificationSubscription,
   type QueueProcessResult,
   type TransitionRefs,
-} from "@gik-ai/durable-runtime";
-import { evalAsyncJsonata } from "@gik-ai/evaluators";
-import type { GIKEvent, Json, OrchestratorEffect, OrchestratorResult } from "@gik-ai/kernel";
+} from "gik-durable-runtime";
+import { evalAsyncJsonata } from "gik-evaluators";
+import type { GIKEvent, Json, OrchestratorEffect, OrchestratorResult } from "gik-kernel";
 import {
   createBlueprintDurableEffectSettlementEvent,
   createBlueprintDurableTransitionAdapter,
@@ -16,7 +16,7 @@ import {
 import type { BlueprintArtifact } from "./types";
 import type { ExternalContext } from "./run-transition";
 
-export type { QueueNotificationSubscription } from "@gik-ai/durable-runtime";
+export type { QueueNotificationSubscription } from "gik-durable-runtime";
 
 export interface BlueprintWorker {
   start(): Promise<void>;

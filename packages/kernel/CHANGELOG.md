@@ -1,4 +1,4 @@
-# @gik-ai/kernel
+# gik-kernel
 
 ## 0.1.2
 

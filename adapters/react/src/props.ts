@@ -7,7 +7,7 @@
 // `Array.isArray(...)` and `as unknown as T[]` at every call site. The single unchecked element cast
 // for arrays lives here, where it belongs, not scattered across the vocabulary.
 
-import type { Json, ResolvedNode } from "@gik-ai/kernel";
+import type { Json, ResolvedNode } from "gik-kernel";
 
 export interface PropsReader {
   /** String prop, or `fallback` (default "") when null/undefined. */

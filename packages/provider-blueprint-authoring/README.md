@@ -1,4 +1,4 @@
-# @gik-ai/provider-blueprint-authoring
+# gik-provider-blueprint-authoring
 
 Blueprint-authoring provider engine for the **Generative Interaction Kernel**. Builds an authoring
 registry and summarizes canonical blueprints for authoring workflows.
@@ -14,7 +14,7 @@ authorizes endpoints and resolves literal secrets; never author a key, token,
 or password into Blueprint data.
 
 ```bash
-npm install @gik-ai/provider-blueprint-authoring
+npm install gik-provider-blueprint-authoring
 ```
 
 ```ts
@@ -22,7 +22,7 @@ import {
   blueprintAuthoringFlow,
   createBlueprintAuthoringRegistry,
   summarizeBlueprint,
-} from "@gik-ai/provider-blueprint-authoring";
+} from "gik-provider-blueprint-authoring";
 ```
 
 ## Documentation

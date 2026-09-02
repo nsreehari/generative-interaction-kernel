@@ -1,7 +1,7 @@
 schema_version: 1
 
 package:
-  name: "@gik-ai/blueprint"
+  name: "gik-blueprint"
   version: "0.2.0"
   purpose: >-
     Define and validate Blueprint JSON, resolve its child Blueprint references, analyze its
@@ -14,10 +14,10 @@ package:
   public_entrypoint: packages/blueprint/src/index.ts
   worker_entrypoint: packages/blueprint/src/worker.ts
   worker_execution_factories:
-    - "@gik-ai/blueprint/worker/in-memory"
-    - "@gik-ai/blueprint/worker/indexed-db"
-    - "@gik-ai/blueprint/worker/filesystem-mcp"
-    - "@gik-ai/blueprint/worker/azure"
+    - "gik-blueprint/worker/in-memory"
+    - "gik-blueprint/worker/indexed-db"
+    - "gik-blueprint/worker/filesystem-mcp"
+    - "gik-blueprint/worker/azure"
   implementation_entrypoint: blueprint/src/index.ts
 
 terminology:
@@ -79,7 +79,7 @@ architecture:
     - Selecting contract-compatible Cell implementation programs through static recipe vocabulary and immutable external context.
     - Running deterministic Blueprint transitions from explicit state and ordered events.
     - Providing a Blueprint-owned adapter compatible with provider-neutral durable transition hosts.
-    - Coordinating engine wakes and effect queue work through the placement-neutral @gik-ai/blueprint/worker subpath.
+    - Coordinating engine wakes and effect queue work through the placement-neutral gik-blueprint/worker subpath.
   delegates_to_kernel:
     - Executable vocabulary and program contracts.
     - Program validation after lowering.
@@ -97,10 +97,10 @@ architecture:
     - Nested child Blueprint mutation routing.
     - Treating worker startup or controller settlement as a synchronous queue-completion barrier.
   dependency_direction:
-    - "@gik-ai/blueprint -> @gik-ai/kernel"
-    - "@gik-ai/blueprint -> @gik-ai/evaluators for declarative schema validation"
-    - "@gik-ai/blueprint/worker -> @gik-ai/durable-runtime and its connector subpaths"
-    - "@gik-ai/kernel must not depend on @gik-ai/blueprint"
+    - "gik-blueprint -> gik-kernel"
+    - "gik-blueprint -> gik-evaluators for declarative schema validation"
+    - "gik-blueprint/worker -> gik-durable-runtime and its connector subpaths"
+    - "gik-kernel must not depend on gik-blueprint"
 
 artifact_contracts:
   - name: BlueprintArtifact
@@ -460,7 +460,7 @@ transition_api:
         every referenced terminal capability must resolve from it. When omitted, referenced
         capabilities receive permissive placeholder descriptors. The intrinsic system capabilities
         gik:blueprint and gik:presentation-fragment remain available in either mode and do not require
-        host catalog entries. @gik-ai/blueprint deliberately declares no host component catalog and does
+        host catalog entries. gik-blueprint deliberately declares no host component catalog and does
         not depend on a concrete component package. The Blueprint-facing closed name authority remains the mandatory
         presentation.allowedCapabilities list whenever a presentation exists.
   - name: runMaterializedTransition
@@ -521,7 +521,7 @@ transition_api:
     purpose: >-
       Return a structurally compatible DurableTransitionAdapter whose portable opaque spec carries
       authored Blueprint, external context, and MaterializedBlueprint without adding a dependency
-      from @gik-ai/blueprint to @gik-ai/durable-runtime.
+      from gik-blueprint to gik-durable-runtime.
 
 exploration_api:
   contracts:
@@ -689,7 +689,7 @@ execution_boundary:
   kernel_input: ExecutableProgramDefinition accepted by Kernel.
   rules:
     - A BlueprintArtifact is not an ExecutableProgramDefinition.
-    - "@gik-ai/blueprint exports pure materialize and transition APIs, but no renderer or live host."
+    - "gik-blueprint exports pure materialize and transition APIs, but no renderer or live host."
     - A host supplies recipe resources, service bindings, durable persistence, and effect execution.
     - Kernel owns runtime state, revisions, event processing, effects, and checkpoints.
 

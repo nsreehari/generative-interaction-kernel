@@ -169,8 +169,8 @@ belongs to the Bundle manager.
 
 ## Amendment (2026-07-29): hosts consume portable materializations
 
-ADR-0046 makes Blueprint preparation an explicit `@gik-ai/blueprint` operation. Public React hosting
+ADR-0046 makes Blueprint preparation an explicit `gik-blueprint` operation. Public React hosting
 materializes an authored Blueprint plus immutable external context once and reuses the portable
 value for transitions. Stateless hosts may persist the same value. Host adapters do not implement
 recipe lowering, and generated terminal output remains derived data rather than a second authored
-surface. This applies to `@gik-ai/react`; the former compatibility package has been removed.
+surface. This applies to `gik-react`; the former compatibility package has been removed.

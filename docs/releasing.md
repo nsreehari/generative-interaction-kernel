@@ -80,7 +80,7 @@ fails closed when any of the following does not hold:
 - every stable package resolves to its exact expected version,
 - published metadata carries `name`, `version`, `license`, and `repository`,
 - every declared entry point exists in the installed package,
-- every pinned `@gik-ai` dependency resolves to the pinned version,
+- every pinned `gik-*` dependency resolves to the pinned version,
 - `npm audit signatures` reports no invalid or missing registry signature or
   attestation anywhere in the installed dependency graph, and every stable
   package carries a verified npm provenance attestation,

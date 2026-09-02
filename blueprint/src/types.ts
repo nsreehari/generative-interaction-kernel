@@ -9,8 +9,8 @@ import type {
   ServiceDeclaration,
   ServiceTransform,
   ServiceUse,
-} from "@gik-ai/kernel";
-import type { DeclarativeFormSpec, SystemInputToken } from "@gik-ai/evaluators";
+} from "gik-kernel";
+import type { DeclarativeFormSpec, SystemInputToken } from "gik-evaluators";
 
 export interface TierDefinition {
   id: string;

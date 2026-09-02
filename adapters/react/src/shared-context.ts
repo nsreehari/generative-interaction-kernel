@@ -8,7 +8,7 @@
 // portable stand-in for a React `Context` / Reactor `Context`: the declaration stays data, this is the
 // runtime that drives re-render under it.
 
-import { InMemoryStateModel, type Json, type PatchOp, type StateModel } from "@gik-ai/kernel";
+import { InMemoryStateModel, type Json, type PatchOp, type StateModel } from "gik-kernel";
 
 export class SharedContextStore implements StateModel {
   private readonly listeners = new Set<() => void>();

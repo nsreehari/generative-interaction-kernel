@@ -7,7 +7,7 @@ import {
   type OrchestratorEffect,
   type OrchestratorProgress,
   type OrchestratorResult,
-} from "@gik-ai/kernel";
+} from "gik-kernel";
 import { createEffectDispatcher } from "../src/primitives/effects";
 
 test("named route and request handlers receive actor provenance", async () => {
