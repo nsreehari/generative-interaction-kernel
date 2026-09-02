@@ -54,6 +54,7 @@ rejected options were set aside, and the consequences.
 | [0047](ADR-0047-durable-snapshot-synchronization.md) | Durable snapshot synchronization with bounded patch fallback | Accepted |
 | [0048](ADR-0048-agent-lifecycle-experiences-and-host-admission.md) | Agent lifecycle experiences and host-owned admission | Accepted |
 | [0049](ADR-0049-stable-event-contracts-and-effect-settlements.md) | Stable event contracts and effect settlements | Accepted |
+| [0050](ADR-0050-host-owned-invocation-authorization.md) | Host-owned invocation authorization and governed participant requests | Accepted |
 
 ## Format
 
