@@ -2,7 +2,7 @@ import {
   createFilesystemMcpConnector,
   type FilesystemMcpConnectorOptions,
   type McpCallTool,
-} from "@gik-ai/durable-runtime/connectors/filesystem-mcp";
+} from "gik-durable-runtime/connectors/filesystem-mcp";
 import { createBlueprintExecution, type BlueprintExecution, type BlueprintExecutionOptions } from "../worker";
 
 export function createFilesystemMcpBlueprintExecution(

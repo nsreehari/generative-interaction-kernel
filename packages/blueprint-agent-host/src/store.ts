@@ -1,4 +1,4 @@
-import type { AgentProposal } from "@gik-ai/agent-lifecycle-exp";
+import type { AgentProposal } from "gik-agent-lifecycle-exp";
 import type { BlueprintProposalReceipt, BlueprintProposalStore } from "./types";
 
 export function createInMemoryBlueprintProposalStore<TProposal extends AgentProposal = AgentProposal>(): BlueprintProposalStore<TProposal> {

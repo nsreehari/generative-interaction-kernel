@@ -4,10 +4,10 @@ import {
   type BlueprintArtifact,
   type ExternalContext,
   type MaterializedBlueprint,
-} from "@gik-ai/blueprint";
-import type { BlueprintWorker } from "@gik-ai/blueprint/worker";
-import { createMemoryStorage } from "@gik-ai/durable-runtime/storage/memory";
-import type { Json, ResolvedNode } from "@gik-ai/kernel";
+} from "gik-blueprint";
+import type { BlueprintWorker } from "gik-blueprint/worker";
+import { createMemoryStorage } from "gik-durable-runtime/storage/memory";
+import type { Json, ResolvedNode } from "gik-kernel";
 import { DurableBlueprintController } from "./durable-blueprint-controller";
 import { createNativeBlueprintWorker } from "./durable-blueprint-worker";
 import type { BundleNative } from "./primitives/bundle";

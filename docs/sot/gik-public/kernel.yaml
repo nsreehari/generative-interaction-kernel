@@ -1,7 +1,7 @@
 schema_version: 1
 
 package:
-  name: "@gik-ai/kernel"
+  name: "gik-kernel"
   version: "0.1.0"
   purpose: >-
     Define Kernel programs and vocabularies, validate them, execute programs, and expose

@@ -1,6 +1,6 @@
 name: Verify published packages
 
-# Clean external-consumer gate: installs the stable @gik-ai packages at the exact
+# Clean external-consumer gate: installs the stable gik-* packages at the exact
 # workspace versions from the public npm registry on GitHub-hosted infrastructure
 # and proves an external consumer can install, typecheck, import, and run them.
 

@@ -1,4 +1,12 @@
-# @gik-ai/controlface
+# gik-controlface
+
+## 0.2.0
+
+### Minor Changes
+
+- 1e2a7b6: Add host-owned invocation authorization snapshots and explicit durable request correlation context.
+
+  Ambiguous service operation names now require an explicit service reference instead of selecting the first matching service.
 
 ## 0.1.5
 

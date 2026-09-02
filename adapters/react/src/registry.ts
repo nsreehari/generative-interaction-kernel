@@ -2,7 +2,7 @@
 // This is the RenderAdapter's vocabulary side: which component draws each capability.
 
 import type { ComponentType, ReactNode } from "react";
-import type { CapabilityDescriptor, ProjectionViewImport, ResolvedNode } from "@gik-ai/kernel";
+import type { CapabilityDescriptor, ProjectionViewImport, ResolvedNode } from "gik-kernel";
 
 export interface ProjectionViewProps {
   node: ResolvedNode;

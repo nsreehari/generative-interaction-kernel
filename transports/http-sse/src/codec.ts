@@ -2,7 +2,7 @@
 // own: encode a message to an `data: ...\n\n` frame, and parse a byte stream (which may
 // split frames across chunks) back into messages.
 
-import type { GIKMessage } from "@gik-ai/kernel";
+import type { GIKMessage } from "gik-kernel";
 
 /** Encode one GIK message as a single SSE `data:` frame. */
 export function encodeSseFrame(message: GIKMessage): string {

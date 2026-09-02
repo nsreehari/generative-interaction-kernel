@@ -6,7 +6,7 @@ import type {
   GIKMessage,
   TransportListener,
   TransportProvider,
-} from "@gik-ai/kernel";
+} from "gik-kernel";
 import { SseFrameParser } from "./codec";
 
 export interface SseClientTransportOptions {

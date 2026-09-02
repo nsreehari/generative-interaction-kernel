@@ -1,3 +1,3 @@
-# @gik-ai/agent-lifecycle-exp
+# gik-agent-lifecycle-exp
 
 ## 0.1.1

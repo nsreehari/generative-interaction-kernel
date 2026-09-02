@@ -3,9 +3,9 @@ import React from "react";
 import { test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import TestRenderer, { act } from "react-test-renderer";
-import { createBlueprint, materializeBlueprint } from "@gik-ai/blueprint";
-import { createMemoryStorage } from "@gik-ai/durable-runtime/storage/memory";
-import { Kernel, ValidationError, type CapabilityDescriptor, type Json, type ResolvedNode } from "@gik-ai/kernel";
+import { createBlueprint, materializeBlueprint } from "gik-blueprint";
+import { createMemoryStorage } from "gik-durable-runtime/storage/memory";
+import { Kernel, ValidationError, type CapabilityDescriptor, type Json, type ResolvedNode } from "gik-kernel";
 import {
   readHostedBlueprintDeclaration,
   readBlueprintNodeDeclaration,

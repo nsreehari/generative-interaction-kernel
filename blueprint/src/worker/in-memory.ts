@@ -1,4 +1,4 @@
-import { createMemoryStorage } from "@gik-ai/durable-runtime/storage/memory";
+import { createMemoryStorage } from "gik-durable-runtime/storage/memory";
 import { createBlueprintExecution, type BlueprintExecution, type BlueprintExecutionOptions } from "../worker";
 
 export function createInMemoryBlueprintExecution(

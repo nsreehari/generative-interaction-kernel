@@ -1,8 +1,8 @@
-# @gik-ai/blueprint
+# gik-blueprint
 
 Canonical Blueprint artifacts, Cells, two independent lowering axes (`serviceTiers`/`serviceRecipes`
 and `projectionTiers`/`projectionRecipes`), and validated lowering into
-`@gik-ai/kernel` executable programs.
+`gik-kernel` executable programs.
 
 Every Blueprint declares all four arrays. A recipe-free axis contains exactly one terminal tier and
 an empty recipe array. The removed `tiers` and `recipes` fields are not normalized or deprecated
@@ -56,7 +56,7 @@ explicitly in the recipe that leaves that tier:
 ```
 
 ```bash
-npm install @gik-ai/blueprint @gik-ai/kernel @gik-ai/evaluators @gik-ai/durable-runtime
+npm install gik-blueprint gik-kernel gik-evaluators gik-durable-runtime
 ```
 
 ## External services
@@ -211,13 +211,13 @@ the current external context — read it with `listExportedPresentationRegions(t
 
 ## Worker hosting
 
-`@gik-ai/blueprint/worker` coordinates one journal/engine/effect cycle per wake. Connector-specific
+`gik-blueprint/worker` coordinates one journal/engine/effect cycle per wake. Connector-specific
 factories are available from:
 
-- `@gik-ai/blueprint/worker/in-memory`
-- `@gik-ai/blueprint/worker/indexed-db`
-- `@gik-ai/blueprint/worker/filesystem-mcp`
-- `@gik-ai/blueprint/worker/azure`
+- `gik-blueprint/worker/in-memory`
+- `gik-blueprint/worker/indexed-db`
+- `gik-blueprint/worker/filesystem-mcp`
+- `gik-blueprint/worker/azure`
 
 Workers are asynchronous and placement-neutral. Wake notifications are hints, leases arbitrate
 ownership, and effect outcomes return through the journal before changing Blueprint state.
@@ -261,7 +261,7 @@ ownership, and effect outcomes return through the journal before changing Bluepr
 ### Program composition
 
 - `composeCellProgram({ cells, presentation? }, topology)` is exported from the package entrypoint. It
-  compiles a validated `ExecutableCellTopology` into an `@gik-ai/kernel`
+  compiles a validated `ExecutableCellTopology` into an `gik-kernel`
   `ExecutableProgramDefinition`.
 - With a `presentation`, it projects Cells into the declared slot graph. Without a `presentation`, it
   still emits handlers, computation/source graph nodes, and discoverable hosted-Blueprint nodes.

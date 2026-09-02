@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { InMemoryStateModel, unwrap, type Json, type ResolvedNode } from "@gik-ai/kernel";
+import { InMemoryStateModel, unwrap, type Json, type ResolvedNode } from "gik-kernel";
 import {
   analyzeCellImpact,
   analyzeExploration,
@@ -96,7 +96,7 @@ function runState(cells: Record<string, string[]>) {
   };
 }
 
-describe("@gik-ai/blueprint", () => {
+describe("gik-blueprint", () => {
   it("materializes and purely evaluates candidate Cell JSON for preflight", () => {
     const artifact = createBlueprint({
       id: "cell-preflight",

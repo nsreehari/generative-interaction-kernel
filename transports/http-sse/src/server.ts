@@ -11,7 +11,7 @@ import type {
   TransportBroker,
   TransportListener,
   TransportProvider,
-} from "@gik-ai/kernel";
+} from "gik-kernel";
 import { encodeSseFrame } from "./codec";
 
 class SseServerEndpoint implements TransportProvider {

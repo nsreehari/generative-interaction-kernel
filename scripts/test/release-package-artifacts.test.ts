@@ -82,7 +82,7 @@ test("a wildcard export matching no workspace file fails closed", () => {
   assert.deepEqual(errors, ["export pattern 'schemas/*' matches no workspace file"]);
 });
 
-test("@gik-ai/evaluators resolves its published schema files through its wildcard export", () => {
+test("gik-evaluators resolves its published schema files through its wildcard export", () => {
   const manifest = JSON.parse(
     readFileSync(new URL("../../packages/evaluators/package.json", import.meta.url), "utf8"),
   );
@@ -109,7 +109,7 @@ test("verification fails closed when a wildcard-exported file is omitted from th
   );
 
   assert.deepEqual(errors, [
-    "@gik-ai/evaluators package would omit declared entry point 'schemas/cell.schema.json'",
+    "gik-evaluators package would omit declared entry point 'schemas/cell.schema.json'",
   ]);
 });
 
@@ -126,7 +126,7 @@ test("verification fails closed when a packed package omits declared build outpu
   assert.ok(errors.length > 0);
   assert.ok(
     errors.some(
-      (error: string) => error.includes("@gik-ai/blueprint") && error.includes("dist/index.js"),
+      (error: string) => error.includes("gik-blueprint") && error.includes("dist/index.js"),
     ),
   );
 });

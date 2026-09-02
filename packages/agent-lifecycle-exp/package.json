@@ -1,5 +1,5 @@
 {
-  "name": "@gik-ai/agent-lifecycle-exp",
+  "name": "gik-agent-lifecycle-exp",
   "private": true,
   "version": "0.1.1",
   "description": "Transport-neutral agent and host lifecycle contracts, tools, and cumulative experience projections for GIK.",

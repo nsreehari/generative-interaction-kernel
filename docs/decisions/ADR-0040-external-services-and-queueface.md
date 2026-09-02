@@ -193,7 +193,7 @@ as an explicit, visible fallback; live-to-deterministic fallback is never silent
 
 ## Amendment (2026-08-21): `ServiceRequirement` removed; `CellSource.contract` derived, not authored; `inline` sources removed
 
-**`ServiceRequirement` is removed** from `kernel/src/types.ts` (`ExternalsSpec.services`), `@gik-ai/blueprint`'s
+**`ServiceRequirement` is removed** from `kernel/src/types.ts` (`ExternalsSpec.services`), `gik-blueprint`'s
 `BlueprintDefinition`/`BlueprintImplementationProgram`, and the SOT. This ADR's original Consequences section
 already called it a deprecated migration shape kept only "for backward compatibility" with pre-service-kind
 documents; confirmed via code that it was never actually usable through the real execution path (every host

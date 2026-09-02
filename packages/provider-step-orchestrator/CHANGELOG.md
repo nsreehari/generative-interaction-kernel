@@ -1,3 +1,3 @@
-# @gik-ai/provider-step-orchestrator
+# gik-provider-step-orchestrator
 
 ## 0.1.1

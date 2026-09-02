@@ -1,4 +1,4 @@
-# @gik-ai/agent-lifecycle-exp
+# gik-agent-lifecycle-exp
 
 Transport-neutral lifecycle contracts and JSON tools for agents and trusted hosts.
 

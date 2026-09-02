@@ -1,5 +1,5 @@
 {
-  "name": "@gik-ai/provider-step-orchestrator",
+  "name": "gik-provider-step-orchestrator",
   "private": true,
   "version": "0.1.1",
   "description": "Step-orchestrator provider engine for the Generative Interaction Kernel.",

@@ -1,3 +1,3 @@
-# @gik-ai/provider-blueprint-authoring
+# gik-provider-blueprint-authoring
 
 ## 0.1.1

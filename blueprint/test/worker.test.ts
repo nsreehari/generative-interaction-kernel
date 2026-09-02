@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { createDurableRuntime } from "@gik-ai/durable-runtime";
-import { projectCellRunState, type BlueprintRunState } from "@gik-ai/kernel";
+import { createDurableRuntime } from "gik-durable-runtime";
+import { projectCellRunState, type BlueprintRunState } from "gik-kernel";
 
 import { createBlueprint } from "../src/blueprint";
 import {

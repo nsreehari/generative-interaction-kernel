@@ -9,7 +9,7 @@
 // which a compiler-synthesized reference never is).
 
 import React from "react";
-import type { PresentationSlotLayout } from "@gik-ai/blueprint";
+import type { PresentationSlotLayout } from "gik-blueprint";
 import type { ProjectionView } from "../registry";
 
 const GAP_PX: Record<NonNullable<PresentationSlotLayout["gap"]>, number> = {

@@ -1,4 +1,4 @@
-import type { ProgramPatch } from "@gik-ai/kernel";
+import type { ProgramPatch } from "gik-kernel";
 import { validateBlueprintArtifact } from "./blueprint";
 import type {
   BlueprintArtifact,

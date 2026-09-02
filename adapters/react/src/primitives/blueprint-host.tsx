@@ -7,8 +7,8 @@ import {
   type BlueprintArtifact,
   type ExternalContext,
   type HostedBlueprintDefinition,
-} from "@gik-ai/blueprint";
-import { unwrap, type Enveloped, type ExecutableProgramDefinition, type Json } from "@gik-ai/kernel";
+} from "gik-blueprint";
+import { unwrap, type Enveloped, type ExecutableProgramDefinition, type Json } from "gik-kernel";
 import { BlueprintController } from "../blueprint-controller";
 import type { BlueprintControllerOptions } from "../blueprint-controller";
 import {

@@ -1,15 +1,15 @@
-# @gik-ai/react
+# gik-react
 
 React renderer and Blueprint hosts for the **Generative Interaction Kernel**. Both hosts append
 interaction and effect outcomes to a journal, render committed snapshots, and keep execution outside
 React in a placement-neutral Blueprint worker.
 
 ```bash
-npm install @gik-ai/react react react-dom @fluentui/react-components
+npm install gik-react react react-dom @fluentui/react-components
 ```
 
 ```tsx
-import { BlueprintHost } from "@gik-ai/react";
+import { BlueprintHost } from "gik-react";
 
 export const App = () => <BlueprintHost blueprint={blueprint} native={native} />;
 ```
@@ -20,7 +20,7 @@ committed tree; later commits arrive through the source subscription.
 For persistent or remotely executed hosting:
 
 ```tsx
-import { BlueprintHost, createNativeBlueprintWorker } from "@gik-ai/react/durable";
+import { BlueprintHost, createNativeBlueprintWorker } from "gik-react/durable";
 
 const worker = createNativeBlueprintWorker({ blueprint, runtime, native });
 
@@ -30,7 +30,7 @@ export const App = () => (
 ```
 
 Omit `worker` when middleware, a backend, or an Azure Function owns execution. Existing
-`@gik-ai/blueprint-host` consumers should migrate to `BlueprintHost` from `@gik-ai/react`.
+`gik-blueprint-host` consumers should migrate to `BlueprintHost` from `gik-react`.
 
 ## Multi-region hosting
 
@@ -39,7 +39,7 @@ shell needs to place parts of one live Blueprint in different places, use `Bluep
 `BlueprintRegion` per exported region:
 
 ```tsx
-import { BlueprintProvider, BlueprintRegion } from "@gik-ai/react";
+import { BlueprintProvider, BlueprintRegion } from "gik-react";
 
 export const App = () => (
 	<BlueprintProvider blueprint={blueprint} native={native} externalContext={externalContext}>
@@ -79,7 +79,7 @@ Rules the host can rely on:
 The durable entrypoint exports the same pair, so region semantics are identical over a durable runtime:
 
 ```tsx
-import { BlueprintProvider, BlueprintRegion, createNativeBlueprintWorker } from "@gik-ai/react/durable";
+import { BlueprintProvider, BlueprintRegion, createNativeBlueprintWorker } from "gik-react/durable";
 ```
 
 ## Nested Blueprint hosting
@@ -101,14 +101,14 @@ instance and Cell identity, while reusing the configured durable provider.
 
 | Import | Purpose |
 |---|---|
-| `@gik-ai/react` | React rendering and ephemeral in-memory Blueprint hosting |
-| `@gik-ai/react/durable` | Durable or remotely executed Blueprint hosting |
+| `gik-react` | React rendering and ephemeral in-memory Blueprint hosting |
+| `gik-react/durable` | Durable or remotely executed Blueprint hosting |
 
 ## Exported API
 
-### `@gik-ai/react`
+### `gik-react`
 
-`@gik-ai/react` exports the in-memory `BlueprintHost`, `BlueprintHostProps`, `BlueprintController`,
+`gik-react` exports the in-memory `BlueprintHost`, `BlueprintHostProps`, `BlueprintController`,
 `BlueprintControllerOptions`, and the registry helpers used to resolve imported projection views and
 capability descriptors.
 The root entrypoint also re-exports the package's broader rendering and composition modules; the
@@ -136,7 +136,7 @@ unknown names, duplicate mounts, and mounts placed outside a provider.
 exposes a readonly `worker` plus `getTree()`, `getState()`, `subscribe()`, `start()`, `emit()`,
 `resync()`, `settle()`, and `stop()`.
 
-Registry and capability helpers exported from `@gik-ai/react`:
+Registry and capability helpers exported from `gik-react`:
 
 - `splitCapabilityRef(ref)` parses an `alias:name` capability reference and returns `{ alias, name }`
   or `null`
@@ -149,9 +149,9 @@ Registry and capability helpers exported from `@gik-ai/react`:
 - `ProviderResolver` resolves a provider name to a projection-view map
 - `CapabilityDescriptorResolver` resolves a provider name to a capability-descriptor map
 
-### `@gik-ai/react/durable`
+### `gik-react/durable`
 
-`@gik-ai/react/durable` exports a durable `BlueprintHost`, its `BlueprintHostProps` type, a durable
+`gik-react/durable` exports a durable `BlueprintHost`, its `BlueprintHostProps` type, a durable
 `BlueprintProvider` with its `BlueprintProviderProps` type, and `createNativeBlueprintWorker`.
 `BlueprintRegion` and `useBlueprintRegions` are shared with the root entrypoint and work identically
 under either provider.

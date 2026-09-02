@@ -12,7 +12,7 @@ executor undecided: "Whether compiler orchestration eventually reuses `Continuou
 internally" was explicitly out of scope.
 
 That gap is no longer theoretical. `docs/sot/gik-public/blueprint.yaml` documents the boundary
-directly: `@gik-ai/blueprint` "declares Lowering Cells but does not schedule a compiler meta-graph,"
+directly: `gik-blueprint` "declares Lowering Cells but does not schedule a compiler meta-graph,"
 and a `BlueprintArtifact` "is not an `ExecutableProgramDefinition`" — there is no executor anywhere
 in the codebase that actually walks a tier chain and produces a terminal program. Any Blueprint
 with more than one tier (the two-tier "agent-sourced data → presentation" shape needed for the
@@ -104,7 +104,7 @@ existing validated open/reconfigure path — exactly the risk ADR-0043 was writt
 - Whether a shared, reusable "compiler bundle" (floor-style generic `transform`/`validate`/`approve`
   Cells) ships in the dedicated `gik-samples` repository, or each domain hand-authors its own
   compiler Blueprint.
-- Physical package placement of the host-side driver (`@gik-ai/blueprint` vs. a new package) — deferred
+- Physical package placement of the host-side driver (`gik-blueprint` vs. a new package) — deferred
   until the driver exists and its dependency shape is known.
 
 ## Amendment (2026-07-28): findings from the first lowering meta-graph spike
@@ -168,7 +168,7 @@ proposals must target the authored Blueprint before rematerialization.
 ## Amendment (2026-07-29): common fixed meta-graph integration
 
 The unresolved per-recipe `compilerBlueprintRef` and per-domain compiler alternatives are closed.
-`@gik-ai/blueprint` owns one common compiler meta-graph Blueprint. Recipes do not select compiler
+`gik-blueprint` owns one common compiler meta-graph Blueprint. Recipes do not select compiler
 Blueprints; they carry vocabulary-driven transformation data between declared tiers. The common
 meta-graph walks any connected, non-branching recipe chain and produces the terminal Blueprint.
 
@@ -215,7 +215,7 @@ quiescence semantics. Existing asynchronous APIs drive that traversal by awaitin
 outcomes; deterministic compiler publication drives the same traversal synchronously and fails if
 any yielded outcome is a Promise.
 
-Compiler recipe semantics are registered extension operations implemented by `@gik-ai/blueprint`.
+Compiler recipe semantics are registered extension operations implemented by `gik-blueprint`.
 Those implementations may apply typed Blueprint patch and representation vocabulary, but they do
 not walk graph nodes or control scheduling. Synchronous Kernel publication additionally rejects
 operations, effects, events, and program mutations, keeping the mode narrower than ordinary runtime

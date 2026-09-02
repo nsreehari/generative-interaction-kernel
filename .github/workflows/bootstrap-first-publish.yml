@@ -1,0 +1,106 @@
+name: Bootstrap first npm publish (token)
+
+# ONE-TIME bootstrap for brand-new gik-* package names.
+#
+# npm trusted publishing (OIDC, used by publish.yml) cannot create a package that
+# does not exist yet: a trusted publisher can only be configured on npmjs.com for an
+# already-published package. This workflow performs the very first token-authenticated
+# publish so each gik-* package exists, after which trusted publishing is configured
+# per package and publish.yml (OIDC) owns all subsequent releases.
+#
+# After a successful run:
+#   1. Configure a trusted publisher for each new package on npmjs.com
+#      (repo nsreehari/generative-interaction-kernel, workflow publish.yml, environment npm-publish).
+#   2. Revoke / delete the NPM_TOKEN secret.
+#   3. Do not run this workflow again.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run inspects and packs only; publish performs the real first publish"
+        type: choice
+        options:
+          - dry-run
+          - publish
+        default: dry-run
+      confirm:
+        description: 'Type "PUBLISH gik-*" to allow a real publish (ignored for dry-run)'
+        type: string
+        default: ""
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-publish:
+    name: Bootstrap publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: npm-publish
+    steps:
+      - name: Guard confirmation for real publish
+        if: inputs.mode == 'publish' && inputs.confirm != 'PUBLISH gik-*'
+        run: |
+          echo "::error::Real publish requires the confirm input to equal 'PUBLISH gik-*'." >&2
+          exit 1
+
+      - name: Checkout master
+        uses: actions/checkout@v5
+        with:
+          ref: master
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate package release policy
+        run: npm run release:validate
+
+      - name: Build publishable packages
+        run: npm run build:public-packages
+
+      - name: Verify packaged build output
+        run: npm run release:verify-artifacts
+
+      - name: Inspect package contents
+        run: npm run release:inspect
+
+      - name: Dry-run publish
+        if: inputs.mode == 'dry-run'
+        run: npx changeset publish --dry-run || echo "changeset publish --dry-run completed"
+
+      - name: Publish (token) to create packages
+        if: inputs.mode == 'publish'
+        run: npm run release:publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_ACCESS: public
+          # Provenance is intentionally OFF for the bootstrap publish: provenance is
+          # produced by the OIDC-based publish.yml for all subsequent releases.
+          NPM_CONFIG_PROVENANCE: false
+
+      - name: Record summary
+        if: always()
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          {
+            echo "## Bootstrap first npm publish"
+            echo
+            echo "- Mode: \`$MODE\`"
+            echo "- Authentication: token (\`NPM_TOKEN\` secret)"
+            echo "- Next: configure trusted publishing per package on npmjs.com, then revoke \`NPM_TOKEN\`."
+          } >> "$GITHUB_STEP_SUMMARY"
