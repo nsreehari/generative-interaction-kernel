@@ -22,6 +22,7 @@ export interface BlueprintControllerOptions {
   context?: Record<string, Json>;
   contexts?: BundleContextBindings;
   native?: BundleNative;
+  effectRetry?: Parameters<typeof createNativeBlueprintWorker>[0]["effectRetry"];
   onTransition?: NonNullable<ConstructorParameters<typeof DurableBlueprintController>[1]["onTransition"]>;
   /** Resolves a component provider's real capability descriptors for terminal prop/event-contract
    * validation, the descriptor-side counterpart of a projection-view provider resolver. Ignored
@@ -67,6 +68,7 @@ export class BlueprintController implements GenUISource {
       externalContext: options.externalContext,
       materializedBlueprint,
       contexts: options.contexts,
+      effectRetry: options.effectRetry,
     });
     this.controller = new DurableBlueprintController(blueprint, {
       runtime,

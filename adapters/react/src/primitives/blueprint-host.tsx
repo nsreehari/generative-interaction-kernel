@@ -69,6 +69,7 @@ export interface BlueprintHostProps {
   externalContext?: ExternalContext;
   /** @deprecated Initial-state seed compatibility. Use externalContext for immutable inputs. */
   context?: Record<string, Json>;
+  effectRetry?: BlueprintControllerOptions["effectRetry"];
   onTransition?: BlueprintControllerOptions["onTransition"];
   blueprintRegistry?: ReactBlueprintHostRegistry;
   renderHostedBlueprintLoading?: () => React.ReactNode;
@@ -88,6 +89,7 @@ export function BlueprintHost({
   style,
   externalContext,
   context,
+  effectRetry,
   onTransition,
   blueprintRegistry,
   renderHostedBlueprintLoading,
@@ -103,6 +105,7 @@ export function BlueprintHost({
     primaryInstanceId,
     externalContext,
     context,
+    effectRetry,
     onTransition,
     blueprintRegistry,
     renderHostedBlueprintLoading,
@@ -156,6 +159,7 @@ export function BlueprintProvider({
   primaryInstanceId,
   externalContext,
   context,
+  effectRetry,
   onTransition,
   blueprintRegistry,
   renderHostedBlueprintLoading,
@@ -171,6 +175,7 @@ export function BlueprintProvider({
     primaryInstanceId,
     externalContext,
     context,
+    effectRetry,
     onTransition,
     blueprintRegistry,
     renderHostedBlueprintLoading,
@@ -208,6 +213,7 @@ function useBlueprintHostRuntime({
   primaryInstanceId,
   externalContext,
   context,
+  effectRetry,
   onTransition,
   blueprintRegistry,
   renderHostedBlueprintLoading,
@@ -264,9 +270,10 @@ function useBlueprintHostRuntime({
       context,
       contexts,
       native,
+      effectRetry,
       onTransition,
     }),
-    [blueprint, externalContext, materializedBlueprint, context, contexts, native, onTransition],
+    [blueprint, externalContext, materializedBlueprint, context, contexts, native, effectRetry, onTransition],
   );
   const blueprintId = prepared.blueprint.payload.id;
   const primaryInstanceIdResolved = parentInstanceId;
