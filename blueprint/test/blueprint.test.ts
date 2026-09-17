@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { InMemoryStateModel, unwrap, type Json, type ResolvedNode } from "gik-kernel";
 import {
   analyzeCellImpact,
@@ -33,9 +33,13 @@ import {
   runTransition,
   stringifyBlueprint,
   tokenPattern,
+  tryValidateBlueprintArtifact,
   validateBlueprintArtifact,
+  validateAuthoredBlueprintFragment,
   validateBlueprintForAuthoring,
   type BlueprintArtifact,
+  type BlueprintCoreArtifact,
+  type BlueprintFragmentBundle,
   type HostedBlueprintMount,
 } from "../src/index";
 import { settleQueuedCellSourceEffect } from "../src/worker";
@@ -70,6 +74,19 @@ function blueprint(id = "test"): BlueprintArtifact {
     projectionRecipes: [],
     runtime,
   });
+}
+
+function blueprintCoreFragment(id = "test"): BlueprintCoreArtifact {
+  return {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id,
+      kind: "test",
+      version: "1",
+      runtime: {},
+    },
+  };
 }
 
 function singleSlotPresentation(root: string) {
@@ -269,6 +286,101 @@ describe("gik-blueprint", () => {
   it("creates, serializes, and parses a Blueprint artifact", () => {
     const artifact = blueprint();
     expect(parseBlueprintJson(stringifyBlueprint(artifact))).toEqual(artifact);
+  });
+
+  it("parses a core Blueprint fragment with the fragment-kind overload", () => {
+    const artifact = blueprintCoreFragment();
+    expect(parseBlueprintJson(JSON.stringify(artifact), "blueprint")).toEqual(artifact);
+    expectTypeOf<BlueprintFragmentBundle>().toMatchTypeOf<{ blueprint: BlueprintCoreArtifact }>();
+  });
+
+  it("returns an invalid result instead of throwing for malformed fragment JSON", () => {
+    const checked = validateAuthoredBlueprintFragment("{", "blueprint");
+
+    expect(checked.ok).toBe(false);
+    expect(checked.fragmentKind).toBe("blueprint");
+    expect(checked.error).toBeInstanceOf(Error);
+  });
+
+  it("returns an invalid result instead of throwing for unclonable fragment input", () => {
+    const checked = validateAuthoredBlueprintFragment({
+      gik: "0.1",
+      type: "blueprint",
+      payload: {
+        id: "broken",
+        kind: "test",
+        version: "1",
+        runtime: {},
+        metadata: { bad: () => "nope" },
+      },
+    }, "blueprint");
+
+    expect(checked.ok).toBe(false);
+    expect(checked.fragmentKind).toBe("blueprint");
+    expect(checked.error?.message).toContain("could not be cloned");
+  });
+
+  it("preserves the core fragment type for non-throwing validation", () => {
+    const artifact = blueprintCoreFragment();
+    const checked = tryValidateBlueprintArtifact(artifact, "blueprint");
+
+    expect(checked.ok).toBe(true);
+    if (checked.ok) {
+      expect(checked.blueprint).toEqual(artifact);
+      expectTypeOf(checked.blueprint).toEqualTypeOf<BlueprintCoreArtifact | undefined>();
+    }
+  });
+
+  it("assembles a full Blueprint from fragment sidecars", () => {
+    const assembled = assembleBlueprint({
+      blueprint: blueprintCoreFragment("assembled-from-fragments"),
+      presentation: {
+        gik: "0.1",
+        type: "blueprint",
+        payload: {
+          id: "assembled-from-fragments",
+          kind: "test",
+          version: "1",
+          projectionTiers: [{ id: "runtime", kind: "runtime-program", capabilities: [] }],
+          presentation: singleSlotPresentation("root"),
+        },
+      },
+      presentationPrograms: {
+        gik: "0.1",
+        type: "blueprint",
+        payload: {
+          id: "assembled-from-fragments",
+          kind: "test",
+          version: "1",
+          projectionRecipes: [],
+        },
+      },
+      implementationPrograms: {
+        gik: "0.1",
+        type: "blueprint",
+        payload: {
+          id: "assembled-from-fragments",
+          kind: "test",
+          version: "1",
+          serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+          serviceRecipes: [],
+        },
+      },
+      runtimeState: {
+        gik: "0.1",
+        type: "blueprint",
+        payload: {
+          id: "assembled-from-fragments",
+          kind: "test",
+          version: "1",
+          runtime: { state: { ready: true } },
+        },
+      },
+    });
+
+    expect(assembled.payload.runtime.state).toEqual({ ready: true });
+    expect(assembled.payload.serviceTiers).toEqual([{ id: "runtime", kind: "runtime-program" }]);
+    expect(assembled.payload.projectionTiers).toEqual([{ id: "runtime", kind: "runtime-program", capabilities: [] }]);
   });
 
   it.each(["fixed", "reconfigurable", "adaptive"] as const)(

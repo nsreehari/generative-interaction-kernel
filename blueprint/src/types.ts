@@ -304,6 +304,23 @@ export type BlueprintPatchDecision =
   | { accepted: true; patch: BlueprintPatch }
   | { accepted: false; reason: "fixed-structure" | "authorization-required" | "policy-rejected" };
 
+export interface BlueprintCoreRuntimeDefinition extends Omit<BlueprintRuntimeDefinition, "state"> {
+  state?: undefined;
+}
+
+export interface BlueprintCoreDefinition {
+  id: string;
+  kind: string;
+  version: string;
+  structureMode?: BlueprintStructureMode;
+  structurePolicy?: BlueprintStructurePolicy;
+  interface?: BlueprintInterfaceDefinition;
+  contextFormSpec?: DeclarativeFormSpec;
+  cells?: Record<string, CellDefinition>;
+  runtime: BlueprintCoreRuntimeDefinition;
+  metadata?: Record<string, Json>;
+}
+
 export interface BlueprintDefinition {
   id: string;
   kind: string;
@@ -333,10 +350,84 @@ export interface BlueprintArtifact {
   payload: BlueprintDefinition;
 }
 
+export interface BlueprintEnvelope<TPayload> {
+  gik: "0.1";
+  type: "blueprint";
+  payload: TPayload;
+}
+
+export type BlueprintCoreArtifact = BlueprintEnvelope<BlueprintCoreDefinition>;
+
+export type BlueprintFragmentKind =
+  | "assembled-blueprint"
+  | "blueprint"
+  | "blueprint.presentation"
+  | "blueprint.presentation-programs"
+  | "blueprint.implementation-programs"
+  | "blueprint.runtime-state";
+
+export interface BlueprintPresentationDefinition {
+  id: string;
+  kind: string;
+  version: string;
+  projectionTiers: ProjectionTierDefinition[];
+  presentation: PresentationDefinition;
+  metadata?: Record<string, Json>;
+}
+
+export interface BlueprintPresentationProgramsDefinition {
+  id: string;
+  kind: string;
+  version: string;
+  projectionRecipes: ProjectionLoweringRecipeDefinition[];
+  metadata?: Record<string, Json>;
+}
+
+export interface BlueprintImplementationProgramsDefinition {
+  id: string;
+  kind: string;
+  version: string;
+  serviceTiers: TierDefinition[];
+  serviceRecipes: ServiceLoweringRecipeDefinition[];
+  services?: Record<string, ServiceDeclaration>;
+  metadata?: Record<string, Json>;
+}
+
+export interface BlueprintRuntimeStateDefinition {
+  id: string;
+  kind: string;
+  version: string;
+  runtime: Pick<BlueprintRuntimeDefinition, "state">;
+  metadata?: Record<string, Json>;
+}
+
+export type BlueprintPresentationArtifact = BlueprintEnvelope<BlueprintPresentationDefinition>;
+export type BlueprintPresentationProgramsArtifact = BlueprintEnvelope<BlueprintPresentationProgramsDefinition>;
+export type BlueprintImplementationProgramsArtifact = BlueprintEnvelope<BlueprintImplementationProgramsDefinition>;
+export type BlueprintRuntimeStateArtifact = BlueprintEnvelope<BlueprintRuntimeStateDefinition>;
+
+export type BlueprintArtifactForFragmentKind<TKind extends BlueprintFragmentKind> =
+  TKind extends "assembled-blueprint" ? BlueprintArtifact
+    : TKind extends "blueprint" ? BlueprintCoreArtifact
+      : TKind extends "blueprint.presentation" ? BlueprintPresentationArtifact
+        : TKind extends "blueprint.presentation-programs" ? BlueprintPresentationProgramsArtifact
+          : TKind extends "blueprint.implementation-programs" ? BlueprintImplementationProgramsArtifact
+            : BlueprintRuntimeStateArtifact;
+
+export interface BlueprintFragmentBundle {
+  blueprint: BlueprintCoreArtifact;
+  presentation?: BlueprintPresentationArtifact;
+  presentationPrograms?: BlueprintPresentationProgramsArtifact;
+  implementationPrograms?: BlueprintImplementationProgramsArtifact;
+  runtimeState?: BlueprintRuntimeStateArtifact;
+}
+
+export type BlueprintAssemblyInput = BlueprintArtifact | BlueprintFragmentBundle;
+
 export type BlueprintReferenceResolver = (
   ref: string,
   context: { parentBlueprintId: string; cellId: string },
-) => BlueprintArtifact;
+) => BlueprintAssemblyInput;
 
 export interface BlueprintReference {
   scheme: "blueprint";

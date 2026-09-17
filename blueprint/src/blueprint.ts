@@ -8,10 +8,21 @@ import {
 } from "./projection-vocabulary";
 import { collectPresentationRegionExportErrors } from "./presentation-regions";
 import type {
+  BlueprintAssemblyInput,
   BlueprintArtifact,
+  BlueprintArtifactForFragmentKind,
+  BlueprintCoreArtifact,
+  BlueprintCoreDefinition,
+  CellDefinition,
   BlueprintDefinition,
+  BlueprintFragmentBundle,
+  BlueprintFragmentKind,
+  BlueprintImplementationProgramsArtifact,
   BlueprintLowering,
+  BlueprintPresentationArtifact,
+  BlueprintPresentationProgramsArtifact,
   BlueprintReferenceResolver,
+  BlueprintRuntimeStateArtifact,
   LoweringRecipeDefinition,
   ProjectionTierDefinition,
   TierDefinition,
@@ -47,6 +58,327 @@ export interface BlueprintAuthoringValidationReport {
 }
 
 const EMPTY_AXIS_REPORT: BlueprintAuthoringAxisReport = { sourceTier: "", terminalTier: "", stages: [] };
+
+export interface BlueprintValidationResult<TKind extends BlueprintFragmentKind = "assembled-blueprint"> {
+  readonly ok: boolean;
+  readonly fragmentKind: TKind;
+  readonly blueprint?: BlueprintArtifactForFragmentKind<TKind>;
+  readonly error?: BlueprintValidationError;
+}
+
+function assertBlueprintEnvelope(value: unknown): asserts value is { gik: "0.1"; type: "blueprint"; payload: Record<string, unknown> } {
+  if (!value || typeof value !== "object") throw new BlueprintValidationError("Blueprint must be an object");
+  const artifact = value as Partial<{ gik: "0.1"; type: "blueprint"; payload: Record<string, unknown> }>;
+  if (artifact.gik !== "0.1" || artifact.type !== "blueprint" || !artifact.payload || typeof artifact.payload !== "object") {
+    throw new BlueprintValidationError("Invalid Blueprint envelope");
+  }
+}
+
+function assertProjectionCapabilityOwnership(tiers: ProjectionTierDefinition[]): void {
+  const capabilityOwners = new Map<string, string>();
+  for (const tier of tiers) {
+    for (const capability of tier.capabilities) {
+      const owner = capabilityOwners.get(capability);
+      if (owner) {
+        throw new BlueprintValidationError(
+          `Blueprint projection capability '${capability}' is declared by both tiers '${owner}' and '${tier.id}'`,
+        );
+      }
+      capabilityOwners.set(capability, tier.id);
+    }
+  }
+}
+
+function assertCellIds(cells: Record<string, { id?: string }> = {}): void {
+  for (const [cellId, cell] of Object.entries(cells)) {
+    if (cell.id !== cellId) throw new BlueprintValidationError(`Blueprint cell key '${cellId}' does not match id '${cell.id}'`);
+  }
+}
+
+function assertPresentationDefinition(presentation: BlueprintDefinition["presentation"], blueprintId: string): void {
+  if (!presentation) return;
+  const slotIds = new Set(presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
+  if (!slotIds.has(presentation.root)) {
+    throw new BlueprintValidationError(`Blueprint presentation root '${presentation.root}' is not a declared slot`);
+  }
+  for (const entry of presentation.slots) {
+    const id = typeof entry === "string" ? entry : entry.id;
+    const region = typeof entry === "string" ? undefined : entry.region;
+    if (region !== undefined && !slotIds.has(region)) {
+      throw new BlueprintValidationError(`Blueprint presentation slot '${id}' declares unknown parent region '${region}'`);
+    }
+  }
+  for (const slotId of Object.keys(presentation.layout ?? {})) {
+    if (!slotIds.has(slotId)) {
+      throw new BlueprintValidationError(`Blueprint presentation.layout references unknown slot '${slotId}'`);
+    }
+  }
+  const regionErrors = collectPresentationRegionExportErrors(presentation, blueprintId);
+  if (regionErrors.length > 0) throw new BlueprintValidationError(regionErrors.join("; "));
+}
+
+function assertCellPresentationReferences(
+  presentation: BlueprintDefinition["presentation"],
+  cells: Record<string, CellDefinition> = {},
+): void {
+  if (!presentation) return;
+  const slotIds = new Set(presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
+  for (const [cellId, cell] of Object.entries(cells)) {
+    for (const [viewName, view] of Object.entries(cell.potentialViews ?? {})) {
+      const cellRegion = view.region;
+      if (cellRegion === undefined) continue;
+      for (const targetSlot of Array.isArray(cellRegion) ? cellRegion : [cellRegion]) {
+        if (!slotIds.has(targetSlot)) {
+          throw new BlueprintValidationError(`Blueprint Cell '${cellId}' view '${viewName}' attaches to unknown region '${targetSlot}'`);
+        }
+      }
+    }
+  }
+}
+
+function assertFragmentIdentity(blueprint: Partial<BlueprintCoreDefinition>): void {
+  if (!blueprint.id || !blueprint.kind || !blueprint.version) {
+    throw new BlueprintValidationError("Blueprint identity is incomplete");
+  }
+}
+
+function assertFragmentCells(cells: Record<string, unknown> = {}): void {
+  for (const [cellId, cell] of Object.entries(cells)) {
+    const report = runDeclarativeValidators([{
+      kind: "blueprint-cell",
+      message: `Invalid Blueprint Cell '${cellId}'`,
+    }], cell as never);
+    if (!report.ok) {
+      throw new BlueprintValidationError(report.errors.map(({ detail }) => detail).join("; "), report.errors);
+    }
+  }
+}
+
+function assertNoFragmentFields(payload: Record<string, unknown>, fragmentKind: BlueprintFragmentKind, forbidden: readonly string[]): void {
+  for (const field of forbidden) {
+    if (Object.prototype.hasOwnProperty.call(payload, field)) {
+      throw new BlueprintValidationError(`Blueprint fragment '${fragmentKind}' must not declare '${field}'`);
+    }
+  }
+}
+
+function validateBlueprintFragmentArtifact<TKind extends Exclude<BlueprintFragmentKind, "assembled-blueprint">>(
+  value: unknown,
+  fragmentKind: TKind,
+): asserts value is BlueprintArtifactForFragmentKind<TKind> {
+  assertBlueprintEnvelope(value);
+  const payload = value.payload;
+  assertFragmentIdentity(payload as Partial<BlueprintCoreDefinition>);
+
+  switch (fragmentKind) {
+    case "blueprint": {
+      assertNoFragmentFields(payload, fragmentKind, [
+        "serviceTiers",
+        "serviceRecipes",
+        "projectionTiers",
+        "projectionRecipes",
+        "presentation",
+        "services",
+      ]);
+      const runtime = payload.runtime;
+      if (!runtime || typeof runtime !== "object" || Array.isArray(runtime)) {
+        throw new BlueprintValidationError("Blueprint requires a runtime declaration");
+      }
+      if (Object.prototype.hasOwnProperty.call(runtime, "state") && (runtime as { state?: unknown }).state !== undefined) {
+        throw new BlueprintValidationError("Blueprint fragment 'blueprint' must not declare runtime.state");
+      }
+      const cells = (payload.cells ?? {}) as Record<string, { id?: string }>;
+      assertCellIds(cells);
+      assertFragmentCells(payload.cells as Record<string, unknown> | undefined);
+      return;
+    }
+    case "blueprint.presentation": {
+      assertNoFragmentFields(payload, fragmentKind, [
+        "serviceTiers",
+        "serviceRecipes",
+        "projectionRecipes",
+        "services",
+        "runtime",
+        "cells",
+        "contextFormSpec",
+      ]);
+      const projectionTiers = payload.projectionTiers;
+      if (!Array.isArray(projectionTiers) || projectionTiers.length === 0) {
+        throw new BlueprintValidationError("Blueprint presentation fragment requires projectionTiers");
+      }
+      assertProjectionCapabilityOwnership(projectionTiers as ProjectionTierDefinition[]);
+      assertPresentationDefinition(payload.presentation as BlueprintDefinition["presentation"], String(payload.id));
+      return;
+    }
+    case "blueprint.presentation-programs": {
+      assertNoFragmentFields(payload, fragmentKind, [
+        "serviceTiers",
+        "serviceRecipes",
+        "projectionTiers",
+        "presentation",
+        "services",
+        "runtime",
+        "cells",
+        "contextFormSpec",
+      ]);
+      const projectionRecipes = payload.projectionRecipes;
+      if (!Array.isArray(projectionRecipes)) {
+        throw new BlueprintValidationError("Blueprint presentation-programs fragment requires projectionRecipes");
+      }
+      for (const recipe of projectionRecipes) {
+        const report = runDeclarativeValidators([{ kind: "blueprint-projection-recipe", message: "Invalid Blueprint projection recipe" }], recipe as never);
+        if (!report.ok) {
+          throw new BlueprintValidationError(report.errors.map(({ detail }) => detail).join("; "), report.errors);
+        }
+      }
+      return;
+    }
+    case "blueprint.implementation-programs": {
+      assertNoFragmentFields(payload, fragmentKind, [
+        "projectionTiers",
+        "projectionRecipes",
+        "presentation",
+        "runtime",
+        "cells",
+        "contextFormSpec",
+      ]);
+      const blueprint = {
+        id: String(payload.id),
+        kind: String(payload.kind),
+        version: String(payload.version),
+        serviceTiers: payload.serviceTiers,
+        serviceRecipes: payload.serviceRecipes,
+        projectionTiers: [{ id: "placeholder", kind: "placeholder", capabilities: [] }],
+        projectionRecipes: [],
+        runtime: {},
+      } as BlueprintDefinition;
+      validateLoweringAxis(blueprint, "service");
+      return;
+    }
+    case "blueprint.runtime-state": {
+      assertNoFragmentFields(payload, fragmentKind, [
+        "serviceTiers",
+        "serviceRecipes",
+        "projectionTiers",
+        "projectionRecipes",
+        "presentation",
+        "services",
+        "cells",
+        "contextFormSpec",
+      ]);
+      const runtime = payload.runtime;
+      if (!runtime || typeof runtime !== "object" || Array.isArray(runtime)) {
+        throw new BlueprintValidationError("Blueprint runtime-state fragment requires a runtime object");
+      }
+      if (!Object.prototype.hasOwnProperty.call(runtime, "state")) {
+        throw new BlueprintValidationError("Blueprint runtime-state fragment requires runtime.state");
+      }
+      return;
+    }
+  }
+}
+
+function isBlueprintFragmentBundle(value: BlueprintAssemblyInput): value is BlueprintFragmentBundle {
+  return typeof value === "object" && value !== null && "blueprint" in value;
+}
+
+function assertMatchingFragmentIdentity(
+  expected: Pick<BlueprintCoreDefinition, "id" | "kind" | "version">,
+  fragment: Pick<BlueprintCoreDefinition, "id" | "kind" | "version">,
+  fragmentKind: Exclude<BlueprintFragmentKind, "assembled-blueprint" | "blueprint">,
+): void {
+  if (fragment.id !== expected.id || fragment.kind !== expected.kind || fragment.version !== expected.version) {
+    throw new BlueprintValidationError(
+      `Blueprint fragment '${fragmentKind}' identity does not match '${expected.id}/${expected.version}'`,
+    );
+  }
+}
+
+function assembleBlueprintFragments(input: BlueprintFragmentBundle): BlueprintArtifact {
+  validateBlueprintArtifactInternal(input.blueprint, "blueprint");
+
+  const assembled: BlueprintArtifact = {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      ...structuredClone(input.blueprint.payload),
+      serviceTiers: [],
+      serviceRecipes: [],
+      projectionTiers: [],
+      projectionRecipes: [],
+      runtime: structuredClone(input.blueprint.payload.runtime),
+    },
+  };
+
+  if (input.presentation) {
+    validateBlueprintArtifactInternal(input.presentation, "blueprint.presentation");
+    assertMatchingFragmentIdentity(input.blueprint.payload, input.presentation.payload, "blueprint.presentation");
+    assembled.payload.projectionTiers = structuredClone(input.presentation.payload.projectionTiers);
+    assembled.payload.presentation = structuredClone(input.presentation.payload.presentation);
+  }
+
+  if (input.presentationPrograms) {
+    validateBlueprintArtifactInternal(input.presentationPrograms, "blueprint.presentation-programs");
+    assertMatchingFragmentIdentity(input.blueprint.payload, input.presentationPrograms.payload, "blueprint.presentation-programs");
+    assembled.payload.projectionRecipes = structuredClone(input.presentationPrograms.payload.projectionRecipes);
+  }
+
+  if (input.implementationPrograms) {
+    validateBlueprintArtifactInternal(input.implementationPrograms, "blueprint.implementation-programs");
+    assertMatchingFragmentIdentity(input.blueprint.payload, input.implementationPrograms.payload, "blueprint.implementation-programs");
+    assembled.payload.serviceTiers = structuredClone(input.implementationPrograms.payload.serviceTiers);
+    assembled.payload.serviceRecipes = structuredClone(input.implementationPrograms.payload.serviceRecipes);
+    if (input.implementationPrograms.payload.services) {
+      assembled.payload.services = structuredClone(input.implementationPrograms.payload.services);
+    }
+  }
+
+  if (input.runtimeState) {
+    validateBlueprintArtifactInternal(input.runtimeState, "blueprint.runtime-state");
+    assertMatchingFragmentIdentity(input.blueprint.payload, input.runtimeState.payload, "blueprint.runtime-state");
+    assembled.payload.runtime = {
+      ...structuredClone(assembled.payload.runtime),
+      state: structuredClone(input.runtimeState.payload.runtime.state),
+    };
+  }
+
+  validateBlueprintArtifact(assembled);
+  return assembled;
+}
+
+function toBlueprintValidationError(error: unknown): BlueprintValidationError {
+  if (error instanceof BlueprintValidationError) return error;
+  return new BlueprintValidationError(error instanceof Error ? error.message : String(error));
+}
+
+function cloneBlueprintLikeValue(value: unknown): unknown {
+  try {
+    return structuredClone(value);
+  } catch (error) {
+    throw new BlueprintValidationError(
+      `Blueprint fragment could not be cloned: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+function tryValidateBlueprintArtifactInternal<TKind extends BlueprintFragmentKind>(
+  value: unknown,
+  fragmentKind: TKind,
+): BlueprintValidationResult<TKind> {
+  try {
+    validateBlueprintArtifactInternal(value, fragmentKind);
+    return { ok: true, fragmentKind, blueprint: value as BlueprintArtifactForFragmentKind<TKind> };
+  } catch (error) {
+    return { ok: false, fragmentKind, error: toBlueprintValidationError(error) };
+  }
+}
+
+function validateBlueprintArtifactInternal(
+  value: unknown,
+  fragmentKind: BlueprintFragmentKind,
+): void {
+  validateBlueprintArtifact(value, fragmentKind);
+}
 
 export function validateBlueprintForAuthoring(value: unknown): BlueprintAuthoringValidationReport {
   try {
@@ -92,9 +424,23 @@ export function validateBlueprintForAuthoring(value: unknown): BlueprintAuthorin
   }
 }
 
-export function validateBlueprintArtifact(
+export function validateBlueprintArtifact(value: unknown): asserts value is BlueprintArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "assembled-blueprint"): asserts value is BlueprintArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint"): asserts value is BlueprintCoreArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.presentation"): asserts value is BlueprintPresentationArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.presentation-programs"): asserts value is BlueprintPresentationProgramsArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.implementation-programs"): asserts value is BlueprintImplementationProgramsArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.runtime-state"): asserts value is BlueprintRuntimeStateArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: BlueprintFragmentKind): asserts value is BlueprintArtifactForFragmentKind<BlueprintFragmentKind>;
+export function validateBlueprintArtifact<TKind extends BlueprintFragmentKind>(
   value: unknown,
-): asserts value is BlueprintArtifact {
+  fragmentKind: BlueprintFragmentKind = "assembled-blueprint",
+): asserts value is BlueprintArtifactForFragmentKind<TKind> {
+  if (fragmentKind !== "assembled-blueprint") {
+    validateBlueprintFragmentArtifact(value, fragmentKind as Exclude<BlueprintFragmentKind, "assembled-blueprint">);
+    return;
+  }
+
   const report = runDeclarativeValidators([{
     kind: "blueprint",
     message: "Invalid Blueprint artifact",
@@ -105,11 +451,8 @@ export function validateBlueprintArtifact(
       report.errors,
     );
   }
-  if (!value || typeof value !== "object") throw new BlueprintValidationError("Blueprint must be an object");
-  const artifact = value as Partial<BlueprintArtifact>;
-  if (artifact.gik !== "0.1" || artifact.type !== "blueprint" || !artifact.payload) {
-    throw new BlueprintValidationError("Invalid Blueprint envelope");
-  }
+  assertBlueprintEnvelope(value);
+  const artifact = value as unknown as Partial<BlueprintArtifact>;
   const blueprint = artifact.payload as BlueprintDefinition;
   if (!blueprint.id || !blueprint.kind || !blueprint.version) throw new BlueprintValidationError("Blueprint identity is incomplete");
   // Hard cut: the pre-split combined `tiers`/`recipes` pair is rejected outright rather than
@@ -137,38 +480,8 @@ export function validateBlueprintArtifact(
     throw new BlueprintValidationError("Blueprints with potential views or projection representation views require a presentation");
   }
   if (blueprint.presentation) {
-    const slotIds = new Set(blueprint.presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
-    if (!slotIds.has(blueprint.presentation.root)) {
-      throw new BlueprintValidationError(`Blueprint presentation root '${blueprint.presentation.root}' is not a declared slot`);
-    }
-    for (const entry of blueprint.presentation.slots) {
-      const id = typeof entry === "string" ? entry : entry.id;
-      const region = typeof entry === "string" ? undefined : entry.region;
-      if (region !== undefined && !slotIds.has(region)) {
-        throw new BlueprintValidationError(`Blueprint presentation slot '${id}' declares unknown parent region '${region}'`);
-      }
-    }
-    for (const [cellId, cell] of Object.entries(cells)) {
-      for (const [viewName, view] of Object.entries(cell.potentialViews ?? {})) {
-        const cellRegion = view.region;
-        if (cellRegion === undefined) continue;
-        for (const targetSlot of Array.isArray(cellRegion) ? cellRegion : [cellRegion]) {
-          if (!slotIds.has(targetSlot)) {
-            throw new BlueprintValidationError(`Blueprint Cell '${cellId}' view '${viewName}' attaches to unknown region '${targetSlot}'`);
-          }
-        }
-      }
-    }
-    for (const slotId of Object.keys(blueprint.presentation.layout ?? {})) {
-      if (!slotIds.has(slotId)) {
-        throw new BlueprintValidationError(`Blueprint presentation.layout references unknown slot '${slotId}'`);
-      }
-    }
-    // Exported regions are the only host-addressable presentation contract, so they are validated
-    // structurally here rather than discovered leniently at mount time: a host must be able to trust
-    // that every declared name resolves to exactly one reachable, non-overlapping slot subtree.
-    const regionErrors = collectPresentationRegionExportErrors(blueprint.presentation, blueprint.id);
-    if (regionErrors.length > 0) throw new BlueprintValidationError(regionErrors.join("; "));
+    assertPresentationDefinition(blueprint.presentation, blueprint.id);
+    assertCellPresentationReferences(blueprint.presentation, cells);
   }
   // `blueprint` (hosting another Blueprint) is one of a Cell's own ordinary data-flow-owning
   // properties -- listed alongside ports/sources/compute/behavior, not alongside `potentialViews` --
@@ -268,18 +581,7 @@ function validateLoweringAxis(blueprint: BlueprintDefinition, axis: "service" | 
   }
 
   if (axis === "projection") {
-    const capabilityOwners = new Map<string, string>();
-    for (const tier of tiers as ProjectionTierDefinition[]) {
-      for (const capability of tier.capabilities) {
-        const owner = capabilityOwners.get(capability);
-        if (owner) {
-          throw new BlueprintValidationError(
-            `Blueprint projection capability '${capability}' is declared by both tiers '${owner}' and '${tier.id}'`,
-          );
-        }
-        capabilityOwners.set(capability, tier.id);
-      }
-    }
+    assertProjectionCapabilityOwnership(tiers as ProjectionTierDefinition[]);
   }
   try {
     resolveLoweringAxis(blueprint.id, axis, tiers, recipes);
@@ -294,10 +596,21 @@ export function createBlueprint(definition: BlueprintDefinition): BlueprintArtif
   return blueprint;
 }
 
-export function parseBlueprintJson(text: string): BlueprintArtifact {
+export function parseBlueprintJson(text: string): BlueprintArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "assembled-blueprint"): BlueprintArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint"): BlueprintCoreArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint.presentation"): BlueprintPresentationArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint.presentation-programs"): BlueprintPresentationProgramsArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint.implementation-programs"): BlueprintImplementationProgramsArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint.runtime-state"): BlueprintRuntimeStateArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: BlueprintFragmentKind): BlueprintArtifactForFragmentKind<BlueprintFragmentKind>;
+export function parseBlueprintJson<TKind extends BlueprintFragmentKind>(
+  text: string,
+  fragmentKind: BlueprintFragmentKind = "assembled-blueprint",
+): BlueprintArtifactForFragmentKind<TKind> {
   const blueprint: unknown = JSON.parse(text);
-  validateBlueprintArtifact(blueprint);
-  return blueprint;
+  validateBlueprintArtifactInternal(blueprint, fragmentKind);
+  return blueprint as BlueprintArtifactForFragmentKind<TKind>;
 }
 
 export function stringifyBlueprint(blueprint: BlueprintArtifact): string {
@@ -305,12 +618,53 @@ export function stringifyBlueprint(blueprint: BlueprintArtifact): string {
   return JSON.stringify(blueprint, null, 2);
 }
 
+export function tryValidateBlueprintArtifact(value: unknown): BlueprintValidationResult<"assembled-blueprint">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "assembled-blueprint"): BlueprintValidationResult<"assembled-blueprint">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint"): BlueprintValidationResult<"blueprint">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.presentation"): BlueprintValidationResult<"blueprint.presentation">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.presentation-programs"): BlueprintValidationResult<"blueprint.presentation-programs">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.implementation-programs"): BlueprintValidationResult<"blueprint.implementation-programs">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.runtime-state"): BlueprintValidationResult<"blueprint.runtime-state">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: BlueprintFragmentKind): BlueprintValidationResult<BlueprintFragmentKind>;
+export function tryValidateBlueprintArtifact<TKind extends BlueprintFragmentKind>(
+  value: unknown,
+  fragmentKind: BlueprintFragmentKind = "assembled-blueprint",
+): BlueprintValidationResult<TKind> {
+  return tryValidateBlueprintArtifactInternal(value, (fragmentKind ?? "assembled-blueprint") as TKind);
+}
+
+export function validateAuthoredBlueprintFragment(value: unknown): BlueprintValidationResult<"assembled-blueprint">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "assembled-blueprint"): BlueprintValidationResult<"assembled-blueprint">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint"): BlueprintValidationResult<"blueprint">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint.presentation"): BlueprintValidationResult<"blueprint.presentation">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint.presentation-programs"): BlueprintValidationResult<"blueprint.presentation-programs">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint.implementation-programs"): BlueprintValidationResult<"blueprint.implementation-programs">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint.runtime-state"): BlueprintValidationResult<"blueprint.runtime-state">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: BlueprintFragmentKind): BlueprintValidationResult<BlueprintFragmentKind>;
+export function validateAuthoredBlueprintFragment<TKind extends BlueprintFragmentKind>(
+  value: unknown,
+  fragmentKind: BlueprintFragmentKind = "assembled-blueprint",
+): BlueprintValidationResult<TKind> {
+  const kind = (fragmentKind ?? "assembled-blueprint") as TKind;
+  try {
+    const blueprint = typeof value === "string" ? JSON.parse(value) : cloneBlueprintLikeValue(value);
+    return tryValidateBlueprintArtifactInternal(blueprint, kind);
+  } catch (error) {
+    return {
+      ok: false,
+      fragmentKind: kind,
+      error: toBlueprintValidationError(error),
+    };
+  }
+}
+
 export function assembleBlueprint(
-  source: BlueprintArtifact,
+  source: BlueprintAssemblyInput,
   resolveReference?: BlueprintReferenceResolver,
 ): BlueprintArtifact {
   const active = new Set<string>();
-  const assemble = (blueprint: BlueprintArtifact): BlueprintArtifact => {
+  const assemble = (input: BlueprintAssemblyInput): BlueprintArtifact => {
+    const blueprint = isBlueprintFragmentBundle(input) ? assembleBlueprintFragments(input) : input;
     validateBlueprintArtifact(blueprint);
     if (active.has(blueprint.payload.id)) throw new BlueprintValidationError(`Recursive Blueprint reference cycle at '${blueprint.payload.id}'`);
     active.add(blueprint.payload.id);

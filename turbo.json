@@ -19,6 +19,11 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/face/**"],
       "outputs": ["dist/**"]
+    },
+    "gik-provider-blueprint-authoring#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/provider-blueprint-authoring/**"],
+      "outputs": ["dist/**"]
     }
   }
 }
