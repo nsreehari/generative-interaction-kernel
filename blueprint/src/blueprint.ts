@@ -13,6 +13,7 @@ import type {
   BlueprintArtifactForFragmentKind,
   BlueprintCoreArtifact,
   BlueprintCoreDefinition,
+  CellDefinition,
   BlueprintDefinition,
   BlueprintFragmentBundle,
   BlueprintFragmentKind,
@@ -88,6 +89,12 @@ function assertProjectionCapabilityOwnership(tiers: ProjectionTierDefinition[]):
   }
 }
 
+function assertCellIds(cells: Record<string, { id?: string }> = {}): void {
+  for (const [cellId, cell] of Object.entries(cells)) {
+    if (cell.id !== cellId) throw new BlueprintValidationError(`Blueprint cell key '${cellId}' does not match id '${cell.id}'`);
+  }
+}
+
 function assertPresentationDefinition(presentation: BlueprintDefinition["presentation"], blueprintId: string): void {
   if (!presentation) return;
   const slotIds = new Set(presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
@@ -112,7 +119,7 @@ function assertPresentationDefinition(presentation: BlueprintDefinition["present
 
 function assertCellPresentationReferences(
   presentation: BlueprintDefinition["presentation"],
-  cells: Record<string, BlueprintDefinition["cells"][string]> = {},
+  cells: Record<string, CellDefinition> = {},
 ): void {
   if (!presentation) return;
   const slotIds = new Set(presentation.slots.map((entry) => typeof entry === "string" ? entry : entry.id));
@@ -288,7 +295,7 @@ function assertMatchingFragmentIdentity(
 }
 
 function assembleBlueprintFragments(input: BlueprintFragmentBundle): BlueprintArtifact {
-  validateBlueprintArtifact(input.blueprint, "blueprint");
+  validateBlueprintArtifactInternal(input.blueprint, "blueprint");
 
   const assembled: BlueprintArtifact = {
     gik: "0.1",
@@ -304,20 +311,20 @@ function assembleBlueprintFragments(input: BlueprintFragmentBundle): BlueprintAr
   };
 
   if (input.presentation) {
-    validateBlueprintArtifact(input.presentation, "blueprint.presentation");
+    validateBlueprintArtifactInternal(input.presentation, "blueprint.presentation");
     assertMatchingFragmentIdentity(input.blueprint.payload, input.presentation.payload, "blueprint.presentation");
     assembled.payload.projectionTiers = structuredClone(input.presentation.payload.projectionTiers);
     assembled.payload.presentation = structuredClone(input.presentation.payload.presentation);
   }
 
   if (input.presentationPrograms) {
-    validateBlueprintArtifact(input.presentationPrograms, "blueprint.presentation-programs");
+    validateBlueprintArtifactInternal(input.presentationPrograms, "blueprint.presentation-programs");
     assertMatchingFragmentIdentity(input.blueprint.payload, input.presentationPrograms.payload, "blueprint.presentation-programs");
     assembled.payload.projectionRecipes = structuredClone(input.presentationPrograms.payload.projectionRecipes);
   }
 
   if (input.implementationPrograms) {
-    validateBlueprintArtifact(input.implementationPrograms, "blueprint.implementation-programs");
+    validateBlueprintArtifactInternal(input.implementationPrograms, "blueprint.implementation-programs");
     assertMatchingFragmentIdentity(input.blueprint.payload, input.implementationPrograms.payload, "blueprint.implementation-programs");
     assembled.payload.serviceTiers = structuredClone(input.implementationPrograms.payload.serviceTiers);
     assembled.payload.serviceRecipes = structuredClone(input.implementationPrograms.payload.serviceRecipes);
@@ -327,7 +334,7 @@ function assembleBlueprintFragments(input: BlueprintFragmentBundle): BlueprintAr
   }
 
   if (input.runtimeState) {
-    validateBlueprintArtifact(input.runtimeState, "blueprint.runtime-state");
+    validateBlueprintArtifactInternal(input.runtimeState, "blueprint.runtime-state");
     assertMatchingFragmentIdentity(input.blueprint.payload, input.runtimeState.payload, "blueprint.runtime-state");
     assembled.payload.runtime = {
       ...structuredClone(assembled.payload.runtime),
@@ -359,11 +366,18 @@ function tryValidateBlueprintArtifactInternal<TKind extends BlueprintFragmentKin
   fragmentKind: TKind,
 ): BlueprintValidationResult<TKind> {
   try {
-    validateBlueprintArtifact(value, fragmentKind);
+    validateBlueprintArtifactInternal(value, fragmentKind);
     return { ok: true, fragmentKind, blueprint: value as BlueprintArtifactForFragmentKind<TKind> };
   } catch (error) {
     return { ok: false, fragmentKind, error: toBlueprintValidationError(error) };
   }
+}
+
+function validateBlueprintArtifactInternal(
+  value: unknown,
+  fragmentKind: BlueprintFragmentKind,
+): void {
+  validateBlueprintArtifact(value, fragmentKind);
 }
 
 export function validateBlueprintForAuthoring(value: unknown): BlueprintAuthoringValidationReport {
@@ -411,12 +425,19 @@ export function validateBlueprintForAuthoring(value: unknown): BlueprintAuthorin
 }
 
 export function validateBlueprintArtifact(value: unknown): asserts value is BlueprintArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "assembled-blueprint"): asserts value is BlueprintArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint"): asserts value is BlueprintCoreArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.presentation"): asserts value is BlueprintPresentationArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.presentation-programs"): asserts value is BlueprintPresentationProgramsArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.implementation-programs"): asserts value is BlueprintImplementationProgramsArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.runtime-state"): asserts value is BlueprintRuntimeStateArtifact;
+export function validateBlueprintArtifact(value: unknown, fragmentKind: BlueprintFragmentKind): asserts value is BlueprintArtifactForFragmentKind<BlueprintFragmentKind>;
 export function validateBlueprintArtifact<TKind extends BlueprintFragmentKind>(
   value: unknown,
-  fragmentKind: TKind,
+  fragmentKind: BlueprintFragmentKind = "assembled-blueprint",
 ): asserts value is BlueprintArtifactForFragmentKind<TKind> {
   if (fragmentKind !== "assembled-blueprint") {
-    validateBlueprintFragmentArtifact(value, fragmentKind);
+    validateBlueprintFragmentArtifact(value, fragmentKind as Exclude<BlueprintFragmentKind, "assembled-blueprint">);
     return;
   }
 
@@ -576,16 +597,19 @@ export function createBlueprint(definition: BlueprintDefinition): BlueprintArtif
 }
 
 export function parseBlueprintJson(text: string): BlueprintArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "assembled-blueprint"): BlueprintArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint"): BlueprintCoreArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint.presentation"): BlueprintPresentationArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint.presentation-programs"): BlueprintPresentationProgramsArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint.implementation-programs"): BlueprintImplementationProgramsArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: "blueprint.runtime-state"): BlueprintRuntimeStateArtifact;
+export function parseBlueprintJson(text: string, fragmentKind: BlueprintFragmentKind): BlueprintArtifactForFragmentKind<BlueprintFragmentKind>;
 export function parseBlueprintJson<TKind extends BlueprintFragmentKind>(
   text: string,
-  fragmentKind: TKind,
+  fragmentKind: BlueprintFragmentKind = "assembled-blueprint",
 ): BlueprintArtifactForFragmentKind<TKind> {
   const blueprint: unknown = JSON.parse(text);
-  if (fragmentKind === undefined) {
-    validateBlueprintArtifact(blueprint);
-    return blueprint as BlueprintArtifactForFragmentKind<TKind>;
-  }
-  validateBlueprintArtifact(blueprint, fragmentKind);
+  validateBlueprintArtifactInternal(blueprint, fragmentKind);
   return blueprint as BlueprintArtifactForFragmentKind<TKind>;
 }
 
@@ -595,17 +619,31 @@ export function stringifyBlueprint(blueprint: BlueprintArtifact): string {
 }
 
 export function tryValidateBlueprintArtifact(value: unknown): BlueprintValidationResult<"assembled-blueprint">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "assembled-blueprint"): BlueprintValidationResult<"assembled-blueprint">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint"): BlueprintValidationResult<"blueprint">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.presentation"): BlueprintValidationResult<"blueprint.presentation">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.presentation-programs"): BlueprintValidationResult<"blueprint.presentation-programs">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.implementation-programs"): BlueprintValidationResult<"blueprint.implementation-programs">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: "blueprint.runtime-state"): BlueprintValidationResult<"blueprint.runtime-state">;
+export function tryValidateBlueprintArtifact(value: unknown, fragmentKind: BlueprintFragmentKind): BlueprintValidationResult<BlueprintFragmentKind>;
 export function tryValidateBlueprintArtifact<TKind extends BlueprintFragmentKind>(
   value: unknown,
-  fragmentKind: TKind,
+  fragmentKind: BlueprintFragmentKind = "assembled-blueprint",
 ): BlueprintValidationResult<TKind> {
   return tryValidateBlueprintArtifactInternal(value, (fragmentKind ?? "assembled-blueprint") as TKind);
 }
 
 export function validateAuthoredBlueprintFragment(value: unknown): BlueprintValidationResult<"assembled-blueprint">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "assembled-blueprint"): BlueprintValidationResult<"assembled-blueprint">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint"): BlueprintValidationResult<"blueprint">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint.presentation"): BlueprintValidationResult<"blueprint.presentation">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint.presentation-programs"): BlueprintValidationResult<"blueprint.presentation-programs">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint.implementation-programs"): BlueprintValidationResult<"blueprint.implementation-programs">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: "blueprint.runtime-state"): BlueprintValidationResult<"blueprint.runtime-state">;
+export function validateAuthoredBlueprintFragment(value: unknown, fragmentKind: BlueprintFragmentKind): BlueprintValidationResult<BlueprintFragmentKind>;
 export function validateAuthoredBlueprintFragment<TKind extends BlueprintFragmentKind>(
   value: unknown,
-  fragmentKind: TKind,
+  fragmentKind: BlueprintFragmentKind = "assembled-blueprint",
 ): BlueprintValidationResult<TKind> {
   const kind = (fragmentKind ?? "assembled-blueprint") as TKind;
   try {
