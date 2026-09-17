@@ -1,5 +1,11 @@
 # gik-durable-runtime
 
+## 0.9.0
+
+### Minor Changes
+
+- 21f16ab: Add fragment-aware Blueprint validation and deterministic assembly while preserving assembled Blueprints as the runtime contract.
+
 ## 0.8.1
 
 ### Patch Changes

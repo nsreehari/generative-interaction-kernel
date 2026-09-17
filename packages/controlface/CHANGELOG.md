@@ -1,5 +1,11 @@
 # gik-controlface
 
+## 0.3.0
+
+### Minor Changes
+
+- 21f16ab: Add fragment-aware Blueprint validation and deterministic assembly while preserving assembled Blueprints as the runtime contract.
+
 ## 0.2.0
 
 ### Minor Changes

@@ -1,5 +1,18 @@
 # gik-react
 
+## 0.4.0
+
+### Minor Changes
+
+- 21f16ab: Add fragment-aware Blueprint validation and deterministic assembly while preserving assembled Blueprints as the runtime contract.
+
+### Patch Changes
+
+- Updated dependencies [21f16ab]
+  - gik-blueprint@0.3.0
+  - gik-durable-runtime@0.9.0
+  - gik-kernel@0.3.0
+
 ## 0.3.2
 
 ### Patch Changes
