@@ -1,5 +1,16 @@
 # gik-transport-http-sse
 
+## 0.2.0
+
+### Minor Changes
+
+- 21f16ab: Add fragment-aware Blueprint validation and deterministic assembly while preserving assembled Blueprints as the runtime contract.
+
+### Patch Changes
+
+- Updated dependencies [21f16ab]
+  - gik-kernel@0.3.0
+
 ## 0.1.2
 
 ### Patch Changes
