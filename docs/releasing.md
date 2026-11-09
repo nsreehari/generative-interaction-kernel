@@ -64,9 +64,12 @@ expose must also be packed. The publication job repeats
 the build, artifact verification, and tarball inspection on the verified release
 commit before Changesets publishes only versions that do not already exist.
 
-Package inspection uses npm's publication dry run and is deliberately guarded
-to GitHub Actions. Do not run npm publication or registry-inspection commands
-from restricted corporate networks.
+Package inspection uses `npm pack --dry-run` for the stable workspaces selected
+by the release policy and is deliberately guarded to GitHub Actions. It runs
+packaging lifecycle checks without checking whether a version already exists
+on npm; unchanged published versions are inspected too. Changesets skips those
+versions during actual publication. Do not run npm publication or
+registry-inspection commands from restricted corporate networks.
 
 ## Verify a publication from the public registry
 
