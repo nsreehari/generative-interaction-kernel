@@ -15,12 +15,46 @@ import {
   verifyPackageArtifacts,
   workspaceFiles,
 } from "../verify-package-artifacts.mjs";
+// @ts-expect-error - plain ESM release script without type declarations.
+import { inspectNpmPackages } from "../inspect-npm-packages.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const workflow = readFileSync(
   fileURLToPath(new URL("../../.github/workflows/publish.yml", import.meta.url)),
   "utf8",
 );
+
+test("package inspection packs only stable workspaces without checking registry publication eligibility", () => {
+  const environment = { GITHUB_ACTIONS: "true", npm_execpath: "npm-cli.js" };
+  const { stable, experimental, internal } = JSON.parse(
+    readFileSync(new URL("../../config/npm-release.json", import.meta.url), "utf8"),
+  );
+  let invoked = false;
+  const status = inspectNpmPackages(root, {
+    environment,
+    run(command: string, args: string[], options: { cwd: string; stdio: string }) {
+      invoked = true;
+      assert.equal(command, process.execPath);
+      assert.deepEqual(args, ["npm-cli.js", "pack", "--dry-run", ...stable.map((name: string) => `--workspace=${name}`)]);
+      assert.equal(options.cwd, root);
+      assert.equal(options.stdio, "inherit");
+      for (const name of [...experimental, ...internal]) assert.ok(!args.includes(`--workspace=${name}`));
+      return { status: 0 };
+    },
+  });
+  assert.ok(invoked);
+  assert.equal(status, 0);
+});
+
+test("package inspection preserves failures and the GitHub Actions boundary", () => {
+  const environment = { GITHUB_ACTIONS: "true", npm_execpath: "npm-cli.js" };
+  assert.throws(() => inspectNpmPackages(root, { environment: {} }), /only in GitHub Actions/);
+  assert.throws(() => inspectNpmPackages(root, { environment: { GITHUB_ACTIONS: "true" } }), /through npm/);
+  assert.equal(inspectNpmPackages(root, { environment, run: () => ({ status: 7 }) }), 7);
+  assert.equal(inspectNpmPackages(root, { environment, run: () => ({ status: null }) }), 1);
+  const error = new Error("could not start npm");
+  assert.throws(() => inspectNpmPackages(root, { environment, run: () => ({ error }) }), error);
+});
 
 function packedEntryPoints(workspacePath: string): string[] {
   const manifest = JSON.parse(
