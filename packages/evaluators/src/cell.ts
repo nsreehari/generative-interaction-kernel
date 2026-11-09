@@ -236,29 +236,6 @@ export function validateCell(value: unknown): CellValidationResult {
         });
       }
 
-      const senseIds = new Set<string>();
-      for (const sense of cell.senses ?? []) {
-        const node = `senses.${sense.id}`;
-        if (senseIds.has(sense.id)) errors.push({ code: "duplicate-sense", detail: `Sense '${sense.id}' is duplicated`, node });
-        senseIds.add(sense.id);
-        if (sense.when) {
-          for (const detail of validateCellExpression(sense.when, "safe", declaredSystemInputs, new Set(["inputs", "sources", "systemInputs", "computed"]))) {
-            errors.push({ code: "invalid-sense-expression", detail, node: `${node}.when` });
-          }
-        }
-        if (sense.input) {
-          for (const detail of validateCellExpression(sense.input.expr, "safe", declaredSystemInputs, new Set(["inputs", "sources", "systemInputs", "computed"]))) {
-            errors.push({ code: "invalid-sense-expression", detail, node: `${node}.input` });
-          }
-        }
-        if (sense.output) {
-          const syntax = validateJsonataExpression(sense.output.expr, { mode: "safe" });
-          if (!syntax.ok) errors.push({ code: "invalid-sense-expression", detail: syntax.error ?? "Invalid Sense output transform", node });
-        }
-        for (const event of Object.values(sense.on)) {
-          if (!cell.events?.[event]) errors.push({ code: "undeclared-sense-event", detail: `Sense '${sense.id}' maps to undeclared event '${event}'`, node });
-        }
-      }
     }
     for (const [name, transform] of [["input", source.input?.expr], ["output", source.output?.expr]] as const) {
       if (!transform) continue;
@@ -268,6 +245,26 @@ export function validateCell(value: unknown): CellValidationResult {
         detail: syntax.error ?? "Invalid source transform",
         node: `sources.${source.id}.${name}`,
       });
+    }
+  }
+
+  const senseIds = new Set<string>();
+  for (const sense of cell.senses ?? []) {
+    const node = `senses.${sense.id}`;
+    if (senseIds.has(sense.id)) errors.push({ code: "duplicate-sense", detail: `Sense '${sense.id}' is duplicated`, node });
+    senseIds.add(sense.id);
+    for (const [name, expression] of [["when", sense.when], ["input", sense.input?.expr]] as const) {
+      if (!expression) continue;
+      for (const detail of validateCellExpression(expression, "safe", declaredSystemInputs, new Set(["inputs", "sources", "systemInputs", "computed"]))) {
+        errors.push({ code: "invalid-sense-expression", detail, node: `${node}.${name}` });
+      }
+    }
+    if (sense.output) {
+      const syntax = validateJsonataExpression(sense.output.expr, { mode: "safe" });
+      if (!syntax.ok) errors.push({ code: "invalid-sense-expression", detail: syntax.error ?? "Invalid Sense output transform", node });
+    }
+    for (const event of Object.values(sense.on)) {
+      if (!cell.events?.[event]) errors.push({ code: "undeclared-sense-event", detail: `Sense '${sense.id}' maps to undeclared event '${event}'`, node });
     }
   }
 

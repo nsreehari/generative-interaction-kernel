@@ -40,6 +40,24 @@ const blueprintRunState = {
 };
 const systemContext = { blueprintRunState, cellId: "portfolio-summary" };
 
+test("Sense validation is independent of sources and their conditions", () => {
+  const sense = {
+    id: "clock", service: "clock", operation: "observe", when: "undeclared.flag",
+    input: { kind: "jsonata", expr: "undeclared.value" },
+    output: { kind: "jsonata", expr: "(" }, on: { due: "missing" },
+  };
+  for (const sources of [undefined, [], [{ id: "fetch", service: "reports", operation: "fetch" }]]) {
+    const result = validateCell({ id: "review", senses: [sense, sense], sources, events: {} });
+    assert.equal(result.ok, false);
+    assert.equal(result.errors.filter(({ code }) => code === "duplicate-sense").length, 1);
+    for (const suffix of ["when", "input"]) {
+      assert.ok(result.errors.some(({ node }) => node === `senses.clock.${suffix}`));
+    }
+    assert.equal(result.errors.filter(({ code }) => code === "undeclared-sense-event").length, 2);
+    assert.equal(result.errors.filter(({ code }) => code === "invalid-sense-expression").length, 6);
+  }
+});
+
 test("evaluateCell purely derives outputs and admitted source effects", () => {
   const result = evaluateCell({
     materializedProgramCell: cell,

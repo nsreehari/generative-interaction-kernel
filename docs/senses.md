@@ -125,6 +125,9 @@ closes replaced or removed usages. Cleanup failures are reported and reject the
 lifecycle operation. Providers must release resources on close and honor abort.
 Hosts must supervise reported provider failures; recovery is not silently
 retried by the reconciler.
+Observation establishment and provider failures are recorded as failed service
+requests before error notification. Cleanup preserves failed, rejected, and
+cancelled outcomes instead of replacing them with a successful-looking status.
 
 One observer Cell can publish interpreted facts through output tokens for
 multiple consumers. Distinct scopes or activation policies can use distinct

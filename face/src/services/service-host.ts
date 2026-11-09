@@ -361,20 +361,36 @@ export class DefaultServiceHost implements ServiceHost {
     if (resolved.operation.sense?.kind !== options.kind) throw new Error("Sense kind does not match the declared operation");
     const record = await this.createRecord(resolved, trustedEffect, "immediate", context);
     if (record.status !== "accepted") throw new Error(`Sense binding ${record.status}`);
-    const adapter = await this.adapter(resolved.serviceId);
-    if (!adapter.observe) throw new Error(`Service '${resolved.serviceId}' does not implement observation`);
-    const request = { ...record.request, providerId: adapter.provider.id };
     const controller = new AbortController();
     this.controllers.set(record.request.id, controller);
     const lifecycle = senseLifecycle[options.kind];
     let active = true;
+    let failure: Promise<void> = Promise.resolve();
     const fail = (error: unknown) => {
       active = false;
       controller.abort();
       this.controllers.delete(record.request.id);
-      options.onError(error);
+      failure = failure.then(async () => {
+        try {
+          const current = await this.store.get(record.request.id);
+          if (current?.status === "accepted" || current?.status === "running") {
+            await this.store.put({
+              ...current, status: "failed",
+              error: error instanceof Error ? error.message : String(error),
+              errorDetail: errorDetail(error), updatedAt: this.now().toISOString(),
+            });
+          }
+        } catch (storeError) {
+          options.onError(new AggregateError([error, storeError], "Sense failure persistence failed"));
+          return;
+        }
+        options.onError(error);
+      });
     };
     try {
+      const adapter = await this.adapter(resolved.serviceId);
+      if (!adapter.observe) throw new Error(`Service '${resolved.serviceId}' does not implement observation`);
+      const request = { ...record.request, providerId: adapter.provider.id };
       const validation = await adapter.validate?.(structuredClone(request), { effect: structuredClone(trustedEffect) });
       if (validation && !validation.ok) throw new Error(validation.errors?.join("; ") ?? "Invalid Sense request");
       const authorize = async () => {
@@ -401,13 +417,14 @@ export class DefaultServiceHost implements ServiceHost {
         controller.abort();
         try { await handle.close(lifecycle.stop); }
         finally { this.controllers.delete(record.request.id); }
+        await failure;
         const current = await this.store.get(record.request.id);
         if (current?.status === "accepted") {
           await this.store.put({ ...current, status: "cancelled", updatedAt: this.now().toISOString() });
         }
       };
       return { close };
-    } catch (error) { fail(error); throw error; }
+    } catch (error) { fail(error); await failure; throw error; }
   }
 
   async enqueue(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceRequestRecord> {
