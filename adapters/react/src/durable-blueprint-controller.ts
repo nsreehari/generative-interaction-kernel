@@ -59,6 +59,7 @@ export class DurableBlueprintController implements GenUISource {
       providers: options.runtime.providers,
       transitionAdapter: createBlueprintDurableTransitionAdapter({
         blueprint,
+        instanceId: options.runtime.runtimeId,
         externalContext: options.externalContext,
         materializedBlueprint: options.materializedBlueprint,
         onTransition: options.onTransition,

@@ -468,8 +468,18 @@ function applyCellImplementationOverrides(
     const cell = artifact.payload.cells?.[cellId];
     if (!cell) throw new Error(`Blueprint implementation program '${program.id}' references unknown Cell '${cellId}'`);
     if (override.sources) assertStableSourceContracts(artifact, program.id, cell, override.sources);
+    if (override.senses) {
+      const signature = (senses: NonNullable<CellDefinition["senses"]>) => JSON.stringify(senses.map((sense) => [
+        sense.id, resolveSourceContract(artifact, program.id, cell.id, sense),
+        Object.entries(sense.on).sort(([a], [b]) => a.localeCompare(b)),
+      ]).sort(([a], [b]) => String(a).localeCompare(String(b))));
+      if (signature(cell.senses ?? []) !== signature(override.senses)) {
+        throw new Error(`Blueprint implementation program '${program.id}' changes Sense contracts for Cell '${cell.id}'`);
+      }
+    }
     if (override.behavior) assertDeclaredEventHandlers(program.id, cell, override.behavior);
     if (override.sources) cell.sources = structuredClone(override.sources);
+    if (override.senses) cell.senses = structuredClone(override.senses);
     if (override.compute) cell.compute = structuredClone(override.compute);
     if (override.behavior) cell.behavior = structuredClone(override.behavior);
   }
@@ -553,6 +563,13 @@ function assertStableServiceContracts(
   if (authoredContracts.size !== selectedContracts.size
     || [...authoredContracts].some(([id, contract]) => selectedContracts.get(id) !== contract)) {
     throw new Error(`Blueprint implementation program '${programId}' changes operation contracts for service '${serviceId}'`);
+  }
+  for (const id of authoredContracts.keys()) {
+    const before = authored.operations[id];
+    const after = selected.operations[id];
+    if (JSON.stringify("sense" in before ? before.sense : null) !== JSON.stringify("sense" in after ? after.sense : null)) {
+      throw new Error(`Blueprint implementation program '${programId}' changes Sense Signals for service '${serviceId}'`);
+    }
   }
 }
 

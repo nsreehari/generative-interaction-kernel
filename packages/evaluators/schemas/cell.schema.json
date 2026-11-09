@@ -49,6 +49,27 @@
         }
       }
     },
+    "senses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "service", "operation", "on"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "service": { "type": "string", "minLength": 1 },
+          "operation": { "type": "string", "minLength": 1 },
+          "when": { "type": "string", "minLength": 1 },
+          "input": { "$ref": "#/definitions/transform" },
+          "output": { "$ref": "#/definitions/transform" },
+          "on": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
     "compute": {
       "type": "array",
       "items": {

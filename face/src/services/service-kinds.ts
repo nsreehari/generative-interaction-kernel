@@ -26,6 +26,7 @@ export interface ServiceKindManifest {
     simulate?: boolean;
     stream?: boolean;
     cancel?: boolean;
+    observe?: boolean;
   };
 }
 

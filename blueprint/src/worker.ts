@@ -253,6 +253,7 @@ export function createDurableBlueprintWorker(options: {
     providers: options.runtime.providers,
     transitionAdapter: createBlueprintDurableTransitionAdapter({
       blueprint: options.blueprint,
+      instanceId: options.runtime.runtimeId,
       externalContext: options.externalContext,
       materializedBlueprint: options.materializedBlueprint,
     }),
