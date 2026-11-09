@@ -37,12 +37,12 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "gik-evaluators": "0.2.0",
-    "gik-kernel": "0.3.0",
-    "gik-react": "0.4.0",
-    "gik-agentface": "0.2.0",
-    "gik-controlface": "0.3.0",
-    "gik-transport-http-sse": "0.2.0",
+    "gik-evaluators": "0.3.0",
+    "gik-kernel": "0.4.0",
+    "gik-react": "0.4.1",
+    "gik-agentface": "0.2.1",
+    "gik-controlface": "0.4.0",
+    "gik-transport-http-sse": "0.2.1",
     "gik-transport-mcp-http": "0.1.1"
   },
   "peerDependencies": {

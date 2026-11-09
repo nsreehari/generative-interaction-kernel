@@ -1,5 +1,20 @@
 # gik-evaluators
 
+## 0.3.0
+
+### Minor Changes
+
+- d093437: Add Cell Senses for ongoing service-backed observation. Reuse service contracts,
+  provider configuration, transforms, and Cell events for timers, sensors,
+  resources, feeds, and persistent agents. Include durable binding generations,
+  bounded delivery deduplication, host lifecycle reconciliation, and an interval
+  timer service provider.
+
+### Patch Changes
+
+- Updated dependencies [d093437]
+  - gik-kernel@0.4.0
+
 ## 0.2.0
 
 ### Minor Changes
