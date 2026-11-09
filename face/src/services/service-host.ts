@@ -1,4 +1,5 @@
 import { runDeclarativeValidators } from "../../../packages/evaluators/src/index";
+import { senseLifecycle } from "../../../kernel/src/index";
 import type {
   ExpressionProvider,
   BlueprintServiceDeclaration,
@@ -35,6 +36,7 @@ import type {
   ServiceRequestStore,
   ServiceSimulationResult,
   ServiceValidationReport,
+  ServiceObservationOptions,
 } from "./queueface";
 import { InMemoryServiceRequestStore } from "./queueface";
 import {
@@ -54,6 +56,7 @@ export interface ServiceHost {
   probeService(serviceId: string): Promise<ServiceProbeResult>;
   preflight(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSimulationResult>;
   invoke(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<OrchestratorResult | void>;
+  observe?(effect: OrchestratorEffect, options: ServiceObservationOptions, context?: ServiceRequestContext): Promise<{ close(): Promise<void> }>;
   enqueue(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceRequestRecord>;
   authorizeInvocation?(invocation: ServiceInvocation): Promise<ServiceInvocationAuthorizationDecision>;
   getRequest(id: string): Promise<ServiceRequestRecord | undefined>;
@@ -299,6 +302,7 @@ export class DefaultServiceHost implements ServiceHost {
   async invoke(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<OrchestratorResult | void> {
     const trustedEffect = deeplyImmutableClone(effect);
     const resolved = this.resolve(trustedEffect);
+    if (resolved.operation.sense) throw new Error("Sense operations require observation, not bounded invocation");
     if (resolved.operation.mode === "queued") {
       const record = await this.enqueue(trustedEffect, context);
       return this.requestOutcome(record);
@@ -347,9 +351,69 @@ export class DefaultServiceHost implements ServiceHost {
     return settlement;
   }
 
+  async observe(
+    effect: OrchestratorEffect,
+    options: ServiceObservationOptions,
+    context?: ServiceRequestContext,
+  ): Promise<{ close(): Promise<void> }> {
+    const trustedEffect = deeplyImmutableClone(effect);
+    const resolved = this.resolve(trustedEffect);
+    if (resolved.operation.sense?.kind !== options.kind) throw new Error("Sense kind does not match the declared operation");
+    const record = await this.createRecord(resolved, trustedEffect, "immediate", context);
+    if (record.status !== "accepted") throw new Error(`Sense binding ${record.status}`);
+    const adapter = await this.adapter(resolved.serviceId);
+    if (!adapter.observe) throw new Error(`Service '${resolved.serviceId}' does not implement observation`);
+    const request = { ...record.request, providerId: adapter.provider.id };
+    const controller = new AbortController();
+    this.controllers.set(record.request.id, controller);
+    const lifecycle = senseLifecycle[options.kind];
+    let active = true;
+    const fail = (error: unknown) => {
+      active = false;
+      controller.abort();
+      this.controllers.delete(record.request.id);
+      options.onError(error);
+    };
+    try {
+      const validation = await adapter.validate?.(structuredClone(request), { effect: structuredClone(trustedEffect) });
+      if (validation && !validation.ok) throw new Error(validation.errors?.join("; ") ?? "Invalid Sense request");
+      const authorize = async () => {
+        const decision = await this.authorizeInvocation({ kind: "service-request", phase: "execution", request }, record.authorizationSnapshot);
+        if (decision.outcome !== "authorized") {
+          await this.storeRejection(record, decision);
+          throw new Error(`Sense binding ${decision.outcome}`);
+        }
+      };
+      await authorize();
+      const handle = await adapter.observe(structuredClone(request), {
+        effect: structuredClone(trustedEffect), signal: controller.signal,
+        kind: options.kind, action: lifecycle.start,
+        onError: fail,
+        emit: async (signal) => {
+          if (!active || controller.signal.aborted) throw new Error("Sense binding is closed");
+          await authorize();
+          if (!active || controller.signal.aborted) throw new Error("Sense binding is closed");
+          await options.emit(structuredClone(signal), structuredClone(request.input ?? null));
+        },
+      });
+      const close = async () => {
+        active = false;
+        controller.abort();
+        try { await handle.close(lifecycle.stop); }
+        finally { this.controllers.delete(record.request.id); }
+        const current = await this.store.get(record.request.id);
+        if (current?.status === "accepted") {
+          await this.store.put({ ...current, status: "cancelled", updatedAt: this.now().toISOString() });
+        }
+      };
+      return { close };
+    } catch (error) { fail(error); throw error; }
+  }
+
   async enqueue(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceRequestRecord> {
     const trustedEffect = deeplyImmutableClone(effect);
     const resolved = this.resolve(trustedEffect);
+    if (resolved.operation.sense) throw new Error("Sense operations cannot be enqueued as bounded requests");
     const record = await this.createRecord(resolved, trustedEffect, "queued", context);
     if (record.status === "accepted") {
       this.pending.push({

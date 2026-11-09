@@ -4,6 +4,10 @@ import type {
   OrchestratorEffect,
   OrchestratorResult,
   ServiceSubject,
+  SenseKind,
+  SenseSignal,
+  SenseStartAction,
+  SenseStopAction,
 } from "../../../kernel/src/index";
 import type { ServiceHost } from "./service-host";
 
@@ -262,6 +266,16 @@ export interface ServiceAdapterContext {
   agentTools?: readonly ServiceAgentTool[];
 }
 
+export interface ServiceObservationOptions {
+  kind: SenseKind;
+  emit(signal: SenseSignal, requestInput?: Json): Promise<void>;
+  onError(error: unknown): void;
+}
+
+export interface ServiceObservationContext extends ServiceAdapterContext, ServiceObservationOptions {
+  action: SenseStartAction;
+}
+
 export interface ServiceAdapter {
   readonly provider: ServiceProviderDescriptor;
   discover(): Promise<ServiceCatalogSnapshot>;
@@ -279,6 +293,12 @@ export interface ServiceAdapter {
     context: ServiceAdapterContext
   ): ServiceExecutionResult | Promise<ServiceExecutionResult>;
   cancel?(request: ServiceRequest, context: ServiceAdapterContext): void | Promise<void>;
+  observe?(
+    request: ServiceRequest,
+    context: ServiceObservationContext,
+  ): Promise<{
+    close(action: SenseStopAction): void | Promise<void>;
+  }>;
 }
 
 export type ServiceExecutionMode = "immediate" | "queued";

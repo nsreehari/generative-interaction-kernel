@@ -1,5 +1,6 @@
 import type {
   Action,
+  CellSense,
   ExecutableProgramDefinition,
   ExternalsSpec,
   GuardrailRule,
@@ -10,6 +11,7 @@ import type {
   ServiceTransform,
   ServiceUse,
 } from "gik-kernel";
+export type { CellSense } from "gik-kernel";
 import type { DeclarativeFormSpec, SystemInputToken } from "gik-evaluators";
 
 export interface TierDefinition {
@@ -58,6 +60,7 @@ export interface BlueprintRepresentationDecorator {
 
 export interface CellImplementationOverride {
   sources?: readonly CellSource[];
+  senses?: readonly CellSense[];
   compute?: readonly CellComputation[];
   behavior?: CellBehavior;
 }
@@ -175,6 +178,7 @@ export interface CellDefinition {
   inputs?: readonly CellInput[];
   systemInputs?: readonly SystemInputToken[];
   sources?: readonly CellSource[];
+  senses?: readonly CellSense[];
   compute?: readonly CellComputation[];
   outputs?: readonly CellOutput[];
   events?: Record<string, CellEventContract>;

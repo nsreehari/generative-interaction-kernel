@@ -181,7 +181,7 @@ export function composeCellProgram(
 
   const root = compileSlot(presentation.root, []);
   const backgroundCells = topology.cells.filter((cell) => !presentedCellIds.has(cell.id));
-  const handlers: RuntimeHandler[] = backgroundCells.flatMap((cell) => {
+  const handlers: RuntimeHandler[] = topology.cells.filter((cell) => !presentedCellIds.has(cell.id) || cell.senses?.length).flatMap((cell) => {
     const events = cellEvents(cell);
     return Object.keys(events).length > 0 ? [{ id: cell.id, on: events }] : [];
   });
@@ -230,7 +230,7 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
     }
   }
   for (const cell of cells) {
-    if (!presentedCellIds.has(cell.id)) owners[cell.id] = cell.id;
+    if (!presentedCellIds.has(cell.id) || cell.senses?.length) owners[cell.id] = cell.id;
   }
   return owners;
 }

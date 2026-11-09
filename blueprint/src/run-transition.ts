@@ -19,6 +19,7 @@ import {
   initialSourceRunState,
   type GraphNodeExecutor,
   type BlueprintRunState,
+  type CellSense,
 } from "gik-kernel";
 import {
   evaluateCell,
@@ -69,6 +70,7 @@ export interface EvaluateBlueprintCellResult {
   computed: Record<string, Json>;
   outputs: Record<string, Json>;
   effects: CellSourceEffect[];
+  senseBindings?: { sense: import("gik-kernel").CellSense; input: Json }[];
 }
 export function resolveBlueprintInterfaceOutputs(
   blueprint: BlueprintArtifact,
@@ -302,6 +304,7 @@ export interface BlueprintTransitionResult {
   state: Record<string, Json>;
   outputs?: Record<string, Json>;
   effects?: readonly OrchestratorEffect[];
+  senseBindings?: { cellId: string; sense: CellSense; input: Json }[];
   completedWithinRun?: readonly CompletedWithinRun[];
   /** Semantic patch proposals always target the authored Blueprint supplied to runTransition. */
   blueprintPatchProposals?: readonly BlueprintPatch[];
@@ -648,6 +651,26 @@ export async function runMaterializedTransition({
   await kernel.whenIdle();
 
   const effects = kernel.effectsSince(-1).map(({ effect }) => effect);
+  const sensingCells = Object.values(materializedBlueprint.payload.terminalBlueprint.payload.cells ?? {}).filter((cell) => cell.senses?.length);
+  const senseBindings = sensingCells.flatMap((cell) => {
+    const tokens = unwrap(program).graph ? kernel.execution().tokens : {};
+    const inputs: Record<string, Json> = {};
+    for (const input of cell.inputs ?? []) {
+      const token = tokens[input.token];
+      const resolved = token
+        ? { found: token.status === "available", value: token.value }
+        : resolveStateToken(store.snapshot(), input.token);
+      if (!resolved.found && input.required !== false) return [];
+      if (resolved.found) inputs[input.as ?? input.token] = resolved.value ?? null;
+    }
+    const blueprintRunState = resolveBlueprintRunState(store.get("blueprintRunState"));
+    const evaluated = evaluateCell({
+      materializedProgramCell: cell as EvaluatorCellDefinition,
+      inputs, settledSources: blueprintRunState.cells[cell.id]?.sourceValues ?? {},
+      systemContext: { blueprintRunState, cellId: cell.id },
+    });
+    return (evaluated.senseBindings ?? []).map((binding) => ({ cellId: cell.id, ...binding }));
+  });
   const hasInterfaceOutputs = Object.keys(
     materializedBlueprint.payload.terminalBlueprint.payload.interface?.outputs ?? {},
   ).length > 0;
@@ -661,6 +684,7 @@ export async function runMaterializedTransition({
     state: structuredClone(store.snapshot()),
     ...(completedWithinRun.length > 0 ? { completedWithinRun } : {}),
     ...(effects.length > 0 ? { effects } : {}),
+    ...(sensingCells.length ? { senseBindings } : {}),
     ...(Object.keys(outputs).length > 0 ? { outputs } : {}),
   };
 }

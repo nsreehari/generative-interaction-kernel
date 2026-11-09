@@ -512,6 +512,13 @@ export function validateBlueprintArtifact<TKind extends BlueprintFragmentKind>(
     throw new BlueprintValidationError(composition.diagnostics.map(({ detail }) => detail).join("; "), composition.diagnostics);
   }
   for (const [cellId, cell] of Object.entries(cells)) {
+    for (const sense of cell.senses ?? []) {
+      const contract = blueprint.services?.[sense.service]?.operations?.[sense.operation]?.sense;
+      if (!contract) throw new BlueprintValidationError(`Blueprint Cell '${cellId}' Sense '${sense.id}' references an operation without a Sense contract`);
+      for (const signal of Object.keys(sense.on)) {
+        if (!contract.signals[signal]) throw new BlueprintValidationError(`Blueprint Cell '${cellId}' Sense '${sense.id}' references unknown Signal '${signal}'`);
+      }
+    }
     for (const source of cell.sources ?? []) {
       const service = blueprint.services?.[source.service];
       if (!service) {
@@ -519,6 +526,9 @@ export function validateBlueprintArtifact<TKind extends BlueprintFragmentKind>(
       }
       if (!service.operations?.[source.operation]) {
         throw new BlueprintValidationError(`Blueprint Cell '${cellId}' source '${source.id}' references unknown operation '${source.operation}' on service '${source.service}'`);
+      }
+      if (service.operations[source.operation].sense) {
+        throw new BlueprintValidationError(`Blueprint Cell '${cellId}' source '${source.id}' must use a bounded operation, not a Sense contract`);
       }
     }
   }

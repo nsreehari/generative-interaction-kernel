@@ -250,6 +250,27 @@
       "properties": {
         "operation": { "type": "string", "minLength": 1 },
         "contract": { "type": "string", "minLength": 1 },
+        "sense": {
+          "type": "object",
+          "required": ["kind", "signals"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["timer", "sensor", "resource", "feed", "agent"] },
+            "signals": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "object",
+                "required": ["payloadSchema"],
+                "additionalProperties": false,
+                "properties": {
+                  "payloadSchema": { "type": "object" },
+                  "description": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
         "mode": { "enum": ["immediate", "queued"] },
         "subject": { "type": "object" },
         "request": { "$ref": "#/definitions/serviceDataStage" },

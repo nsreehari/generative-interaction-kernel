@@ -3,6 +3,7 @@ import {
   getPath,
   jsonataExpressionAst,
   type BlueprintRunState,
+  type CellSense,
   type GuardrailRule,
   type Json,
   type PatchOp,
@@ -68,6 +69,8 @@ export interface EvaluatorCellDefinition {
   inputs?: readonly EvaluatorCellInput[];
   systemInputs?: readonly SystemInputToken[];
   sources?: readonly EvaluatorCellSource[];
+  senses?: readonly CellSense[];
+  events?: Readonly<Record<string, unknown>>;
   compute?: readonly EvaluatorCellComputation[];
   outputs?: readonly EvaluatorCellOutput[];
 }
@@ -94,6 +97,7 @@ export interface EvaluateCellResult {
   operations: PatchOp[];
   outputs: Record<string, Json>;
   effects: CellSourceEffect[];
+  senseBindings?: { sense: CellSense; input: Json }[];
 }
 
 export interface CellValidationIssue {
@@ -231,6 +235,30 @@ export function validateCell(value: unknown): CellValidationResult {
           node: `sources.${source.id}.when`,
         });
       }
+
+      const senseIds = new Set<string>();
+      for (const sense of cell.senses ?? []) {
+        const node = `senses.${sense.id}`;
+        if (senseIds.has(sense.id)) errors.push({ code: "duplicate-sense", detail: `Sense '${sense.id}' is duplicated`, node });
+        senseIds.add(sense.id);
+        if (sense.when) {
+          for (const detail of validateCellExpression(sense.when, "safe", declaredSystemInputs, new Set(["inputs", "sources", "systemInputs", "computed"]))) {
+            errors.push({ code: "invalid-sense-expression", detail, node: `${node}.when` });
+          }
+        }
+        if (sense.input) {
+          for (const detail of validateCellExpression(sense.input.expr, "safe", declaredSystemInputs, new Set(["inputs", "sources", "systemInputs", "computed"]))) {
+            errors.push({ code: "invalid-sense-expression", detail, node: `${node}.input` });
+          }
+        }
+        if (sense.output) {
+          const syntax = validateJsonataExpression(sense.output.expr, { mode: "safe" });
+          if (!syntax.ok) errors.push({ code: "invalid-sense-expression", detail: syntax.error ?? "Invalid Sense output transform", node });
+        }
+        for (const event of Object.values(sense.on)) {
+          if (!cell.events?.[event]) errors.push({ code: "undeclared-sense-event", detail: `Sense '${sense.id}' maps to undeclared event '${event}'`, node });
+        }
+      }
     }
     for (const [name, transform] of [["input", source.input?.expr], ["output", source.output?.expr]] as const) {
       if (!transform) continue;
@@ -280,7 +308,7 @@ export function validateCell(value: unknown): CellValidationResult {
       }
     }
     if (output.from === undefined) continue;
-    const hasRuntimeOutputOwner = cell.blueprint || cell.behavior || (cell.potentialViews && Object.keys(cell.potentialViews).length > 0) || (cell.sources?.length ?? 0) > 0;
+    const hasRuntimeOutputOwner = cell.blueprint || cell.behavior || (cell.potentialViews && Object.keys(cell.potentialViews).length > 0) || (cell.sources?.length ?? 0) > 0 || (cell.senses?.length ?? 0) > 0;
     const hasInputOwner = (cell.inputs ?? []).some((input) => {
       const path = `inputs.${input.as ?? input.token}`;
       return output.from === path || output.from.startsWith(`${path}.`);
@@ -344,5 +372,11 @@ export function evaluateCell(input: EvaluateCellInput): EvaluateCellResult {
     if (output.when && evalSyncJsonata(output.when, computeContext) !== true) continue;
     outputs[output.token] = getPath(computeContext, output.from);
   }
-  return { computed, operations, outputs, effects };
+  const senseBindings = input.materializedProgramCell.senses?.filter((sense) =>
+    !sense.when || evalSyncJsonata(sense.when, computeContext) === true,
+  ).map((sense) => ({
+    sense: structuredClone(sense),
+    input: sense.input ? evalSyncJsonata(sense.input.expr, computeContext) : structuredClone(computeContext),
+  }));
+  return { computed, operations, outputs, effects, ...(senseBindings ? { senseBindings } : {}) };
 }

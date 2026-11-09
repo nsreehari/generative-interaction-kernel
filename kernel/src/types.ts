@@ -591,6 +591,10 @@ export interface ServiceSettlementStage {
 export interface ServiceOperationDeclaration {
   operation: string;
   contract: string;
+  sense?: {
+    kind: SenseKind;
+    signals: Record<string, { payloadSchema: Record<string, Json>; description?: string }>;
+  };
   mode?: "immediate" | "queued";
   subject?: ServiceSubject;
   request?: ServiceDataStage;
@@ -636,6 +640,33 @@ export type ServiceUse = {
    * The operation's `contract` is always resolved from that declaration, never restated here. */
   operation: string;
   service: string;
+};
+
+export type SenseKind = "timer" | "sensor" | "resource" | "feed" | "agent";
+
+export const senseLifecycle = {
+  timer: { start: "schedule", stop: "cancel" },
+  sensor: { start: "monitor", stop: "stop-monitoring" },
+  resource: { start: "watch", stop: "unwatch" },
+  feed: { start: "subscribe", stop: "unsubscribe" },
+  agent: { start: "subscribe", stop: "unsubscribe" },
+} as const;
+
+export type SenseStartAction = typeof senseLifecycle[SenseKind]["start"];
+export type SenseStopAction = typeof senseLifecycle[SenseKind]["stop"];
+
+export interface SenseSignal {
+  id: string;
+  name: string;
+  payload: Record<string, Json>;
+}
+
+export type CellSense = ServiceUse & {
+  id: string;
+  when?: string;
+  input?: ServiceTransform;
+  output?: ServiceTransform;
+  on: Record<string, string>;
 };
 
 export type ServiceSubject =

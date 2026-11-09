@@ -14,17 +14,26 @@ import {
   type MaterializedBlueprint,
 } from "./run-transition";
 import type { BlueprintArtifact, BlueprintPatch, BlueprintPatchOrigin } from "./types";
+import {
+  BLUEPRINT_SENSE_SIGNAL_NODE,
+  admitBlueprintSenseSignal,
+  reconcileBlueprintSenseState,
+  isBlueprintSenseBindingCurrent,
+  type BlueprintSenseState,
+} from "./senses";
 
 export interface DurableBlueprintSpec {
   authoredBlueprint: BlueprintArtifact;
   externalContext: Record<string, Json>;
   materializedBlueprint: MaterializedBlueprint;
   settledEffectMessageIds: string[];
+  senses?: BlueprintSenseState;
 }
 
 export type DurableBlueprintSpecUpdate =
   | { patch: BlueprintPatch; origin: BlueprintPatchOrigin }
-  | { settledEffectMessageId: string };
+  | { settledEffectMessageId: string }
+  | { senses: BlueprintSenseState };
 
 const DURABLE_EFFECT_NODE = "$gik.durable-effect";
 const DURABLE_EFFECT_SETTLED = "settled";
@@ -95,6 +104,7 @@ export interface BlueprintDurableTransitionAdapter {
 
 export function createBlueprintDurableTransitionAdapter(input: {
   blueprint: BlueprintArtifact;
+  instanceId?: string;
   externalContext?: ExternalContext;
   materializedBlueprint?: MaterializedBlueprint;
   onTransition?: (
@@ -103,17 +113,50 @@ export function createBlueprintDurableTransitionAdapter(input: {
   ) => void;
 }): BlueprintDurableTransitionAdapter {
   const materializedBlueprint = input.materializedBlueprint ?? materializeBlueprint(input);
+  const declaresSenses = Object.values(materializedBlueprint.payload.terminalBlueprint.payload.cells ?? {}).some((cell) => cell.senses?.length);
+  if (declaresSenses && !input.instanceId) throw new Error("Blueprint Senses require a host-owned instanceId");
   const initialSpec: DurableBlueprintSpec = {
     authoredBlueprint: structuredClone(input.blueprint),
     externalContext: structuredClone(input.externalContext ?? {}),
     materializedBlueprint,
     settledEffectMessageIds: [],
+    ...(declaresSenses ? { senses: { instanceId: input.instanceId!, generation: 0, bindings: {}, deliveries: {} } } : {}),
   };
 
-  return {
+  const adapter: BlueprintDurableTransitionAdapter = {
     initialState: () => structuredClone(materializedBlueprint.payload.initialState),
     initialSpec: () => structuredClone(initialSpec),
     async transition({ state, spec, events }) {
+      if (spec.senses && spec.senses.instanceId !== input.instanceId) throw new Error("Sense state belongs to another Blueprint instance");
+      const hasSenses = Boolean(spec.senses) || Object.values(spec.materializedBlueprint.payload.terminalBlueprint.payload.cells ?? {})
+        .some((cell) => cell.senses?.length);
+      if (hasSenses && !input.instanceId) throw new Error("Blueprint Senses require a host-owned instanceId");
+      if (hasSenses && events.length > 1) {
+        let currentState = state;
+        let currentSpec = spec;
+        const effects: OrchestratorEffect[] = [];
+        const specUpdates: DurableBlueprintSpecUpdate[] = [];
+        for (const event of events) {
+          const result = await adapter.transition({ state: currentState, spec: currentSpec, events: [event] });
+          currentState = result.state;
+          effects.push(...result.effects);
+          specUpdates.push(...(result.specUpdates ?? []));
+          currentSpec = adapter.applySpecUpdates({ spec: currentSpec, updates: result.specUpdates ?? [] });
+        }
+        return { state: currentState, effects, specUpdates };
+      }
+      let senses = spec.senses ? structuredClone(spec.senses) : hasSenses
+        ? { instanceId: input.instanceId!, generation: 0, bindings: {}, deliveries: {} }
+        : undefined;
+      const admitted: GIKEvent[] = [];
+      for (const event of events) {
+        if (event.node !== BLUEPRINT_SENSE_SIGNAL_NODE) { admitted.push(event); continue; }
+        if (!senses) throw new Error("Blueprint has no active Senses");
+        const delivery = admitBlueprintSenseSignal(senses, event, spec.materializedBlueprint);
+        if (delivery.status === "accepted") admitted.push(delivery.event);
+      }
+      if (events.length && !admitted.length) return { state, effects: [] };
+      events = admitted;
       const settlements = events.map(durableEffectSettlement);
       const regularEvents = events.filter((event, index) =>
         settlements[index] === undefined
@@ -151,6 +194,9 @@ export function createBlueprintDurableTransitionAdapter(input: {
         input.onTransition?.(regularEvents[0] ? structuredClone(regularEvents[0]) : null, result);
       }
       const proposals = result.blueprintPatchProposals ?? result.blueprintPatches;
+      const patchUpdates = proposals?.map((patch) => ({ patch, origin: "runtime" as const })) ?? [];
+      const effectiveSpec = patchUpdates.length ? adapter.applySpecUpdates({ spec, updates: patchUpdates }) : spec;
+      if (hasSenses && senses) senses = reconcileBlueprintSenseState(effectiveSpec.materializedBlueprint, result.senseBindings ?? [], senses);
       const settlementUpdates = acceptedSettlements.map((settlement) => ({
         settledEffectMessageId: settlement!.messageId,
       }));
@@ -159,13 +205,18 @@ export function createBlueprintDurableTransitionAdapter(input: {
         effects: result.effects ?? [],
         specUpdates: [
           ...settlementUpdates,
-          ...(proposals?.map((patch) => ({ patch, origin: "runtime" as const })) ?? []),
+          ...patchUpdates,
+          ...(senses ? [{ senses }] : []),
         ],
       };
     },
     applySpecUpdates({ spec, updates }) {
       let next = structuredClone(spec);
       for (const update of updates) {
+        if ("senses" in update) {
+          next.senses = structuredClone(update.senses);
+          continue;
+        }
         if ("settledEffectMessageId" in update) {
           next.settledEffectMessageIds ??= [];
           if (!next.settledEffectMessageIds.includes(update.settledEffectMessageId)) {
@@ -185,9 +236,18 @@ export function createBlueprintDurableTransitionAdapter(input: {
           externalContext: structuredClone(next.externalContext),
           materializedBlueprint: applied.materializedBlueprint,
           settledEffectMessageIds: next.settledEffectMessageIds,
+          ...(next.senses ? { senses: next.senses } : {}),
         };
+      }
+      if (next.senses) {
+        for (const [key, binding] of Object.entries(next.senses.bindings)) {
+          if (isBlueprintSenseBindingCurrent(next.materializedBlueprint, binding)) continue;
+          delete next.senses.bindings[key];
+          delete next.senses.deliveries[key];
+        }
       }
       return next;
     },
   };
+  return adapter;
 }
