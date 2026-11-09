@@ -20,9 +20,12 @@ private and excluded from production publishing.
 After changesets reach `master`, the `Version npm packages` workflow maintains
 a version pull request. That pull request updates package versions, pinned
 internal dependencies, changelogs, and consumes the pending changeset files.
-Because GitHub suppresses ordinary workflow events created by its built-in
-token, the version workflow explicitly dispatches full CI for the generated
-branch.
+The version workflow uses the existing maintainer GitHub App, scoped to this
+repository with contents and pull-request write permissions. Its version PRs
+trigger normal required CI without the built-in token's event suppression or a
+separate workflow dispatch. The App must be installed on this repository with
+those permissions; missing configuration fails rather than falling back to the
+built-in token. Fork workflow approval policy is unchanged.
 
 ## Publish a prerelease
 
@@ -74,8 +77,11 @@ registry-inspection commands from restricted corporate networks.
 ## Verify a publication from the public registry
 
 Publication-side verification cannot prove that an external consumer can use
-the published packages. After a publication completes, run the
-`Verify published packages` workflow. It runs `npm run release:verify-published`
+the published packages. After stable publication succeeds, the publishing
+workflow automatically calls `Verify published packages`, pinned to the same
+validated release commit. Prerelease and validation-only runs do not invoke
+this stable gate. Manual dispatch remains available for rechecking a publication.
+It runs `npm run release:verify-published`
 on GitHub-hosted infrastructure, which installs the stable packages at the exact
 workspace versions from `https://registry.npmjs.org` into a clean project and
 fails closed when any of the following does not hold:
@@ -93,7 +99,11 @@ fails closed when any of the following does not hold:
 - minimal runtime behaviour works through the published build output.
 
 The gate never publishes, requires no npm credentials, and does not use the
-`npm-publish` environment. Do not run it from restricted corporate networks,
+`npm-publish` environment. Initial installation retries only npm `ETARGET`
+version-visibility failures, up to six attempts one minute apart, to allow
+registry propagation. Other installation failures and all consumer verification
+failures remain immediately blocking. Publishing approval and branch protection
+are unchanged. Do not run it from restricted corporate networks,
 because it installs packages from the public registry and verifies signatures
 and provenance against the public registry keys and Sigstore
 (`tuf-repo-cdn.sigstore.dev`); it fails closed when either is unreachable.

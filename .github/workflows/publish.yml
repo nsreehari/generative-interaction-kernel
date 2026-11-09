@@ -143,3 +143,13 @@ jobs:
             echo "- Policy: \`config/npm-release.json\`"
             echo "- Authentication: npm trusted publishing (GitHub OIDC)"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  verify-published:
+    name: Verify published stable packages
+    needs: [validate, publish]
+    if: github.event_name == 'release' && needs.validate.outputs.channel == 'latest'
+    uses: ./.github/workflows/verify-published-packages.yml
+    permissions:
+      contents: read
+    with:
+      commit: ${{ needs.validate.outputs.commit }}
