@@ -6,6 +6,12 @@ name: Verify published packages
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      commit:
+        description: Validated stable release commit to verify
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -24,6 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
+          ref: ${{ inputs.commit || github.sha }}
           persist-credentials: false
 
       - name: Setup Node.js

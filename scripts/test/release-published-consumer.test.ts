@@ -14,6 +14,7 @@ import {
   consumerPeerDependencies,
   expectedPackages,
   importSubpaths,
+  installPublishedPackages,
   provenancePredicateType,
   publicRegistry,
   runtimeConsumerSource,
@@ -293,4 +294,61 @@ test("the consumer gate runs on GitHub-hosted infrastructure without publishing"
   assert.ok(!workflow.includes("release:publish"));
   assert.ok(!workflow.includes("id-token"));
   assert.ok(!/NODE_AUTH_TOKEN|NPM_TOKEN|secrets\./.test(workflow), "the gate needs no credentials");
+});
+
+test("consumer verification follows successful stable publication at the validated commit", () => {
+  const publish = readFileSync(new URL("../../.github/workflows/publish.yml", import.meta.url), "utf8");
+  const followup = publish.slice(publish.indexOf("\n  verify-published:"));
+  assert.ok(followup.includes("needs: [validate, publish]"));
+  assert.ok(followup.includes("github.event_name == 'release' && needs.validate.outputs.channel == 'latest'"));
+  assert.ok(followup.includes("uses: ./.github/workflows/verify-published-packages.yml"));
+  assert.ok(followup.includes("commit: ${{ needs.validate.outputs.commit }}"));
+  assert.ok(!followup.includes("secrets: inherit"));
+  assert.ok(workflow.includes("workflow_dispatch:"));
+  assert.ok(workflow.includes("workflow_call:"));
+  assert.ok(workflow.includes("ref: ${{ inputs.commit || github.sha }}"));
+});
+
+test("version PRs use the repository-scoped App instead of suppressed token events", () => {
+  const version = readFileSync(new URL("../../.github/workflows/version-packages.yml", import.meta.url), "utf8");
+  assert.ok(version.includes("uses: actions/create-github-app-token@v2"));
+  assert.ok(version.includes("repositories: ${{ github.event.repository.name }}"));
+  assert.ok(version.includes("permission-contents: write"));
+  assert.ok(version.includes("permission-pull-requests: write"));
+  assert.ok(version.includes("GITHUB_TOKEN: ${{ steps.version-token.outputs.token }}"));
+  assert.ok(!version.includes("gh workflow run"));
+  assert.ok(!version.includes("actions: write"));
+});
+
+test("only registry ETARGET propagation failures receive bounded installation retries", async () => {
+  let attempts = 0;
+  const waits: number[] = [];
+  await installPublishedPackages(root, {
+    execute(_command: string, args: string[]) {
+      assert.ok(args.includes("--prefer-online"));
+      attempts++;
+      return attempts < 3 ? { status: 1, stderr: "npm error code ETARGET\n" } : { status: 0 };
+    },
+    async wait(milliseconds: number) { waits.push(milliseconds); },
+  });
+  assert.equal(attempts, 3);
+  assert.deepEqual(waits, [60_000, 60_000]);
+  attempts = 0;
+  await assert.rejects(installPublishedPackages(root, {
+    execute() { attempts++; return { status: 1, stderr: "npm error code ETARGET\n" }; },
+    async wait() {},
+  }), /npm install failed/);
+  assert.equal(attempts, 6);
+});
+
+test("other install failures and process errors fail without propagation retries", async () => {
+  for (const result of [{ status: 1, stderr: "npm error code E401" }, { status: null, stderr: "code ETARGET" }, { error: new Error("spawn failed") }]) {
+    let attempts = 0, waits = 0;
+    await assert.rejects(installPublishedPackages(root, {
+      execute() { attempts++; return result; },
+      async wait() { waits++; },
+    }));
+    assert.equal(attempts, 1);
+    assert.equal(waits, 0);
+  }
 });

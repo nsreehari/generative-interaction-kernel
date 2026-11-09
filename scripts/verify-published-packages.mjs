@@ -8,6 +8,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 
 import { resolveEntryPoints, workspaceFiles } from "./verify-package-artifacts.mjs";
 
@@ -180,6 +181,22 @@ function run(command, args, cwd) {
   }
 }
 
+export async function installPublishedPackages(project, { execute = spawnSync, wait = delay } = {}) {
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    const result = execute(process.platform === "win32" ? "npm.cmd" : "npm",
+      ["install", "--registry", publicRegistry, "--prefer-online", "--no-audit", "--no-fund"],
+      { cwd: project, encoding: "utf8", stdio: ["ignore", "inherit", "pipe"] });
+    if (result.error) throw result.error;
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.status === 0) return;
+    if (result.status == null || !/\bcode ETARGET\b/.test(result.stderr ?? "") || attempt === 6) {
+      throw new Error(`npm install failed with status ${result.status}`);
+    }
+    console.warn(`Published versions are not yet visible on npm; retrying installation in 60 seconds (${attempt}/6).`);
+    await wait(60_000);
+  }
+}
+
 // `npm audit signatures` verifies every installed package against the registry
 // signing keys and Sigstore, so it is the authoritative provenance check for the
 // whole dependency graph. It needs no credentials and never mutates the project.
@@ -245,7 +262,7 @@ export function verifyProvenance(report, packages) {
   return errors;
 }
 
-export function verifyPublishedPackages(root) {
+export async function verifyPublishedPackages(root) {
   const workspace = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const packages = expectedPackages(root);
   const project = mkdtempSync(join(tmpdir(), "gik-consumer-"));
@@ -283,7 +300,7 @@ export function verifyPublishedPackages(root) {
     )}\n`,
   );
 
-  run("npm", ["install", "--registry", publicRegistry, "--no-audit", "--no-fund"], project);
+  await installPublishedPackages(project);
 
   const errors = [];
   const installedVersions = new Map();
@@ -333,7 +350,7 @@ export function verifyPublishedPackages(root) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const root = fileURLToPath(new URL("..", import.meta.url));
-  const { packages, subpaths } = verifyPublishedPackages(root);
+  const { packages, subpaths } = await verifyPublishedPackages(root);
   console.log(
     `Verified ${packages.length} published packages from ${publicRegistry} ` +
       `(${subpaths.length} entry points, signatures and provenance attestations) ` +
