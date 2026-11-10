@@ -48,6 +48,10 @@ Lifecycle profiles translate mechanically into schema-bearing JSON tools. For ex
 profile's manifest. The package does not depend on Blueprint, Kernel, MCP, HTTP, Foundry, or another
 agent provider.
 
+Generated tools preserve the operation receiver, including class prototype methods.
+Blueprint lifecycle delegation likewise preserves the original host receiver and
+forwards request execution context to draft operations.
+
 Authored lifecycle material, operation schemas, manifests, and provider function definitions are
 declarative. `blueprintUseFunctionTools` generates metadata directly without placeholder handlers.
 `AgentLifecycleOps` and tool handlers are trusted execution ports used only when operations run;
