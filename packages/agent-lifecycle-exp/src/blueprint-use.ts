@@ -126,7 +126,7 @@ export function createBlueprintLifecycle<
       lifecycle.describe = () => describeBlueprint(options.blueprint, options.profile);
       continue;
     }
-    const handler = options.host[operationName];
+    const handler = options.host[operationName]?.bind(options.host);
     if (!handler) throw new Error(`Lifecycle profile '${manifest.id}' selects '${operationName}' without a host handler`);
     switch (operationName) {
       case "discover": lifecycle.discover = handler as BlueprintUseHost<TDiscover>["discover"]; break;

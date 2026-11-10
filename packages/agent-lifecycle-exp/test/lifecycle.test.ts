@@ -26,6 +26,7 @@ import {
   type AgentHostLifecycleManifest,
   type AgentHostLifecycleOps,
   type AgentLifecycleOps,
+  type AgentToolExecutionContext,
 } from "../src/index";
 
 test("exports package-owned Blueprint authoring guidance", () => {
@@ -127,6 +128,97 @@ test("agent lifecycle profiles generate the standard proposal workspace tool fam
   ]);
   assert.equal(tools.every(({ lifecycle: kind }) => kind === "agent"), true);
   assert.equal((await tools[8].handler({ event: "press" }) as { operation: string }).operation, "set_in_progress_proposal");
+});
+
+test("direct and Blueprint-bound lifecycle tools preserve class method receivers and request context", async () => {
+  class Lifecycle implements AgentLifecycleOps {
+    readonly id = "use-blueprint";
+    readonly requests: string[] = [];
+
+    manifest() {
+      return {
+        ...capabilityManifest(this.id),
+        operations: {
+          set_in_progress_proposal: {
+            description: "Set proposal.",
+            inputSchema: objectSchema,
+          },
+        },
+      };
+    }
+
+    set_in_progress_proposal(input: unknown, context?: AgentToolExecutionContext) {
+      this.requests.push(context!.requestId);
+      return { id: this.id, input };
+    }
+  }
+
+  const ops = new Lifecycle();
+  const authored = {
+    id: ops.id,
+    version: "1.0.0",
+    description: "Authored lifecycle description.",
+    targetKinds: ["blueprint-instance"],
+    intentKinds: ["declared-event"],
+    operations: ["set_in_progress_proposal"] as const,
+  };
+  const profile = defineBlueprintLifecycleProfile(
+    { payload: { agentLifecycle: { profiles: { use: authored } } } },
+    "use",
+    "use_blueprint",
+    ops,
+  );
+  assert.equal(profile.manifest.description, authored.description);
+  assert.deepEqual(await profile.tools[0].handler({}), profile.manifest);
+  for (const tools of [agentLifecycleTools("use_blueprint", ops), profile.tools]) {
+    const tool = tools.find(({ name }) => name === "use_blueprint_set_in_progress_proposal")!;
+    assert.deepEqual(await tool.handler({ event: "press" }, { requestId: "request-1" }), {
+      id: ops.id,
+      input: { event: "press" },
+    });
+  }
+  assert.deepEqual(ops.requests, ["request-1", "request-1"]);
+});
+
+test("Blueprint lifecycle delegation preserves host class methods for direct and generated calls", async () => {
+  class Host {
+    readonly requests: string[] = [];
+
+    set_in_progress_proposal(input: unknown, context?: AgentToolExecutionContext) {
+      this.requests.push(context!.requestId);
+      return { input };
+    }
+  }
+
+  const host = new Host();
+  const options = {
+    blueprint: {
+      payload: {
+        id: "sample",
+        kind: "sample",
+        version: "1.0.0",
+        agentLifecycle: { profiles: { use: {
+          id: "use-blueprint",
+          version: "1.0.0",
+          description: "Use sample.",
+          targetKinds: ["blueprint-instance"],
+          intentKinds: ["declared-event"],
+          operations: ["set_in_progress_proposal"] as const,
+        } } },
+      },
+    },
+    schemas: { discover: objectSchema, target: objectSchema, intent: objectSchema, proposal: objectSchema },
+    host,
+  };
+  const ops = createBlueprintUseLifecycle(options);
+  assert.deepEqual(await ops.set_in_progress_proposal!({ action: "direct" }, { requestId: "direct" }), {
+    input: { action: "direct" },
+  });
+  const tool = useBlueprint(options).find(({ name }) => name === "use_blueprint_set_in_progress_proposal")!;
+  assert.deepEqual(await tool.handler({ action: "tool" }, { requestId: "tool" }), {
+    input: { action: "tool" },
+  });
+  assert.deepEqual(host.requests, ["direct", "tool"]);
 });
 
 test("host lifecycle profiles generate trusted receipt-to-application tools", () => {
