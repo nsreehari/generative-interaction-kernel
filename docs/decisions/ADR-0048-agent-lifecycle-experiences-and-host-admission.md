@@ -120,6 +120,15 @@ Where exposed, `manifest`, `discover`, and `describe` remain distinct. The lifec
 owns the stable operation manifest. A host registry owns discovery scope. Authored target material
 owns semantic description, with runtime and provider registries supplying enrichment.
 
+Blueprint descriptions include each Cell's Sense count and compact usage summaries
+(ID, service, operation, conditional activation, and Signal-to-event mappings).
+They expose authored intent, not live observer status, provider configuration, or
+transform expressions. Inspection and preflight delegate current facts to the
+runtime host. Recurring observations may use scheduled, short-lived fetches; no
+persistent agent connection is required. The proposal host applies its existing
+authority validation and snapshot-based policies to Sense-changing proposals,
+while scheduling and Signal ingress remain runtime responsibilities.
+
 The host lifecycle exposes `receive`, `authorize`, `admit`, `apply`, `reject`, and `status`.
 Authorization answers whether the caller may request the change. Admission answers whether the
 specific proposal is valid under current policy, target revision, and state. Application performs

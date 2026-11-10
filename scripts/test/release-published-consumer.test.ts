@@ -5,6 +5,7 @@
 
 import { test } from "vitest";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -185,6 +186,18 @@ test("the generated consumer sources exercise every published subpath", () => {
     assert.ok(runtime.includes(JSON.stringify(subpath)));
   }
   assert.ok(runtime.includes("createInMemoryTransportPair"), "runtime behaviour must be exercised");
+});
+
+test("generated agent package smoke checks execute guidance, stateful tools, and proposal application", () => {
+  const source = runtimeConsumerSource([
+    "gik-kernel",
+    "gik-agent-lifecycle-exp",
+    "gik-blueprint-agent-host",
+  ]);
+  execFileSync(process.execPath, ["--input-type=module", "--eval", source], {
+    cwd: root,
+    stdio: "pipe",
+  });
 });
 
 const attested = (name: string, version: string) => ({

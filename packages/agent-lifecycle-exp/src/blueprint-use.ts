@@ -35,6 +35,13 @@ export interface BlueprintUseSource extends BlueprintLifecycleMaterialSource {
       readonly outputs?: readonly unknown[];
       readonly behavior?: { readonly on?: Readonly<Record<string, readonly { readonly do?: string }[]>> };
       readonly sources?: readonly unknown[];
+      readonly senses?: readonly {
+        readonly id: string;
+        readonly service: string;
+        readonly operation: string;
+        readonly when?: string;
+        readonly on: Readonly<Record<string, string>>;
+      }[];
       readonly potentialViews?: Readonly<Record<string, { readonly capability?: string }>>;
     }>>;
     readonly services?: Readonly<Record<string, unknown>>;
@@ -264,6 +271,14 @@ export function describeBlueprint(
       inputCount: cell.inputs?.length ?? 0,
       outputCount: cell.outputs?.length ?? 0,
       sourceCount: cell.sources?.length ?? 0,
+      senseCount: cell.senses?.length ?? 0,
+      senses: (cell.senses ?? []).map(({ id, service, operation, when, on }) => ({
+        id,
+        service,
+        operation,
+        conditional: when !== undefined,
+        on: { ...on },
+      })),
     })),
     services: Object.keys(payload.services ?? {}),
     runtime: {

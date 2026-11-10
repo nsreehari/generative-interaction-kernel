@@ -11,7 +11,7 @@ document:
 
 package:
   name: "gik-agent-lifecycle-exp"
-  version: "0.1.0"
+  version: "0.1.1"
   publication_status: public-workspace-package
   purpose: >-
     Define provider-neutral agent and trusted-host lifecycle contracts and translate lifecycle
@@ -243,6 +243,11 @@ functions:
     purpose: Generate a declarative capability manifest directly from authored lifecycle material and JSON schemas.
   - name: describeBlueprint
     purpose: Derive agent-readable identity, structure, lifecycle guidance, tiers, Cells, services, and runtime vocabulary from authored Blueprint data.
+    cell_senses: >-
+      Each Cell summary includes senseCount and senses with usage id, service, operation,
+      conditional activation flag, and on Signal-to-event mappings. These describe authored
+      intent, not live status; provider configuration and input/output expressions are omitted.
+      Scheduling and observation execution remain runtime-owned, with no persistent connection required.
   - name: toAgentFunctionTools
     purpose: Project neutral AgentTool metadata into strict OpenAI-compatible function definitions without importing a provider SDK.
   - name: executeAgentFunctionCall
