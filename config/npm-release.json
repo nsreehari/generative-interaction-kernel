@@ -1,5 +1,7 @@
 {
   "stable": [
+    "gik-agent-lifecycle-exp",
+    "gik-blueprint-agent-host",
     "gik-kernel",
     "gik-evaluators",
     "gik-durable-runtime",
@@ -10,8 +12,6 @@
     "gik-transport-http-sse"
   ],
   "experimental": [
-    "gik-agent-lifecycle-exp",
-    "gik-blueprint-agent-host",
     "gik-transport-mcp-http"
   ],
   "internal": [

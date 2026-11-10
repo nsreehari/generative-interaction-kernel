@@ -8,8 +8,6 @@
   "baseBranch": "master",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "gik-agent-lifecycle-exp",
-    "gik-blueprint-agent-host",
     "gik-provider-blueprint-authoring",
     "gik-provider-step-orchestrator",
     "gik-transport-mcp-http",

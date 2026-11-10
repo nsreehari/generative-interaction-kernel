@@ -17,6 +17,14 @@ expressions use the platform safe JSONata subset; callback policy injection is n
 It does not depend on React or require BlueprintHost; browser hosts, backend
 services, middleware, and workers can provide structurally compatible authority adapters.
 
+The authority must make application idempotent by receipt ID for recovery.
+Concurrent submissions can create different receipts for the same proposal;
+receipt storage is not an exactly-once transaction boundary. The authoritative
+application layer must also enforce its business transaction identity (for
+example, the host-created proposal ID) across retries and concurrent receipts.
+Distinct business transactions need distinct identities, even when their
+payloads are identical.
+
 `createInMemoryBlueprintProposalStore` supports tests and local composition.
 `createDurableBlueprintProposalStore` and `createBlueprintProposalDurableTransitionAdapter` bind
 the same receipt model to `gik-durable-runtime` journals and committed snapshots.

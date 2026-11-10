@@ -11,7 +11,7 @@ document:
 
 package:
   name: "gik-agent-lifecycle-exp"
-  version: "0.1.0"
+  version: "0.1.1"
   publication_status: public-workspace-package
   purpose: >-
     Define provider-neutral agent and trusted-host lifecycle contracts and translate lifecycle

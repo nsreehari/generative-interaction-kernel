@@ -17,6 +17,17 @@ Select the affected stable packages, choose the semantic version impact, and
 write a consumer-facing summary. Internal and experimental workspaces are
 private and excluded from production publishing.
 
+`gik-agent-lifecycle-exp` and `gik-blueprint-agent-host` participate in this
+supported release channel with independent 0.x versions. The existing
+`gik-agent-lifecycle-exp` npm name is retained for compatibility; its suffix
+does not select an experimental dist-tag. Changesets versions both packages
+and keeps the host's lifecycle dependency pinned.
+
+Before their first publication, confirm both npm package names exist under the
+maintainer's ownership and have the trusted publisher described below configured.
+OIDC cannot bootstrap a nonexistent package; initial package registration is a
+maintainer prerequisite, not a reason to add token fallback to this workflow.
+
 After changesets reach `master`, the `Version npm packages` workflow maintains
 a version pull request. That pull request updates package versions, pinned
 internal dependencies, changelogs, and consumes the pending changeset files.
