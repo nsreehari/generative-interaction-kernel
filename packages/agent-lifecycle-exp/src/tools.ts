@@ -1,6 +1,7 @@
 import {
   AGENT_HOST_LIFECYCLE_OPERATIONS,
   AGENT_LIFECYCLE_OPERATIONS,
+  type AgentCapabilityManifest,
   type AgentHostLifecycleOps,
   type AgentHostLifecycleProfile,
   type AgentLifecycleOperation,
@@ -25,8 +26,15 @@ function assertPrefix(prefix: string): void {
 }
 
 export function agentLifecycleTools(prefix: string, ops: AgentLifecycleOps): AgentTool[] {
+  return createAgentLifecycleTools(prefix, ops, ops.manifest());
+}
+
+function createAgentLifecycleTools(
+  prefix: string,
+  ops: AgentLifecycleOps,
+  manifest: AgentCapabilityManifest,
+): AgentTool[] {
   assertPrefix(prefix);
-  const manifest = ops.manifest();
   const tools: AgentTool[] = [{
     name: `${prefix}_manifest`,
     description: `Return the machine-readable ${manifest.id} capability manifest.`,
@@ -45,7 +53,7 @@ export function agentLifecycleTools(prefix: string, ops: AgentLifecycleOps): Age
       description: definition.description,
       inputSchema: definition.inputSchema,
       lifecycle: "agent" as const,
-      handler: (input: unknown, context) => handler(input as never, context),
+      handler: (input: unknown, context) => handler.call(ops, input as never, context),
     });
   }
   return tools;
@@ -120,13 +128,18 @@ export function defineBlueprintLifecycleProfile(
       `Blueprint '${profile}' lifecycle '${authored.id}@${authored.version}' does not match implementation '${implementation.id}@${implementation.version}'`,
     );
   }
-  return defineAgentLifecycleProfile(prefix, {
-    ...ops,
-    manifest: () => ({
-      ...implementation,
-      description: authored.description,
-      targetKinds: authored.targetKinds,
-      intentKinds: authored.intentKinds,
-    }),
-  });
+  const manifest = {
+    ...implementation,
+    description: authored.description,
+    targetKinds: authored.targetKinds,
+    intentKinds: authored.intentKinds,
+  };
+  return {
+    id: manifest.id,
+    prefix,
+    manifest,
+    tools: createAgentLifecycleTools(prefix, ops, manifest).map((tool) =>
+      tool.name === `${prefix}_manifest` ? { ...tool, handler: () => manifest } : tool,
+    ),
+  };
 }
