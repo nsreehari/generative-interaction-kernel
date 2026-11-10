@@ -24,3 +24,31 @@ the same receipt model to `gik-durable-runtime` journals and committed snapshots
 The package is the Blueprint HBX implementation over neutral contracts from
 `gik-agent-lifecycle-exp`. Agents still receive UBX, CBX, or ABX proposal tools; HBX remains a
 trusted host surface.
+
+## Senses and recurring observations
+
+A Sense is an ongoing observation intent, not necessarily a live connection or
+an always-running agent. A daily feed can use a scheduler to perform a short-lived
+fetch and deliver each result as a discrete Signal. Its service contract owns
+cadence, cursors, retry, and missed-occurrence behavior.
+
+The proposal host does not schedule those jobs or maintain their connections.
+Runtime hosting reconciles committed Sense bindings and journals Signals through
+the existing Blueprint Sense machinery. Signals are observations, not agent
+proposals, and do not enter `receive`/`authorize`/`admit` as receipts.
+
+Proposals that change a Sense's configuration, activation inputs, or surrounding
+Blueprint still use the ordinary proposal lifecycle:
+
+- The authority supplies current, trusted Sense facts through `inspect`'s
+  `snapshot.value`; JSONata policies already receive that snapshot.
+- The authority's `validate` checks the proposed domain actions and resulting
+  Blueprint, including service contracts and Signal-to-event routes.
+- Only an admitted proposal reaches `authority.apply`. The runtime then
+  reconciles the newly committed binding intent, not an agent-supplied schedule
+  or callback.
+
+For example, an authority may expose `{ senses: { dailyFeed: { enabled: true } } }`
+in `snapshot.value`; a policy can read `snapshot.value.senses.dailyFeed.enabled`.
+This is an application-defined facts shape, not a new required snapshot schema.
+Agent-supplied action payloads must not be used as trusted runtime Sense facts.

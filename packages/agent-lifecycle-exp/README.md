@@ -24,6 +24,12 @@ returns `structure.mode`/`structure.policy` (including `allowedBlueprintOperatio
 structural-change readiness without exposing recipe internals (representations, implementation
 programs, patch bodies).
 
+Each Cell summary also includes `senseCount` and `senses`: the usage ID, service,
+operation, whether activation is conditional, and the `on` Signal-to-event map.
+This is authored intent, not live status or a schedule preview; provider configuration
+and input/output expressions are not exposed. `inspect` and `preflight` obtain
+current Sense facts from the trusted runtime host.
+
 Profiles may also declare an explicit custom subset. Operation meaning does not change with the
 selection: `simulate` uses supplied or candidate-owned state, while `preflight` checks current host
 state and policy. `set_in_progress_proposal` atomically replaces one complete, request-scoped draft;

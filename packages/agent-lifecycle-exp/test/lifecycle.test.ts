@@ -325,6 +325,73 @@ test("describeBlueprint surfaces recipe summaries and structurePolicy without le
   );
 });
 
+test("Blueprint descriptions expose Sense routes without provider configuration or execution", async () => {
+  const dailyRoutes: Record<string, string> = { item: "feed-item", error: "feed-error" };
+  const updateRoutes: Record<string, string> = { item: "feed-item" };
+  const blueprint = {
+    payload: {
+      id: "daily-feed",
+      kind: "example",
+      version: "1",
+      agentLifecycle: { profiles: { use: {
+        id: "use-blueprint",
+        version: "1",
+        description: "Review daily feed arrivals.",
+        targetKinds: ["blueprint-instance"],
+        intentKinds: ["declared-event"],
+        operations: ["describe"] as const,
+      } } },
+      cells: {
+        feed: {
+          sources: [{ id: "details" }],
+          senses: [{
+            id: "daily",
+            service: "news",
+            operation: "arrivals",
+            when: "inputs.settings.enabled",
+            input: { kind: "jsonata", expr: "inputs.settings" },
+            output: { kind: "jsonata", expr: "response" },
+            on: dailyRoutes,
+          }, {
+            id: "updates",
+            service: "updates",
+            operation: "arrivals",
+            on: updateRoutes,
+          }],
+        },
+        review: {},
+      },
+      services: { news: { config: { endpoint: "https://example.test/feed" } }, updates: {} },
+    },
+  };
+  const tools = useBlueprint({
+    blueprint,
+    schemas: { discover: objectSchema, target: objectSchema, intent: objectSchema, proposal: objectSchema },
+    host: {},
+  });
+  const description = await tools.find(({ name }) => name === "use_blueprint_describe")!.handler({});
+  assert.deepEqual(description, describeBlueprint(blueprint));
+  assert.deepEqual(describeBlueprint(blueprint).cells, [{
+    id: "feed",
+    hasBehavior: false,
+    inputCount: 0,
+    outputCount: 0,
+    sourceCount: 1,
+    senseCount: 2,
+    senses: [{
+      id: "daily", service: "news", operation: "arrivals", conditional: true,
+      on: { item: "feed-item", error: "feed-error" },
+    }, {
+      id: "updates", service: "updates", operation: "arrivals", conditional: false,
+      on: { item: "feed-item" },
+    }],
+  }, {
+    id: "review", hasBehavior: false, inputCount: 0, outputCount: 0, sourceCount: 0,
+    senseCount: 0, senses: [],
+  }]);
+  assert.doesNotMatch(JSON.stringify(description), /example\.test|inputs\.settings|jsonata/);
+});
+
 test("customizeBlueprint and authorBlueprint bind manifests and shared structural descriptions", async () => {
   const manifest = (id: string) => ({
     id,

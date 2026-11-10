@@ -92,6 +92,12 @@ Resource Senses observe changes to an existing thing; feed Senses observe
 arriving items; agent Senses model contributions from an independent participant.
 Polling, callbacks, webhooks, and streaming are implementation mechanisms.
 
+A daily feed does not require a continuously connected agent. A provider can
+register a recurring scheduler job, perform a bounded fetch on each occurrence,
+and emit discrete Signals. The observation handle represents that registration;
+closing it cancels future work. Calendar timing, catch-up, and cursor persistence
+remain provider responsibilities, not guarantees of the included interval timer.
+
 ## Hosting
 
 1. Construct `createBlueprintDurableTransitionAdapter` with a stable host-owned
@@ -117,7 +123,7 @@ Observation is optional on an existing `ServiceAdapter`. Its `observe` method
 receives the normal service request, an abort signal, the kind-specific start
 action, an awaited `emit`, and `onError`. It returns a handle whose `close`
 receives the corresponding end action. Establishment returns promptly; the
-connection is not an indefinitely running effect-queue item. The adapter owns
+observation is not an indefinitely running effect-queue item. The adapter owns
 transport-specific reconnect/resume behavior and reports failures explicitly.
 
 The reconciler serializes lifecycle changes, retains unchanged bindings, and
@@ -136,8 +142,10 @@ usages. Sharing an underlying transport must preserve each usage's semantics.
 ## Durability and delivery guarantees
 
 Desired bindings, monotonically allocated generations, and recent delivery IDs
-are persisted in the durable Blueprint specification. Live connections remain
-host-owned and are re-established from committed intent after restart.
+are persisted in the durable Blueprint specification. Scheduler registrations,
+pollers, or live connections remain host-owned and are reconciled from committed
+intent after restart. A durable external scheduler may resume an existing job;
+reconciliation must not create duplicate jobs for the same binding.
 
 Signal envelopes identify the Blueprint instance, Cell/usage binding, generation,
 and producer delivery ID. Cross-instance deliveries fail. Retired-generation
