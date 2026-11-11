@@ -129,6 +129,21 @@
       "properties": {
         "sources": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/sources" },
         "senses": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/senses" },
+        "dpp": {
+          "type": "object",
+          "required": ["context"],
+          "additionalProperties": false,
+          "properties": {
+            "context": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "sources": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/sources" },
+                "senses": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/senses" }
+              }
+            }
+          }
+        },
         "compute": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/compute" },
         "behavior": { "$ref": "https://genui.dev/schemas/cell.schema.json#/properties/behavior" }
       }

@@ -6,3 +6,4 @@ export * from "../../../face/src/services/queueface";
 export * from "../../../face/src/services/service-host";
 export * from "../../../face/src/services/service-kinds";
 export * from "../../../face/src/services/timer-service";
+export * from "../../../face/src/services/context-store";

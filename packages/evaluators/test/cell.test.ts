@@ -88,9 +88,9 @@ test("evaluateCell exposes only settled source values to computes", () => {
       sources: [],
       compute: [{
         id: "price",
-        expression: "sources.prices",
+        expression: "fetched_sources.prices",
         assign: "price",
-        dependencies: ["sources.prices"],
+        dependencies: ["fetched_sources.prices"],
       }],
       outputs: [{ token: "market-price", from: "computed.price" }],
     },
@@ -106,7 +106,7 @@ test("evaluateCell withholds outputs whose predicate is false", () => {
   const result = evaluateCell({
     materializedProgramCell: {
       id: "analysis",
-      compute: [{ id: "report", expression: "sources.report", assign: "report" }],
+      compute: [{ id: "report", expression: "fetched_sources.report", assign: "report" }],
       outputs: [{ token: "analysis-report", from: "computed.report", when: "computed.report != null" }],
     },
     inputs: {},

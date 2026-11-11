@@ -6,10 +6,13 @@ import {
   type OrchestratorEffect,
   type OrchestratorResult,
 } from "gik-kernel";
+import { cellSenses } from "gik-evaluators";
 import {
   applyBlueprintPatches,
   materializeBlueprint,
   runMaterializedTransition,
+  resetCellSourceState,
+  dppCellSourceResets,
   type ExternalContext,
   type MaterializedBlueprint,
 } from "./run-transition";
@@ -28,11 +31,13 @@ export interface DurableBlueprintSpec {
   materializedBlueprint: MaterializedBlueprint;
   settledEffectMessageIds: string[];
   senses?: BlueprintSenseState;
+  pendingDppResets?: string[];
 }
 
 export type DurableBlueprintSpecUpdate =
   | { patch: BlueprintPatch; origin: BlueprintPatchOrigin }
   | { settledEffectMessageId: string }
+  | { dppResetsApplied: true }
   | { senses: BlueprintSenseState };
 
 const DURABLE_EFFECT_NODE = "$gik.durable-effect";
@@ -113,7 +118,7 @@ export function createBlueprintDurableTransitionAdapter(input: {
   ) => void;
 }): BlueprintDurableTransitionAdapter {
   const materializedBlueprint = input.materializedBlueprint ?? materializeBlueprint(input);
-  const declaresSenses = Object.values(materializedBlueprint.payload.terminalBlueprint.payload.cells ?? {}).some((cell) => cell.senses?.length);
+  const declaresSenses = Object.values(materializedBlueprint.payload.terminalBlueprint.payload.cells ?? {}).some((cell) => cellSenses(cell).length);
   if (declaresSenses && !input.instanceId) throw new Error("Blueprint Senses require a host-owned instanceId");
   const initialSpec: DurableBlueprintSpec = {
     authoredBlueprint: structuredClone(input.blueprint),
@@ -127,9 +132,12 @@ export function createBlueprintDurableTransitionAdapter(input: {
     initialState: () => structuredClone(materializedBlueprint.payload.initialState),
     initialSpec: () => structuredClone(initialSpec),
     async transition({ state, spec, events }) {
+      const resetUpdates: DurableBlueprintSpecUpdate[] = spec.pendingDppResets?.length
+        ? [{ dppResetsApplied: true }] : [];
+      if (spec.pendingDppResets?.length) state = resetCellSourceState(state, spec.pendingDppResets);
       if (spec.senses && spec.senses.instanceId !== input.instanceId) throw new Error("Sense state belongs to another Blueprint instance");
       const hasSenses = Boolean(spec.senses) || Object.values(spec.materializedBlueprint.payload.terminalBlueprint.payload.cells ?? {})
-        .some((cell) => cell.senses?.length);
+        .some((cell) => cellSenses(cell).length);
       if (hasSenses && !input.instanceId) throw new Error("Blueprint Senses require a host-owned instanceId");
       if (hasSenses && events.length > 1) {
         let currentState = state;
@@ -155,7 +163,7 @@ export function createBlueprintDurableTransitionAdapter(input: {
         const delivery = admitBlueprintSenseSignal(senses, event, spec.materializedBlueprint);
         if (delivery.status === "accepted") admitted.push(delivery.event);
       }
-      if (events.length && !admitted.length) return { state, effects: [] };
+      if (events.length && !admitted.length) return { state, effects: [], specUpdates: resetUpdates };
       events = admitted;
       const settlements = events.map(durableEffectSettlement);
       const regularEvents = events.filter((event, index) =>
@@ -185,7 +193,7 @@ export function createBlueprintDurableTransitionAdapter(input: {
         state,
         materializedBlueprint: spec.materializedBlueprint,
         events: regularEvents,
-        syncExternal: isBootstrap,
+        syncExternal: isBootstrap || resetUpdates.length > 0,
         sourceSettlements,
         requestSettlements,
         serviceSettlements,
@@ -204,6 +212,7 @@ export function createBlueprintDurableTransitionAdapter(input: {
         state: result.state,
         effects: result.effects ?? [],
         specUpdates: [
+          ...resetUpdates,
           ...settlementUpdates,
           ...patchUpdates,
           ...(senses ? [{ senses }] : []),
@@ -213,6 +222,10 @@ export function createBlueprintDurableTransitionAdapter(input: {
     applySpecUpdates({ spec, updates }) {
       let next = structuredClone(spec);
       for (const update of updates) {
+        if ("dppResetsApplied" in update) {
+          delete next.pendingDppResets;
+          continue;
+        }
         if ("senses" in update) {
           next.senses = structuredClone(update.senses);
           continue;
@@ -224,6 +237,8 @@ export function createBlueprintDurableTransitionAdapter(input: {
           }
           continue;
         }
+        const resetCells = dppCellSourceResets(next.authoredBlueprint, update.patch);
+        const pendingDppResets = [...new Set([...(next.pendingDppResets ?? []), ...resetCells])];
         const applied = applyBlueprintPatches({
           blueprint: next.authoredBlueprint,
           externalContext: next.externalContext,
@@ -236,6 +251,7 @@ export function createBlueprintDurableTransitionAdapter(input: {
           externalContext: structuredClone(next.externalContext),
           materializedBlueprint: applied.materializedBlueprint,
           settledEffectMessageIds: next.settledEffectMessageIds,
+          ...(pendingDppResets.length ? { pendingDppResets } : {}),
           ...(next.senses ? { senses: next.senses } : {}),
         };
       }

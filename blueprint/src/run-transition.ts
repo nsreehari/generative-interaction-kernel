@@ -23,6 +23,8 @@ import {
 } from "gik-kernel";
 import {
   evaluateCell,
+  cellSources,
+  cellSenses,
   resolveDeclarativeFormInitialValue,
   validateDeclarativeFormValues,
   type CellSourceEffect,
@@ -452,8 +454,8 @@ export function prepareBlueprintProgram(
       {
         blueprintRunState: {
           cells: Object.fromEntries(Object.entries(blueprint.payload.cells).map(([cellId, cell]) => [cellId, {
-            sources: (cell.sources ?? []).map(({ id }) => ({ ...initialSourceRunState(id) })),
-            ...(cell.sources?.length ? { sourceValues: {} } : {}),
+            sources: cellSources(cell).map(({ id }) => ({ ...initialSourceRunState(id) })),
+            ...(cellSources(cell).length ? { sourceValues: {} } : {}),
           }])),
         },
       },
@@ -598,10 +600,21 @@ export async function runMaterializedTransition({
     ...events,
     ...serviceSettlements.flatMap((settlement) => settlement.events ?? []),
   ];
+  const activeSourceSettlements = sourceSettlements.filter(({ effect }) => {
+    if (effect.kind !== "invoke") return true;
+    const { sourceCellId, sourceId, serviceRef, tool, sourceRequestToken } = effect.control;
+    const cellId = sourceCellId ?? effect.node;
+    const cell = materializedBlueprint.payload.terminalBlueprint.payload.cells?.[cellId];
+    if (!cell || !cellSources(cell).some((source) =>
+      source.id === sourceId && source.service === serviceRef && source.operation === tool)) return false;
+    const sourceState = resolveBlueprintRunState(state.blueprintRunState).cells[cellId]?.sources
+      .find((source) => source.id === sourceId);
+    return !sourceRequestToken || sourceState?.lastRequestedToken === sourceRequestToken;
+  });
 
   const shouldSyncExternal = syncExternal
     ?? (transitionEvents.length === 0
-      && sourceSettlements.length === 0
+      && activeSourceSettlements.length === 0
       && requestSettlements.length === 0
       && serviceSettlements.length === 0);
   if (shouldSyncExternal) {
@@ -613,14 +626,14 @@ export async function runMaterializedTransition({
     completedWithinRun.push(...(patch.completedWithinRun ?? []));
   }
   else kernel.hydrateGraph(flattenState(store.snapshot()));
-  for (const settlement of sourceSettlements) {
+  for (const settlement of activeSourceSettlements) {
     const patch = await kernel.settleSourceEffect(
       structuredClone(settlement.effect),
       structuredClone(settlement.result),
     );
     completedWithinRun.push(...(patch.completedWithinRun ?? []));
   }
-  if (sourceSettlements.length > 0) {
+  if (activeSourceSettlements.length > 0) {
     const patch = await kernel.syncExternal();
     completedWithinRun.push(...(patch.completedWithinRun ?? []));
   }
@@ -651,7 +664,7 @@ export async function runMaterializedTransition({
   await kernel.whenIdle();
 
   const effects = kernel.effectsSince(-1).map(({ effect }) => effect);
-  const sensingCells = Object.values(materializedBlueprint.payload.terminalBlueprint.payload.cells ?? {}).filter((cell) => cell.senses?.length);
+  const sensingCells = Object.values(materializedBlueprint.payload.terminalBlueprint.payload.cells ?? {}).filter((cell) => cellSenses(cell).length);
   const senseBindings = sensingCells.flatMap((cell) => {
     const tokens = unwrap(program).graph ? kernel.execution().tokens : {};
     const inputs: Record<string, Json> = {};
@@ -703,8 +716,40 @@ export function applyBlueprintPatches({
   return {
     blueprint: nextBlueprint,
     materializedBlueprint: materializeBlueprint({ blueprint: nextBlueprint, externalContext, resolveBlueprint }),
-    state: structuredClone(state),
+    state: resetCellSourceState(state, dppCellSourceResets(blueprint, patch)),
   };
+}
+
+export function dppCellSourceResets(blueprint: BlueprintArtifact, patch: BlueprintPatch): string[] {
+  return patch.flatMap((operation) => {
+    if (operation.op === "addCell") return operation.cell.dpp ? [operation.cell.id] : [];
+    if (operation.op !== "removeCell" && operation.op !== "replaceCell") return [];
+    return blueprint.payload.cells?.[operation.cellId]?.dpp
+      || (operation.op === "replaceCell" && operation.cell.dpp) ? [operation.cellId] : [];
+  });
+}
+
+export function resetCellSourceState(state: Record<string, Json>, cellIds: readonly string[]): Record<string, Json> {
+  const nextState = structuredClone(state);
+  const runState = nextState.blueprintRunState;
+  const cells = runState && typeof runState === "object" && !Array.isArray(runState)
+    && runState.cells && typeof runState.cells === "object" && !Array.isArray(runState.cells)
+    ? runState.cells : {};
+  for (const cellId of cellIds) {
+    const previous = cells[cellId];
+    if (!previous || typeof previous !== "object" || Array.isArray(previous) || !Array.isArray(previous.sources)) continue;
+    cells[cellId] = {
+      ...previous,
+      sourceValues: {},
+      sources: previous.sources.map((source) => {
+        if (!source || typeof source !== "object" || Array.isArray(source)) {
+          throw new Error(`Invalid source run state for DPP Cell '${cellId}'`);
+        }
+        return { ...source, lastRequestedToken: null, lastCompletedToken: null, lastCompletionStatus: null };
+      }),
+    };
+  }
+  return nextState;
 }
 
 export async function runTransition({

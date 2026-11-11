@@ -12,7 +12,8 @@ import type {
   ServiceUse,
 } from "gik-kernel";
 export type { CellSense } from "gik-kernel";
-import type { DeclarativeFormSpec, SystemInputToken } from "gik-evaluators";
+import type { CellDpp, DeclarativeFormSpec, SystemInputToken } from "gik-evaluators";
+export type { CellDpp, DppManifest } from "gik-evaluators";
 
 export interface TierDefinition {
   id: string;
@@ -61,6 +62,7 @@ export interface BlueprintRepresentationDecorator {
 export interface CellImplementationOverride {
   sources?: readonly CellSource[];
   senses?: readonly CellSense[];
+  dpp?: { context: { sources?: readonly CellSource[]; senses?: readonly CellSense[] } };
   compute?: readonly CellComputation[];
   behavior?: CellBehavior;
 }
@@ -179,6 +181,7 @@ export interface CellDefinition {
   systemInputs?: readonly SystemInputToken[];
   sources?: readonly CellSource[];
   senses?: readonly CellSense[];
+  dpp?: CellDpp<CellSource>;
   compute?: readonly CellComputation[];
   outputs?: readonly CellOutput[];
   events?: Record<string, CellEventContract>;

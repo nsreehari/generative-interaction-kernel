@@ -1,5 +1,5 @@
 import { lowerToProgram, type ExecutableProgramDefinition, type ProgramMessageFor } from "gik-kernel";
-import { runDeclarativeValidators } from "gik-evaluators";
+import { cellSources, cellSenses, runDeclarativeValidators } from "gik-evaluators";
 import { analyzeCellComposition } from "./cells";
 import {
   collectProjectionCapabilityUses,
@@ -512,14 +512,14 @@ export function validateBlueprintArtifact<TKind extends BlueprintFragmentKind>(
     throw new BlueprintValidationError(composition.diagnostics.map(({ detail }) => detail).join("; "), composition.diagnostics);
   }
   for (const [cellId, cell] of Object.entries(cells)) {
-    for (const sense of cell.senses ?? []) {
+    for (const sense of cellSenses(cell)) {
       const contract = blueprint.services?.[sense.service]?.operations?.[sense.operation]?.sense;
       if (!contract) throw new BlueprintValidationError(`Blueprint Cell '${cellId}' Sense '${sense.id}' references an operation without a Sense contract`);
       for (const signal of Object.keys(sense.on)) {
         if (!contract.signals[signal]) throw new BlueprintValidationError(`Blueprint Cell '${cellId}' Sense '${sense.id}' references unknown Signal '${signal}'`);
       }
     }
-    for (const source of cell.sources ?? []) {
+    for (const source of cellSources(cell)) {
       const service = blueprint.services?.[source.service];
       if (!service) {
         throw new BlueprintValidationError(`Blueprint Cell '${cellId}' source '${source.id}' references unknown service '${source.service}'`);
@@ -529,6 +529,15 @@ export function validateBlueprintArtifact<TKind extends BlueprintFragmentKind>(
       }
       if (service.operations[source.operation].sense) {
         throw new BlueprintValidationError(`Blueprint Cell '${cellId}' source '${source.id}' must use a bounded operation, not a Sense contract`);
+      }
+    }
+    if (cell.dpp) {
+      const contracts = new Set(cell.dpp.context.sources.map((source) =>
+        blueprint.services?.[source.service]?.operations[source.operation]?.contract));
+      for (const contract of ["context-store.query/v1", "context-store.ingest/v1"]) {
+        if (!contracts.has(contract)) {
+          throw new BlueprintValidationError(`DPP Cell '${cellId}' requires a context source with contract '${contract}'`);
+        }
       }
     }
   }
