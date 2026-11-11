@@ -9,6 +9,7 @@ import {
   createDurableBlueprintProposalStore,
   createInMemoryBlueprintProposalStore,
   type BlueprintHostDecision,
+  type BlueprintProposalStore,
 } from "../src/index";
 
 const proposal = (overrides: Partial<AgentProposal> = {}): AgentProposal => ({
@@ -30,15 +31,21 @@ function fixture(options: {
   admission?: BlueprintHostDecision;
   applicationAutomatic?: boolean;
   revision?: string;
+  store?: BlueprintProposalStore;
+  applied?: Set<string>;
 } = {}) {
   let applications = 0;
-  const store = createInMemoryBlueprintProposalStore();
+  const store = options.store ?? createInMemoryBlueprintProposalStore();
   const host = createBlueprintProposalHost({
     store,
     authority: {
       inspect: (target) => ({ target, revision: options.revision ?? "1" }),
       validate: () => ({ ok: true }),
-      apply: (receipt) => ({ receiptId: receipt.id, applications: ++applications }),
+      apply: (receipt) => {
+        if (options.applied) options.applied.add(receipt.id);
+        else applications++;
+        return { receiptId: receipt.id, applications: options.applied?.size ?? applications };
+      },
     },
     policySet: {
       authorization: {
@@ -67,7 +74,68 @@ function fixture(options: {
       },
     },
   });
-  return { host, store, applications: () => applications };
+  return { host, store, applications: () => options.applied?.size ?? applications };
+}
+
+async function concurrentStores(durable: boolean): Promise<BlueprintProposalStore[]> {
+  if (!durable) {
+    const store = createInMemoryBlueprintProposalStore();
+    return [store, store];
+  }
+  const storage = createMemoryStorage();
+  const refs = {
+    stateRef: "b64:eyJraW5kIjoiaW4tbWVtb3J5IiwidmFsdWUiOiJwcm9wb3NhbHMtc3RhdGUifQ",
+    journalRef: "b64:eyJraW5kIjoiaW4tbWVtb3J5IiwidmFsdWUiOiJwcm9wb3NhbHMtam91cm5hbCJ9",
+    effectsQueueRef: "b64:eyJraW5kIjoiaW4tbWVtb3J5IiwidmFsdWUiOiJwcm9wb3NhbHMtZWZmZWN0cyJ9",
+  };
+  const stores: BlueprintProposalStore[] = [];
+  for (let index = 0; index < 2; index++) {
+    const runtime = createDurableRuntime({
+      runtimeId: "concurrent-proposal-host",
+      providers: { "in-memory": storage },
+      transitionAdapter: createBlueprintProposalDurableTransitionAdapter(),
+    });
+    stores.push(await createDurableBlueprintProposalStore({ runtime, refs }));
+  }
+  return stores;
+}
+
+for (const durable of [false, true]) {
+  const name = durable ? "durable cross-host" : "in-memory";
+  test(`${name} concurrent identical submissions share one receipt and application identity`, async () => {
+    const stores = await concurrentStores(durable);
+    const applied = new Set<string>();
+    const hosts = stores.map((store) => fixture({ store, applied }).host);
+    const receipts = await Promise.all(hosts.map((host) => host.submit(proposal(), { id: "agent-1" })));
+    assert.equal(receipts[0].id, receipts[1].id);
+    assert.equal(applied.size, 1);
+    assert.equal((await stores[0].list()).length, 1);
+    assert.equal((await stores[0].get(receipts[0].id))!.status, "applied");
+    const again = await hosts[1].submit(proposal(), { id: "agent-1" });
+    assert.equal(again.id, receipts[0].id);
+    assert.equal(again.status, "applied");
+    assert.equal(applied.size, 1);
+  });
+
+  test(`${name} concurrent conflicting submissions reject without poisoning subsequent transitions`, async () => {
+    const stores = await concurrentStores(durable);
+    const hosts = stores.map((store) => fixture({ store }).host);
+    const proposals = [proposal(), proposal({ actions: [{ kind: "save-report" }] })];
+    const results = await Promise.allSettled(hosts.map((host, index) => host.receive(proposals[index])));
+    assert.equal(results.filter(({ status }) => status === "fulfilled").length, 1);
+    const rejected = results.find((result) => result.status === "rejected");
+    assert.ok(rejected?.status === "rejected");
+    assert.match(String(rejected.reason), /already associated with different content/);
+    const stored = await stores[0].list();
+    assert.equal(stored.length, 1);
+    assert.equal((await hosts[1].receive(stored[0].proposal)).id, stored[0].id);
+    await assert.rejects(async () => stores[0].update({
+      ...stored[0], proposal: proposal({ id: "different-id" }),
+    }), /different content/);
+    const next = await hosts[1].submit(proposal({ id: "proposal-2" }), { id: "agent-1" });
+    assert.equal(next.status, "applied");
+    assert.equal((await stores[0].list()).length, 2);
+  });
 }
 
 test("submit receives, authorizes, admits, and applies a proposal", async () => {

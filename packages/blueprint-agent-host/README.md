@@ -17,17 +17,25 @@ expressions use the platform safe JSONata subset; callback policy injection is n
 It does not depend on React or require BlueprintHost; browser hosts, backend
 services, middleware, and workers can provide structurally compatible authority adapters.
 
-The authority must make application idempotent by receipt ID for recovery.
-Concurrent submissions can create different receipts for the same proposal;
-receipt storage is not an exactly-once transaction boundary. The authoritative
-application layer must also enforce its business transaction identity (for
-example, the host-created proposal ID) across retries and concurrent receipts.
+The store must atomically deduplicate creation by proposal ID, returning the
+canonical receipt for identical content and rejecting conflicting content.
+Both supplied stores enforce this, including concurrent durable store instances
+sharing a journal. Custom stores must provide the same atomic guarantee.
+Receipt updates cannot change proposal identity or content.
+
+The authority must make application idempotent by receipt ID for recovery and
+concurrent applications of the same receipt. Receipt storage does not make
+external business effects transactional. The authoritative application layer
+must also enforce its business transaction identity across distinct proposals.
 Distinct business transactions need distinct identities, even when their
 payloads are identical.
 
 `createInMemoryBlueprintProposalStore` supports tests and local composition.
 `createDurableBlueprintProposalStore` and `createBlueprintProposalDurableTransitionAdapter` bind
 the same receipt model to `gik-durable-runtime` journals and committed snapshots.
+Creation is resolved within the committed transition, not by a snapshot
+check followed by an unconditional write. Busy/conflicting transitions are retried
+for up to 30 seconds; commit failures are surfaced to the caller.
 
 The package is the Blueprint HBX implementation over neutral contracts from
 `gik-agent-lifecycle-exp`. Agents still receive UBX, CBX, or ABX proposal tools; HBX remains a

@@ -61,8 +61,11 @@ export interface BlueprintAuthority<TProposal extends AgentProposal = AgentPropo
 }
 
 export interface BlueprintProposalStore<TProposal extends AgentProposal = AgentProposal> {
+  /** Atomically create by proposal.id; return the canonical receipt for identical
+   * content and reject conflicting content, including across store instances. */
   create(receipt: BlueprintProposalReceipt<TProposal>): MaybePromise<BlueprintProposalReceipt<TProposal>>;
   get(id: string): MaybePromise<BlueprintProposalReceipt<TProposal> | undefined>;
+  /** Update an existing receipt without changing its proposal identity or content. */
   update(receipt: BlueprintProposalReceipt<TProposal>): MaybePromise<BlueprintProposalReceipt<TProposal>>;
   list(): MaybePromise<readonly BlueprintProposalReceipt<TProposal>[]>;
 }

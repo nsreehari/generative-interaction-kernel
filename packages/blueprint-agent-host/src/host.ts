@@ -70,14 +70,6 @@ export function createBlueprintProposalHost<TProposal extends AgentProposal = Ag
       }])) as never,
     }),
     async receive(proposal) {
-      const existing = await options.store.list();
-      const duplicate = existing.find((receipt) => receipt.proposal.id === proposal.id);
-      if (duplicate) {
-        if (JSON.stringify(duplicate.proposal) !== JSON.stringify(proposal)) {
-          throw new Error(`Blueprint proposal id '${proposal.id}' is already associated with different content`);
-        }
-        return duplicate;
-      }
       const at = now();
       return options.store.create({
         id: crypto.randomUUID(),

@@ -2,6 +2,11 @@
 
 ## 0.2.1
 
+- Atomically deduplicate proposal receipt creation in memory and committed durable
+  transitions. Concurrent identical submissions share one receipt; conflicting
+  content is rejected without poisoning journal replay. Custom stores must
+  enforce proposal-ID uniqueness and immutable proposal content.
+
 ### Patch Changes
 
 - Updated dependencies
