@@ -1,5 +1,27 @@
 # gik-controlface
 
+## 0.5.0
+
+### Minor Changes
+
+- Add Cell-local durable purpose participants (DPPs) with full manifests,
+  mandatory context query/ingest sources, optional context Senses, and the existing
+  host-authorized effect/settlement lifecycle. Context declarations participate in
+  lowering, descriptions, withdrawal, and reintroduction without a separate agent
+  scheduler. Export a host-backed context-store service kind with validated query
+  and ingest contracts.
+
+  BREAKING: Cell expressions now read settled ordinary and context-source data
+  through `fetched_sources`, replacing the former `sources` root without a
+  compatibility alias. Migrate compute, predicates, transforms, output bindings,
+  and view/behavior expressions; source configuration properties remain `sources`.
+  Source and Sense IDs must be unique across all ordinary and context declarations
+  within a Cell.
+
+  Source output transforms receive immutable launch inputs, computations, fetched
+  data, system inputs, and the DPP manifest alongside `response`, so older results
+  retain their original correlation identity in immediate and queued execution.
+
 ## 0.4.0
 
 ### Minor Changes

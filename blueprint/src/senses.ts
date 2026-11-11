@@ -1,4 +1,4 @@
-import { evalSyncJsonata, runDeclarativeValidators } from "gik-evaluators";
+import { cellSenses, evalSyncJsonata, runDeclarativeValidators } from "gik-evaluators";
 import type { CellSense, GIKEvent, Json, SenseSignal, ServiceDeclaration } from "gik-kernel";
 import { validateJsonValue } from "gik-kernel";
 import type { BlueprintTransitionResult, MaterializedBlueprint } from "./run-transition";
@@ -36,7 +36,7 @@ function canonical(value: unknown): string {
 export function isBlueprintSenseBindingCurrent(materialized: MaterializedBlueprint, binding: BlueprintSenseBinding): boolean {
   const blueprint = materialized.payload.terminalBlueprint;
   const cell = blueprint.payload.cells?.[binding.cellId];
-  const usage = cell?.senses?.find(({ id }) => id === binding.sense.id);
+  const usage = cell && cellSenses(cell).find(({ id }) => id === binding.sense.id);
   return canonical(usage) === canonical(binding.sense)
     && canonical(blueprint.payload.services?.[binding.sense.service]) === canonical(binding.declaration)
     && canonical(cell?.events ?? {}) === canonical(binding.events);

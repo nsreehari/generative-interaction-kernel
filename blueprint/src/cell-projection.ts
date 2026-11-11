@@ -7,7 +7,8 @@ import type {
   ProgramNode,
   RuntimeHandler,
 } from "../../kernel/src/index";
-import { isSystemInputToken, systemInputRuntimeExpression } from "gik-evaluators";
+import { jsonataExpressionAst } from "gik-kernel";
+import { cellSources, cellSenses, isSystemInputToken, systemInputRuntimeExpression } from "gik-evaluators";
 import {
   BLUEPRINT_CAPABILITY,
   PRESENTATION_FRAGMENT_CAPABILITY,
@@ -181,7 +182,7 @@ export function composeCellProgram(
 
   const root = compileSlot(presentation.root, []);
   const backgroundCells = topology.cells.filter((cell) => !presentedCellIds.has(cell.id));
-  const handlers: RuntimeHandler[] = topology.cells.filter((cell) => !presentedCellIds.has(cell.id) || cell.senses?.length).flatMap((cell) => {
+  const handlers: RuntimeHandler[] = topology.cells.filter((cell) => !presentedCellIds.has(cell.id) || cellSenses(cell).length).flatMap((cell) => {
     const events = cellEvents(cell);
     return Object.keys(events).length > 0 ? [{ id: cell.id, on: events }] : [];
   });
@@ -230,7 +231,7 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
     }
   }
   for (const cell of cells) {
-    if (!presentedCellIds.has(cell.id) || cell.senses?.length) owners[cell.id] = cell.id;
+    if (!presentedCellIds.has(cell.id) || cellSenses(cell).length) owners[cell.id] = cell.id;
   }
   return owners;
 }
@@ -249,7 +250,7 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
     // value already kept fresh by this Cell's own other wiring; none of them need (or should get) the
     // implicit-input treatment.
     const computeAssignedPaths = new Set((cell.compute ?? []).map(({ assign }) => assign));
-    const CELL_SCOPED_READ_ROOTS = ["computed.", "inputs.", "sources.", "systemInputs."];
+    const CELL_SCOPED_READ_ROOTS = ["computed.", "inputs.", "fetched_sources.", "systemInputs.", "dpp."];
     const isStateBackedOutput = ({ from, token }: { from?: string; token: string }): boolean => {
       const path = from ?? token;
       return !CELL_SCOPED_READ_ROOTS.some((root) => path.startsWith(root)) && !computeAssignedPaths.has(path);
@@ -267,7 +268,7 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
     const evaluatorInputs = {
       ...declaredInputs,
       ...outputStateInputs,
-      ...(cell.sources?.length
+      ...(cellSources(cell).length
         ? {
             __sources: {
               token: `blueprintRunState.cells.${cell.id}.sourceValues`,
@@ -276,7 +277,7 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
           }
         : {}),
     };
-    const evaluatorNode: ProgramNode | undefined = cell.compute?.length || cell.sources?.length || (!cell.blueprint && cell.outputs?.length)
+    const evaluatorNode: ProgramNode | undefined = cell.compute?.length || cellSources(cell).length || (!cell.blueprint && cell.outputs?.length)
       ? {
           id: `${cell.id}-evaluate`,
           inputs: evaluatorInputs,
@@ -324,10 +325,10 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
     inputs: [...new Set([
       ...topology.externalInputs,
       ...topology.cells.flatMap((cell) =>
-        !cell.compute?.length && !cell.sources?.length && !cell.blueprint
+        !cell.compute?.length && !cellSources(cell).length && !cell.blueprint
           ? (cell.outputs ?? []).map(({ token, from }) => from ?? token)
           : []),
-      ...topology.cells.filter((cell) => cell.sources?.length).map(({ id }) =>
+      ...topology.cells.filter((cell) => cellSources(cell).length).map(({ id }) =>
         `blueprintRunState.cells.${id}.sourceValues`),
     ])],
     outputs: [...new Set(topology.cells.flatMap(providedTokens))],
@@ -451,7 +452,7 @@ function scopeCellAction(cell: CellDefinition, action: Action): Action {
     ...guard,
   };
   if (scoped.do !== "invoke" || scoped.control.sourceId) return scoped;
-  const matches = (cell.sources ?? []).filter(({ operation }) => operation === scoped.control.tool);
+  const matches = cellSources(cell).filter(({ operation }) => operation === scoped.control.tool);
   return matches.length === 1
     ? {
         ...scoped,
@@ -467,8 +468,48 @@ function scopeCellAction(cell: CellDefinition, action: Action): Action {
 }
 
 function scopeCellExpression(expression: string, cell: CellDefinition): string {
-  return expression.replace(/\bsystemInputs\.([A-Za-z_][A-Za-z0-9_]*)\b/g, (reference, token: string) => {
-    if (!isSystemInputToken(token) || !cell.systemInputs?.includes(token)) return reference;
-    return `(${systemInputRuntimeExpression(token, cell.id)})`;
-  });
+  const edits: { start: number; end: number; value: string }[] = [];
+  const visit = (value: unknown): void => {
+    if (!value || typeof value !== "object") return;
+    const node = value as Record<string, unknown>;
+    if (node.type === "path" && Array.isArray(node.steps)) {
+      const first: unknown = node.steps[0];
+      if (first && typeof first === "object") {
+        const root = first as Record<string, unknown>;
+        if (root.type === "name" && typeof root.value === "string" && typeof root.position === "number") {
+          const start = root.position - root.value.length;
+          let end = root.position;
+          let replacement: string | undefined;
+          if (root.value === "fetched_sources") {
+            replacement = `($lookup(blueprintRunState.cells, ${JSON.stringify(cell.id)}).sourceValues)`;
+          } else if (root.value === "dpp" && cell.dpp) {
+            replacement = `({'manifest':${JSON.stringify(cell.dpp.manifest)}})`;
+          } else if (root.value === "systemInputs") {
+            const second: unknown = node.steps[1];
+            if (second && typeof second === "object") {
+              const token = second as Record<string, unknown>;
+              if (token.type === "name" && typeof token.value === "string" && typeof token.position === "number"
+                && isSystemInputToken(token.value) && cell.systemInputs?.includes(token.value)) {
+                end = token.position;
+                replacement = `(${systemInputRuntimeExpression(token.value, cell.id)})`;
+              }
+            }
+          }
+          if (replacement && expression.slice(start, root.position) === root.value) {
+            edits.push({ start, end, value: replacement });
+          }
+        }
+      }
+    }
+    for (const child of Object.values(node)) {
+      if (Array.isArray(child)) child.forEach(visit);
+      else visit(child);
+    }
+  };
+  visit(jsonataExpressionAst(expression));
+  let scoped = expression;
+  for (const edit of edits.sort((a, b) => b.start - a.start)) {
+    scoped = scoped.slice(0, edit.start) + edit.value + scoped.slice(edit.end);
+  }
+  return scoped;
 }

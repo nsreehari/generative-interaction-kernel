@@ -117,7 +117,7 @@ later (e.g. `compact`) without touching the first.
           { "id": "list", "service": "incident-data", "operation": "listIncidents" }
         ],
         "compute": [
-          { "id": "capture", "expression": "sources.list", "assign": "review.incidents", "dependencies": ["sources.list"] }
+          { "id": "capture", "expression": "fetched_sources.list", "assign": "review.incidents", "dependencies": ["fetched_sources.list"] }
         ],
         "outputs": [
           { "token": "incidentList", "from": "computed.review.incidents", "when": "$exists(computed.review.incidents)" }
@@ -189,7 +189,11 @@ A Blueprint meant only to run standalone does not need one.
 
 ### compute = the Cell's shared derivation, available to every one of its facets
 
-`compute` is an ordered list of expressions evaluated over the Cell's own `inputs`, settled `sources`,
+Optional `dpp` carries a read-only `manifest`, mandatory context query/ingest
+sources and optional context Senses. All source/Sense IDs are Cell-unique.
+Results use `fetched_sources.<id>`; effects remain host-authorized.
+
+`compute` is an ordered list of expressions evaluated over the Cell's own `inputs`, settled `fetched_sources`,
 `systemInputs`, and every earlier `compute` result in the same evaluation. Each step's `assign` both
 commits a real state write and makes that value available, for the rest of that one evaluation, to:
 

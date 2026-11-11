@@ -469,19 +469,42 @@ function applyCellImplementationOverrides(
     if (!cell) throw new Error(`Blueprint implementation program '${program.id}' references unknown Cell '${cellId}'`);
     if (override.sources) assertStableSourceContracts(artifact, program.id, cell, override.sources);
     if (override.senses) {
-      const signature = (senses: NonNullable<CellDefinition["senses"]>) => JSON.stringify(senses.map((sense) => [
-        sense.id, resolveSourceContract(artifact, program.id, cell.id, sense),
-        Object.entries(sense.on).sort(([a], [b]) => a.localeCompare(b)),
-      ]).sort(([a], [b]) => String(a).localeCompare(String(b))));
-      if (signature(cell.senses ?? []) !== signature(override.senses)) {
-        throw new Error(`Blueprint implementation program '${program.id}' changes Sense contracts for Cell '${cell.id}'`);
-      }
+      assertStableSenseContracts(artifact, program.id, cell, cell.senses ?? [], override.senses);
     }
     if (override.behavior) assertDeclaredEventHandlers(program.id, cell, override.behavior);
+    if (override.dpp) {
+      if (!cell.dpp) throw new Error(`Blueprint implementation program '${program.id}' adds DPP context to ordinary Cell '${cellId}'`);
+      const context = cell.dpp.context;
+      if (override.dpp.context.sources) {
+        assertStableSourceContracts(artifact, program.id,
+          { ...cell, sources: context.sources }, override.dpp.context.sources);
+        context.sources = structuredClone(override.dpp.context.sources);
+      }
+      if (override.dpp.context.senses) {
+        assertStableSenseContracts(artifact, program.id, cell, context.senses ?? [], override.dpp.context.senses);
+        context.senses = structuredClone(override.dpp.context.senses);
+      }
+    }
     if (override.sources) cell.sources = structuredClone(override.sources);
     if (override.senses) cell.senses = structuredClone(override.senses);
     if (override.compute) cell.compute = structuredClone(override.compute);
     if (override.behavior) cell.behavior = structuredClone(override.behavior);
+  }
+}
+
+function assertStableSenseContracts(
+  artifact: BlueprintArtifact,
+  programId: string,
+  cell: CellDefinition,
+  authored: NonNullable<CellDefinition["senses"]>,
+  selected: NonNullable<CellDefinition["senses"]>,
+): void {
+  const signature = (senses: NonNullable<CellDefinition["senses"]>) => JSON.stringify(senses.map((sense) => [
+    sense.id, resolveSourceContract(artifact, programId, cell.id, sense),
+    Object.entries(sense.on).sort(([a], [b]) => a.localeCompare(b)),
+  ]).sort(([a], [b]) => String(a).localeCompare(String(b))));
+  if (signature(authored) !== signature(selected)) {
+    throw new Error(`Blueprint implementation program '${programId}' changes Sense contracts for Cell '${cell.id}'`);
   }
 }
 

@@ -9,6 +9,28 @@
   "properties": {
     "id": { "type": "string", "minLength": 1 },
     "metadata": { "type": "object" },
+    "dpp": {
+      "type": "object",
+      "required": ["manifest", "context"],
+      "additionalProperties": false,
+      "properties": {
+        "manifest": { "$ref": "#/definitions/dppManifest" },
+        "context": {
+          "type": "object",
+          "required": ["sources"],
+          "additionalProperties": false,
+          "properties": {
+            "sources": {
+              "allOf": [
+                { "$ref": "#/properties/sources" },
+                { "minItems": 2 }
+              ]
+            },
+            "senses": { "$ref": "#/properties/senses" }
+          }
+        }
+      }
+    },
     "inputs": {
       "type": "array",
       "items": {
@@ -169,6 +191,81 @@
     }
   },
   "definitions": {
+    "dppManifest": {
+      "type": "object",
+      "required": ["manifest-version", "participant", "durable-charter", "evolving-working-model", "context-store"],
+      "properties": {
+        "manifest-version": { "type": "string", "minLength": 1 },
+        "participant": {
+          "type": "object",
+          "required": ["stable-id", "human-readable-name"],
+          "properties": {
+            "stable-id": { "type": "string", "minLength": 1 },
+            "human-readable-name": { "type": "string", "minLength": 1 }
+          }
+        },
+        "durable-charter": {
+          "type": "object",
+          "required": ["identity-and-viability", "value-creation", "participation", "authority-and-boundaries", "steward"],
+          "properties": {
+            "identity-and-viability": {
+              "type": "object",
+              "required": ["why-this-participant-exists", "what-must-remain-true-for-it-to-remain-this-participant"],
+              "properties": {
+                "why-this-participant-exists": { "type": "string", "minLength": 1 },
+                "what-must-remain-true-for-it-to-remain-this-participant": { "type": "string", "minLength": 1 }
+              }
+            },
+            "value-creation": {
+              "type": "object",
+              "required": ["beneficial-change-it-exists-to-create", "who-benefits-from-that-change"],
+              "properties": {
+                "beneficial-change-it-exists-to-create": { "type": "string", "minLength": 1 },
+                "who-benefits-from-that-change": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+              }
+            },
+            "participation": {
+              "type": "object",
+              "required": ["relationships"],
+              "properties": { "relationships": { "type": "array", "items": { "type": "object" } } }
+            },
+            "authority-and-boundaries": {
+              "type": "object",
+              "required": ["what-it-may-adapt-within-this-charter", "what-it-may-do-without-asking", "what-requires-human-decision", "what-it-must-never-do"],
+              "additionalProperties": { "type": "array", "items": { "type": "string" } }
+            },
+            "steward": {
+              "type": "object",
+              "required": ["responsibility", "permitted-services-and-tools", "evidence-and-decision-recording"],
+              "properties": {
+                "responsibility": { "type": "string", "minLength": 1 },
+                "permitted-services-and-tools": { "type": "array", "items": { "type": "string" } },
+                "evidence-and-decision-recording": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        },
+        "evolving-working-model": {
+          "type": "object",
+          "required": ["currency-hypotheses", "viability-tensions", "current-strategy-and-priorities", "operating-rhythm", "learned-context-references"],
+          "properties": {
+            "currency-hypotheses": { "type": "object" },
+            "viability-tensions": { "type": "array", "items": { "type": "string" } },
+            "current-strategy-and-priorities": { "type": "object" },
+            "operating-rhythm": { "type": "object" },
+            "learned-context-references": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "context-store": {
+          "type": "object",
+          "required": ["query", "ingest"],
+          "properties": {
+            "query": { "type": "string", "minLength": 1 },
+            "ingest": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
     "systemInputToken": {
       "enum": ["numSourcesRunning", "sourceErrors"]
     },

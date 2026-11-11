@@ -7,6 +7,7 @@ export * from "./services/queueface";
 export * from "./services/service-host";
 export * from "./services/service-kinds";
 export * from "./services/timer-service";
+export * from "./services/context-store";
 export * from "./live/runtime-tools";
 export * from "./live/ops";
 export * from "./live/controlface";

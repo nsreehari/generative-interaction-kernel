@@ -127,7 +127,10 @@ export async function settleQueuedCellSourceEffect(
 ): Promise<OrchestratorResult | void> {
   if (effect.kind !== "invoke" || !result || result.sourceOutput === undefined || !effect.control.sourceId) return result;
   const sourceValue = effect.control.sourceOutputTransform
-    ? await evalAsyncJsonata(effect.control.sourceOutputTransform.expr, { response: result.sourceOutput })
+    ? await evalAsyncJsonata(effect.control.sourceOutputTransform.expr, {
+        ...structuredClone(effect.control.sourceInputs ?? {}),
+        response: structuredClone(result.sourceOutput),
+      })
     : structuredClone(result.sourceOutput);
   const { sourceOutput: _rawSourceOutput, ...settlement } = result;
   const runState = state.blueprintRunState;

@@ -506,18 +506,18 @@
         "compute": [
           {
             "id": "blueprint-records",
-            "expression": "sources.`list-blueprints`.refresh = ($exists(inputs.blueprintListRefreshStamp) ? inputs.blueprintListRefreshStamp : 'initial') ? sources.`list-blueprints`.blueprints : []",
+            "expression": "fetched_sources.`list-blueprints`.refresh = ($exists(inputs.blueprintListRefreshStamp) ? inputs.blueprintListRefreshStamp : 'initial') ? fetched_sources.`list-blueprints`.blueprints : []",
             "assign": "studio.blueprints",
             "dependencies": [
-              "sources.list-blueprints"
+              "fetched_sources.list-blueprints"
             ]
           },
           {
             "id": "blueprint-options",
-            "expression": "sources.`list-blueprints`.refresh = ($exists(inputs.blueprintListRefreshStamp) ? inputs.blueprintListRefreshStamp : 'initial') ? sources.`list-blueprints`.blueprints.{'value':id,'label':label & ' · ' & version} : []",
+            "expression": "fetched_sources.`list-blueprints`.refresh = ($exists(inputs.blueprintListRefreshStamp) ? inputs.blueprintListRefreshStamp : 'initial') ? fetched_sources.`list-blueprints`.blueprints.{'value':id,'label':label & ' · ' & version} : []",
             "assign": "studio.blueprintOptions",
             "dependencies": [
-              "sources.list-blueprints"
+              "fetched_sources.list-blueprints"
             ]
           }
         ],
@@ -836,74 +836,74 @@
         "compute": [
           {
             "id": "selected-blueprint",
-            "expression": "sources.`fetch-blueprint`",
+            "expression": "fetched_sources.`fetch-blueprint`",
             "assign": "studio.selected",
             "dependencies": [
-              "sources.fetch-blueprint"
+              "fetched_sources.fetch-blueprint"
             ]
           },
           {
             "id": "selected-blueprint-json-version",
-            "expression": "sources.`fetch-blueprint`.draft != null ? 'draft' : 'current'",
+            "expression": "fetched_sources.`fetch-blueprint`.draft != null ? 'draft' : 'current'",
             "assign": "studio.blueprintJsonVersion",
             "dependencies": [
-              "sources.fetch-blueprint"
+              "fetched_sources.fetch-blueprint"
             ]
           },
           {
             "id": "selected-blueprint-preview-version",
-            "expression": "sources.`fetch-blueprint`.draft != null ? 'draft' : 'current'",
+            "expression": "fetched_sources.`fetch-blueprint`.draft != null ? 'draft' : 'current'",
             "assign": "studio.blueprintPreviewVersion",
             "dependencies": [
-              "sources.fetch-blueprint"
+              "fetched_sources.fetch-blueprint"
             ]
           },
           {
             "id": "selected-blueprint-overview",
-            "expression": "($bp := sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Service tiers:** ' & $join($bp.artifact.payload.serviceTiers.id, ', ') & '\\n- **Service recipes:** ' & $string($count($bp.artifact.payload.serviceRecipes)) & '\\n- **Projection tiers:** ' & $join($bp.artifact.payload.projectionTiers.id, ', ') & '\\n- **Projection recipes:** ' & $string($count($bp.artifact.payload.projectionRecipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
+            "expression": "($bp := fetched_sources.`fetch-blueprint`; $bp.artifact ? '# ' & $bp.id & '\\n\\n- **Version:** ' & $bp.version & '\\n- **Kind:** ' & $bp.kind & '\\n- **Source:** ' & ($bp.readonly ? 'Repository bootstrap' : 'User workspace') & '\\n- **Service tiers:** ' & $join($bp.artifact.payload.serviceTiers.id, ', ') & '\\n- **Service recipes:** ' & $string($count($bp.artifact.payload.serviceRecipes)) & '\\n- **Projection tiers:** ' & $join($bp.artifact.payload.projectionTiers.id, ', ') & '\\n- **Projection recipes:** ' & $string($count($bp.artifact.payload.projectionRecipes)) : $bp ? '# ' & $bp.id & '\\n\\nDraft only; promote the draft to create the first published version.' : '')",
             "assign": "studio.overviewMarkdown",
             "dependencies": [
-              "sources.fetch-blueprint"
+              "fetched_sources.fetch-blueprint"
             ]
           },
           {
             "id": "selected-blueprint-context-form",
-            "expression": "sources.`fetch-blueprint`.artifact.payload.contextFormSpec",
+            "expression": "fetched_sources.`fetch-blueprint`.artifact.payload.contextFormSpec",
             "assign": "studio.previewContextFormSpec",
             "dependencies": [
-              "sources.fetch-blueprint"
+              "fetched_sources.fetch-blueprint"
             ]
           },
           {
             "id": "selected-blueprint-reference",
-            "expression": "($bp := sources.`fetch-blueprint`.artifact.payload; $bp ? 'blueprint:' & $bp.id & '@' & $bp.version : '')",
+            "expression": "($bp := fetched_sources.`fetch-blueprint`.artifact.payload; $bp ? 'blueprint:' & $bp.id & '@' & $bp.version : '')",
             "assign": "studio.selectedBlueprintRef",
             "dependencies": [
-              "sources.fetch-blueprint"
+              "fetched_sources.fetch-blueprint"
             ]
           },
           {
             "id": "selected-blueprint-initial-context",
-            "expression": "($spec := sources.`fetch-blueprint`.artifact.payload.contextFormSpec; $spec ? $merge([$merge($keys($spec.fields.properties).($name := $; $field := $lookup($spec.fields.properties, $name); $exists($field.default) ? {$name:$field.default} : {})), $spec.initialValue ? $spec.initialValue : {}]) : {})",
+            "expression": "($spec := fetched_sources.`fetch-blueprint`.artifact.payload.contextFormSpec; $spec ? $merge([$merge($keys($spec.fields.properties).($name := $; $field := $lookup($spec.fields.properties, $name); $exists($field.default) ? {$name:$field.default} : {})), $spec.initialValue ? $spec.initialValue : {}]) : {})",
             "assign": "studio.previewExternalContext",
             "dependencies": [
-              "sources.fetch-blueprint"
+              "fetched_sources.fetch-blueprint"
             ]
           },
           {
             "id": "selected-blueprint-draft-initial-context",
-            "expression": "($spec := sources.`fetch-blueprint`.draft.artifact.payload.contextFormSpec; $spec ? $merge([$merge($keys($spec.fields.properties).($name := $; $field := $lookup($spec.fields.properties, $name); $exists($field.default) ? {$name:$field.default} : {})), $spec.initialValue ? $spec.initialValue : {}]) : {})",
+            "expression": "($spec := fetched_sources.`fetch-blueprint`.draft.artifact.payload.contextFormSpec; $spec ? $merge([$merge($keys($spec.fields.properties).($name := $; $field := $lookup($spec.fields.properties, $name); $exists($field.default) ? {$name:$field.default} : {})), $spec.initialValue ? $spec.initialValue : {}]) : {})",
             "assign": "studio.draftPreviewExternalContext",
             "dependencies": [
-              "sources.fetch-blueprint"
+              "fetched_sources.fetch-blueprint"
             ]
           },
           {
             "id": "selected-blueprint-draft-id",
-            "expression": "sources.`fetch-blueprint`.draft != null ? sources.`fetch-blueprint`.draft.id : ''",
+            "expression": "fetched_sources.`fetch-blueprint`.draft != null ? fetched_sources.`fetch-blueprint`.draft.id : ''",
             "assign": "studio.selectedBlueprintDraftId",
             "dependencies": [
-              "sources.fetch-blueprint"
+              "fetched_sources.fetch-blueprint"
             ]
           }
         ],

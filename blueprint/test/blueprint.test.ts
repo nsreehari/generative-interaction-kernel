@@ -149,7 +149,7 @@ describe("gik-blueprint", () => {
       }],
       compute: [
         { id: "symbol", expression: "inputs.position.symbol", assign: "symbol" },
-        { id: "total", expression: "sources.`market.quote` * inputs.position.quantity", assign: "total" },
+        { id: "total", expression: "fetched_sources.`market.quote` * inputs.position.quantity", assign: "total" },
       ],
       outputs: [{ token: "result", from: "computed.total" }],
     };
@@ -232,13 +232,13 @@ describe("gik-blueprint", () => {
             id: "market.quote",
             service: "market",
             operation: "quote",
-            when: "$not($exists(sources.`market.quote`))",
+            when: "$not($exists(fetched_sources.`market.quote`))",
             input: { kind: "jsonata", expr: "{'symbol': inputs.position.symbol}" },
             output: { kind: "jsonata", expr: "response.meta.price" },
           }],
           compute: [
             { id: "symbol", expression: "inputs.position.symbol", assign: "symbol" },
-            { id: "price", expression: "sources.`market.quote`", assign: "price" },
+            { id: "price", expression: "fetched_sources.`market.quote`", assign: "price" },
           ],
           outputs: [
             { token: "selected-symbol", from: "computed.symbol" },
@@ -1663,7 +1663,7 @@ describe("gik-blueprint", () => {
         outputs: [
           { token: "outFromComputed", from: "computed.myComputed" },
           { token: "outFromInputs", from: "inputs.myInput" },
-          { token: "outFromSources", from: "sources.s1.someField" },
+          { token: "outFromSources", from: "fetched_sources.s1.someField" },
           { token: "outFromSystemInputs", from: "systemInputs.numSourcesRunning" },
           { token: "outFromComputeAssign", from: "myComputed" },
           { token: "outFromBareState", from: "some.bare.state.path" },

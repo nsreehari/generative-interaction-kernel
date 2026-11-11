@@ -1146,7 +1146,10 @@ export class Kernel {
       return result.ops ?? [];
     }
     const sourceValue = effect.control.sourceOutputTransform
-      ? await this.expr.eval(effect.control.sourceOutputTransform.expr, { response: result.sourceOutput })
+      ? await this.expr.eval(effect.control.sourceOutputTransform.expr, {
+          ...structuredClone(effect.control.sourceInputs ?? {}),
+          response: structuredClone(result.sourceOutput),
+        })
       : structuredClone(result.sourceOutput);
     const snapshot = this.store.snapshot();
     const runState = snapshot.blueprintRunState;

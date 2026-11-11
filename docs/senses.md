@@ -181,3 +181,11 @@ policies using their own schedule formats without changing the Cell mechanism.
 Agent providers follow the same model. Their findings, questions, and
 contributions arrive as Signals; outbound assignments remain ordinary effects.
 Closing an observation binding need not terminate the independent agent.
+
+## DPP context observations
+
+Purpose-bearing Cells may declare ordinary Senses under `dpp.context.senses`.
+They use the same service contracts, event mappings, authorization, generation
+tracking, and withdrawal behavior as Cell-level Senses. Their IDs share the
+Cell-wide ID space with every ordinary/context source and Sense. See
+[Purpose-bearing Cells](./dpp.md) for context dataflow and source-result access.

@@ -33,6 +33,36 @@ export type EvaluatorCellSource = ServiceUse & {
   acceptanceCriteria?: readonly GuardrailRule[];
 };
 
+export interface DppManifest extends Record<string, Json> {
+  "manifest-version": string;
+  participant: { "stable-id": string; "human-readable-name": string };
+  "durable-charter": Record<string, Json>;
+  "evolving-working-model": Record<string, Json>;
+  "context-store": { query: string; ingest: string };
+}
+
+export interface CellDpp<TSource = EvaluatorCellSource> {
+  manifest: DppManifest;
+  context: {
+    sources: readonly TSource[];
+    senses?: readonly CellSense[];
+  };
+}
+
+export function cellSources<T>(cell: {
+  sources?: readonly T[];
+  dpp?: { context: { sources?: readonly T[] } };
+}): readonly T[] {
+  return [...(cell.sources ?? []), ...(cell.dpp?.context.sources ?? [])];
+}
+
+export function cellSenses<T>(cell: {
+  senses?: readonly T[];
+  dpp?: { context: { senses?: readonly T[] } };
+}): readonly T[] {
+  return [...(cell.senses ?? []), ...(cell.dpp?.context.senses ?? [])];
+}
+
 export interface EvaluatorCellComputation {
   id: string;
   expression: string;
@@ -70,6 +100,7 @@ export interface EvaluatorCellDefinition {
   systemInputs?: readonly SystemInputToken[];
   sources?: readonly EvaluatorCellSource[];
   senses?: readonly CellSense[];
+  dpp?: CellDpp;
   events?: Readonly<Record<string, unknown>>;
   compute?: readonly EvaluatorCellComputation[];
   outputs?: readonly EvaluatorCellOutput[];
@@ -116,7 +147,8 @@ function expressionPaths(expression: string): string[][] {
   const paths: string[][] = [];
   const evaluatorNamespaces = new Set([
     "inputs",
-    "sources",
+    "fetched_sources",
+    "dpp",
     "systemInputs",
     "computed",
     "blueprintRunState",
@@ -200,6 +232,17 @@ export function validateCell(value: unknown): CellValidationResult {
   if (typeof cell.id !== "string" || cell.id.length === 0) {
     errors.push({ code: "invalid-cell-id", detail: "Blueprint Cell requires a non-empty id", node: "id" });
   }
+  if (cell.dpp !== undefined) {
+    const dpp = cell.dpp;
+    if (!dpp || typeof dpp !== "object" || !dpp.manifest || typeof dpp.manifest !== "object"
+      || !dpp.context || !Array.isArray(dpp.context.sources) || dpp.context.sources.length < 2) {
+      return {
+        ok: false,
+        errors: [...errors, { code: "invalid-dpp", detail: "DPP requires a full manifest and context sources for query and ingest", node: "dpp" }],
+        warnings: [],
+      };
+    }
+  }
 
   const declaredSystemInputs = new Set<string>();
   for (const token of cell.systemInputs ?? []) {
@@ -215,7 +258,7 @@ export function validateCell(value: unknown): CellValidationResult {
   const computeAssignments: string[] = [];
   for (const computation of cell.compute ?? []) {
     const node = `compute.${computation.id}`;
-    const allowedRoots = new Set(["inputs", "sources", "systemInputs", "computed"]);
+    const allowedRoots = new Set(["inputs", "fetched_sources", "systemInputs", "computed", ...(cell.dpp ? ["dpp"] : [])]);
     for (const detail of validateCellExpression(computation.expression, "full", declaredSystemInputs, allowedRoots)) {
       errors.push({ code: "invalid-compute-expression", detail, node });
     }
@@ -225,9 +268,18 @@ export function validateCell(value: unknown): CellValidationResult {
     computeAssignments.push(computation.assign);
   }
 
-  for (const source of cell.sources ?? []) {
+  const usageIds = new Set<string>();
+  for (const usage of [...cellSources(cell), ...cellSenses(cell)]) {
+    if (usageIds.has(usage.id)) errors.push({
+      code: "duplicate-service-use",
+      detail: `Source and Sense ids must be unique within a Cell: '${usage.id}'`,
+      node: usage.id,
+    });
+    usageIds.add(usage.id);
+  }
+  for (const source of cellSources(cell)) {
     if (source.when) {
-      const allowedRoots = new Set(["inputs", "sources", "systemInputs", "computed"]);
+      const allowedRoots = new Set(["inputs", "fetched_sources", "systemInputs", "computed", ...(cell.dpp ? ["dpp"] : [])]);
       for (const detail of validateCellExpression(source.when, "safe", declaredSystemInputs, allowedRoots)) {
         errors.push({
           code: "invalid-source-expression",
@@ -249,13 +301,13 @@ export function validateCell(value: unknown): CellValidationResult {
   }
 
   const senseIds = new Set<string>();
-  for (const sense of cell.senses ?? []) {
+  for (const sense of cellSenses(cell)) {
     const node = `senses.${sense.id}`;
     if (senseIds.has(sense.id)) errors.push({ code: "duplicate-sense", detail: `Sense '${sense.id}' is duplicated`, node });
     senseIds.add(sense.id);
     for (const [name, expression] of [["when", sense.when], ["input", sense.input?.expr]] as const) {
       if (!expression) continue;
-      for (const detail of validateCellExpression(expression, "safe", declaredSystemInputs, new Set(["inputs", "sources", "systemInputs", "computed"]))) {
+      for (const detail of validateCellExpression(expression, "safe", declaredSystemInputs, new Set(["inputs", "fetched_sources", "systemInputs", "computed", ...(cell.dpp ? ["dpp"] : [])]))) {
         errors.push({ code: "invalid-sense-expression", detail, node: `${node}.${name}` });
       }
     }
@@ -295,7 +347,7 @@ export function validateCell(value: unknown): CellValidationResult {
 
   for (const output of cell.outputs ?? []) {
     if (output.when) {
-      const allowedRoots = new Set(["inputs", "sources", "systemInputs", "computed"]);
+      const allowedRoots = new Set(["inputs", "fetched_sources", "systemInputs", "computed", ...(cell.dpp ? ["dpp"] : [])]);
       for (const detail of validateCellExpression(output.when, "safe", declaredSystemInputs, allowedRoots)) {
         errors.push({
           code: "invalid-output-expression",
@@ -305,7 +357,7 @@ export function validateCell(value: unknown): CellValidationResult {
       }
     }
     if (output.from === undefined) continue;
-    const hasRuntimeOutputOwner = cell.blueprint || cell.behavior || (cell.potentialViews && Object.keys(cell.potentialViews).length > 0) || (cell.sources?.length ?? 0) > 0 || (cell.senses?.length ?? 0) > 0;
+    const hasRuntimeOutputOwner = cell.blueprint || cell.behavior || (cell.potentialViews && Object.keys(cell.potentialViews).length > 0) || cellSources(cell).length > 0 || cellSenses(cell).length > 0;
     const hasInputOwner = (cell.inputs ?? []).some((input) => {
       const path = `inputs.${input.as ?? input.token}`;
       return output.from === path || output.from.startsWith(`${path}.`);
@@ -333,7 +385,10 @@ export function evaluateCell(input: EvaluateCellInput): EvaluateCellResult {
 
   const sourceContext = {
     inputs: structuredClone(input.inputs),
-    sources: structuredClone(input.settledSources),
+    fetched_sources: structuredClone(input.settledSources),
+    ...(input.materializedProgramCell.dpp
+      ? { dpp: { manifest: structuredClone(input.materializedProgramCell.dpp.manifest) } }
+      : {}),
     systemInputs: resolveSystemInputs(
       input.materializedProgramCell.systemInputs ?? [],
       input.systemContext,
@@ -355,7 +410,7 @@ export function evaluateCell(input: EvaluateCellInput): EvaluateCellResult {
     operations.push(operation);
   }
 
-  const effects = (input.materializedProgramCell.sources ?? [])
+  const effects = cellSources(input.materializedProgramCell)
     .filter((source) => !source.when || evalSyncJsonata(source.when, computeContext) === true)
     .map((source): CellSourceEffect => ({
       kind: "source",
@@ -369,7 +424,7 @@ export function evaluateCell(input: EvaluateCellInput): EvaluateCellResult {
     if (output.when && evalSyncJsonata(output.when, computeContext) !== true) continue;
     outputs[output.token] = getPath(computeContext, output.from);
   }
-  const senseBindings = input.materializedProgramCell.senses?.filter((sense) =>
+  const senseBindings = cellSenses(input.materializedProgramCell).filter((sense) =>
     !sense.when || evalSyncJsonata(sense.when, computeContext) === true,
   ).map((sense) => ({
     sense: structuredClone(sense),

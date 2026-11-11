@@ -83,6 +83,17 @@ export function applyBlueprintPatch(
         break;
       case "removeCell":
         if (next.payload.cells) delete next.payload.cells[operation.cellId];
+        for (const recipe of next.payload.serviceRecipes) {
+          for (const program of recipe.implementationPrograms) {
+            if (program.cells) delete program.cells[operation.cellId];
+          }
+        }
+        for (const recipe of next.payload.projectionRecipes) {
+          for (const representation of recipe.representations) {
+            if (representation.views) delete representation.views[operation.cellId];
+            if (representation.removeViews) delete representation.removeViews[operation.cellId];
+          }
+        }
         break;
       case "setPresentation":
         next.payload.presentation = structuredClone(operation.presentation);
