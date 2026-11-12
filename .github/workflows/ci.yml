@@ -7,10 +7,12 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Metadata events wait for useful in-flight validation, then reuse it.
+  cancel-in-progress: ${{ github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled", "edited"]'), github.event.action) }}
 
 jobs:
   validate:
@@ -45,10 +47,14 @@ jobs:
         run: git diff --check "$BASE...$HEAD"
 
       - name: Setup Node.js
+        id: node
         uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: npm
+
+      - name: Use pinned npm
+        run: npm install --global npm@11.6.2
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -70,13 +76,45 @@ jobs:
             }
           '
 
+      - name: Restore identical successful validation
+        id: validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run ci:validation -- restore ${{ steps.changes.outputs.full == 'true' && 'full' || 'release' }}
+
+      - name: Restore build cache
+        if: steps.validation.outputs.reused != 'true'
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.node-version }}-npm11.6.2-${{ hashFiles('package-lock.json', 'turbo.json') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.node-version }}-npm11.6.2-${{ hashFiles('package-lock.json', 'turbo.json') }}-
+
       - name: Build workspace packages
+        if: steps.validation.outputs.reused != 'true'
+        env:
+          GIK_BUILD_TOOLCHAIN: ${{ steps.node.outputs.node-version }}-npm11.6.2
         run: npm run build:public-packages
 
       - name: Validate release and workflow policy
-        if: steps.changes.outputs.full != 'true'
+        if: steps.changes.outputs.full != 'true' && steps.validation.outputs.reused != 'true'
         run: npm run test:release
 
       - name: Validate
-        if: steps.changes.outputs.full == 'true'
+        if: steps.changes.outputs.full == 'true' && steps.validation.outputs.reused != 'true'
         run: npm test
+
+      - name: Record validated inputs and build outputs
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: npm run ci:validation -- write ${{ steps.changes.outputs.full == 'true' && 'full' || 'release' }}
+
+      - name: Upload reusable validation
+        uses: actions/upload-artifact@v4
+        with:
+          name: gik-validation
+          path: .artifacts/validation
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7

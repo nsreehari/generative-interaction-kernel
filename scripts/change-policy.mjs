@@ -22,7 +22,7 @@ export function lightweightPath(path) {
   return /^(docs\/|\.github\/|scripts\/test\/)/.test(path)
     || /^\.changeset\/[^/]+\.md$/.test(path)
     || /^\.changeset\/implementation-release\.json$/.test(path)
-    || /^scripts\/(change-policy|prepare-implementation-release|write-implementation-release|create-merged-release|version-output-policy|validate-npm-release|validate-release-channel|verify-package-artifacts|verify-published-packages|inspect-npm-packages|sync-workspace-dependencies)\.mjs$/.test(path)
+    || /^scripts\/(change-policy|prepare-implementation-release|write-implementation-release|create-merged-release|version-output-policy|validate-npm-release|validate-release-channel|verify-package-artifacts|verify-published-packages|inspect-npm-packages|sync-workspace-dependencies|workflow-validation|release-artifacts|announce-release)\.mjs$/.test(path)
     || /(^|\/)(AGENTS\.md|README\.md|CHANGELOG\.md)$/.test(path)
     || /^[^/]+\.md$/.test(path);
 }
