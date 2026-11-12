@@ -2,12 +2,13 @@
 // This is the RenderAdapter's vocabulary side: which component draws each capability.
 
 import type { ComponentType, ReactNode } from "react";
-import type { CapabilityDescriptor, Json, ProjectionViewImport, ResolvedNode } from "gik-kernel";
+import type { CapabilityDescriptor, ProjectionViewImport, ResolvedNode } from "gik-kernel";
+import type { PresentationHostSnapshot } from "./presentation-host";
 
 export interface ProjectionViewProps {
   node: ResolvedNode;
   /** Rendering-host-local state, separate from Blueprint state and immutable execution context. */
-  hostState?: Readonly<Record<string, Json>>;
+  hostState?: PresentationHostSnapshot;
   /** Emit an event through this node's explicit host binding or existing controller route. */
   emit: (name: string, payload?: Record<string, unknown>, actorId?: string) => void | Promise<unknown>;
   children: ReactNode;

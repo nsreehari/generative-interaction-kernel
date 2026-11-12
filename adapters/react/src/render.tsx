@@ -2,7 +2,7 @@
 // Honors `visible` (invisible nodes render nothing) and `fallback` (kernel-unknown
 // capability, or a capability with no registered component, uses the fallback view).
 
-import { createElement, type ReactNode } from "react";
+import { createElement, useEffect, type ReactNode } from "react";
 import type { ResolvedNode } from "gik-kernel";
 import type { ComponentRegistry } from "./registry";
 import { usePresentationHost } from "./presentation-host";
@@ -32,10 +32,11 @@ function RenderedNode({ node, registry, emit }: {
   const View = registry.getStructural?.(node.capability)
     ?? (node.fallback ? undefined : registry.get(node.capability))
     ?? registry.fallback;
+  useEffect(() => () => { host?.release(node.id); }, [host, node.id, node.capability, View]);
 
   const children = node.children.map((child) => renderNode(child, registry, emit));
   const boundEmit = (name: string, payload?: Record<string, unknown>, actorId?: string) =>
-    host ? host.emit(emit, node.id, name, payload, actorId) : emit(node.id, name, payload, actorId);
+    host ? host.emit(emit, node, name, payload, actorId) : emit(node.id, name, payload, actorId);
 
   return createElement(View, {
     key: node.id,

@@ -4,8 +4,10 @@ import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, test, vi } from "vitest";
 import { createBlueprint, materializeBlueprint, runMaterializedTransition } from "gik-blueprint";
 import { createMemoryStorage } from "gik-durable-runtime/storage/memory";
-import type { Json } from "gik-kernel";
-import { PresentationHost, PresentationHostProvider } from "../src/presentation-host";
+import type { Json, ResolvedNode } from "gik-kernel";
+import {
+  definePresentationEffect, PresentationHost, PresentationHostProvider, type PresentationEffectContext,
+} from "../src/presentation-host";
 import { BlueprintController } from "../src/blueprint-controller";
 import { BlueprintHost, BlueprintProvider } from "../src/primitives/blueprint-host";
 import {
@@ -14,32 +16,37 @@ import {
 } from "../src/primitives/durable-blueprint-host";
 import { BlueprintRegion } from "../src/primitives/blueprint-regions";
 import { bundleFromJson } from "../src/primitives/bundle";
-import type { EmitFn } from "../src/render";
-import type { ProjectionView, ProviderResolver } from "../src/registry";
-import { GenUIRoot } from "../src/useGenUI";
+import { renderNode, type EmitFn } from "../src/render";
+import { createRegistry, type ProjectionView } from "../src/registry";
 
-const Dialog: ProjectionView = ({ node, emit, children, hostState }) => {
-  const [localOpen, setLocalOpen] = React.useState(false);
-  const controlled = typeof node.props.open === "boolean";
-  const open = controlled ? node.props.open : localOpen;
+const Report: ProjectionView = ({ node, emit, children, hostState }) => {
+  const [expanded, setExpanded] = React.useState(false);
   return (
-    <section data-dialog={node.id} data-open={open} data-host-state={JSON.stringify(hostState)}>
-      <button data-trigger={node.id} onClick={() => controlled ? emit("openChange", { open: !open }) : setLocalOpen(!open)}>
-        Toggle
-      </button>
+    <article data-report={node.id} data-host-state={hostState}>
+      <button data-expand={node.id} onClick={() => setExpanded(!expanded)}>{expanded ? "Collapse" : "Expand"}</button>
+      {["ledger", "receipts"].map((fileId) => (
+        <span key={fileId} data-finding={`${node.id}:${fileId}`}
+          onMouseEnter={() => emit("previewRequested", { fileId })}
+          onMouseLeave={() => emit("previewEnded", { fileId })}>
+          Finding for {fileId}
+        </span>
+      ))}
       {children}
-    </section>
+    </article>
   );
 };
-const Form: ProjectionView = ({ node, emit, hostState }) => (
-  <button data-form={node.id} data-host-state={JSON.stringify(hostState)} onClick={() => emit("approve", { approved: true })}>
-    {String(node.props.approved)}
-  </button>
+const FileList: ProjectionView = ({ node, emit, hostState }) => (
+  <ul data-files={node.id} data-host-state={hostState}>
+    {["ledger", "receipts"].map((fileId) => (
+      <li key={fileId} data-file={`${node.id}:${fileId}`} data-highlighted={node.props.highlightedFileId === fileId}>
+        <button onClick={() => emit("selectFile", { fileId })}>{fileId}</button>
+      </li>
+    ))}
+  </ul>
 );
-const resolveProvider: ProviderResolver = (from) => from === "test" ? { dialog: Dialog, form: Form } : undefined;
-const primary = "action--primary--in-first";
-const wrapper = `${primary}--wrap-0`;
-const secondWrapper = "action--primary--in-second--wrap-0";
+const native = { projectionViews: { report: Report, files: FileList } };
+const reportId = "report--primary--in-report";
+const filesId = "files--primary--in-files";
 const mounted: TestRenderer.ReactTestRenderer[] = [];
 
 afterEach(async () => {
@@ -53,17 +60,15 @@ async function mount(element: React.ReactElement): Promise<TestRenderer.ReactTes
   return renderer;
 }
 
-async function waitForDialog(renderer: TestRenderer.ReactTestRenderer): Promise<void> {
+async function waitForReport(renderer: TestRenderer.ReactTestRenderer, count = 1): Promise<void> {
   await vi.waitFor(async () => {
-    await act(async () => {
-      assert.equal(renderer.root.findAllByProps({ "data-dialog": wrapper }).length, 1);
-    });
+    await act(async () => { assert.equal(renderer.root.findAllByProps({ "data-report": reportId }).length, count); });
   });
 }
 
 function artifact() {
   return createBlueprint({
-    id: "presentation-events",
+    id: "presentation-coordination",
     kind: "runtime-blueprint",
     version: "1",
     serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
@@ -71,158 +76,52 @@ function artifact() {
     projectionTiers: [{ id: "runtime", kind: "runtime-program", capabilities: [] }],
     projectionRecipes: [],
     runtime: {
-      externals: { projectionViews: { ui: { from: "test", use: ["dialog", "form"] } } },
-      state: { semantic: { open: false, approved: false } },
+      externals: { projectionViews: { ui: { from: "self", use: ["report", "files"] } } },
+      state: { semantic: { selectedFileId: null, previewed: false } },
     },
     cells: {
-      action: {
-        id: "action",
+      report: {
+        id: "report",
+        potentialViews: { primary: { capability: "ui:report", region: ["report", "report-copy"] } },
+        events: { previewRequested: { payloadSchema: { type: "object" } } },
+        behavior: { on: { previewRequested: [{ do: "assign", target: "semantic.previewed", args: { value: true } }] } },
+      },
+      files: {
+        id: "files",
         events: {
-          openChange: { payloadSchema: { type: "object", required: ["open"], properties: { open: { type: "boolean" } } } },
-          approve: { payloadSchema: { type: "object", required: ["approved"], properties: { approved: { type: "boolean" } } } },
+          selectFile: {
+            payloadSchema: { type: "object", required: ["fileId"], properties: { fileId: { type: "string" } } },
+          },
         },
         behavior: { on: {
-          openChange: [{ do: "assign", target: "semantic.open", args: { from: "$event.open" } }],
-          approve: [{ do: "assign", target: "semantic.approved", args: { from: "$event.approved" } }],
+          selectFile: [{ do: "assign", target: "semantic.selectedFileId", args: { from: "$event.fileId" } }],
         } },
         potentialViews: { primary: {
-          capability: "ui:form",
-          bindings: { approved: { from: "semantic.approved" } },
-          region: ["first", "second"],
-          wrap: [{ capability: "ui:dialog" }, { capability: "ui:dialog" }],
+          capability: "ui:files", region: "files", bindings: { selectedFileId: { from: "semantic.selectedFileId" } },
         } },
       },
     },
     presentation: {
-      slots: ["first", { id: "second", region: "first" }],
-      root: "first",
-      allowedCapabilities: ["ui:form", "ui:dialog"],
-      exportedRegions: [{ name: "primary", slot: "first", required: true }],
+      slots: ["workspace", ...["report", "report-copy", "files"].map((id) => ({ id, region: "workspace" }))],
+      root: "workspace",
+      allowedCapabilities: ["ui:report", "ui:files"],
+      exportedRegions: [{ name: "primary", slot: "workspace", required: true }],
     },
   });
 }
 
 function host() {
-  const presentation = new PresentationHost({
-    state: { dialog: { open: false } },
+  return new PresentationHost({
+    attention: ["related-file"],
     bindings: {
-      [wrapper]: { props: { open: { from: "dialog.open" } }, on: { openChange: { effect: "dialog:set-open" } } },
-      [`${primary}--wrap-1`]: { props: { open: { from: "dialog.open" } }, on: { openChange: { effect: "dialog:set-open" } } },
-      [secondWrapper]: { props: { open: { from: "dialog.open" } }, on: { openChange: { effect: "dialog:set-open" } } },
-    },
-  });
-  presentation.registerEffects({
-    "dialog:set-open": ({ payload, set }) => {
-      if (typeof payload?.open !== "boolean") throw new Error("Expected boolean open");
-      set("dialog.open", payload.open);
-    },
-  });
-  return presentation;
-}
-
-test("nested wrapper effects update shared host-local presentation without dispatching to the Cell", async () => {
-  const source = new BlueprintController(artifact());
-  const emit = vi.spyOn(source, "emit");
-  const presentation = host();
-  const renderer = await mount(
-    <PresentationHostProvider host={presentation}>
-      <GenUIRoot source={source} registry={{
-        get: (name) => name === "ui:dialog" ? Dialog : Form,
-        fallback: Form,
-        getStructural: (name) => name === "gik:presentation-fragment" ? ({ children }) => <>{children}</> : undefined,
-      }} />
-    </PresentationHostProvider>,
-  );
-  await waitForDialog(renderer);
-  const before = source.getState();
-  await act(async () => { await renderer.root.findByProps({ "data-trigger": wrapper }).props.onClick(); });
-  assert.equal(emit.mock.calls.length, 0);
-  assert.deepEqual(source.getState(), before);
-  for (const id of [wrapper, `${primary}--wrap-1`, secondWrapper]) {
-    assert.equal(renderer.root.findByProps({ "data-dialog": id }).props["data-open"], true);
-  }
-  assert.deepEqual(JSON.parse(renderer.root.findByProps({ "data-form": primary }).props["data-host-state"]), {
-    dialog: { open: true },
-  });
-  assert.equal(source.getTree()?.children[1]?.props.open, undefined);
-});
-
-test("explicit semantic bindings retain event/payload validation and headless behavior", async () => {
-  const blueprint = artifact();
-  const materialized = materializeBlueprint({ blueprint });
-  const presentation = new PresentationHost({
-    bindings: {
-      [wrapper]: { on: {
-        confirm: { event: { node: primary, name: "approve" } },
-        unknown: { event: { node: primary, name: "notDeclared" } },
+      "ui:report": { on: {
+        previewRequested: { attention: { channel: "related-file", set: { from: "fileId" } } },
+        previewEnded: { attention: { channel: "related-file", clear: true } },
       } },
+      "ui:files": { props: { highlightedFileId: { attention: "related-file" } } },
     },
   });
-  let payload: Record<string, Json> = { approved: true };
-  let resultState: Record<string, Json> | undefined;
-  const dispatch = vi.fn<EmitFn>(async (node, name, received, actorId) => {
-    assert.deepEqual(received, payload);
-    assert.equal(actorId, "actor");
-    const result = await runMaterializedTransition({
-      materializedBlueprint: materialized,
-      state: materialized.payload.initialState,
-      events: [{ node, name, payload, actorId }],
-    });
-    resultState = result.state;
-    return result;
-  });
-  await presentation.emit(dispatch, wrapper, "confirm", payload, "actor");
-  assert.deepEqual(dispatch.mock.calls[0], [primary, "approve", payload, "actor"]);
-  assert.deepEqual(resultState?.semantic, { open: false, approved: true });
-  payload = { approved: "invalid" };
-  await assert.rejects(presentation.emit(dispatch, wrapper, "confirm", payload, "actor"), /Invalid payload/);
-  await assert.rejects(presentation.emit(dispatch, wrapper, "unknown", payload, "actor"), /undeclared event/);
-
-  const { presentation: _presentation, ...headless } = blueprint.payload;
-  const { potentialViews: _views, ...headlessCell } = headless.cells!.action;
-  const headlessMaterialized = materializeBlueprint({
-    blueprint: createBlueprint({ ...headless, cells: { action: headlessCell } }),
-  });
-  const result = await runMaterializedTransition({
-    materializedBlueprint: headlessMaterialized,
-    state: headlessMaterialized.payload.initialState,
-    events: [{ node: "action", name: "approve", payload: { approved: true } }],
-  });
-  assert.deepEqual(result.state.semantic, { open: false, approved: true });
-  assert.equal(materialized.payload.eventNodeOwners[wrapper], undefined);
-});
-
-test("registered host effects fail explicitly and do not fall through to semantic dispatch", async () => {
-  const presentation = new PresentationHost({
-    bindings: { [wrapper]: { on: { openChange: { effect: "dialog:open" } } } },
-  });
-  const dispatch = vi.fn<EmitFn>();
-  await assert.rejects(presentation.emit(dispatch, wrapper, "openChange"), /not registered/);
-  assert.equal(dispatch.mock.calls.length, 0);
-  const unregister = presentation.registerEffects({ "dialog:open": () => { throw new Error("Dialog unavailable"); } });
-  assert.throws(() => presentation.registerEffects({ "dialog:open": () => {} }), /already registered/);
-  await assert.rejects(presentation.emit(dispatch, wrapper, "openChange"), /Dialog unavailable/);
-  unregister();
-  const handle = vi.fn();
-  presentation.registerEffects({ "dialog:open": handle });
-  unregister();
-  await presentation.emit(dispatch, wrapper, "openChange");
-  assert.equal(handle.mock.calls.length, 1);
-  assert.throws(() => presentation.registerEffects({ unnamed: () => {} }), /namespaced/);
-});
-
-test("component-internal interactions require no named effect and unbound semantic events retain their route", async () => {
-  const presentation = new PresentationHost();
-  const dispatch = vi.fn<EmitFn>();
-  await presentation.emit(dispatch, primary, "approve", { approved: true }, "actor");
-  assert.deepEqual(dispatch.mock.calls, [[primary, "approve", { approved: true }, "actor"]]);
-
-  const renderer = await mount(<BlueprintHost blueprint={artifact()} resolveLeavesProvider={resolveProvider} presentationHost={presentation} />);
-  await waitForDialog(renderer);
-  await act(async () => { await renderer.root.findByProps({ "data-trigger": wrapper }).props.onClick(); });
-  assert.equal(renderer.root.findByProps({ "data-dialog": wrapper }).props["data-open"], true);
-  assert.deepEqual(presentation.getState(), {});
-});
+}
 
 function runtime() {
   const ref = `b64:${Buffer.from(JSON.stringify({ kind: "memory", value: crypto.randomUUID() })).toString("base64url")}`;
@@ -233,161 +132,263 @@ function runtime() {
   };
 }
 
-test("hovering a report finding highlights only its corresponding file in another component without a Blueprint transition", async () => {
-  const Report: ProjectionView = ({ emit }) => (
-    <article>
-      {["ledger", "receipts"].map((fileId) => (
-        <span key={fileId} data-finding={fileId}
-          onMouseEnter={() => emit("fileHover", { fileId })}
-          onMouseLeave={() => emit("fileLeave")}>
-          Finding for {fileId}
-        </span>
-      ))}
-    </article>
-  );
-  const FileList: ProjectionView = ({ node }) => (
-    <ul>
-      {["ledger", "receipts"].map((fileId) => (
-        <li key={fileId} data-file={fileId} data-highlighted={node.props.highlightedFileId === fileId}>
-          {fileId}
-        </li>
-      ))}
-    </ul>
-  );
-  const blueprint = createBlueprint({
-    ...artifact().payload,
-    cells: {
-      report: { id: "report", potentialViews: { primary: { capability: "ui:report", region: "report" } } },
-      files: { id: "files", potentialViews: { primary: { capability: "ui:files", region: "files" } } },
-    },
-    runtime: {
-      externals: { projectionViews: { ui: { from: "self", use: ["report", "files"] } } },
-      state: { application: { selectedFileId: null } },
-    },
-    presentation: {
-      slots: ["workspace", { id: "report", region: "workspace" }, { id: "files", region: "workspace" }],
-      root: "workspace",
-      allowedCapabilities: ["ui:report", "ui:files"],
-    },
-  });
-  const presentation = new PresentationHost({
-    state: { reportLinks: { highlightedFileId: null } },
-    bindings: {
-      "report--primary--in-report": { on: {
-        fileHover: { effect: "report:highlight-file" },
-        fileLeave: { effect: "report:clear-highlight" },
-      } },
-      "files--primary--in-files": { props: { highlightedFileId: { from: "reportLinks.highlightedFileId" } } },
-    },
-  });
-  presentation.registerEffects({
-    "report:highlight-file": ({ payload, set }) => {
-      if (typeof payload?.fileId !== "string") throw new Error("Expected fileId");
-      set("reportLinks.highlightedFileId", payload.fileId);
-    },
-    "report:clear-highlight": ({ set }) => set("reportLinks.highlightedFileId", null),
-  });
-  const remoteRuntime = runtime();
-  const provider = remoteRuntime.providers.memory;
-  const append = vi.spyOn(provider, "appendJournal");
-  const renderer = await mount(
-    <DurableBlueprintHost blueprint={blueprint} runtime={remoteRuntime} presentationHost={presentation}
-      native={{ projectionViews: { report: Report, files: FileList } }} />,
-  );
-  await vi.waitFor(async () => {
-    await act(async () => { assert.equal(renderer.root.findAllByProps({ "data-file": "ledger" }).length, 1); });
-  });
-  const snapshotRequest = { ...remoteRuntime.refs, runtimeId: remoteRuntime.runtimeId };
-  const before = await provider.readSnapshot(snapshotRequest);
-  const entries = append.mock.calls.length;
-  const highlightedFiles = () => renderer.root.findAll((instance) => instance.props["data-highlighted"] === true)
-    .map((instance) => instance.props["data-file"]);
-  assert.deepEqual(highlightedFiles(), []);
-  for (const fileId of ["ledger", "receipts"]) {
-    await act(async () => { await renderer.root.findByProps({ "data-finding": fileId }).props.onMouseEnter(); });
-    assert.deepEqual(highlightedFiles(), [fileId]);
-    await act(async () => { await renderer.root.findByProps({ "data-finding": fileId }).props.onMouseLeave(); });
-    assert.deepEqual(highlightedFiles(), []);
-  }
-  assert.equal(append.mock.calls.length, entries);
-  assert.deepEqual(await provider.readSnapshot(snapshotRequest), before);
-  assert.equal(await provider.leaseQueueItem?.({ effectsQueueRef: remoteRuntime.refs.effectsQueueRef }), null);
-});
+function node(capability = "ui:report", id = reportId): ResolvedNode {
+  return { id, capability, props: {}, children: [], fallback: false, visible: true };
+}
 
-test.each(["memory", "remote"] as const)("%s BlueprintHost handles presentation effects without worker execution", async (placement) => {
+test.each(["memory", "remote"] as const)("%s report hover coordinates a different file component without semantic execution", async (placement) => {
   const presentation = host();
-  const onTransition = vi.fn();
   const remoteRuntime = runtime();
   const provider = remoteRuntime.providers.memory;
   const append = vi.spyOn(provider, "appendJournal");
-  const element = placement === "memory"
-    ? <BlueprintHost blueprint={artifact()} resolveLeavesProvider={resolveProvider} presentationHost={presentation} onTransition={onTransition} />
-    : <DurableBlueprintHost blueprint={artifact()} runtime={remoteRuntime} resolveLeavesProvider={resolveProvider} presentationHost={presentation} onTransition={onTransition} />;
-  const renderer = await mount(element);
-  await waitForDialog(renderer);
+  const onTransition = vi.fn();
+  const renderer = await mount(placement === "memory"
+    ? <BlueprintHost blueprint={artifact()} native={native} presentationHost={presentation} onTransition={onTransition} />
+    : <DurableBlueprintHost blueprint={artifact()} native={native} runtime={remoteRuntime} presentationHost={presentation} />);
+  await waitForReport(renderer);
+  const request = { ...remoteRuntime.refs, runtimeId: remoteRuntime.runtimeId };
+  const before = placement === "remote" ? await provider.readSnapshot(request) : undefined;
+  const entries = append.mock.calls.length;
   const transitions = onTransition.mock.calls.length;
-  const journalEntries = append.mock.calls.length;
-  const snapshotRequest = { ...remoteRuntime.refs, runtimeId: remoteRuntime.runtimeId };
-  const snapshot = placement === "remote" ? await provider.readSnapshot(snapshotRequest) : undefined;
-  await act(async () => { await renderer.root.findByProps({ "data-trigger": wrapper }).props.onClick(); });
-  assert.equal(renderer.root.findByProps({ "data-dialog": wrapper }).props["data-open"], true);
+  const highlighted = () => renderer.root.findAll((instance) => instance.props["data-highlighted"] === true)
+    .map((instance) => instance.props["data-file"]);
+  for (const fileId of ["ledger", "receipts"]) {
+    await act(async () => { await renderer.root.findByProps({ "data-finding": `${reportId}:${fileId}` }).props.onMouseEnter(); });
+    assert.deepEqual(highlighted(), [`${filesId}:${fileId}`]);
+    await act(async () => { await renderer.root.findByProps({ "data-finding": `${reportId}:${fileId}` }).props.onMouseLeave(); });
+    assert.deepEqual(highlighted(), []);
+  }
+  await act(async () => {
+    presentation.setAttention("related-file", "host-owner", "ledger");
+  });
+  assert.deepEqual(highlighted(), [`${filesId}:ledger`]);
   assert.equal(onTransition.mock.calls.length, transitions);
-  assert.equal(append.mock.calls.length, journalEntries);
+  assert.equal(append.mock.calls.length, entries);
   if (placement === "remote") {
-    assert.deepEqual(await provider.readSnapshot(snapshotRequest), snapshot);
+    assert.deepEqual(await provider.readSnapshot(request), before);
     assert.equal(await provider.leaseQueueItem?.({ effectsQueueRef: remoteRuntime.refs.effectsQueueRef }), null);
   }
 });
 
-test.each(["memory", "remote"] as const)("%s region providers share host state but nested Blueprint instances do not inherit it", async (placement) => {
+test("capability bindings work across slots and nested wrappers without inheriting Cell handlers", async () => {
+  const blueprint = artifact();
+  blueprint.payload.cells!.files.potentialViews!.primary.wrap = [
+    { capability: "ui:report" }, { capability: "ui:report" },
+  ];
+  const materialized = materializeBlueprint({ blueprint });
   const presentation = host();
-  presentation.set("dialog.open", true);
-  const props = { blueprint: artifact(), resolveLeavesProvider: resolveProvider, presentationHost: presentation };
+  const renderer = await mount(<BlueprintHost blueprint={blueprint} native={native} presentationHost={presentation} />);
+  await waitForReport(renderer);
+  for (const id of ["report--primary--in-report-copy", `${filesId}--wrap-0`, `${filesId}--wrap-1`]) {
+    await act(async () => { await renderer.root.findByProps({ "data-finding": `${id}:ledger` }).props.onMouseEnter(); });
+    assert.equal(renderer.root.findByProps({ "data-file": `${filesId}:ledger` }).props["data-highlighted"], true);
+    if (id.includes("--wrap-")) assert.equal(materialized.payload.eventNodeOwners[id], undefined);
+  }
+});
+
+test("attention channels are source-owned, clear on unmount, and never require highlight effect registrations", async () => {
+  const presentation = host();
+  const emit = vi.fn<EmitFn>();
+  const registry = createRegistry({ "ui:report": Report, "ui:files": FileList }, () => null);
+  const tree = (first: boolean, second: boolean, capability = "ui:report") => <PresentationHostProvider host={presentation}>
+    {first && renderNode(node(capability), registry, emit)}
+    {second && renderNode(node("ui:report", "report-copy"), registry, emit)}
+    {renderNode(node("ui:files", filesId), registry, emit)}
+  </PresentationHostProvider>;
+  const renderer = await mount(tree(true, true));
+  await act(async () => { await presentation.emit(emit, node(), "previewRequested", { fileId: "ledger" }); });
+  await act(async () => {
+    await presentation.emit(emit, node("ui:report", "report-copy"), "previewRequested", { fileId: "receipts" });
+    await presentation.emit(emit, node(), "previewEnded");
+  });
+  assert.equal(presentation.getState().attention["related-file"], "receipts");
+  await act(async () => { renderer.update(tree(false, true)); });
+  assert.equal(presentation.getState().attention["related-file"], "receipts");
+  await act(async () => { renderer.update(tree(false, false)); });
+  assert.equal(presentation.getState().attention["related-file"], null);
+  assert.equal(renderer.root.findByProps({ "data-file": `${filesId}:receipts` }).props["data-highlighted"], false);
+  await act(async () => { renderer.update(tree(true, false)); });
+  await act(async () => { await presentation.emit(emit, node(), "previewRequested", { fileId: "ledger" }); });
+  await act(async () => { renderer.update(tree(true, false, "ui:files")); });
+  assert.equal(presentation.getState().attention["related-file"], null);
+  assert.throws(() => presentation.setAttention("undeclared", "host", "ledger"), /not declared/);
+  await assert.rejects(presentation.emit(emit, node(), "previewRequested", {}), /Missing attention input/);
+  assert.equal(emit.mock.calls.length, 0);
+});
+
+test("host providers declare effects; admission, parsing, and authorization precede execution", async () => {
+  const presentation = new PresentationHost({
+    effects: { files: ["open"] },
+    bindings: { "ui:files": { on: {
+      openRequested: { effect: "files:open" },
+      removeRequested: { effect: "files:remove" },
+    } } },
+  });
+  const dispatch = vi.fn<EmitFn>();
+  await assert.rejects(presentation.emit(dispatch, node("ui:files"), "openRequested"), /not registered/);
+  const handle = vi.fn();
+  const authorize = vi.fn((context: { actorId?: string }) => context.actorId === "owner");
+  const parseInput = vi.fn((data: Readonly<Record<string, Json>>) => {
+    if (typeof data.fileId !== "string") throw new Error("Expected fileId");
+    return { fileId: data.fileId.trim() };
+  });
+  const provider = { id: "files", effects: {
+    open: definePresentationEffect({ parseInput, authorize, handle }),
+    remove: definePresentationEffect({ parseInput, authorize, handle }),
+  } };
+  assert.throws(() => new PresentationHost().registerProvider(provider), /not admitted/);
+  assert.throws(() => new PresentationHost({ effects: { files: ["unknown"] } }).registerProvider(provider), /not declared/);
+  const unregister = presentation.registerProvider(provider);
+  assert.throws(() => presentation.registerProvider(provider), /already registered/);
+  await assert.rejects(presentation.emit(dispatch, node("ui:files"), "removeRequested", { fileId: "ledger" }, "owner"), /not admitted/);
+  assert.equal(parseInput.mock.calls.length, 0);
+  await assert.rejects(presentation.emit(dispatch, node("ui:files"), "openRequested", { fileId: 7 }, "owner"), /Expected fileId/);
+  assert.equal(authorize.mock.calls.length, 0);
+  await assert.rejects(presentation.emit(dispatch, node("ui:files"), "openRequested", { fileId: "ledger" }, "guest"), /not authorized/);
+  assert.equal(handle.mock.calls.length, 0);
+  await presentation.emit(dispatch, node("ui:files"), "openRequested", { fileId: "ledger" }, "owner");
+  assert.deepEqual(handle.mock.calls, [[{
+    node: { id: reportId, capability: "ui:files" }, event: "openRequested", actorId: "owner",
+  }, { fileId: "ledger" }]]);
+  assert.deepEqual(presentation.getState(), { attention: {} });
+  assert.equal(dispatch.mock.calls.length, 0);
+  provider.id = "changed-after-registration";
+  unregister();
+  await assert.rejects(presentation.emit(dispatch, node("ui:files"), "openRequested"), /not registered/);
+  presentation.registerProvider({ id: "files", effects: {
+    open: definePresentationEffect({
+      parseInput, authorize: () => true, handle: () => { throw new Error("Host unavailable"); },
+    }),
+  } });
+  unregister();
+  await assert.rejects(presentation.emit(dispatch, node("ui:files"), "openRequested", { fileId: "ledger" }), /Host unavailable/);
+});
+
+test("local effects reject non-JSON data and semantic results instead of silently crossing execution boundaries", async () => {
+  const presentation = new PresentationHost({
+    effects: { files: ["open"] },
+    bindings: { "ui:files": { on: { openRequested: { effect: "files:open" } } } },
+  });
+  const handler = vi.fn<() => void>(() => ({ events: [{ node: filesId, name: "selectFile" }] }));
+  presentation.registerProvider({ id: "files", effects: {
+    open: definePresentationEffect({ parseInput: (data) => data, authorize: () => true, handle: handler }),
+  } });
+  const dispatch = vi.fn<EmitFn>();
+  await assert.rejects(presentation.emit(dispatch, node("ui:files"), "openRequested", { fileId: () => {} }), /only JSON/);
+  assert.equal(handler.mock.calls.length, 0);
+  await assert.rejects(presentation.emit(dispatch, node("ui:files"), "openRequested", { fileId: "ledger" }), /must not return semantic results/);
+  assert.deepEqual(presentation.getState(), { attention: {} });
+  assert.equal(dispatch.mock.calls.length, 0);
+});
+
+test("provider declarations preserve parsed input types and method receivers", async () => {
+  const opened: string[] = [];
+  class FileOperation {
+    private readonly actor = "owner";
+    parseInput(data: Readonly<Record<string, Json>>) {
+      if (typeof data.fileId !== "string") throw new Error("Expected fileId");
+      return { fileId: data.fileId.trim() };
+    }
+    authorize(context: PresentationEffectContext) { return context.actorId === this.actor; }
+    handle(_context: PresentationEffectContext, input: { fileId: string }) { opened.push(input.fileId); }
+  }
+  const operation = definePresentationEffect(new FileOperation());
+  const presentation = new PresentationHost({
+    effects: { files: ["open"] },
+    bindings: { "ui:files": { on: { openRequested: { effect: "files:open" } } } },
+  });
+  presentation.registerProvider({ id: "files", effects: { open: operation } });
+  await presentation.emit(vi.fn<EmitFn>(), node("ui:files"), "openRequested", { fileId: " ledger " }, "owner");
+  assert.deepEqual(opened, ["ledger"]);
+});
+
+test("explicit semantic dispatch retains Cell event validation and headless behavior", async () => {
+  const blueprint = artifact();
+  const materialized = materializeBlueprint({ blueprint });
+  const presentation = new PresentationHost({
+    bindings: { "ui:report": { on: {
+      fileSelected: { event: { node: filesId, name: "selectFile" } },
+      unknown: { event: { node: filesId, name: "notDeclared" } },
+    } } },
+  });
+  let payload: Record<string, Json> = { fileId: "ledger" };
+  let state: Record<string, Json> | undefined;
+  const dispatch = vi.fn<EmitFn>(async (id, name, received, actorId) => {
+    assert.deepEqual(received, payload);
+    assert.equal(actorId, "owner");
+    const result = await runMaterializedTransition({
+      materializedBlueprint: materialized, state: materialized.payload.initialState,
+      events: [{ node: id, name, payload, actorId }],
+    });
+    state = result.state;
+  });
+  await presentation.emit(dispatch, node(), "fileSelected", payload, "owner");
+  assert.deepEqual(state?.semantic, { selectedFileId: "ledger", previewed: false });
+  payload = { fileId: false };
+  await assert.rejects(presentation.emit(dispatch, node(), "fileSelected", payload, "owner"), /Invalid payload/);
+  await assert.rejects(presentation.emit(dispatch, node(), "unknown", payload, "owner"), /undeclared event/);
+  const { presentation: _presentation, ...headless } = blueprint.payload;
+  const headlessMaterialized = materializeBlueprint({ blueprint: createBlueprint({
+    ...headless,
+    cells: Object.fromEntries(Object.entries(headless.cells!).map(([id, { potentialViews: _views, ...cell }]) => [id, cell])),
+  }) });
+  const result = await runMaterializedTransition({
+    materializedBlueprint: headlessMaterialized, state: headlessMaterialized.payload.initialState,
+    events: [{ node: "files", name: "selectFile", payload: { fileId: "ledger" } }],
+  });
+  assert.deepEqual(result.state.semantic, { selectedFileId: "ledger", previewed: false });
+});
+
+test("component-local interaction needs no host effect; unbound semantic events retain the controller route", async () => {
+  const presentation = host();
+  const dispatch = vi.fn<EmitFn>();
+  await presentation.emit(dispatch, node("ui:files", filesId), "selectFile", { fileId: "ledger" }, "owner");
+  assert.deepEqual(dispatch.mock.calls, [[filesId, "selectFile", { fileId: "ledger" }, "owner"]]);
+  const renderer = await mount(<BlueprintHost blueprint={artifact()} native={native} presentationHost={presentation} />);
+  await waitForReport(renderer);
+  await act(async () => { renderer.root.findByProps({ "data-expand": reportId }).props.onClick(); });
+  assert.deepEqual(renderer.root.findByProps({ "data-expand": reportId }).children, ["Collapse"]);
+  assert.equal(presentation.getState().attention["related-file"], null);
+});
+
+test.each(["memory", "remote"] as const)("%s regions share explicitly supplied host state while nested hosts reset scope", async (placement) => {
+  const presentation = host();
+  const props = { blueprint: artifact(), native, presentationHost: presentation };
   const children = <>
     <BlueprintRegion name="primary" />
-    <BlueprintHost blueprint={artifact()} resolveLeavesProvider={resolveProvider} />
+    <BlueprintHost blueprint={artifact()} native={native} />
   </>;
   const renderer = await mount(placement === "memory"
     ? <BlueprintProvider {...props}>{children}</BlueprintProvider>
     : <DurableBlueprintProvider {...props} runtime={runtime()}>{children}</DurableBlueprintProvider>);
-  await vi.waitFor(async () => {
-    await act(async () => { assert.equal(renderer.root.findAllByProps({ "data-dialog": wrapper }).length, 2); });
+  await waitForReport(renderer, 2);
+  await act(async () => {
+    await renderer.root.findAllByProps({ "data-finding": `${reportId}:ledger` })[0].props.onMouseEnter();
   });
-  const dialogs = renderer.root.findAllByProps({ "data-dialog": wrapper });
-  assert.equal(dialogs[0].props["data-open"], true);
-  assert.equal(dialogs[1].props["data-open"], false);
-  assert.equal(dialogs[1].props["data-host-state"], undefined);
-  await act(async () => { presentation.set("dialog.open", false); });
-  assert.equal(renderer.root.findAllByProps({ "data-dialog": wrapper })[0].props["data-open"], false);
+  const files = renderer.root.findAllByProps({ "data-file": `${filesId}:ledger` });
+  assert.equal(files[0].props["data-highlighted"], true);
+  assert.equal(files[1].props["data-highlighted"], false);
+  assert.equal(renderer.root.findAllByProps({ "data-files": filesId })[1].props["data-host-state"], undefined);
 });
 
-test("companion organisms never inherit the primary instance's presentation bindings or state", async () => {
+test("companion organisms never inherit the primary instance's host bindings or state", async () => {
   const blueprint = artifact();
   const materialized = materializeBlueprint({ blueprint });
   const presentation = host();
-  presentation.set("dialog.open", true);
-  const renderer = await mount(
-    <BlueprintHost
-      blueprint={blueprint}
-      resolveLeavesProvider={resolveProvider}
-      presentationHost={presentation}
-      companions={[{
-        instanceId: "companion",
-        source: new BlueprintController(blueprint),
-        bundle: bundleFromJson({
-          vocabulary: materialized.payload.vocabulary,
-          program: materialized.payload.program,
-          state: materialized.payload.initialState,
-        }),
-        structuralViews: { "gik:presentation-fragment": ({ children }) => <>{children}</> },
-      }]}
-    />,
-  );
-  await vi.waitFor(async () => {
-    await act(async () => { assert.equal(renderer.root.findAllByProps({ "data-dialog": wrapper }).length, 2); });
+  const renderer = await mount(<BlueprintHost blueprint={blueprint} native={native} presentationHost={presentation}
+    companions={[{
+      instanceId: "companion",
+      source: new BlueprintController(blueprint),
+      bundle: bundleFromJson({
+        vocabulary: materialized.payload.vocabulary, program: materialized.payload.program,
+        state: materialized.payload.initialState,
+      }, native),
+      structuralViews: { "gik:presentation-fragment": ({ children }) => <>{children}</> },
+    }]} />);
+  await waitForReport(renderer, 2);
+  await act(async () => {
+    await renderer.root.findAllByProps({ "data-finding": `${reportId}:ledger` })[0].props.onMouseEnter();
   });
-  const dialogs = renderer.root.findAllByProps({ "data-dialog": wrapper });
-  assert.equal(dialogs[0].props["data-open"], true);
-  assert.equal(dialogs[1].props["data-open"], false);
-  assert.equal(dialogs[1].props["data-host-state"], undefined);
+  assert.equal(renderer.root.findAllByProps({ "data-file": `${filesId}:ledger` })[0].props["data-highlighted"], true);
+  assert.equal(renderer.root.findAllByProps({ "data-file": `${filesId}:ledger` })[1].props["data-highlighted"], false);
 });
