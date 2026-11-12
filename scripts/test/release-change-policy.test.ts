@@ -135,7 +135,7 @@ test.each(["source-and-changeset", "changeset-only"])("implementation-PR plannin
   const git = (...args: string[]) => execFileSync("git", args, { cwd: fixture, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }).trim();
   mkdirSync(fixture, { recursive: true });
   try {
-    git("init");
+    git("init", "--initial-branch=fixture");
     git("config", "user.name", "Release fixture");
     git("config", "user.email", "fixture@example.invalid");
     const packages = ["packages/a", "packages/b"];
@@ -162,6 +162,7 @@ test.each(["source-and-changeset", "changeset-only"])("implementation-PR plannin
     write(".changeset/intent.md", '---\n"a": minor\n---\n\nImprove the public API.\n');
     git("add", "packages", ".changeset");
     git("commit", "-m", "implementation");
+    git("checkout", "--detach", git("rev-parse", "HEAD"));
     const plan = prepareImplementationRelease({ root: fixture, base, head: git("rev-parse", "HEAD"), pullRequest: 12 });
     assert.ok(plan.outputs["packages/a/package.json"], "Explicit minor intent must generate a version even without source changes");
     assert.equal(JSON.parse(plan.outputs["packages/a/package.json"]).version, "1.1.0");

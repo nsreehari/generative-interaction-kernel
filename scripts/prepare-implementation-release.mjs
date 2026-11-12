@@ -108,7 +108,8 @@ export function prepareImplementationRelease({ root, base, head, pullRequest }) 
   try {
     // Only JSON/Markdown data is materialized. Never copy PR config, scripts, or source.
     write("package.json", encode({ private: true, workspaces: rootManifest.workspaces }));
-    write(".changeset/config.json", encode(parse(base, ".changeset/config.json")));
+    // Status's diagnostic Git comparison must also work in detached Actions checkouts.
+    write(".changeset/config.json", encode({ ...parse(base, ".changeset/config.json"), baseBranch: "HEAD" }));
     for (const { path, manifest } of normalized) {
       write(`${path}/package.json`, encode(manifest));
       const changelog = blob(base, `${path}/CHANGELOG.md`);
