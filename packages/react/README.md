@@ -32,6 +32,75 @@ export const App = () => (
 Omit `worker` when middleware, a backend, or an Azure Function owns execution. Existing
 `gik-blueprint-host` consumers should migrate to `BlueprintHost` from `gik-react`.
 
+## Presentation-local effects and state
+
+Component-internal interaction (for example an uncontrolled dialog's open/close state) stays inside
+the component and requires no named effect. Work delegated to the rendering host uses explicit
+host-supplied bindings and registered, namespaced effect handlers:
+
+```tsx
+import { useState } from "react";
+import { BlueprintHost, PresentationHost } from "gik-react";
+
+export function Review() {
+  const [presentationHost] = useState(() => {
+    const host = new PresentationHost({
+      state: { confirmation: { open: false } },
+      bindings: {
+        "review--primary--in-main--wrap-0": {
+          props: { open: { from: "confirmation.open" } },
+          on: { openChange: { effect: "dialog:set-open" } },
+        },
+      },
+    });
+    // A trusted component/provider module can supply this registration.
+    host.registerEffects({
+      "dialog:set-open": ({ payload, set }) => {
+        if (typeof payload?.open !== "boolean") throw new Error("Expected boolean open");
+        set("confirmation.open", payload.open);
+      },
+    });
+    return host;
+  });
+  return <BlueprintHost blueprint={blueprint} presentationHost={presentationHost} />;
+}
+```
+
+Create one presentation host per mounted Blueprint instance, never a server-process singleton.
+`registerEffects()` returns an idempotent unregister function for removing a provider's handlers.
+
+Use the same `presentationHost` prop on `BlueprintProvider` or on either host/provider from
+`gik-react/durable`. It runs where the UI renders, even when an Azure Function or another remote
+worker executes the Blueprint. No local UI effect is appended to the Blueprint journal or worker
+effects queue. This is separate from `native.effectHandlers`, which execute semantic effects with
+the Blueprint worker.
+
+Bindings address exact resolved node ids, including nested `--wrap-<index>` ids and separate
+`--in-<slot>` instances. `props` bindings read dot-separated paths from host-local state, not from
+Blueprint state. Every projection view also receives an optional `hostState` snapshot; changes
+rerender presentation without changing the materialized program or Blueprint state. Hosts may update
+this state using `presentationHost.set(path, value)`. State lifetime is controlled by the owner of the
+`PresentationHost`; it is not automatically persisted.
+
+Explicitly forward a presentation event to an existing semantic ingress with
+`on: { confirm: { event: { node: "review--primary--in-main", name: "approve" } } }`.
+The original payload and actor identity are retained, and the receiving Cell's existing
+event/payload validation still applies. Never use presentation state as evidence that semantic
+approval or a request settlement has occurred.
+
+Unbound events retain the existing controller route; wrappers do **not** inherit Cell handlers or
+gain event ownership entries. A host-effect binding consumes the interaction rather than also
+dispatching it to a Cell. Missing or duplicate effect registrations and handler failures throw/reject;
+the host has no hardcoded effect vocabulary. Only trusted host code registers handlers, and should
+register only the effects that instance is authorized to perform. Payload-specific validation belongs
+to its registered handler.
+
+Each nested Blueprint host resets the presentation-host scope, even when no presentation host is
+supplied. Companion organisms can supply their own `presentationHost`; they never inherit the primary
+organism's bindings or state. All regions of one provider share its explicitly supplied instance.
+For direct `GenUIRoot`/`renderNode` integration, wrap the tree in
+`<PresentationHostProvider host={presentationHost}>`.
+
 ## Multi-region hosting
 
 `BlueprintHost` mounts a Blueprint's whole presentation at one React location. When an application
@@ -58,9 +127,10 @@ the host owns placement, layout, and whether it mounts an optional region at all
 address an arbitrary internal slot.
 
 One provider runs exactly one Blueprint: every region below it shares the same materialization,
-controller, state, journal, effects, and lifecycle, and every event a region emits is dispatched through
-that shared controller. Mounting a region is placement only — it never instantiates a second host or
-controller. `externalContext` therefore belongs on the provider, never on a region; changing it
+controller, state, journal, effects, and lifecycle. Events not consumed by an explicit presentation-host
+effect binding are dispatched through that shared controller. Mounting a region is placement only —
+it never instantiates a second host or controller. `externalContext` therefore belongs on the provider,
+never on a region; changing it
 re-materializes with the same semantics `BlueprintHost` already has and republishes the region set of
 the newly selected terminal representation.
 

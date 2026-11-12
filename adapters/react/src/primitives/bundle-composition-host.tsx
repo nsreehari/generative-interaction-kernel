@@ -17,6 +17,7 @@ import {
   type BundleContextBindings,
 } from "./bundle-registry";
 import { GenUIFileServicesProvider, type GenUIFileServices } from "./fileServices";
+import { PresentationHostProvider, type PresentationHost } from "../presentation-host";
 
 /**
  * Connects one organism's controller to the shared contexts. Both hooks are optional:
@@ -44,6 +45,7 @@ export interface CompositionOrganism {
   wrapOrchestrator?: LoadBundleOptions["wrapOrchestrator"];
   /** Renderer adapter for reserved structural capabilities emitted by the common runtime. */
   structuralViews?: Record<string, ProjectionView>;
+  presentationHost?: PresentationHost;
 }
 
 export function BundleCompositionHost({
@@ -108,5 +110,9 @@ function CompositionOrganismRuntime({
     const cleanup = organism.bridge?.connect?.(controller, contexts);
     return typeof cleanup === "function" ? cleanup : undefined;
   }, [controller]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <GenUIRoot source={source} registry={registry} />;
+  return (
+    <PresentationHostProvider host={organism.presentationHost}>
+      <GenUIRoot source={source} registry={registry} />
+    </PresentationHostProvider>
+  );
 }

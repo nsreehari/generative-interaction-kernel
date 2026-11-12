@@ -45,6 +45,7 @@ import {
   type ReactBlueprintHostRegistry,
 } from "./hosted-blueprint";
 import { PresentationFragmentView } from "./presentation-fragment";
+import { PresentationHostProvider, type PresentationHost } from "../presentation-host";
 
 export { validateBlueprintArtifact, type BlueprintArtifact };
 
@@ -59,6 +60,7 @@ export interface BlueprintHostProps {
    * keeps every capability on the permissive fallback descriptor, exactly as today. */
   resolveCapabilityDescriptors?: CapabilityDescriptorResolver;
   native?: BundleNative;
+  presentationHost?: PresentationHost;
   companions?: CompositionOrganism[];
   contexts?: BundleContextBindings;
   fileServices?: GenUIFileServices;
@@ -80,6 +82,7 @@ export function BlueprintHost({
   resolveLeavesProvider,
   resolveCapabilityDescriptors,
   native,
+  presentationHost,
   companions = EMPTY_COMPANIONS,
   contexts = EMPTY_CONTEXTS,
   fileServices,
@@ -99,6 +102,7 @@ export function BlueprintHost({
     resolveLeavesProvider,
     resolveCapabilityDescriptors,
     native,
+    presentationHost,
     contexts,
     fileServices,
     primaryBridge,
@@ -153,6 +157,7 @@ export function BlueprintProvider({
   resolveLeavesProvider,
   resolveCapabilityDescriptors,
   native,
+  presentationHost,
   contexts = EMPTY_CONTEXTS,
   fileServices,
   primaryBridge,
@@ -169,6 +174,7 @@ export function BlueprintProvider({
     resolveLeavesProvider,
     resolveCapabilityDescriptors,
     native,
+    presentationHost,
     contexts,
     fileServices,
     primaryBridge,
@@ -182,19 +188,21 @@ export function BlueprintProvider({
   });
 
   return (
-    <BlueprintHostRegistryProvider registry={blueprintRegistry}>
-      <BundleRegistryProvider registry={bundleRegistry} resolveProvider={hostResolveProvider}>
-        <BlueprintRegionRuntimeProvider
-          organism={primary}
-          blueprint={terminalBlueprint}
-          contexts={contexts}
-          fileServices={fileServices}
-          {...(onMissingRequiredRegions ? { onMissingRequiredRegions } : {})}
-        >
-          {children}
-        </BlueprintRegionRuntimeProvider>
-      </BundleRegistryProvider>
-    </BlueprintHostRegistryProvider>
+    <PresentationHostProvider host={presentationHost}>
+      <BlueprintHostRegistryProvider registry={blueprintRegistry}>
+        <BundleRegistryProvider registry={bundleRegistry} resolveProvider={hostResolveProvider}>
+          <BlueprintRegionRuntimeProvider
+            organism={primary}
+            blueprint={terminalBlueprint}
+            contexts={contexts}
+            fileServices={fileServices}
+            {...(onMissingRequiredRegions ? { onMissingRequiredRegions } : {})}
+          >
+            {children}
+          </BlueprintRegionRuntimeProvider>
+        </BundleRegistryProvider>
+      </BlueprintHostRegistryProvider>
+    </PresentationHostProvider>
   );
 }
 
@@ -207,6 +215,7 @@ function useBlueprintHostRuntime({
   resolveLeavesProvider,
   resolveCapabilityDescriptors,
   native,
+  presentationHost,
   contexts,
   fileServices,
   primaryBridge,
@@ -307,12 +316,13 @@ function useBlueprintHostRuntime({
       bundle,
       source,
       bridge: primaryBridge,
+      presentationHost,
       structuralViews: {
         [BLUEPRINT_CAPABILITY]: HostedBlueprint,
         [PRESENTATION_FRAGMENT_CAPABILITY]: PresentationFragment,
       },
     }),
-    [primaryInstanceIdResolved, bundle, source, primaryBridge, HostedBlueprint, PresentationFragment],
+    [primaryInstanceIdResolved, bundle, source, primaryBridge, presentationHost, HostedBlueprint, PresentationFragment],
   );
 
   return {

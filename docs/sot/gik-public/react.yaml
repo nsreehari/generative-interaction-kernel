@@ -44,6 +44,33 @@ architecture:
     - The durable subpath changes transition-state ownership, not the React composition model.
     - React controllers never implement queue leasing, acknowledgement, retries, or engine-wake loops.
     - Infrastructure adapters stay below gik-durable-runtime and are supplied through runtime options.
+    - Component-internal UI interactions require no named host effect.
+    - Explicit presentation-host bindings consume local UI effects or forward addressed semantic events.
+    - Presentation effect registrations are trusted host code, never Blueprint-authored executable handlers.
+    - Host-local presentation state is separate from Blueprint state, immutable external context, durable snapshots, and worker effects queues.
+    - Wrappers and decorations never automatically inherit Cell handlers or semantic event ownership.
+    - Nested Blueprint hosts and companion organisms do not implicitly inherit another instance's presentation host.
+
+presentation_host:
+  implementation: adapters/react/src/presentation-host.tsx
+  purpose: Rendering-local effects and state, independent of Blueprint execution placement.
+  configuration:
+    - Exact resolved-node ids select host-supplied declarative prop and event bindings.
+    - Prop bindings read dot-separated paths from the separate host-local state.
+    - Event bindings choose a registered namespaced host effect or explicitly addressed semantic ingress.
+    - Unbound events retain existing controller routing and Cell contracts.
+  registration:
+    - Trusted component/provider modules register their supported effects and handlers.
+    - Registration is instance-scoped, rejects duplicate or unnamespaced names, and returns an idempotent unregister function.
+    - Missing registered effects and handler failures are surfaced, never silently dispatched as Cell events.
+    - Handlers own payload-specific validation and may read/write only the separately supplied presentation-host state through their context.
+  scope:
+    - Both in-memory and durable Blueprint hosts/providers accept presentationHost.
+    - The rendering host handles these effects even when a remote worker owns semantic transitions.
+    - All exported regions of one BlueprintProvider share its presentation host.
+    - Nested hosts reset the scope; companion organisms may explicitly supply their own presentationHost.
+    - Projection views receive a hostState snapshot, not mutable access to the Blueprint state.
+    - No Kernel grammar, Blueprint schema, or materialized event-ownership change is required.
 
 blueprint_host:
   import: "gik-react"
