@@ -125,7 +125,7 @@ test("versioning uses trusted base data, the implementation PR and an App event 
   assert.doesNotMatch(version, /HEAD:refs\/heads\/master/);
 });
 
-test("implementation-PR planning is idempotent and restores consumed minor intent on rerun", () => {
+test.each(["source-and-changeset", "changeset-only"])("implementation-PR planning retains minor intent and is idempotent: %s", (change) => {
   const fixture = join(root, "scripts/test", `.release-fixture-${randomUUID()}`);
   const write = (path: string, value: string) => {
     mkdirSync(join(fixture, path, ".."), { recursive: true });
@@ -158,11 +158,12 @@ test("implementation-PR planning is idempotent and restores consumed minor inten
     git("add", "package.json", "package-lock.json", ".changeset", "config", "packages");
     git("commit", "-m", "baseline");
     const base = git("rev-parse", "HEAD");
-    write("packages/a/src/index.js", "export const value = 1;\n");
+    if (change === "source-and-changeset") write("packages/a/src/index.js", "export const value = 1;\n");
     write(".changeset/intent.md", '---\n"a": minor\n---\n\nImprove the public API.\n');
     git("add", "packages", ".changeset");
     git("commit", "-m", "implementation");
     const plan = prepareImplementationRelease({ root: fixture, base, head: git("rev-parse", "HEAD"), pullRequest: 12 });
+    assert.ok(plan.outputs["packages/a/package.json"], "Explicit minor intent must generate a version even without source changes");
     assert.equal(JSON.parse(plan.outputs["packages/a/package.json"]).version, "1.1.0");
     assert.equal(JSON.parse(plan.outputs["packages/b/package.json"]).dependencies.a, "1.1.0");
     assert.equal(plan.outputs[".changeset/intent.md"], null);
