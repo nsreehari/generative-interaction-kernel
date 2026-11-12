@@ -225,7 +225,11 @@ export function deriveCellEventOwners(definition: CellProjectionDefinition): Rec
       const region = view.region;
       if (region === undefined) continue;
       for (const targetSlot of Array.isArray(region) ? region : [region]) {
-        owners[`${cell.id}--${viewName}--in-${targetSlot}`] = cell.id;
+        const nodeId = `${cell.id}--${viewName}--in-${targetSlot}`;
+        owners[nodeId] = cell.id;
+        for (const [index] of (view.wrap ?? []).entries()) {
+          owners[`${nodeId}--wrap-${index}`] = cell.id;
+        }
         presentedCellIds.add(cell.id);
       }
     }
@@ -418,7 +422,8 @@ function toDecorationNode(view: CellViewDecoration, id: string, cell: CellDefini
  * wrapping from flanking. `inner` is either the primary Cell's own node or the next layer in. */
 function toWrapNode(view: CellViewDecoration, id: string, cell: CellDefinition, inner: DocNode): DocNode {
   const node = toDecorationNode(view, id, cell);
-  return { ...node, edges: { ...(node.edges ?? {}), children: [inner] } };
+  const events = cellEvents(cell);
+  return { ...node, edges: { ...(node.edges ?? {}), ...(Object.keys(events).length ? { on: events } : {}), children: [inner] } };
 }
 
 

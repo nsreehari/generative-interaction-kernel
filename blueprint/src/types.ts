@@ -163,7 +163,9 @@ export interface CellPotentialView extends Omit<CellViewDecoration, "capability"
    * innermost) — e.g. `[{capability:"fluent:dialog",...}]` makes the primary render as that
    * dialog's own body, a genuine child in its rendered component tree, not a flat sibling the way
    * `before`/`after` are. Unlike `before`/`after`, a `wrap` layer's own `visibility` gates its
-   * whole subtree: hiding a wrap layer hides everything it wraps, including the primary. */
+   * whole subtree: hiding a wrap layer hides everything it wraps, including the primary.
+   * Wrapper events route to the owning Cell's declared events and behavior, with the same payload
+   * validation as the primary view. Before/after decorations do not gain event handlers. */
   wrap?: readonly CellViewDecoration[];
   /** Which presentation slot(s) this view attaches to. An array renders one independent instance
    * per slot, all reading/writing through this same Cell. */

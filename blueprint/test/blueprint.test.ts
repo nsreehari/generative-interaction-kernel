@@ -1060,6 +1060,7 @@ describe("gik-blueprint", () => {
           id: "createBlueprint--primary--in-studio--wrap-0",
           props: { title: "Create Blueprint" },
           edges: {
+            on: { save: [{ do: "assign", target: "studio.saved", args: { value: true } }] },
             children: [{
               capability: "primitive:form",
               id: "createBlueprint--primary--in-studio",
@@ -1070,6 +1071,41 @@ describe("gik-blueprint", () => {
         }],
       },
     });
+  });
+
+  it("routes declared wrapper events to their owning Cell and retains payload validation", async () => {
+    const artifact = createBlueprint({
+      ...blueprint("wrapped-events").payload,
+      runtime: { state: { open: false } },
+      cells: {
+        action: {
+          id: "action",
+          events: { openChange: { payloadSchema: { type: "object", required: ["open"], properties: { open: { type: "boolean" } } } } },
+          behavior: { on: { openChange: [{ do: "assign", target: "open", args: { from: "$event.open" } }] } },
+          potentialViews: { primary: {
+            capability: "primitive:form", region: ["first", "second"],
+            wrap: [{ capability: "fluent:dialog" }, { capability: "fluent:panel" }],
+          } },
+        },
+      },
+      presentation: { ...singleSlotPresentation("first"), slots: [{ id: "first" }, { id: "second", region: "first" }] },
+    });
+    const materialized = materializeBlueprint({ blueprint: artifact });
+    for (const slot of ["first", "second"]) {
+      for (const index of [0, 1]) {
+        const node = `action--primary--in-${slot}--wrap-${index}`;
+        expect(materialized.payload.eventNodeOwners[node]).toBe("action");
+        const result = await runMaterializedTransition({
+          materializedBlueprint: materialized, state: materialized.payload.initialState,
+          events: [{ node, name: "openChange", payload: { open: true } }],
+        });
+        expect(result.state.open).toBe(true);
+        await expect(runMaterializedTransition({
+          materializedBlueprint: materialized, state: materialized.payload.initialState,
+          events: [{ node, name: "openChange", payload: { open: "invalid" } }],
+        })).rejects.toThrow(/Invalid payload/);
+      }
+    }
   });
 
   it("nests multiple wrap layers outermost-first and keeps before/after flanking the wrapped result", () => {
