@@ -264,6 +264,36 @@ test("host providers declare effects; admission, parsing, and authorization prec
   await assert.rejects(presentation.emit(dispatch, node("ui:files"), "openRequested", { fileId: "ledger" }), /Host unavailable/);
 });
 
+test.each(["removed", "replaced"] as const)("a provider %s during authorization cannot start its retired handler", async (registration) => {
+  const presentation = new PresentationHost({
+    effects: { files: ["open"] },
+    bindings: { "ui:files": { on: { openRequested: { effect: "files:open" } } } },
+  });
+  let finishAuthorization!: (allowed: boolean) => void;
+  const authorization = new Promise<boolean>((resolve) => { finishAuthorization = resolve; });
+  const handle = vi.fn();
+  const provider = { id: "files", effects: {
+    open: definePresentationEffect({
+      parseInput: (data) => data, authorize: () => authorization, handle,
+    }),
+  } };
+  const unregister = presentation.registerProvider(provider);
+  const dispatch = vi.fn<EmitFn>();
+  const pending = presentation.emit(dispatch, node("ui:files"), "openRequested", { fileId: "ledger" });
+  const rejected = assert.rejects(pending, /no longer registered/);
+  unregister();
+  if (registration === "replaced") presentation.registerProvider(provider);
+  finishAuthorization(true);
+  await rejected;
+  assert.equal(handle.mock.calls.length, 0);
+  if (registration === "replaced") {
+    unregister();
+    await presentation.emit(dispatch, node("ui:files"), "openRequested", { fileId: "receipts" });
+    assert.equal(handle.mock.calls.length, 1);
+  }
+  assert.equal(dispatch.mock.calls.length, 0);
+});
+
 test("local effects reject non-JSON data and semantic results instead of silently crossing execution boundaries", async () => {
   const presentation = new PresentationHost({
     effects: { files: ["open"] },

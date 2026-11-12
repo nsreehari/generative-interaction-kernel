@@ -71,6 +71,7 @@ presentation_host:
     - Hosts explicitly admit provider/effect pairs; default admission is empty.
     - Registration is instance-scoped, rejects duplicates and undeclared admitted names, and returns an idempotent unregister function.
     - Admission, input parsing, and authorization precede handler execution.
+    - Removing or replacing a provider rejects calls still awaiting authorization; handlers already started are not cancelled.
     - Missing providers, denied operations, parse failures, and handler failures reject, never silently dispatching Cell events.
     - Handler context carries source identity and actor provenance, not a Blueprint store or semantic invocation context.
     - Rendering-local handlers cannot return semantic results; semantic work requires explicit Cell dispatch.

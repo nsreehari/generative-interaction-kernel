@@ -207,6 +207,9 @@ export class PresentationHost {
     });
     const input = effect.parseInput(structuredClone(data));
     if (await effect.authorize(context, input) !== true) throw new Error(`Presentation effect '${binding.effect}' is not authorized`);
+    if (this.providers.get(parts[0])?.get(parts[1]) !== effect) {
+      throw new Error(`Presentation effect '${binding.effect}' is no longer registered`);
+    }
     const result = await effect.handle(context, input);
     if (result !== undefined) throw new Error("Presentation effects must not return semantic results; use an explicit Cell event");
   }

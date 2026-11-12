@@ -168,6 +168,9 @@ authorization, or handler failure rejects explicitly. Presentation handlers do n
 store or semantic invocation/settlement context and cannot return semantic results. They are distinct
 from the existing worker-side `EffectHandler` contract.
 
+Unregistering a provider also rejects calls still awaiting authorization, including if the same
+provider is registered again. Handlers that have already started are not cancelled.
+
 Explicitly forward a presentation event to an existing semantic ingress with
 `on: { openFile: { event: { node: "files--primary--in-files", name: "selectFile" } } }`.
 The original payload and actor identity are retained, and the receiving Cell's existing
