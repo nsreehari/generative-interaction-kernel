@@ -50,6 +50,8 @@ review run again before merge. No branch protection or approval is bypassed.
 - Changed public package inputs default to patch intent. Existing Changesets
   minor/major intent takes precedence. Transitive consumers are versioned so
   exact internal dependency pins remain consistent.
+- A changeset-only follow-up can release an already-merged package change;
+  explicit intent uses the same in-PR metadata workflow without requiring source edits.
 - Ownership includes source outside `packages/`: kernel, Blueprint, faces,
   React, SSE, shared compiler inputs, and embedded schemas. Root dependency/build
   inputs conservatively affect all stable packages. Unowned inputs fail closed.

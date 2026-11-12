@@ -108,7 +108,8 @@ export function prepareImplementationRelease({ root, base, head, pullRequest }) 
   try {
     // Only JSON/Markdown data is materialized. Never copy PR config, scripts, or source.
     write("package.json", encode({ private: true, workspaces: rootManifest.workspaces }));
-    write(".changeset/config.json", encode(parse(base, ".changeset/config.json")));
+    // Status's diagnostic Git comparison must also work in detached Actions checkouts.
+    write(".changeset/config.json", encode({ ...parse(base, ".changeset/config.json"), baseBranch: "HEAD" }));
     for (const { path, manifest } of normalized) {
       write(`${path}/package.json`, encode(manifest));
       const changelog = blob(base, `${path}/CHANGELOG.md`);
@@ -118,10 +119,9 @@ export function prepareImplementationRelease({ root, base, head, pullRequest }) 
     const cli = join(root, "node_modules/@changesets/cli/bin.js");
     const run = (...args) => execFileSync(process.execPath, [cli, ...args], { cwd: scratch, stdio: "pipe" });
     const seeds = affectedPackages(substantive, normalized, stable);
-    // A trusted generated empty changeset lets status parse explicit intent even on
-    // metadata-only retries; no status git-diff heuristic is used.
+    // The snapshot is untracked data; a Git --since filter would hide its explicit intent.
     write(".changeset/automatic-patch.md", "---\n---\n\nAutomatic release planning.\n");
-    run("status", "--since=HEAD", "--output=plan.json");
+    run("status", "--output=plan.json");
     const plan = JSON.parse(readFileSync(join(scratch, "plan.json"), "utf8"));
     const explicit = plan.releases.map(({ name }) => name);
     assert.ok(explicit.every((name) => stable.includes(name)), "Only stable packages may be versioned");
