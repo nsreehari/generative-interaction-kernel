@@ -11,3 +11,4 @@ export type {
   MissingRequiredRegionsReporter,
 } from "../../../adapters/react/src/primitives/blueprint-regions";
 export { createNativeBlueprintWorker } from "../../../adapters/react/src/durable-blueprint-worker";
+export * from "../../../adapters/react/src/presentation-host";

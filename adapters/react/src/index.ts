@@ -2,6 +2,7 @@ export * from "./registry";
 export * from "./layout";
 export * from "./props";
 export * from "./render";
+export * from "./presentation-host";
 export * from "./controller";
 export * from "./blueprint-controller";
 export * from "./shared-context";
