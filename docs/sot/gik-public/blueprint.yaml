@@ -239,6 +239,9 @@ artifact_contracts:
         A wrap layer stays exactly as inert as `before`/`after` (no event, no derivation of its own);
         the one real difference is that its own `visibility` gates its whole subtree, including the
         wrapped primary, unlike `before`/`after`'s independent, sibling-scoped visibility.
+      - A rendering host may explicitly bind wrapper interactions to host-local effects/state or
+        forward them to existing semantic ingress. Such bindings never add Cell behavior or wrapper
+        event ownership to the materialized Blueprint; execution remains presentation-independent.
   - name: BlueprintImplementationProgram
     signature: >-
       interface BlueprintImplementationProgram { id: string; when?: string;

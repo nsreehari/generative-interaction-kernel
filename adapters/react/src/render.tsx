@@ -2,9 +2,10 @@
 // Honors `visible` (invisible nodes render nothing) and `fallback` (kernel-unknown
 // capability, or a capability with no registered component, uses the fallback view).
 
-import { createElement, type ReactNode } from "react";
+import { createElement, useEffect, type ReactNode } from "react";
 import type { ResolvedNode } from "gik-kernel";
 import type { ComponentRegistry } from "./registry";
+import { usePresentationHost } from "./presentation-host";
 
 export type EmitFn = (
   nodeId: string,
@@ -19,19 +20,29 @@ export function renderNode(
   emit: EmitFn
 ): ReactNode {
   if (!node.visible) return null;
+  return createElement(RenderedNode, { key: node.id, node, registry, emit });
+}
 
+function RenderedNode({ node, registry, emit }: {
+  node: ResolvedNode;
+  registry: ComponentRegistry;
+  emit: EmitFn;
+}): ReactNode {
+  const host = usePresentationHost();
   const View = registry.getStructural?.(node.capability)
     ?? (node.fallback ? undefined : registry.get(node.capability))
     ?? registry.fallback;
+  useEffect(() => () => { host?.release(node.id); }, [host, node.id, node.capability, View]);
 
   const children = node.children.map((child) => renderNode(child, registry, emit));
   const boundEmit = (name: string, payload?: Record<string, unknown>, actorId?: string) =>
-    emit(node.id, name, payload, actorId);
+    host ? host.emit(emit, node, name, payload, actorId) : emit(node.id, name, payload, actorId);
 
   return createElement(View, {
     key: node.id,
-    node,
+    node: host ? host.project(node) : node,
     emit: boundEmit,
+    ...(host ? { hostState: host.getState() } : {}),
     children,
   });
 }

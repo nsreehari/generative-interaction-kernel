@@ -32,6 +32,162 @@ export const App = () => (
 Omit `worker` when middleware, a backend, or an Azure Function owns execution. Existing
 `gik-blueprint-host` consumers should migrate to `BlueprintHost` from `gik-react`.
 
+## Presentation-local effects and state
+
+Component-internal interaction stays inside the component and requires no named effect. Host-local
+state is useful when an interaction coordinates **different components** without changing application
+semantics: hovering over a finding in a report sets attention on its corresponding file. A separate
+file list projects that attention as highlighting. Leaving the finding or unmounting its source
+clears the attention it owns. Neither interaction needs a named highlight effect or Blueprint transition.
+
+For this example, the Blueprint's `report` and `files` Cells attach their `primary` views to the
+`report` and `files` slots. Their capabilities are `ui:report` and `ui:files`, with
+`runtime.externals.projectionViews.ui` importing `{ from: "self", use: ["report", "files"] }`.
+The host supplies the two projection components and their coordination:
+
+```tsx
+import { useState } from "react";
+import { BlueprintHost, PresentationHost, type ProjectionView } from "gik-react";
+
+const files = [
+  { id: "ledger", name: "ledger.csv" },
+  { id: "receipts", name: "receipts.csv" },
+];
+
+const Report: ProjectionView = ({ emit }) => (
+  <ul>
+    {files.map((file) => (
+      <li key={file.id}
+        onMouseEnter={() => void emit("fileHover", { fileId: file.id })}
+        onMouseLeave={() => void emit("fileLeave")}>
+        Finding referencing {file.name}
+      </li>
+    ))}
+  </ul>
+);
+
+const FileList: ProjectionView = ({ node }) => (
+  <ul>
+    {files.map((file) => (
+      <li key={file.id}
+        style={{ backgroundColor: node.props.highlightedFileId === file.id ? "yellow" : undefined }}>
+        {file.name}
+      </li>
+    ))}
+  </ul>
+);
+
+const native = { projectionViews: { report: Report, files: FileList } };
+
+export function ReportWorkspace() {
+  const [presentationHost] = useState(() => {
+    return new PresentationHost({
+      attention: ["related-file"],
+      bindings: {
+        "ui:report": {
+          on: {
+            fileHover: { attention: { channel: "related-file", set: { from: "fileId" } } },
+            fileLeave: { attention: { channel: "related-file", clear: true } },
+          },
+        },
+        "ui:files": {
+          props: { highlightedFileId: { attention: "related-file" } },
+        },
+      },
+    });
+  });
+  return <BlueprintHost blueprint={blueprint} native={native} presentationHost={presentationHost} />;
+}
+```
+
+The report emits interaction intent; it never reaches into the file-list component. The rendering
+host owns the attention channel. `set.from` selects an own field of the emitted JSON payload, not a
+Kernel expression or state path. The file list chooses how to render its attention-bound prop; GIK
+defines no report, file, or highlighting domain.
+
+Create one presentation host per mounted Blueprint instance, never a server-process singleton.
+Attention uses last-writer ownership: clearing or unmounting another source cannot clear the current
+owner's value. Releasing the current owner clears the channel rather than restoring an earlier value.
+Host code can also call `setAttention(channel, owner, value)`, `clearAttention(channel, owner)`, and
+`release(owner)`; it owns cleanup for these non-component owners.
+
+Use the same `presentationHost` prop on `BlueprintProvider` or on either host/provider from
+`gik-react/durable`. It runs where the UI renders, even when an Azure Function or another remote
+worker executes the Blueprint. No local UI effect is appended to the Blueprint journal or worker
+effects queue. This is separate from `native.effectHandlers`, which execute semantic effects with
+the Blueprint worker.
+
+Bindings select capabilities, including their wrappers and multiple slot instances, rather than
+generated node ids. Attention ownership still belongs to the individual source node. Every projection
+view also receives an optional `hostState.attention` snapshot; changes rerender presentation without
+changing the materialized program or Blueprint state. This is transient coordination, not an arbitrary
+application-state bag, and is not automatically persisted. Other host application state stays with the
+host's own state management.
+
+### Host effect providers
+
+Operations outside component-local interaction and attention coordination use declared providers.
+The host explicitly admits a subset of a provider's effects. Parsing and authorization are mandatory
+before its handler runs:
+
+```tsx
+import { definePresentationEffect, PresentationHost } from "gik-react";
+
+const fileProvider = {
+  id: "files",
+  effects: {
+    open: definePresentationEffect({
+      parseInput(payload) {
+        if (typeof payload.fileId !== "string") throw new Error("Expected fileId");
+        return { fileId: payload.fileId };
+      },
+      authorize(context, input) {
+        // Host policy must check real authority, not trust a caller-supplied actor id.
+        return fileAccess.canOpen(context.actorId, input.fileId);
+      },
+      async handle(_context, input) {
+        await fileAccess.open(input.fileId);
+      },
+    }),
+  },
+};
+
+const presentationHost = new PresentationHost({
+  effects: { files: ["open"] },
+  bindings: { "ui:files": { on: { openRequested: { effect: "files:open" } } } },
+});
+const unregister = presentationHost.registerProvider(fileProvider);
+// The provider owner calls unregister() at the end of its registration lifetime.
+```
+
+`fileAccess` above is supplied by the application, not GIK. Provider ids/effect names are declared by
+trusted provider modules; no component/effect list is built into GIK. Registration rejects duplicate
+providers and admissions for undeclared operations, and returns an idempotent unregister function.
+Nothing is admitted by default. An unadmitted effect, missing provider, invalid input, denied
+authorization, or handler failure rejects explicitly. Presentation handlers do not receive a Blueprint
+store or semantic invocation/settlement context and cannot return semantic results. They are distinct
+from the existing worker-side `EffectHandler` contract.
+
+Unregistering a provider also rejects calls still awaiting authorization, including if the same
+provider is registered again. Handlers that have already started are not cancelled.
+
+Explicitly forward a presentation event to an existing semantic ingress with
+`on: { openFile: { event: { node: "files--primary--in-files", name: "selectFile" } } }`.
+The original payload and actor identity are retained, and the receiving Cell's existing
+event/payload validation still applies. Never use presentation state as evidence that semantic
+approval or a request settlement has occurred.
+
+Unbound events retain the existing controller route; wrappers do **not** inherit Cell handlers or
+gain event ownership entries. Attention and host-effect bindings consume the interaction rather than
+also dispatching it to a Cell. Only trusted host code supplies bindings, provider registrations,
+admission, parsers, and authorization policy; none are Blueprint-authored executable handlers.
+
+Each nested Blueprint host resets the presentation-host scope, even when no presentation host is
+supplied. Companion organisms can supply their own `presentationHost`; they never inherit the primary
+organism's bindings or state. All regions of one provider share its explicitly supplied instance.
+For direct `GenUIRoot`/`renderNode` integration, wrap the tree in
+`<PresentationHostProvider host={presentationHost}>`.
+
 ## Multi-region hosting
 
 `BlueprintHost` mounts a Blueprint's whole presentation at one React location. When an application
@@ -58,9 +214,10 @@ the host owns placement, layout, and whether it mounts an optional region at all
 address an arbitrary internal slot.
 
 One provider runs exactly one Blueprint: every region below it shares the same materialization,
-controller, state, journal, effects, and lifecycle, and every event a region emits is dispatched through
-that shared controller. Mounting a region is placement only — it never instantiates a second host or
-controller. `externalContext` therefore belongs on the provider, never on a region; changing it
+controller, state, journal, effects, and lifecycle. Events not consumed by an explicit presentation-host
+effect binding are dispatched through that shared controller. Mounting a region is placement only —
+it never instantiates a second host or controller. `externalContext` therefore belongs on the provider,
+never on a region; changing it
 re-materializes with the same semantics `BlueprintHost` already has and republishes the region set of
 the newly selected terminal representation.
 

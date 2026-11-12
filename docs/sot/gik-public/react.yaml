@@ -44,6 +44,44 @@ architecture:
     - The durable subpath changes transition-state ownership, not the React composition model.
     - React controllers never implement queue leasing, acknowledgement, retries, or engine-wake loops.
     - Infrastructure adapters stay below gik-durable-runtime and are supplied through runtime options.
+    - Component-internal UI interactions require no named host effect.
+    - Capability-selected presentation-host bindings coordinate attention, run admitted host effects, or forward addressed semantic events.
+    - Presentation effect registrations are trusted host code, never Blueprint-authored executable handlers.
+    - Host-local presentation state is separate from Blueprint state, immutable external context, durable snapshots, and worker effects queues.
+    - Wrappers and decorations never automatically inherit Cell handlers or semantic event ownership.
+    - Nested Blueprint hosts and companion organisms do not implicitly inherit another instance's presentation host.
+
+presentation_host:
+  implementation: adapters/react/src/presentation-host.tsx
+  purpose: Lifecycle-owned attention and admitted rendering-local effects, independent of Blueprint execution placement.
+  configuration:
+    - Capabilities select host-supplied declarative prop and event bindings, independent of generated node ids.
+    - Prop bindings project declared attention channels, not arbitrary application-state paths.
+    - Event bindings choose attention set/clear, a registered namespaced host effect, or explicitly addressed semantic ingress.
+    - Unbound events retain existing controller routing and Cell contracts.
+  attention:
+    - Channels are declared by the rendering host and carry JSON identity/intent without report-specific domains.
+    - Each channel holds the last writer's value; clear/release only removes the owning source's value.
+    - Source-node unmount releases its attention, without clearing attention subsequently acquired by another source.
+    - Host code may supply explicit non-component owners and must release them at the end of their lifetime.
+    - Component-internal state remains component-owned; unrelated host application state remains outside this facility.
+    - Attention set/clear requires no bespoke named effect and never changes semantic Blueprint state.
+  registration:
+    - Trusted provider modules declare an id and named effects with input parsers, authorization, and handlers.
+    - Hosts explicitly admit provider/effect pairs; default admission is empty.
+    - Registration is instance-scoped, rejects duplicates and undeclared admitted names, and returns an idempotent unregister function.
+    - Admission, input parsing, and authorization precede handler execution.
+    - Removing or replacing a provider rejects calls still awaiting authorization; handlers already started are not cancelled.
+    - Missing providers, denied operations, parse failures, and handler failures reject, never silently dispatching Cell events.
+    - Handler context carries source identity and actor provenance, not a Blueprint store or semantic invocation context.
+    - Rendering-local handlers cannot return semantic results; semantic work requires explicit Cell dispatch.
+  scope:
+    - Both in-memory and durable Blueprint hosts/providers accept presentationHost.
+    - The rendering host handles these effects even when a remote worker owns semantic transitions.
+    - All exported regions of one BlueprintProvider share its presentation host.
+    - Nested hosts reset the scope; companion organisms may explicitly supply their own presentationHost.
+    - Projection views receive a hostState.attention snapshot, not mutable access to the Blueprint state.
+    - No Kernel grammar, Blueprint schema, or materialized event-ownership change is required.
 
 blueprint_host:
   import: "gik-react"
