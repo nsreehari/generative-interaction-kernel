@@ -1,0 +1,7 @@
+{
+  "pullRequest": 86,
+  "base": "004871fea4c87790a49cd4bf188995ba0983353c",
+  "changesets": {
+    ".changeset/react-presentation-host.md": "---\n\"gik-react\": minor\n---\n\nAdd host-owned attention channels and capability-selected presentation bindings to\nthe in-memory and durable React hosts. Rendering-local effects use declared\nproviders with explicit admission, input parsing, authorization, and registration\nlifetime checks. Component-local interactions remain local, and semantic Cell\nexecution and headless portability are unchanged."
+  }
+}
