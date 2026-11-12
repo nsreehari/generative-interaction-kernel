@@ -138,17 +138,21 @@ test.each(["source-and-changeset", "changeset-only"])("implementation-PR plannin
     git("init", "--initial-branch=fixture");
     git("config", "user.name", "Release fixture");
     git("config", "user.email", "fixture@example.invalid");
-    const packages = ["packages/a", "packages/b"];
+    const packages = ["packages/a", "packages/b", "packages/internal"];
     json("package.json", { private: true, workspaces: packages });
     json(".changeset/config.json", {
-      ...JSON.parse(readFileSync(join(root, ".changeset/config.json"), "utf8")), ignore: [],
+      ...JSON.parse(readFileSync(join(root, ".changeset/config.json"), "utf8")), ignore: ["internal"],
     });
     json("config/npm-release.json", { stable: ["a", "b"] });
     json("packages/a/package.json", { name: "a", version: "1.0.0" });
     json("packages/b/package.json", { name: "b", version: "1.0.0", dependencies: { a: "1.0.0" } });
+    json("packages/internal/package.json", {
+      name: "internal", private: true, version: "1.0.0", dependencies: { a: "1.0.0" },
+    });
     json("package-lock.json", { lockfileVersion: 3, packages: {
       "": {}, "packages/a": { version: "1.0.0" },
       "packages/b": { version: "1.0.0", dependencies: { a: "1.0.0" } },
+      "packages/internal": { version: "1.0.0", dependencies: { a: "1.0.0" } },
     } });
     // The planner uses only trusted CLI code, even when its input repository is a fixture.
     mkdirSync(join(fixture, "node_modules/@changesets/cli"), { recursive: true });
@@ -167,6 +171,13 @@ test.each(["source-and-changeset", "changeset-only"])("implementation-PR plannin
     assert.ok(plan.outputs["packages/a/package.json"], "Explicit minor intent must generate a version even without source changes");
     assert.equal(JSON.parse(plan.outputs["packages/a/package.json"]).version, "1.1.0");
     assert.equal(JSON.parse(plan.outputs["packages/b/package.json"]).dependencies.a, "1.1.0");
+    const internal = JSON.parse(plan.outputs["packages/internal/package.json"]);
+    assert.equal(internal.version, "1.0.0");
+    assert.equal(internal.dependencies.a, "1.1.0");
+    const internalLock = JSON.parse(plan.outputs["package-lock.json"]).packages["packages/internal"];
+    assert.equal(internalLock.version, "1.0.0");
+    assert.equal(internalLock.dependencies.a, "1.1.0");
+    assert.equal(plan.outputs["packages/internal/CHANGELOG.md"], undefined);
     assert.equal(plan.outputs[".changeset/intent.md"], null);
     for (const [path, content] of Object.entries(plan.outputs) as [string, string | null][]) {
       if (content === null) rmSync(join(fixture, path));
