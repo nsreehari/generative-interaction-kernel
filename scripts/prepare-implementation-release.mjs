@@ -46,11 +46,8 @@ export function updateLock(lock, workspaces, rootManifest) {
 export function prepareImplementationRelease({ root, base, head, pullRequest }) {
   const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }).trimEnd();
   const blob = (commit, path) => {
-    try { return git("show", `${commit}:${path}`); }
-    catch (error) {
-      if (git("ls-tree", commit, "--", path) === "") return null;
-      throw error;
-    }
+    if (git("ls-tree", commit, "--", path) === "") return null;
+    return git("show", `${commit}:${path}`);
   };
   const parse = (commit, path) => JSON.parse(blob(commit, path));
   assert.match(base, /^[a-f0-9]{40}$/);
@@ -124,7 +121,7 @@ export function prepareImplementationRelease({ root, base, head, pullRequest }) 
     // A trusted generated empty changeset lets status parse explicit intent even on
     // metadata-only retries; no status git-diff heuristic is used.
     write(".changeset/automatic-patch.md", "---\n---\n\nAutomatic release planning.\n");
-    run("status", "--output=plan.json");
+    run("status", "--since=HEAD", "--output=plan.json");
     const plan = JSON.parse(readFileSync(join(scratch, "plan.json"), "utf8"));
     const explicit = plan.releases.map(({ name }) => name);
     assert.ok(explicit.every((name) => stable.includes(name)), "Only stable packages may be versioned");
