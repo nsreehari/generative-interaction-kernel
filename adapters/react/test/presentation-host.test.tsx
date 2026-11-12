@@ -233,6 +233,87 @@ function runtime() {
   };
 }
 
+test("hovering a report finding highlights only its corresponding file in another component without a Blueprint transition", async () => {
+  const Report: ProjectionView = ({ emit }) => (
+    <article>
+      {["ledger", "receipts"].map((fileId) => (
+        <span key={fileId} data-finding={fileId}
+          onMouseEnter={() => emit("fileHover", { fileId })}
+          onMouseLeave={() => emit("fileLeave")}>
+          Finding for {fileId}
+        </span>
+      ))}
+    </article>
+  );
+  const FileList: ProjectionView = ({ node }) => (
+    <ul>
+      {["ledger", "receipts"].map((fileId) => (
+        <li key={fileId} data-file={fileId} data-highlighted={node.props.highlightedFileId === fileId}>
+          {fileId}
+        </li>
+      ))}
+    </ul>
+  );
+  const blueprint = createBlueprint({
+    ...artifact().payload,
+    cells: {
+      report: { id: "report", potentialViews: { primary: { capability: "ui:report", region: "report" } } },
+      files: { id: "files", potentialViews: { primary: { capability: "ui:files", region: "files" } } },
+    },
+    runtime: {
+      externals: { projectionViews: { ui: { from: "self", use: ["report", "files"] } } },
+      state: { application: { selectedFileId: null } },
+    },
+    presentation: {
+      slots: ["workspace", { id: "report", region: "workspace" }, { id: "files", region: "workspace" }],
+      root: "workspace",
+      allowedCapabilities: ["ui:report", "ui:files"],
+    },
+  });
+  const presentation = new PresentationHost({
+    state: { reportLinks: { highlightedFileId: null } },
+    bindings: {
+      "report--primary--in-report": { on: {
+        fileHover: { effect: "report:highlight-file" },
+        fileLeave: { effect: "report:clear-highlight" },
+      } },
+      "files--primary--in-files": { props: { highlightedFileId: { from: "reportLinks.highlightedFileId" } } },
+    },
+  });
+  presentation.registerEffects({
+    "report:highlight-file": ({ payload, set }) => {
+      if (typeof payload?.fileId !== "string") throw new Error("Expected fileId");
+      set("reportLinks.highlightedFileId", payload.fileId);
+    },
+    "report:clear-highlight": ({ set }) => set("reportLinks.highlightedFileId", null),
+  });
+  const remoteRuntime = runtime();
+  const provider = remoteRuntime.providers.memory;
+  const append = vi.spyOn(provider, "appendJournal");
+  const renderer = await mount(
+    <DurableBlueprintHost blueprint={blueprint} runtime={remoteRuntime} presentationHost={presentation}
+      native={{ projectionViews: { report: Report, files: FileList } }} />,
+  );
+  await vi.waitFor(async () => {
+    await act(async () => { assert.equal(renderer.root.findAllByProps({ "data-file": "ledger" }).length, 1); });
+  });
+  const snapshotRequest = { ...remoteRuntime.refs, runtimeId: remoteRuntime.runtimeId };
+  const before = await provider.readSnapshot(snapshotRequest);
+  const entries = append.mock.calls.length;
+  const highlightedFiles = () => renderer.root.findAll((instance) => instance.props["data-highlighted"] === true)
+    .map((instance) => instance.props["data-file"]);
+  assert.deepEqual(highlightedFiles(), []);
+  for (const fileId of ["ledger", "receipts"]) {
+    await act(async () => { await renderer.root.findByProps({ "data-finding": fileId }).props.onMouseEnter(); });
+    assert.deepEqual(highlightedFiles(), [fileId]);
+    await act(async () => { await renderer.root.findByProps({ "data-finding": fileId }).props.onMouseLeave(); });
+    assert.deepEqual(highlightedFiles(), []);
+  }
+  assert.equal(append.mock.calls.length, entries);
+  assert.deepEqual(await provider.readSnapshot(snapshotRequest), before);
+  assert.equal(await provider.leaseQueueItem?.({ effectsQueueRef: remoteRuntime.refs.effectsQueueRef }), null);
+});
+
 test.each(["memory", "remote"] as const)("%s BlueprintHost handles presentation effects without worker execution", async (placement) => {
   const presentation = host();
   const onTransition = vi.fn();

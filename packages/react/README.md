@@ -34,37 +34,83 @@ Omit `worker` when middleware, a backend, or an Azure Function owns execution. E
 
 ## Presentation-local effects and state
 
-Component-internal interaction (for example an uncontrolled dialog's open/close state) stays inside
-the component and requires no named effect. Work delegated to the rendering host uses explicit
-host-supplied bindings and registered, namespaced effect handlers:
+Component-internal interaction stays inside the component and requires no named effect. Host-local
+state is useful when an interaction coordinates **different components** without changing application
+semantics: hovering over a finding in a report can highlight its corresponding file in a separate
+file list. Leaving the finding clears the highlight. Neither interaction needs a Blueprint transition.
+
+For this example, the Blueprint's `report` and `files` Cells attach their `primary` views to the
+`report` and `files` slots. Their capabilities are `ui:report` and `ui:files`, with
+`runtime.externals.projectionViews.ui` importing `{ from: "self", use: ["report", "files"] }`.
+The host supplies the two projection components and their coordination:
 
 ```tsx
 import { useState } from "react";
-import { BlueprintHost, PresentationHost } from "gik-react";
+import { BlueprintHost, PresentationHost, type ProjectionView } from "gik-react";
 
-export function Review() {
+const files = [
+  { id: "ledger", name: "ledger.csv" },
+  { id: "receipts", name: "receipts.csv" },
+];
+
+const Report: ProjectionView = ({ emit }) => (
+  <ul>
+    {files.map((file) => (
+      <li key={file.id}
+        onMouseEnter={() => void emit("fileHover", { fileId: file.id })}
+        onMouseLeave={() => void emit("fileLeave")}>
+        Finding referencing {file.name}
+      </li>
+    ))}
+  </ul>
+);
+
+const FileList: ProjectionView = ({ node }) => (
+  <ul>
+    {files.map((file) => (
+      <li key={file.id}
+        style={{ backgroundColor: node.props.highlightedFileId === file.id ? "yellow" : undefined }}>
+        {file.name}
+      </li>
+    ))}
+  </ul>
+);
+
+const native = { projectionViews: { report: Report, files: FileList } };
+
+export function ReportWorkspace() {
   const [presentationHost] = useState(() => {
     const host = new PresentationHost({
-      state: { confirmation: { open: false } },
+      state: { reportLinks: { highlightedFileId: null } },
       bindings: {
-        "review--primary--in-main--wrap-0": {
-          props: { open: { from: "confirmation.open" } },
-          on: { openChange: { effect: "dialog:set-open" } },
+        "report--primary--in-report": {
+          on: {
+            fileHover: { effect: "report:highlight-file" },
+            fileLeave: { effect: "report:clear-highlight" },
+          },
+        },
+        "files--primary--in-files": {
+          props: { highlightedFileId: { from: "reportLinks.highlightedFileId" } },
         },
       },
     });
     // A trusted component/provider module can supply this registration.
     host.registerEffects({
-      "dialog:set-open": ({ payload, set }) => {
-        if (typeof payload?.open !== "boolean") throw new Error("Expected boolean open");
-        set("confirmation.open", payload.open);
+      "report:highlight-file": ({ payload, set }) => {
+        if (typeof payload?.fileId !== "string") throw new Error("Expected fileId");
+        set("reportLinks.highlightedFileId", payload.fileId);
       },
+      "report:clear-highlight": ({ set }) => set("reportLinks.highlightedFileId", null),
     });
     return host;
   });
-  return <BlueprintHost blueprint={blueprint} presentationHost={presentationHost} />;
+  return <BlueprintHost blueprint={blueprint} native={native} presentationHost={presentationHost} />;
 }
 ```
+
+The report emits interaction intent; it never reaches into the file-list component. The registered
+host handler updates only `reportLinks.highlightedFileId`, and the declarative prop binding causes
+the file list to rerender. These effect names are supplied by the provider, not built into GIK.
 
 Create one presentation host per mounted Blueprint instance, never a server-process singleton.
 `registerEffects()` returns an idempotent unregister function for removing a provider's handlers.
@@ -83,7 +129,7 @@ this state using `presentationHost.set(path, value)`. State lifetime is controll
 `PresentationHost`; it is not automatically persisted.
 
 Explicitly forward a presentation event to an existing semantic ingress with
-`on: { confirm: { event: { node: "review--primary--in-main", name: "approve" } } }`.
+`on: { openFile: { event: { node: "files--primary--in-files", name: "selectFile" } } }`.
 The original payload and actor identity are retained, and the receiving Cell's existing
 event/payload validation still applies. Never use presentation state as evidence that semantic
 approval or a request settlement has occurred.
