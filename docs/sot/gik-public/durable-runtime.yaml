@@ -11,7 +11,8 @@ document:
 
 package:
   name: "gik-durable-runtime"
-  version: "0.8.0"
+  consumer_documentation: packages/durable-runtime/README.md
+  version_authority: packages/durable-runtime/package.json
   publication_status: public-workspace-package
   purpose: >-
     Run caller-supplied pure transitions and effect handlers locally while routing durable
@@ -26,34 +27,10 @@ package:
   package_boundary: >-
     One public package uses explicit subpath exports for connectors, storage backends,
     and server transports so root browser imports do not load Cosmos or filesystem code.
-  distribution:
-    build: "turbo run build --filter=gik-durable-runtime"
-    publish: Standard public npm package through the GIK workspace release workflow.
-    pack_command: npm run pack:durable-runtime
-    artifact_policy: >-
-      The pack command builds through Turbo and creates a versioned npm tarball plus a
-      SHA-256 manifest under .artifacts/durable-runtime. Each consumer independently
-      ingests a supplied tarball into its own repository, updates its own dependency and
-      lockfile, and verifies its committed artifact. No repository assumes another
-      repository's source directory exists.
-    optional_dependencies: >-
-      @azure/cosmos and @azure/storage-blob are optional peer dependencies of
-      gik-durable-runtime and direct dependencies of Azure consumers. Browser and
-      filesystem-only consumers do not install them.
-    runtime_dependencies: >-
-      proper-lockfile is a package runtime dependency used by the filesystem storage
-      library. @types/proper-lockfile is development-only declaration support.
-  storage_exports:
-    - "gik-durable-runtime/storage/memory"
-    - "gik-durable-runtime/storage/cosmos"
-    - "gik-durable-runtime/storage/cosmos/library"
-    - "gik-durable-runtime/storage/cosmos/api"
-    - "gik-durable-runtime/storage/filesystem"
-    - "gik-durable-runtime/storage/filesystem/library"
-    - "gik-durable-runtime/storage/filesystem/api"
-    - "gik-durable-runtime/storage/indexed-db"
-    - "gik-durable-runtime/storage/indexed-db/library"
-    - "gik-durable-runtime/storage/indexed-db/api"
+  release_documentation: docs/releasing.md
+  consumer_dependency_policy: >-
+    Consume published npm packages without assuming sibling source checkouts or committed
+    archives. Backend entry points and optional peers are documented in the package README.
   execution_contract: >-
     DurableTransitionAdapter is provider-neutral and has no Blueprint or Kernel semantics.
     The host supplies an opaque declarative spec, a pure transition function, and a pure

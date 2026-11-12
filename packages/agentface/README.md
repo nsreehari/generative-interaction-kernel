@@ -56,6 +56,14 @@ The live helpers are declared with `face: RuntimeFace`; that type comes from
 security mechanism. The host remains responsible for authentication,
 authorization, endpoint policy, and credential handling.
 
+The `agentSafe` flag selects tools, not which runtime facts a caller may see.
+Scope the runtime and any extra tools before exposing the dispatcher. It
+neither starts long-lived agents/Senses nor grants authority from a DPP
+manifest. For request-scoped proposal workflows, compose
+[`gik-agent-lifecycle-exp`](https://github.com/nsreehari/generative-interaction-kernel/tree/master/packages/agent-lifecycle-exp)
+with a trusted
+[`gik-blueprint-agent-host`](https://github.com/nsreehari/generative-interaction-kernel/tree/master/packages/blueprint-agent-host).
+
 ## License
 
 MIT

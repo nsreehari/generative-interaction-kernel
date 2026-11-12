@@ -97,6 +97,20 @@ instance and Cell identity, while reusing the configured durable provider.
 
 `react`, `react-dom`, and `@fluentui/react-components` are peer dependencies you provide.
 
+## Purpose and observation hosting
+
+DPP Cells use the same hosts as ordinary Cells. React renders their committed
+outputs; the manifest is not a React provider or a special component type.
+Read Cell source values through `fetched_sources` in authored expressions.
+
+Declaring a Sense or mounting `BlueprintHost` does not by itself establish an
+observer. The execution host must reconcile committed bindings, use authorized
+service adapters, journal observations, report failures, and close bindings.
+See [Cell Senses](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/senses.md)
+and [Purpose-bearing Cells](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/dpp.md).
+Components remain presentation leaves; they do not own durable timers or
+participant authority.
+
 ## Public entry points
 
 | Import | Purpose |

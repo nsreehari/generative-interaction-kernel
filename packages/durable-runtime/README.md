@@ -111,6 +111,16 @@ the transition model and passes opaque declarative specifications to the
 runtime. A transition uses one durable provider for its state, journal, and
 effect queue; it never spans provider kinds.
 
+For Blueprint hosts, `gik-blueprint` supplies the semantic transition adapter.
+Hosts reconcile committed Sense intent and append discrete observations to
+the journal; this package does not maintain sensor connections or schedule
+agents. A DPP's external context records are separate from the execution
+journal, even when both use the same storage infrastructure. Backend
+authorization, retention, and business idempotency remain host concerns.
+
+See the [package map](https://github.com/nsreehari/generative-interaction-kernel#choose-a-package)
+for semantic and host layers; the storage APIs above remain provider-neutral.
+
 ## License
 
 MIT

@@ -13,13 +13,9 @@ material in an issue, fixture, commit, or pull request.
 
 ## Development
 
-GIK requires Node.js 24 and npm 11.
-
-```sh
-npm install --no-audit --no-fund
-npm run build:public-packages
-npm test
-```
+Follow the [root development and validation guide](README.md#development-and-validation)
+for supported Node/npm versions, installation, declaration builds, and test
+commands.
 
 Use the smallest focused test while iterating, then run the complete validation
 commands before requesting review. Do not weaken tests or validation because a

@@ -10,6 +10,9 @@ package:
   public_packages:
     - "gik-controlface"
     - "gik-agentface"
+  consumer_documentation:
+    - packages/controlface/README.md
+    - packages/agentface/README.md
 
 api_policy:
   signature_authority: Generated TypeScript declarations for each public package.
@@ -43,23 +46,9 @@ architecture:
     the Blueprint implementation directly and does not use a Profile package. A live ControlFace
     may also attach the source Blueprint so its structure mode governs runtime and explicit changes.
 
-shared_contracts:
-  - name: McpTool
-    signature: >-
-      interface McpTool { name: string; description: string;
-      inputSchema: Record<string, unknown>;
-      handler: (args: Record<string, unknown>) => unknown | Promise<unknown>;
-      agentSafe?: boolean }
-  - name: McpDispatcher
-    purpose: List and invoke an McpTool catalog directly or through the implemented MCP JSON-RPC methods.
-  - name: RuntimeFace
-    purpose: Structural subset of ControlFace methods required to build the live tool catalog.
-  - name: MCP_PROTOCOL_VERSION
-    value: "2025-06-18"
-
 public_packages:
   - name: "gik-controlface"
-    version: "0.1.4"
+    version_authority: packages/controlface/package.json
     entrypoint: packages/controlface/src/index.ts
     purpose: Publish the full Face projection and the public objects used to supply its live operations.
     projection:
@@ -124,9 +113,9 @@ public_packages:
         - "cancel(id) -> ServiceHost.cancel(id)"
 
   - name: "gik-agentface"
-    version: "0.1.0"
+    version_authority: packages/agentface/package.json
     entrypoint: packages/agentface/src/index.ts
-    depends_on: "gik-controlface 0.1.2"
+    depends_on: gik-controlface
     purpose: Publish the agentSafe projection of the shared Face catalog.
     projection:
       function: "agentFaceProjection(face: RuntimeFace): McpTool[]"
@@ -135,15 +124,6 @@ public_packages:
     stateless_dispatcher:
       signature: "createStatelessAgentFaceDispatcher(extraTools?: McpTool[]): McpDispatcher"
       behavior: Filters the built-in pure tools and supplied extra tools by agentSafe.
-    exports:
-      - AGENTFACE_ALLOWLIST
-      - agentFaceProjection
-      - createAgentFaceDispatcher
-      - createStatelessAgentFaceDispatcher
-      - MCP_PROTOCOL_VERSION
-      - McpDispatcher
-      - McpServerInfo
-      - McpTool
 
 projection_contents:
   pure_tools:
@@ -169,17 +149,6 @@ projection_contents:
     - restore
     - effectsSince
     - compensate
-  built_in_agentface_tools:
-    - describeCatalog
-    - namespaces
-    - effects
-    - validateDocument
-    - lintDocument
-    - authorProjectedProgram
-    - validateCapability
-    - getState
-    - getTree
-    - describeServiceKinds
   parked_agentface_structure_policy: >-
     getBlueprint, getProgram, inspectBlueprintStructureChange, and reconfigureBlueprint are present
     in the complete ControlFace catalog but are not agentSafe in this phase. Selecting constrained

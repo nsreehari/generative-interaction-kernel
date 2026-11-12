@@ -5,13 +5,14 @@ document:
   status: current-contract-with-policy-authoring-evolution
   scope: transport-neutral agent lifecycle, host lifecycle, tool translation, and cumulative Blueprint experience projections
   source_of_truth: >-
-    This file defines the public product contract for gik-agent-lifecycle-exp, including the use
-    of AgentLifecycleOps for proposal-only authoring of declarative policy artifacts. TypeScript
-    source describes current runtime behavior; this SOT is authoritative for the intended contract.
+    This file records lifecycle ownership, cross-package invariants, and intended policy-authoring
+    evolution. The package README owns consumer usage and TypeScript exports define the
+    implemented API; intended evolution is not an additional released API.
 
 package:
   name: "gik-agent-lifecycle-exp"
-  version: "0.1.1"
+  consumer_documentation: packages/agent-lifecycle-exp/README.md
+  version_authority: packages/agent-lifecycle-exp/package.json
   publication_status: public-workspace-package
   purpose: >-
     Define provider-neutral agent and trusted-host lifecycle contracts and translate lifecycle
@@ -26,9 +27,6 @@ package:
     - packages/agent-lifecycle-exp/src/function-tools.ts
     - packages/agent-lifecycle-exp/src/blueprint-function-tools.ts
   decision_source: docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md
-  distribution:
-    build: "turbo run build --filter=gik-agent-lifecycle-exp"
-    publish: Standard public npm package through the GIK workspace release workflow.
 
 api_policy:
   signature_authority: TypeScript source in packages/agent-lifecycle-exp/src

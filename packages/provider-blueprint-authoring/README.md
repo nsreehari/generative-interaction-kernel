@@ -1,7 +1,11 @@
 # gik-provider-blueprint-authoring
 
-Blueprint-authoring provider engine for the **Generative Interaction Kernel**. Builds an authoring
+Private workspace Blueprint-authoring provider engine for the **Generative Interaction Kernel**. Builds an authoring
 registry and summarizes canonical blueprints for authoring workflows.
+
+This package is not published by the core release workflow. The import below
+is for workspace development, not a public npm installation contract. Public
+artifact validation and materialization belong to `gik-blueprint`.
 
 `summarizeBlueprint` exposes the four canonical lowering collections:
 `serviceTiers`, `serviceRecipes`, `projectionTiers`, and `projectionRecipes`.
@@ -13,10 +17,6 @@ the named Blueprint service declaration. This includes endpoints and opaque
 authorizes endpoints and resolves literal secrets; never author a key, token,
 or password into Blueprint data.
 
-```bash
-npm install gik-provider-blueprint-authoring
-```
-
 ```ts
 import {
   blueprintAuthoringFlow,
@@ -27,8 +27,11 @@ import {
 
 ## Documentation
 
-See [`docs/GIK-public-interface.html`](./docs/GIK-public-interface.html) (§14 · Provider engines &
-building blocks) and the [project repository](https://github.com/nsreehari/generative-interaction-kernel).
+`summarizeBlueprint` reports identity and lowering collections, not a full
+serialization of Cells or DPP manifests. An authoring plan is not a validated
+artifact or permission to apply it. Use the
+[Blueprint package guide](../blueprint/README.md) for the canonical artifact
+contract and the [lifecycle guide](../agent-lifecycle-exp/README.md) for proposals.
 
 ## License
 

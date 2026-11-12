@@ -28,6 +28,12 @@ effect declarations, snapshots, and compensation. Renderers, storage,
 transports, domain components, and effect execution are supplied by other
 packages or by the host application.
 
+Blueprint DPP manifests and context declarations are owned by `gik-blueprint`
+and `gik-evaluators`, not a second kernel or an autonomous scheduler. Hosts turn
+Sense observations into discrete events and execute declared effects outside
+reduction. See the [package map](https://github.com/nsreehari/generative-interaction-kernel#choose-a-package)
+for the complementary layers.
+
 The TypeScript exports are the API authority. See the
 [project documentation](https://github.com/nsreehari/generative-interaction-kernel/tree/master/docs)
 for architecture, protocol, and compatibility contracts.

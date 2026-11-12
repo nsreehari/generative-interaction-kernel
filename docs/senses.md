@@ -63,7 +63,8 @@ settlement remains part of the existing service declaration shape; observations
 use Signal-to-event mappings rather than bounded result settlement.
 
 `input` and `when` use the existing Cell evaluation context: declared `inputs`,
-settled `sources`, `systemInputs`, and `computed` values. Required unavailable
+settled `fetched_sources`, `systemInputs`, and `computed` values (plus
+`dpp.manifest` for a purpose-bearing Cell). Required unavailable
 inputs leave the Sense inactive. Producer output tokens are resolved through the
 running graph, not by guessing state paths.
 

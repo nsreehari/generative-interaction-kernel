@@ -9,7 +9,7 @@ an empty recipe array. The removed `tiers` and `recipes` fields are not normaliz
 aliases; they are rejected.
 
 Each projection tier declares its Blueprint-local named `capabilities`. A presentation's mandatory
-`allowedCapabilities` is the one closed authorization boundary: exact strings admit terminal host
+`allowedCapabilities` is the closed presentation vocabulary boundary: exact strings admit terminal host
 capabilities, while `{ "tier": "<id>" }` admits that projection tier's complete vocabulary. Host
 component namespaces are flat and terminal; projection recipes specialize selection, filtering,
 layout, and composition rather than lowering semantic components into primitive or Fluent ones.
@@ -76,6 +76,30 @@ appear in Blueprint configuration or runtime state.
 See the repository's
 [external-services decision](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/decisions/ADR-0040-external-services-and-queueface.md)
 for the ownership model.
+
+## Sources, Senses, and DPP Cells
+
+Ordinary `sources` and `dpp.context.sources` obtain bounded results. Expressions
+read those results as `fetched_sources.<id>`, never `sources.<id>`; configuration
+arrays keep the `sources` name. Source output transforms receive `response`
+and the immutable launch context, so correlate against the launch request key
+rather than a newer state snapshot.
+
+An optional `dpp` makes an ordinary Cell purpose-bearing. It carries the full
+read-only `dpp.manifest`, mandatory context operations resolving to
+`context-store.query/v1` and `context-store.ingest/v1`, and optional context
+Senses. IDs are unique across all ordinary/context sources and Senses in a Cell.
+The manifest is not an execution permission, a special Cell kind, or a scheduler.
+
+`BlueprintSenseReconciler` opens/closes host-owned observation bindings from
+committed durable intent and appends their Signals as declared events. Workers
+do not establish observation connections merely because a Blueprint declares
+them; hosts must wire reconciliation, privileged journal admission, error
+reporting, and awaited shutdown.
+
+See [Purpose-bearing Cells](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/dpp.md)
+and [Cell Senses](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/senses.md)
+for the shared lifecycle and delivery contracts.
 
 ## Hosted Blueprint references
 
@@ -280,8 +304,9 @@ ownership, and effect outcomes return through the journal before changing Bluepr
 - Service and projection chains resolve independently. Materialization applies the complete service
   chain before the complete projection chain and emits one terminal tier plus an empty recipe array
   for each axis.
-- `CellDefinition` is the authored unit for inputs, system inputs, sources, compute steps, outputs,
-  event contracts, behavior, optional `potentialViews`, and optional hosted `blueprint`.
+- `CellDefinition` is the authored unit for inputs, system inputs, sources, Senses, compute steps,
+  outputs, event contracts, behavior, optional `dpp`, optional `potentialViews`, and optional
+  hosted `blueprint`.
 - `CellViewDecoration` is the reusable decoration shape: `capability`, optional `props`, optional
   `bindings`, and optional `visibility`.
 - `CellPotentialView` adds optional `capability`, `region`, `before`, `after`, and `wrap`. A view is

@@ -30,6 +30,12 @@ This is authored intent, not live status or a schedule preview; provider configu
 and input/output expressions are not exposed. `inspect` and `preflight` obtain
 current Sense facts from the trusted runtime host.
 
+`sourceCount` and `senseCount` include ordinary and DPP-context declarations.
+For a purpose-bearing Cell, the summary also returns `dpp.manifest`. That
+reference frame is authored data, not evidence that an agent is currently
+running or authorized to act. See the
+[DPP contract](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/dpp.md).
+
 Profiles may also declare an explicit custom subset. Operation meaning does not change with the
 selection: `simulate` uses supplied or candidate-owned state, while `preflight` checks current host
 state and policy. `set_in_progress_proposal` atomically replaces one complete, request-scoped draft;
@@ -85,5 +91,12 @@ The guidance requires every Blueprint to declare the independent `serviceTiers`/
 and `projectionTiers`/`projectionRecipes` axes and records the service-before-projection
 materialization order.
 
-See `docs/sot/gik-public/agent-lifecycle-exp.yaml` and
-`docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md` in the repository.
+Blueprint lifecycle binding reads a structural `payload.agentLifecycle.profiles`
+contract supplied by the caller. That material is not a field of the canonical
+schema-validated `BlueprintArtifact`; it does not make lifecycle exposure
+mandatory for every Blueprint.
+
+See [ADR-0048](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/decisions/ADR-0048-agent-lifecycle-experiences-and-host-admission.md)
+for lifecycle ownership and
+[maintainer contracts](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/sot/README.md)
+for cross-package compatibility detail.

@@ -2,7 +2,8 @@ schema_version: 1
 
 package:
   name: "gik-react"
-  version: "0.3.0"
+  consumer_documentation: packages/react/README.md
+  version_authority: packages/react/package.json
   status: current
   purpose: >-
     Render resolved GIK trees in React and provide Blueprint-first in-memory and durable host
@@ -13,9 +14,6 @@ package:
 
 api_policy:
   signature_authority: generated TypeScript declarations
-  imports:
-    in_memory: 'import { BlueprintHost } from "gik-react"'
-    durable: 'import { BlueprintHost } from "gik-react/durable"'
   categories:
     rendering: Component registry, resolved-node renderer, useGenUI, and GenUIRoot.
     sources: GenUISource, GenUIController, BlueprintController, and source lifecycle contracts.
@@ -60,33 +58,11 @@ blueprint_host:
     - Append effect settlements to the journal and apply them through a later transition.
     - Resolve the resulting program through gik-kernel.
     - Notify the React binding and render through the shared bundle-composition host.
-  props:
-    required:
-      - blueprint
-    composition:
-      - resolveLeavesProvider
-      - resolveCapabilityDescriptors
-      - native
-      - companions
-      - contexts
-      - fileServices
-      - primaryBridge
-      - primaryInstanceId
-      - className
-      - style
-      - externalContext
-    in_memory_only:
-      - "context (deprecated initial-state seed compatibility)"
-      - onTransition
 
 durable_blueprint_host:
   import: "gik-react/durable"
   implementation: adapters/react/src/primitives/durable-blueprint-host.tsx
   controller: adapters/react/src/durable-blueprint-controller.ts
-  exported_surface:
-    - BlueprintHost
-    - BlueprintHostProps
-    - createNativeBlueprintWorker
   state_ownership: Committed state and materialized spec owned by the configured durable provider.
   transition_flow:
     - Materialize the Blueprint for bundle rendering through the shared gik-blueprint path.
@@ -95,17 +71,6 @@ durable_blueprint_host:
     - Append UI events to the durable journal and notify an optional locally mounted worker.
     - Read the committed snapshot without acquiring or aborting a writer lease.
     - Rebuild the resolved Kernel tree and notify the shared React binding.
-  props:
-    required:
-      - blueprint
-      - runtime
-    optional:
-      - worker
-    runtime:
-      shape: "{ runtimeId: string; providers: Record<string, DurableProvider>; refs: TransitionRefs }"
-    shared_composition: >-
-      All root BlueprintHost composition props are shared except context and onTransition, which are
-      omitted because durable-runtime owns state and commit results.
   synchronization:
     available_below_host: >-
       gik-durable-runtime exposes readSnapshotChanges, applyRuntimeSnapshotChanges, and subscribe
@@ -118,6 +83,9 @@ durable_blueprint_host:
     BlueprintHost starts and stops only a supplied local BlueprintWorker. Omitting worker supports
     middleware, backend, or Azure Function execution using the same runtimeId and refs. The
     controller appends and notifies but never executes queue items or engine transitions.
+  observation_ownership: >-
+    Neither React mounting nor the generic worker establishes Sense observers automatically.
+    The execution host reconciles committed intent and owns observation shutdown and journal ingress.
 
 related_decisions:
   - ADR-0006-render-adapter-infra-agnostic.md
