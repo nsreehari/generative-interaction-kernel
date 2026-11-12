@@ -51,6 +51,10 @@ These instructions apply to every coding agent working in this repository.
 ## GitHub workflow
 
 - Work on a dedicated branch; never push directly to the default branch.
+- The repository-scoped release App may update generated version metadata in
+  the existing implementation PR, followed by normal required CI and review.
+  It must not push version commits directly to the default branch or bypass
+  protection. See `docs/releasing.md`.
 - Open, but never merge, a pull request.
 - Link the source issue with `Closes #<issue-number>`.
 - Summarize the implementation, validation, limitations, and follow-up work.

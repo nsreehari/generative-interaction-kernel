@@ -1,37 +1,46 @@
-name: Version npm packages
+name: Prepare npm versions in implementation PR
 
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - ".changeset/**"
-
-concurrency:
-  group: npm-version-pr
-  cancel-in-progress: false
+  pull_request_target:
+    branches: [master]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:
   contents: read
 
+concurrency:
+  group: npm-version-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   version:
+    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && !contains(github.event.pull_request.labels.*.name, 'release:manual')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout trusted base only
+        uses: actions/checkout@v5
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
           persist-credentials: false
-
       - uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: npm
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Create versioning App token
+      - name: Install trusted base tooling without lifecycle scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Fetch PR as data without checking it out
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git fetch origin "$HEAD_SHA"
+      - name: Plan versions from trusted tooling and untrusted JSON/Markdown data
+        run: node scripts/prepare-implementation-release.mjs
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: Create versioning App token after planning
         id: version-token
         uses: actions/create-github-app-token@v2
         with:
@@ -40,14 +49,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-contents: write
-          permission-pull-requests: write
-
-      - name: Create or update version pull request
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          version: npm run release:version
-          title: "chore: version npm packages"
-          commit: "chore: version npm packages"
+      - name: Commit only planned metadata to the implementation branch
+        run: node scripts/write-implementation-release.mjs
         env:
-          GITHUB_TOKEN: ${{ steps.version-token.outputs.token }}
+          GH_TOKEN: ${{ steps.version-token.outputs.token }}

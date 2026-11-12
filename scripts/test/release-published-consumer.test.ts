@@ -322,13 +322,13 @@ test("consumer verification follows successful stable publication at the validat
   assert.ok(workflow.includes("ref: ${{ inputs.commit || github.sha }}"));
 });
 
-test("version PRs use the repository-scoped App instead of suppressed token events", () => {
+test("automatic version/release events use the repository-scoped App instead of suppressed token events", () => {
   const version = readFileSync(new URL("../../.github/workflows/version-packages.yml", import.meta.url), "utf8");
   assert.ok(version.includes("uses: actions/create-github-app-token@v2"));
   assert.ok(version.includes("repositories: ${{ github.event.repository.name }}"));
   assert.ok(version.includes("permission-contents: write"));
-  assert.ok(version.includes("permission-pull-requests: write"));
-  assert.ok(version.includes("GITHUB_TOKEN: ${{ steps.version-token.outputs.token }}"));
+  assert.ok(version.includes("GH_TOKEN: ${{ steps.version-token.outputs.token }}"));
+  assert.ok(version.includes("node scripts/write-implementation-release.mjs"));
   assert.ok(!version.includes("gh workflow run"));
   assert.ok(!version.includes("actions: write"));
 });
