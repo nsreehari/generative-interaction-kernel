@@ -123,7 +123,7 @@ export function prepareImplementationRelease({ root, base, head, pullRequest }) 
     write(".changeset/automatic-patch.md", "---\n---\n\nAutomatic release planning.\n");
     run("status", "--output=plan.json");
     const plan = JSON.parse(readFileSync(join(scratch, "plan.json"), "utf8"));
-    const explicit = plan.releases.map(({ name }) => name);
+    const explicit = plan.releases.filter(({ type }) => type !== "none").map(({ name }) => name);
     assert.ok(explicit.every((name) => stable.includes(name)), "Only stable packages may be versioned");
     const selected = dependencyClosure([...seeds, ...explicit], normalized, stable);
     if (selected.length) {
