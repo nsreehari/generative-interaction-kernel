@@ -3,6 +3,7 @@ name: CI
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled, edited]
 
 permissions:
   contents: read
@@ -20,6 +21,28 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Classify changes (manual runs validate everything)
+        id: changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ -z "$BASE" ]; then
+            echo "full=true" >> "$GITHUB_OUTPUT"
+          else
+            node scripts/change-policy.mjs "$BASE" "$HEAD"
+          fi
+
+      - name: Check patch hygiene
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: git diff --check "$BASE...$HEAD"
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -30,8 +53,31 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Verify release metadata is prepared in this PR
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'release:manual')
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node scripts/prepare-implementation-release.mjs
+          node --input-type=module -e '
+            import { readFileSync, unlinkSync } from "node:fs";
+            const plan = JSON.parse(readFileSync("release-metadata.json", "utf8"));
+            unlinkSync("release-metadata.json");
+            if (Object.keys(plan.outputs).length) {
+              throw new Error("Wait for the release App to prepare version metadata in this PR: " + Object.keys(plan.outputs).join(", "));
+            }
+          '
+
       - name: Build workspace packages
+        if: steps.changes.outputs.full == 'true'
         run: npm run build:public-packages
 
+      - name: Validate release and workflow policy
+        if: steps.changes.outputs.full != 'true'
+        run: npm run test:release
+
       - name: Validate
+        if: steps.changes.outputs.full == 'true'
         run: npm test

@@ -1,0 +1,39 @@
+name: Release merged npm versions
+
+on:
+  push:
+    branches: [master]
+    paths: ["packages/*/package.json"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release-intent
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+      - name: Create release App token
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.GIK_MAINTAINER_APP_ID }}
+          private-key: ${{ secrets.GIK_MAINTAINER_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+      - name: Create stable release for merged versions
+        run: node scripts/create-merged-release.mjs
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}

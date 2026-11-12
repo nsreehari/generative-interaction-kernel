@@ -7,7 +7,9 @@ are later promoted through stable versions on `latest`.
 
 ## Prepare a package change
 
-Add a changeset in the same pull request as a user-visible package change:
+The automatic stable policy supplies patch intent for changed published
+package inputs. Add a changeset in the same pull request for an explicit minor
+or major change (or a consumer-facing patch summary):
 
 ```bash
 npm run changeset
@@ -28,23 +30,66 @@ maintainer's ownership and have the trusted publisher described below configured
 OIDC cannot bootstrap a nonexistent package; initial package registration is a
 maintainer prerequisite, not a reason to add token fallback to this workflow.
 
-After changesets reach `master`, the `Version npm packages` workflow maintains
-a version pull request. That pull request updates package versions, pinned
-internal dependencies, changelogs, and consumes the pending changeset files.
-The version workflow uses the existing maintainer GitHub App, scoped to this
-repository with contents and pull-request write permissions. Its version PRs
-trigger normal required CI without the built-in token's event suppression or a
-separate workflow dispatch. The App must be installed on this repository with
-those permissions; missing configuration fails rather than falling back to the
-built-in token. Fork workflow approval policy is unchanged.
+## Change-aware validation
+
+Every pull request reports the required `Validate` check; there are no
+workflow-level path filters. Known docs, workflow, and release-policy changes
+install dependencies and run `npm run test:release`, including workflow safety
+and Changesets/pinning integration tests. Production, configuration, and unknown
+paths build public packages and run the complete `npm test`. Manual CI dispatch
+always uses the full gate. The npm dependency cache remains enabled.
+
+## Automatic stable versions in the implementation PR
+
+The version App updates metadata **in the existing implementation PR**, not a
+separate version PR or a direct default-branch commit. Normal required CI and
+review run again before merge. No branch protection or approval is bypassed.
+
+- Changed public package inputs default to patch intent. Existing Changesets
+  minor/major intent takes precedence. Transitive consumers are versioned so
+  exact internal dependency pins remain consistent.
+- Ownership includes source outside `packages/`: kernel, Blueprint, faces,
+  React, SSE, shared compiler inputs, and embedded schemas. Root dependency/build
+  inputs conservatively affect all stable packages. Unowned inputs fail closed.
+  Root docs/workflows/tests do not themselves request publication; packed
+  package READMEs and docs do.
+- The trusted `pull_request_target` workflow checks out only the base, installs
+  base tooling with lifecycle scripts disabled, and reads PR JSON/Markdown as
+  data. It never checks out or executes PR scripts with a write token.
+- Changesets runs against an isolated data-only snapshot with trusted config
+  and changelog implementation. The App writes only generated versions,
+  exact workspace pins, workspace-only lock metadata, changelogs, consumed
+  changesets, and `.changeset/implementation-release.json` tracking consumed
+  intent for repeatable planning. External lock dependencies are not rewritten.
+- Reruns recompute from the PR base, avoiding repeated bumps. Update a stale PR
+  before merge; advanced PR/base heads fail instead of force-pushing stale
+  metadata. Fork changes need maintainer adoption onto an internal branch.
+- Workspace/publishing-policy changes and prerelease mode require manual
+  maintainer adoption with the `release:manual` label and reviewed version
+  metadata in the same PR. This disables only generated version planning, never
+  the build/test or publication gates. Prerelease entry, exit, and `next`
+  publication retain the explicit reviewed path below.
+
+After the reviewed stable versions merge, the release App creates a deterministic
+`npm-YYYY-MM-DD.<commit-timestamp>` release at that commit. If no public version
+changed it does nothing. Existing matching releases are reused, not recreated;
+an advanced default branch or mismatched release fails explicitly. Do not move
+release tags; reconcile an interrupted release in a reviewed follow-up.
+
+The App needs Contents write permission with existing `GIK_MAINTAINER_APP_ID`
+and `GIK_MAINTAINER_APP_PRIVATE_KEY` configuration. App-created commits trigger
+normal CI, and App-created releases trigger publication (the built-in token
+suppresses these follow-up events). No secret values need inspecting. The
+complete release gate, stable/prerelease tag checks, trusted npm publication,
+consumer verification, and `npm-publish` approval remain mandatory.
 
 ## Publish a prerelease
 
-1. Merge the version pull request after `CI / Validate` passes.
-2. Confirm the merged version pull request passed `CI / Validate`; the release
+1. Prepare and merge reviewed version metadata after `CI / Validate` passes.
+2. Confirm the version metadata passed `CI / Validate`; the release
    workflow repeats the complete release gate against the tagged `master` commit.
 3. Confirm `.changeset/pre.json` is in `next` prerelease mode and that the
-   version PR contains `-next.N` package versions.
+   reviewed change contains `-next.N` package versions.
 4. Create a GitHub prerelease from the current `master` commit.
 5. Use a tag in the form `npm-next-YYYY-MM-DD.N`, for example
    `npm-next-2026-08-16.1`.
@@ -56,10 +101,9 @@ mode, package versions, and `next` npm dist-tag to agree.
 ## Publish a stable release
 
 After the prerelease has been consumed successfully, exit Changesets
-prerelease mode in a reviewed change and merge the resulting stable version
-PR. Then:
+prerelease mode and prepare stable versions in a reviewed change. Then:
 
-1. Confirm the merged stable version pull request passed `CI / Validate`; the
+1. Confirm the merged stable version change passed `CI / Validate`; the
    release workflow repeats the complete release gate against the tagged
    `master` commit.
 2. Create a non-prerelease GitHub Release from the current `master` commit.
