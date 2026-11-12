@@ -35,8 +35,10 @@ maintainer prerequisite, not a reason to add token fallback to this workflow.
 Every pull request reports the required `Validate` check; there are no
 workflow-level path filters. Known docs, workflow, and release-policy changes
 install dependencies and run `npm run test:release`, including workflow safety
-and Changesets/pinning integration tests. Production, configuration, and unknown
-paths build public packages and run the complete `npm test`. Manual CI dispatch
+and Changesets/pinning integration tests. That suite includes real workspace
+consumer smoke checks, so public packages are built first on both paths;
+these checks are not skipped to optimize documentation changes.
+Production, configuration, and unknown paths run the complete `npm test`. Manual CI dispatch
 always uses the full gate. The npm dependency cache remains enabled.
 
 ## Automatic stable versions in the implementation PR

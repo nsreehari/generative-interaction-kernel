@@ -71,7 +71,6 @@ jobs:
           '
 
       - name: Build workspace packages
-        if: steps.changes.outputs.full == 'true'
         run: npm run build:public-packages
 
       - name: Validate release and workflow policy
