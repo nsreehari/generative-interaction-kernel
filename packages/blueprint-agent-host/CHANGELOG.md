@@ -4,6 +4,11 @@
 
 ### Patch Changes
 
+- Atomically deduplicate proposal receipt creation in memory and committed durable
+  transitions. Concurrent identical submissions share one receipt; conflicting
+  content is rejected without poisoning journal replay. Custom stores must
+  enforce proposal-ID uniqueness and immutable proposal content.
+
 - Updated dependencies
   - gik-evaluators@0.4.0
   - gik-agent-lifecycle-exp@0.3.0
