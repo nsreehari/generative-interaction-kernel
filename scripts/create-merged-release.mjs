@@ -32,8 +32,13 @@ if (!changed) {
   const timestamp = git("show", "-s", "--format=%ct", event.after);
   const day = new Date(Number(timestamp) * 1000).toISOString().slice(0, 10);
   const tag = `npm-${day}.${timestamp}`;
+  if (git("tag", "--list", tag)) {
+    assert.equal(git("rev-list", "-n", "1", tag), event.after, "Existing tag targets another commit");
+  }
   const releases = api("releases?per_page=100");
-  if (releases.some((release) => release.tag_name === tag)) {
+  const existing = releases.find((release) => release.tag_name === tag);
+  if (existing) {
+    assert.ok(!existing.draft && !existing.prerelease, "Existing release is not a published stable release");
     assert.equal(git("rev-list", "-n", "1", tag), event.after, "Existing release targets another commit");
     console.log(`Release ${tag} already exists.`);
   } else {
