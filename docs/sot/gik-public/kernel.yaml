@@ -2,7 +2,8 @@ schema_version: 1
 
 package:
   name: "gik-kernel"
-  version: "0.1.0"
+  consumer_documentation: packages/kernel/README.md
+  version_authority: packages/kernel/package.json
   purpose: >-
     Define Kernel programs and vocabularies, validate them, execute programs, and expose
     host, projection, client, and transport interfaces.

@@ -1,12 +1,12 @@
 # gik
 
-Batteries-included entry point for the **Generative Interaction Kernel (GIK)** — a generic platform
+Private workspace namespace aggregator for the **Generative Interaction Kernel (GIK)** — a generic platform
 layer for generative, declarative UI. This meta-package has no code of its own; it re-exports the core
 `gik-*` packages under stable namespaces so you can start from a single install.
 
-```bash
-npm install gik
-```
+This package is not published by the core release workflow. The example below
+is for workspace composition; public consumers should install individual
+packages from the [package map](../../README.md#choose-a-package).
 
 ```ts
 import { kernel, react } from "gik";
@@ -23,6 +23,7 @@ const k = new kernel.Kernel(/* manifest, document */);
 | Namespace | Package |
 |---|---|
 | `kernel` | `gik-kernel` |
+| `evaluators` | `gik-evaluators` |
 | `react` | `gik-react` |
 | `agentface` | `gik-agentface` |
 | `controlface` | `gik-controlface` |
@@ -31,8 +32,11 @@ const k = new kernel.Kernel(/* manifest, document */);
 
 ## Documentation
 
-See the bundled consumer manual in [`docs/GIK-public-interface.html`](./docs/GIK-public-interface.html)
-and the [project repository](https://github.com/nsreehari/generative-interaction-kernel).
+This namespace wrapper does not re-export `gik-blueprint`, the agent lifecycle,
+or the Blueprint proposal host. Import those packages explicitly for DPP,
+Sense reconciliation, and governed proposal workflows. There is no bundled
+HTML manual; the owning package READMEs and [documentation guide](../../docs/README.md)
+are the maintained references.
 
 ## License
 

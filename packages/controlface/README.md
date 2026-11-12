@@ -71,6 +71,18 @@ the narrower agent-safe projection with `gik-agentface`.
 
 ### Service-host exports
 
+Import `gik-controlface/services` for service infrastructure without the root
+tool catalogs. It also exports `createIntervalTimerServiceKind`,
+`createContextStoreServiceKind`, context-store schemas, contract constants,
+and request/record types. The context-store kind dispatches to a host-supplied
+executor; it does not choose a database or authorize a store merely from its
+`storeRef` or `scope`.
+
+`DefaultServiceHost.observe` applies service request transformation,
+validation, and authorization to Sense establishment and deliveries. The host
+must wire those observations through Blueprint reconciliation and durable
+journal ingress; this is separate from bounded `invoke` calls.
+
 - `QueueFace` is a thin wrapper over a supplied `ServiceHost`, with
   `submit(effect)`, `getRequest(id)`, `listRequests()`, and `cancel(id)`.
 - `ServiceHost` is the host contract for service discovery, validation,

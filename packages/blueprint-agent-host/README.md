@@ -41,6 +41,15 @@ The package is the Blueprint HBX implementation over neutral contracts from
 `gik-agent-lifecycle-exp`. Agents still receive UBX, CBX, or ABX proposal tools; HBX remains a
 trusted host surface.
 
+## Purpose-bearing Cells
+
+The package does not interpret `dpp.manifest` as a policy set or start a
+participant scheduler. A proposal changing a purpose-bearing Cell still
+requires trusted target facts, authorization, admission, and idempotent
+application. Context records and manifest prose do not replace those checks.
+See the [DPP contract](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/dpp.md)
+for context-source and withdrawal semantics.
+
 ## Senses and recurring observations
 
 A Sense is an ongoing observation intent, not necessarily a live connection or

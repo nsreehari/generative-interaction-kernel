@@ -4,6 +4,29 @@ The kernel is a **pure interpreter + pure reducer**. It holds no domain knowledg
 knowledge, no time, and no memory. Statefulness is achieved by putting state in data and reducing
 over it — never by the kernel holding it.
 
+For current package entry points and method signatures, use the
+[package READMEs](../README.md#choose-a-package). This document explains
+ownership and execution invariants rather than maintaining another API catalog.
+
+## Blueprint-first composition
+
+Blueprints define the stable semantic Cell graph, declared services, and an
+independent presentation skeleton. Two deterministic lowering axes select
+contract-compatible implementations and projections without restructuring Cells.
+Materialization completes service lowering before projection lowering.
+
+A transition reduces committed state and events to new state plus effects.
+The host executes I/O and journals settlements for later transitions. Bounded
+source results are `fetched_sources` in Cell expressions. Senses contribute
+discrete events through host-reconciled observation bindings; they are not
+unbounded source fetches or work performed inside the reducer.
+
+A purpose-bearing Cell adds `dpp.manifest`, context query/ingest sources, and
+optional context Senses. It remains an ordinary Cell: there is no separate DPP
+engine, mandatory model, or permission granted by its purpose text. The
+[DPP contract](dpp.md) and [Sense contract](senses.md) own the detailed
+cross-package dataflow and lifecycle rules.
+
 ## The closed / open boundary
 
 The single organizing principle:
@@ -206,28 +229,7 @@ ingest(document)                               ← TransportProvider
   → every step → ObservabilitySink
 ```
 
-## Kernel public API
-
-The `Kernel` class is the in-process reference implementation of the closed core. Its whole public
-surface is small and pure-ish — every method either seeds, advances, or reads state; none owns time
-or domain knowledge. (This is the in-process API; the language-neutral **wire** contract is the five
-GIK messages in [03-protocol](03-protocol.md).)
-
-| Method | Returns | Purpose |
-|---|---|---|
-| `new Kernel(manifest, document, opts?)` | — | Construct over a manifest + document. Validates document + per-capability props unless `opts.validate === false`. Providers (`expression`, `state`, `contexts`, `registry`, `orchestrator`, `sink`) are injected here. |
-| `init()` | `Patch` | Seed machine initial states. Returns the rev-0 baseline patch (machine ops only). |
-| `baseline()` | `Patch` | `init()` **plus** the full current state as one rev-0 patch — a fresh remote client reconstructs the complete replica from it ([ADR-0011](decisions/ADR-0011-client-runtime.md)). |
-| `snapshotPatch()` | `Patch` | The full current state as a patch at the *current* rev, **without** re-seeding machines — re-onboards a reconnecting client mid-session ([ADR-0012](decisions/ADR-0012-reconnection.md)). |
-| `dispatch(event)` | `Patch` | Reduce one event, run any orchestrator effects and the follow-up events they produce, and apply everything. **One dispatch = one rev**, regardless of fan-out ([ADR-0009](decisions/ADR-0009-orchestrator-effects.md)). |
-| `resolve()` | `ResolvedNode` | Resolve the current document into a renderable tree (gate → capability → props → read → children). |
-| `state()` | `Record<string, Json>` | The live state snapshot (by reference — read-only; do not mutate). |
-| `checkpoint()` | `Checkpoint` | Capture an **immutable, rev-keyed** snapshot of pure state for time-travel (see below). |
-| `restore(cp)` | `Patch` | Set state to a checkpoint — backward (undo) or forward (redo). **Pure state only**; effects are reported separately, so a host with its own rollback substrate can ignore them. |
-| `effectsSince(rev)` | `RecordedEffect[]` | The effects journaled after a rev, in **causal order**, each tagged `{ rev, seq }`. The host decides: ignore, replay forward, or reverse for compensation. |
-| `compensate(effects)` | `Patch` | Route the given effects through the Orchestrator's `compensate` seam, **in the order supplied** (pass reversed for LIFO undo). |
-
-### Time-travel — checkpoint, restore, compensate
+## State rollback and external effects
 
 Because state is pure JSON and the reducer is deterministic (invariant 2), point-in-time capture and
 restore of **state** fall out for free — they add no domain knowledge. Reversing an **effect's**
@@ -281,26 +283,19 @@ await kernel.compensate(fired.map((e) => e.effect).reverse());  // host chooses 
 > checkpoints to hold, when to trim the journal, and whether to replay forward or reverse. The kernel
 > reports ordered facts and moves state; it never decides what a fired effect *means*.
 
-## Application composition — bundles and the generic host
+## Application composition
 
-The kernel runs one `document`; an *application* is more than one document, so the React adapter
-adds a thin packaging layer **above** the kernel (it changes no kernel grammar, provider, or wire
-message). See [ADR-0030](decisions/ADR-0030-bundle-composition.md) and
-[ADR-0031](decisions/ADR-0031-per-bundle-registries.md).
+The kernel executes a program; Blueprint assembly and materialization sit above
+that grammar. The [Blueprint README](../packages/blueprint/README.md) owns
+artifact, lowering, nested-Blueprint, and presentation contracts. The
+[React README](../packages/react/README.md) owns host setup, exported regions,
+and component-provider wiring.
 
-- **Bundle** — the unit of an app: `{ manifest, document, state?, effects?, components? }`. The
-  JSON-only subset `{ manifest, document, state? }` (a **SerializableBundle**) is movable as data;
-  `effects` (named Orchestrator handlers) and `components` (extra capability views) are the code side.
-- **One host** — `loadBundle` seeds state, builds the effect dispatcher, constructs the kernel, and
-  returns a controller; `BundleHost` resolves every projection namespace through explicit package
-  or `self` provider imports.
-- **Composition** — `embed` is a leaf *capability* that mounts a whole bundle as a nested runtime,
-  either **inline** (a SerializableBundle bound from state, for runtime-built surfaces) or as a
-  **named app** (resolved from an `AppRegistry` the host publishes, carrying its native effects).
-  The same bundle runs identically as the outermost mount or as a nested leaf — there is no
-  privileged "app shell."
-- **Per-bundle registries** — a bundle imports named providers under explicit aliases. Package
-  components come from package providers; bundle-native views come from `self`. Nested bundles
-  resolve their own imports rather than inheriting an ambient component vocabulary.
+The boundary remains important: authored artifacts carry JSON contracts, while
+trusted hosts supply native implementations. Nested runtimes retain their own
+state and explicit imports, not ambient vocabulary or inherited execution
+permission. [ADR-0030](decisions/ADR-0030-bundle-composition.md) and
+[ADR-0031](decisions/ADR-0031-per-bundle-registries.md) retain the original bundle
+composition rationale; they are not current Blueprint onboarding instructions.
 
 Continue to [03-protocol.md](03-protocol.md).

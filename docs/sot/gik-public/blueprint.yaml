@@ -2,7 +2,8 @@ schema_version: 1
 
 package:
   name: "gik-blueprint"
-  version: "0.2.0"
+  consumer_documentation: packages/blueprint/README.md
+  version_authority: packages/blueprint/package.json
   purpose: >-
     Define and validate Blueprint JSON, resolve its child Blueprint references, analyze its
     Cells, enforce structural-change policy, lower independent service and projection tier chains through the package-owned fixed
@@ -25,6 +26,9 @@ terminology:
   blueprint_structure_mode: Enforceable policy selecting fixed, authorized reconfiguration, or adaptive runtime change.
   agent_lifecycle_material: Authored semantic manifest material required when a Blueprint is exposed through a use, customize, or author lifecycle profile.
   cell: A named part of a Blueprint.
+  dpp: >-
+    An ordinary Cell with a full read-only purpose manifest, mandatory context query/ingest
+    sources, and optional context Senses. Detailed dataflow and lifecycle rules live in docs/dpp.md.
   tier: A named representation used while converting a Blueprint, declared per lowering axis.
   lowering_recipe: A declaration connecting one tier to another on a single lowering axis.
   service_axis: >-
@@ -228,7 +232,8 @@ artifact_contracts:
       - Executable preparation emits decorations and the original Cell inside a presentation fragment.
       - Generated node ids are stable and derived from the original Cell id, position, and order.
       - Runtime bindings and visibility are scoped to the original matched Cell's cellRunState.
-      - The identical shape is reused for a CellPotentialView's optional `wrap` array (outermost
+      - >-
+        The identical shape is reused for a CellPotentialView's optional `wrap` array (outermost
         first): each layer nests the next as its own `edges.children` rather than sitting beside it
         as `before`/`after` do, so it renders as a genuine child in that layer's own component tree.
         A wrap layer stays exactly as inert as `before`/`after` (no event, no derivation of its own);
@@ -298,7 +303,8 @@ artifact_contracts:
       - A Cell attaches to a slot on its own view (`CellView.region`), never inside the presentation structure.
       - A Cell's `region` may be an array, rendering one independent instance per named slot, all reading and
         writing through that one Cell — a Cell is no longer restricted to appearing at most once.
-      - Slot declaration order, then Cell declaration order, deterministically defines the projected child
+      - >-
+        Slot declaration order, then Cell declaration order, deterministically defines the projected child
         order within a slot: nested slot-children always render ahead of any Cell attached directly to that
         same slot.
       - Slot names express caller-authored semantic placement intent and are not component capability

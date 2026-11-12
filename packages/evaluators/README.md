@@ -52,7 +52,16 @@ field defaults, form defaults, and caller-provided values.
 
 - `evaluateCell(input)` validates the supplied Cell, resolves only the tokens
   named in `systemInputs`, evaluates `compute` entries in order, and returns
-  `computed`, `operations`, `outputs`, and `effects`.
+  `computed`, `operations`, `outputs`, `effects`, and optional `senseBindings`.
+  Supply `materializedProgramCell`, `inputs`, `settledSources`, and
+  `systemContext`; this function declares work but performs no I/O.
+- Cell expressions expose `inputs`, `fetched_sources`, `computed`, and declared
+  `systemInputs`, plus read-only `dpp.manifest` for purpose-bearing Cells.
+  `settledSources` is the function-input property; `fetched_sources` is the
+  authored expression root. The old `sources` root is not an alias.
+- `cellSources(cell)` and `cellSenses(cell)` combine ordinary and DPP-context
+  declarations. `CellDpp` and `DppManifest` describe the purpose-bearing shape;
+  Blueprint-level validation resolves its required query/ingest contracts.
 - `validateCell(value)` validates one Cell definition and reports Cell-specific
   errors and warnings.
 - `validateTier(value)` validates one standalone Tier definition.
@@ -122,6 +131,10 @@ The Blueprint owns concrete non-secret values such as endpoints and opaque
 `credentialRef` strings. `ServiceKindRegistry` validates that object against
 the registered kind's `configSchema` and rejects literal credential fields;
 the host separately authorizes endpoints and resolves referenced secrets.
+
+For complete authoring and cross-package semantics, see
+[Purpose-bearing Cells](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/dpp.md)
+and [Cell Senses](https://github.com/nsreehari/generative-interaction-kernel/blob/master/docs/senses.md).
 
 ## Package boundary
 
