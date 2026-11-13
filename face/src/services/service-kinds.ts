@@ -32,6 +32,7 @@ export interface ServiceKindManifest {
 
 export interface ServiceKindContext {
   hostCapabilities: ReadonlySet<string>;
+  /** The creating declaration's identity; shared adapters may serve other service IDs. */
   identity?: BlueprintServiceIdentity;
   resolveCredential?: (reference: string) => Promise<unknown>;
   clearCredential?: (reference: string) => void | Promise<void>;
@@ -103,9 +104,21 @@ export class UnsatisfiedServiceDependencyError extends Error {
   }
 }
 
+function synchronousSetupResult<T>(value: T, message: string): T {
+  if (value !== null && (typeof value === "object" || typeof value === "function")
+    && "then" in value && typeof value.then === "function") {
+    const error = new Error(message);
+    // Preserve later rejection details on the reported contract error.
+    void Promise.resolve(value).catch((cause: unknown) => { error.cause = cause; });
+    throw error;
+  }
+  return value;
+}
+
 export function inspectServiceDependency(
   context: ServiceKindContext,
   requirement: ServiceDependencyRequirement,
+  serviceId: string,
 ): ServiceDependencyStatus {
   if (!requirement.id.trim() || !requirement.title.trim() || !requirement.kind.trim()
     || (requirement.ref !== undefined && !requirement.ref.trim())
@@ -113,13 +126,16 @@ export function inspectServiceDependency(
     || requirement.permissions?.some((permission) => !permission.trim())) {
     throw new Error("Service dependency requirements must have nonempty identifiers and descriptions");
   }
-  if (!context.identity) throw new Error("Service dependency inspection requires a service identity");
-  const status: ServiceDependencyStatus = context.inspectDependency
-    ? context.inspectDependency(structuredClone(requirement), structuredClone(context.identity))
-    : { state: "unavailable", message: "The host has not configured dependency inspection for this service" };
+  if (!context.identity || typeof serviceId !== "string" || !serviceId.trim()) {
+    throw new Error("Service dependency inspection requires the current service identity");
+  }
+  const message = "Host dependency inspection must return a valid synchronous readiness snapshot";
+  const status = synchronousSetupResult<ServiceDependencyStatus>(context.inspectDependency
+    ? context.inspectDependency(structuredClone(requirement), { ...structuredClone(context.identity), serviceId })
+    : { state: "unavailable", message: "The host has not configured dependency inspection for this service" }, message);
   if (!status || !["ready", "missing", "authorization-required", "insufficient-permissions", "unavailable"].includes(status.state)
     || (status.state !== "ready" && !status.message?.trim())) {
-    throw new Error("Host dependency inspection must return a valid synchronous readiness snapshot");
+    throw new Error(message);
   }
   const actions = status.actions ?? [];
   if (new Set(actions.map(({ id }) => id)).size !== actions.length
@@ -133,8 +149,9 @@ export function inspectServiceDependency(
 export function requireServiceDependency(
   context: ServiceKindContext,
   requirement: ServiceDependencyRequirement,
+  serviceId: string,
 ): void {
-  const status = inspectServiceDependency(context, requirement);
+  const status = inspectServiceDependency(context, requirement, serviceId);
   if (status.state !== "ready") {
     throw new UnsatisfiedServiceDependencyError(status.message, requirement, { dependencyStatus: status });
   }
@@ -296,17 +313,18 @@ export class ServiceKindRegistry {
     declaration: NativeServiceDeclaration,
   ): ServiceDependencyDescription[] {
     const factory = this.factories.get(declaration.kind)!;
-    const requirements = factory.describeDependencies
-      ? factory.describeDependencies(structuredClone(declaration)) : [];
+    const message = `Service kind '${declaration.kind}' must describe dependencies as a synchronous array`;
+    const requirements = synchronousSetupResult(factory.describeDependencies
+      ? factory.describeDependencies(structuredClone(declaration)) : [], message);
     if (!Array.isArray(requirements)) {
-      throw new Error(`Service kind '${declaration.kind}' must describe dependencies as a synchronous array`);
+      throw new Error(message);
     }
     if (new Set(requirements.map(({ id }) => id)).size !== requirements.length) {
       throw new Error(`Service kind '${declaration.kind}' declares duplicate dependency identifiers`);
     }
     return requirements.map((requirement) => ({
       requirement: structuredClone(requirement),
-      status: inspectServiceDependency({ ...this.context, identity }, requirement),
+      status: inspectServiceDependency({ ...this.context, identity }, requirement, identity.serviceId),
     }));
   }
 

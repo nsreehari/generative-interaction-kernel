@@ -69,6 +69,9 @@ The host provides `inspectDependency(requirement, identity)` when constructing
 `ServiceKindRegistry`. It reads current host-owned state synchronously.
 Network-based verification, provisioning and token refresh happen outside this
 callback; their results update the host's readiness state.
+Asynchronous inspection or dependency-description hooks are rejected as contract
+errors. If such a hook's promise rejects, its failure is retained as the contract
+error's `cause` once it settles, rather than becoming an unhandled rejection.
 
 The status is one of:
 
@@ -102,10 +105,16 @@ inspection is explicitly `unavailable`; legacy kinds without the hook retain
 their existing behavior. Non-ready dependencies throw
 `UnsatisfiedServiceDependencyError` with the requirement and status.
 
-Adapters must also use `requireServiceDependency(context, requirement)` before
+Adapters must also use
+`requireServiceDependency(context, requirement, request.service)` before
 using an already-held connection or emitting ongoing observations, so expiry or
 revocation does not remain hidden behind adapter caching. The helper does not
 resolve credentials; existing host credential-resolution ports remain in use.
+The third argument is mandatory: `context.identity.serviceId` identifies the
+creating declaration, which can differ from the current service when
+`per-blueprint` continuity shares an adapter. Use the actual execution request's
+`service`, or capture the observation request's `service` for each delivery.
+`inspectServiceDependency(context, requirement, serviceId)` follows the same rule.
 Runtime failures preserve the non-secret status in the normal service request
 error detail and failure settlement when a request has been recorded.
 

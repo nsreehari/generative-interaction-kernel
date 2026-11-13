@@ -6,7 +6,7 @@ import {
   DefaultServiceHost, ServiceKindRegistry, UnsatisfiedServiceDependencyError,
   requireServiceDependency, serviceConfig,
   type BlueprintServiceIdentity, type ServiceAdapter, type ServiceDependencyRequirement,
-  type ServiceDependencyStatus, type ServiceKindContext, type ServiceKindFactory,
+  type ServiceDependencyStatus, type ServiceKindContext, type ServiceKindFactory, type ServiceRequest,
 } from "../src/index";
 import { InMemoryStateModel, JsonataExpressionProvider } from "../../kernel/src/index";
 
@@ -129,12 +129,19 @@ function mailFactory(created: string[]): ServiceKindFactory {
         discover: async () => ({
           provider: { id: "mail", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [],
         }),
-        async execute() {
-          requireServiceDependency(context, mailRequirement(service));
+        async execute(request) {
+          requireServiceDependency(context, mailRequirement(service), request.service);
           return { output: { ready: true } };
         },
       };
     },
+  };
+}
+
+function mailRequest(service: string): ServiceRequest {
+  return {
+    id: `request-${service}`, providerId: "mail", service, operation: "search",
+    capabilityId: "mail.search/v1", createdAt: "now",
   };
 }
 
@@ -217,6 +224,99 @@ test("cached adapters can recheck live readiness and changed operations require 
   assert.equal((await registry.describeSetup(mailIdentity, send)).dependencies[0].status.state, "insufficient-permissions");
 });
 
+test.each(["sync", "async"])("shared adapters recheck the calling service without changing continuity: %s", async (mode) => {
+  const created: string[] = [];
+  const statuses: Record<string, ServiceDependencyStatus> = {
+    "personal-mail": { state: "ready" }, "other-mail": { state: "ready" },
+  };
+  const inspected: BlueprintServiceIdentity[] = [];
+  const registry = new ServiceKindRegistry({
+    inspectDependency(_, identity) {
+      inspected.push(identity);
+      return statuses[identity.serviceId];
+    },
+  });
+  registry.register(mailFactory(created));
+  const materialize = async (serviceId: string) => {
+    const identity = { ...mailIdentity, serviceId };
+    return mode === "sync" ? registry.materializeSync(identity, mailDeclaration) : registry.materialize(identity, mailDeclaration);
+  };
+  const first = await materialize("personal-mail");
+  const second = await materialize("other-mail");
+  assert.equal(first, second);
+  assert.deepEqual(created, ["mail"]);
+  statuses["personal-mail"] = { state: "authorization-required", message: "First account revoked" };
+  const ready = await second.execute(mailRequest("other-mail"), {});
+  assert.deepEqual(ready.output, { ready: true });
+  assert.deepEqual(inspected.at(-1), { ...mailIdentity, serviceId: "other-mail" });
+  await assert.rejects(async () => first.execute(mailRequest("personal-mail"), {}), /First account revoked/);
+  statuses["personal-mail"] = { state: "ready" };
+  statuses["other-mail"] = { state: "authorization-required", message: "Second account revoked" };
+  await assert.rejects(async () => second.execute(mailRequest("other-mail"), {}), /Second account revoked/);
+  assert.deepEqual(inspected.at(-1), { ...mailIdentity, serviceId: "other-mail" });
+});
+
+test("shared observation adapters retain the correct service identity for each live delivery", async () => {
+  const statuses: Record<string, ServiceDependencyStatus> = {
+    "personal-mail": { state: "ready" }, "other-mail": { state: "ready" },
+  };
+  const deliveries = new Map<string, () => Promise<void>>();
+  const delivered: string[] = [];
+  const created: string[] = [];
+  const registry = new ServiceKindRegistry({ inspectDependency: (_, identity) => statuses[identity.serviceId] });
+  const factory = mailFactory(created);
+  registry.register({
+    ...factory,
+    manifest: { ...factory.manifest, supports: { observe: true } },
+    async create(service, context): Promise<ServiceAdapter> {
+      return {
+        ...await factory.create(service, context),
+        async observe(request, observation) {
+          deliveries.set(request.service, async () => {
+            requireServiceDependency(context, mailRequirement(service), request.service);
+            await observation.emit({ name: "changed", id: request.service, payload: {} });
+          });
+          return { close() { deliveries.delete(request.service); } };
+        },
+      };
+    },
+  });
+  const declaration: NativeServiceDeclaration = {
+    ...mailDeclaration,
+    operations: { monitor: {
+      operation: "watch", contract: "mail.feed/v1", settlement,
+      sense: { kind: "feed", signals: { changed: { payloadSchema: { type: "object" } } } },
+    } },
+  };
+  const host = new DefaultServiceHost({
+    blueprintId: mailIdentity.blueprintId, blueprintRevision: mailIdentity.blueprintRevision,
+    declarations: { "personal-mail": declaration, "other-mail": declaration }, registry,
+    state: new InMemoryStateModel(["work"]), expression: new JsonataExpressionProvider(),
+  });
+  const handles: Array<{ close(): Promise<void> }> = [];
+  try {
+    for (const serviceId of ["personal-mail", "other-mail"]) {
+      handles.push(await host.observe({
+        kind: "invoke", node: "mail", control: { tool: "monitor", serviceRef: serviceId }, data: {},
+      }, {
+        kind: "feed", emit: async () => { delivered.push(serviceId); },
+        onError: (error) => assert.fail(String(error)),
+      }));
+    }
+    assert.deepEqual(created, ["mail"]);
+    const first = deliveries.get("personal-mail");
+    const second = deliveries.get("other-mail");
+    assert.ok(first);
+    assert.ok(second);
+    statuses["other-mail"] = { state: "authorization-required", message: "Second account revoked" };
+    await assert.rejects(second, /Second account revoked/);
+    await first();
+    assert.deepEqual(delivered, ["personal-mail"]);
+  } finally {
+    for (const handle of handles) await handle.close();
+  }
+});
+
 test("missing inspection fails closed, invalid config avoids inspection, and duplicate requirements are rejected", async () => {
   const registry = new ServiceKindRegistry();
   registry.register(mailFactory([]));
@@ -263,4 +363,24 @@ test("untyped host and provider hooks cannot silently omit or asynchronously sup
   const registry = new ServiceKindRegistry();
   registry.register(factory);
   await assert.rejects(() => registry.describeSetup(mailIdentity, mailDeclaration), /synchronous array/);
+});
+
+test.each(["host", "provider"])("rejecting async %s setup hooks report their cause without unhandled rejections", async (hook) => {
+  const failure = new Error("Asynchronous hook failed");
+  const context: ServiceKindContext = { hostCapabilities: new Set() };
+  const factory = mailFactory([]);
+  Object.defineProperty(hook === "host" ? context : factory, hook === "host" ? "inspectDependency" : "describeDependencies", {
+    enumerable: true, value: async () => { throw failure; },
+  });
+  const registry = new ServiceKindRegistry(context);
+  registry.register(factory);
+  let reported: Error | undefined;
+  await assert.rejects(() => registry.describeSetup(mailIdentity, mailDeclaration), (error) => {
+    assert.ok(error instanceof Error);
+    assert.match(error.message, hook === "host" ? /valid synchronous readiness snapshot/ : /synchronous array/);
+    reported = error;
+    return true;
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(reported?.cause, failure);
 });
