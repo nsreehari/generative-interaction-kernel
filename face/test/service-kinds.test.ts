@@ -160,7 +160,7 @@ test.each(["browser", "headless"])("describes non-secret setup without materiali
   const serviceHost = new DefaultServiceHost({
     blueprintId: mailIdentity.blueprintId, blueprintRevision: mailIdentity.blueprintRevision,
     declarations: { [mailIdentity.serviceId]: mailDeclaration }, registry,
-    state: new InMemoryStateModel({}), expression: new JsonataExpressionProvider(),
+    state: new InMemoryStateModel(["work"]), expression: new JsonataExpressionProvider(),
   });
   const report = await serviceHost.describeServiceSetup(mailIdentity.serviceId);
   assert.equal(report.validation.ok, true);
@@ -248,4 +248,19 @@ test("malformed readiness and setup actions are errors rather than usable setup 
   const registry = new ServiceKindRegistry({ inspectDependency: () => { throw new Error("Host status store unavailable"); } });
   registry.register(mailFactory([]));
   await assert.rejects(() => registry.describeSetup(mailIdentity, mailDeclaration), /Host status store unavailable/);
+});
+
+test("untyped host and provider hooks cannot silently omit or asynchronously supply setup snapshots", async () => {
+  for (const snapshot of [undefined, Promise.resolve({ state: "ready" })]) {
+    const context: ServiceKindContext = { hostCapabilities: new Set() };
+    Object.defineProperty(context, "inspectDependency", { value: () => snapshot, enumerable: true });
+    const registry = new ServiceKindRegistry(context);
+    registry.register(mailFactory([]));
+    await assert.rejects(() => registry.describeSetup(mailIdentity, mailDeclaration), /valid synchronous readiness snapshot/);
+  }
+  const factory = mailFactory([]);
+  Object.defineProperty(factory, "describeDependencies", { value: () => Promise.resolve([]) });
+  const registry = new ServiceKindRegistry();
+  registry.register(factory);
+  await assert.rejects(() => registry.describeSetup(mailIdentity, mailDeclaration), /synchronous array/);
 });

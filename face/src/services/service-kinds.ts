@@ -296,7 +296,11 @@ export class ServiceKindRegistry {
     declaration: NativeServiceDeclaration,
   ): ServiceDependencyDescription[] {
     const factory = this.factories.get(declaration.kind)!;
-    const requirements = factory.describeDependencies?.(structuredClone(declaration)) ?? [];
+    const requirements = factory.describeDependencies
+      ? factory.describeDependencies(structuredClone(declaration)) : [];
+    if (!Array.isArray(requirements)) {
+      throw new Error(`Service kind '${declaration.kind}' must describe dependencies as a synchronous array`);
+    }
     if (new Set(requirements.map(({ id }) => id)).size !== requirements.length) {
       throw new Error(`Service kind '${declaration.kind}' declares duplicate dependency identifiers`);
     }
