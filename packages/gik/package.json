@@ -40,8 +40,8 @@
     "gik-evaluators": "0.4.0",
     "gik-kernel": "0.4.1",
     "gik-react": "0.5.0",
-    "gik-agentface": "0.2.3",
-    "gik-controlface": "0.6.0",
+    "gik-agentface": "0.2.4",
+    "gik-controlface": "0.7.0",
     "gik-transport-http-sse": "0.2.2",
     "gik-transport-mcp-http": "0.1.1"
   },

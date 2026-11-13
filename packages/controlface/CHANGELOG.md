@@ -1,5 +1,18 @@
 # gik-controlface
 
+## 0.7.0
+
+### Minor Changes
+
+- Add provider-owned operation constraints that prohibit queueing and automatic
+  transport/guardrail retries without granting invocation authority. Enforce the
+  constraints at queue admission and execution so non-repeatable writes cannot be
+  retried after uncertain completion.
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+
 ## 0.6.0
 
 ### Minor Changes
