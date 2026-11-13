@@ -90,9 +90,17 @@ journal ingress; this is separate from bounded `invoke` calls.
 - `DefaultServiceHost` is the default `ServiceHost` implementation exported by
   the package.
 - `ServiceKindRegistry` registers service-kind factories, reports availability,
-  validates declarations, and materializes adapters.
+  validates declarations, describes per-service setup, and materializes adapters.
 - `UnsatisfiedServiceDependencyError` reports a missing host-supplied
-  dependency during service execution.
+  dependency during service execution, optionally including a non-secret
+  `dependencyStatus` with host-provided setup actions.
+- Providers may implement `describeDependencies(declaration)`. Hosts supply
+  `inspectDependency(requirement, identity)` as a synchronous readiness snapshot.
+  `ServiceKindRegistry.describeSetup(identity, declaration)` and
+  `DefaultServiceHost.describeServiceSetup(serviceId)` report requirements without
+  creating adapters, resolving credentials, or starting interactive authorization.
+  See [provider setup and host dependencies](../../docs/service-provider-setup.md)
+  for browser and headless integration.
 - The package also exports the service request and service-kind contracts used
   by those classes, including:
   - queue/service contracts: `ContractAssurance`,
@@ -107,7 +115,10 @@ journal ingress; this is separate from bounded `invoke` calls.
   - service-kind contracts: `ServiceExecutionSubjectKind`,
     `ServiceKindManifest`, `ServiceKindContext`, `ServiceDependency`,
     `ServiceKindFactory`, `ServiceKindDescription`,
-    `BlueprintServiceIdentity`, and `serviceConfig(declaration)`.
+    `BlueprintServiceIdentity`, `ServiceDependencyRequirement`,
+    `ServiceDependencyStatus`, `ServiceDependencyDescription`,
+    `ServiceSetupAction`, `ServiceSetupReport`, `inspectServiceDependency`,
+    `requireServiceDependency`, and `serviceConfig(declaration)`.
 
 ## Security boundary
 

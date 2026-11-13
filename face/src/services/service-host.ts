@@ -44,6 +44,7 @@ import {
   type BlueprintServiceIdentity,
   type ServiceKindDescription,
   type ServiceKindRegistry,
+  type ServiceSetupReport,
 } from "./service-kinds";
 
 /** Host-owned service capability projected through ControlFace and QueueFace.
@@ -52,6 +53,7 @@ export interface ServiceHost {
   describeKinds(): ServiceKindDescription[];
   describeServices(): Promise<ServiceCatalogSnapshot[]>;
   validateService(serviceId: string): Promise<ServiceValidationReport>;
+  describeServiceSetup?(serviceId: string): Promise<ServiceSetupReport>;
   discoverService(serviceId: string): Promise<ServiceCatalogSnapshot>;
   probeService(serviceId: string): Promise<ServiceProbeResult>;
   preflight(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSimulationResult>;
@@ -225,6 +227,7 @@ function errorDetail(error: unknown): Record<string, Json> {
   }
   if (error instanceof UnsatisfiedServiceDependencyError) {
     detail.dependency = asJson(error.dependency);
+    if (error.dependencyStatus) detail.dependencyStatus = asJson(error.dependencyStatus);
     const causeStatus = error.cause && typeof error.cause === "object"
       ? (error.cause as { status?: unknown }).status
       : undefined;
@@ -277,6 +280,14 @@ export class DefaultServiceHost implements ServiceHost {
       return this.options.blueprintServices.validate?.(this.identity(serviceId), declaration) ?? { ok: true };
     }
     return this.options.registry.validate(declaration);
+  }
+
+  async describeServiceSetup(serviceId: string): Promise<ServiceSetupReport> {
+    const declaration = this.declaration(serviceId);
+    if (isBlueprintService(declaration)) {
+      throw new Error(`Setup for Blueprint service '${serviceId}' must be inspected through its host`);
+    }
+    return this.options.registry.describeSetup(this.identity(serviceId), declaration);
   }
 
   async discoverService(serviceId: string): Promise<ServiceCatalogSnapshot> {

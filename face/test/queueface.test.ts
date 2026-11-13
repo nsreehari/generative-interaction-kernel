@@ -1187,6 +1187,10 @@ test("host settles unsatisfied service dependencies and records structured failu
     throw new UnsatisfiedServiceDependencyError(
       "Credential is required",
       { kind: "credential", ref: "provider/access-key" },
+      { dependencyStatus: {
+        state: "missing", message: "Configure the API key",
+        actions: [{ id: "configure", title: "Configure API key" }],
+      } },
     );
   }, {
     failureSettlement: {
@@ -1206,6 +1210,10 @@ test("host settles unsatisfied service dependencies and records structured failu
   assert.deepEqual(record?.errorDetail?.dependency, {
     kind: "credential",
     ref: "provider/access-key",
+  });
+  assert.deepEqual(record?.errorDetail?.dependencyStatus, {
+    state: "missing", message: "Configure the API key",
+    actions: [{ id: "configure", title: "Configure API key" }],
   });
 });
 
