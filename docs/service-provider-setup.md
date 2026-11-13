@@ -1,5 +1,29 @@
 # Service provider setup and host dependencies
 
+## Non-repeatable operations
+
+Native service kind manifests can declare mechanical constraints by provider
+operation name (not Blueprint invocation alias):
+
+```ts
+operationConstraints: {
+  send: { queueable: false, retryable: false },
+}
+```
+
+The host rejects queue admission before materialization or credential acquisition
+when `queueable` is false, and rechecks at execution. When `retryable` is false,
+transport failures terminate the queued attempt and response guardrail failures
+settle as failures without retry/correction calls. An immediate invocation is
+still allowed if otherwise authorized. Omitted constraints preserve existing
+behavior. These constraints do not confer permission, replace confirmation, or
+bypass endpoint admission, authorization snapshots or live kill switches.
+
+Non-idempotent providers such as Gmail send must declare both constraints; merely
+rejecting `mode: "queued"` in provider validation does not prevent explicit host
+enqueue calls. Publish the shared contract before consuming it in independent
+provider packages. and host dependencies
+
 Provider setup is independent of UI. A settings page, CLI or deployment tool can
 satisfy the same requirements; a Blueprint does not launch a login flow.
 

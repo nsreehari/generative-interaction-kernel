@@ -11,6 +11,11 @@ import type {
 
 export type ServiceExecutionSubjectKind = "cell" | "substrate-agent" | "chat" | "task";
 
+export interface ServiceOperationConstraints {
+  readonly queueable?: false;
+  readonly retryable?: false;
+}
+
 export interface ServiceKindManifest {
   id: string;
   version: string;
@@ -18,6 +23,8 @@ export interface ServiceKindManifest {
   description?: string;
   configSchema: Record<string, unknown>;
   executionModes: readonly ("immediate" | "queued")[];
+  /** Provider mechanics, keyed by operation name; never a grant of invocation authority. */
+  operationConstraints?: Readonly<Record<string, ServiceOperationConstraints>>;
   subjects: readonly ServiceExecutionSubjectKind[];
   requiresHostCapabilities?: readonly string[];
   supports?: {
@@ -250,6 +257,12 @@ export class ServiceKindRegistry {
     const id = factory.manifest.id.trim();
     if (!id) throw new Error("Service kind id is required");
     if (this.factories.has(id)) throw new Error(`Service kind '${id}' is already registered`);
+    for (const [operation, constraints] of Object.entries(factory.manifest.operationConstraints ?? {})) {
+      if (!operation.trim() || !constraints || typeof constraints !== "object" || Array.isArray(constraints)
+        || Object.entries(constraints).some(([key, value]) => !["queueable", "retryable"].includes(key) || value !== false)) {
+        throw new Error("Operation constraints must name operations and only prohibit queueing or retries");
+      }
+    }
     this.validators.set(id, this.ajv.compile(factory.manifest.configSchema));
     this.factories.set(id, factory);
   }
