@@ -94,6 +94,39 @@ test("release promotion is opt-in and full source validation cannot be replaced 
   } finally { f.cleanup(); }
 });
 
+test("opted-in post-merge promotion requires an associated internal merge and the exact validated tree", async () => {
+  const f = fixture();
+  try {
+    const directory = join(f.root, "proof");
+    const proof = writeValidation(f.root, directory, "full", f.environment);
+    f.write("event.json", "{}");
+    const run = { id: 10, run_attempt: 1, event: "pull_request", conclusion: "success",
+      path: ".github/workflows/ci.yml", repository: { full_name: "owner/repo" }, head_repository: { full_name: "owner/repo" }, head_sha: f.head };
+    const options = {
+      environment: { ...f.environment, GITHUB_RUN_ID: "11", GITHUB_EVENT_NAME: "release",
+        GITHUB_EVENT_PATH: join(f.root, "event.json"), ALLOW_PR_VALIDATION_REUSE: "true" },
+      request(path: string) {
+        if (path.endsWith("/pulls")) return [{ merged_at: "2026-11-12", merge_commit_sha: f.head, head: { sha: f.head, repo: { full_name: "owner/repo" } } }];
+        if (path.includes("/artifacts")) return { artifacts: [{ name: "gik-validation", expired: false }] };
+        if (path.includes("/git/commits/")) return { tree: { sha: proof.inputs.tree } };
+        return { workflow_runs: [run] };
+      },
+      download(...args: string[]) { cpSync(directory, args.at(-1)!, { recursive: true }); },
+    };
+    assert.equal((await restoreValidation(f.root, "full", options)).reused, true);
+    await assert.rejects(() => restoreValidation(f.root, "full", {
+      ...options,
+      request(path: string) {
+        return path.includes("/git/commits/") ? { tree: { sha: "0".repeat(40) } } : options.request(path);
+      },
+    }), /tree mismatch/);
+    assert.equal((await restoreValidation(f.root, "full", {
+      ...options,
+      request(path: string) { return path.endsWith("/pulls") ? [] : options.request(path); },
+    })).reused, false);
+  } finally { f.cleanup(); }
+});
+
 test("real archive inspection rejects omitted wildcard exports, not just missing named dist outputs", () => {
   const f = fixture();
   try {
