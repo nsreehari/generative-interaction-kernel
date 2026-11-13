@@ -44,6 +44,7 @@ import {
   type BlueprintServiceIdentity,
   type ServiceKindDescription,
   type ServiceKindRegistry,
+  type ServiceOperationConstraints,
   type ServiceSetupReport,
 } from "./service-kinds";
 
@@ -442,6 +443,9 @@ export class DefaultServiceHost implements ServiceHost {
     const trustedEffect = deeplyImmutableClone(effect);
     const resolved = this.resolve(trustedEffect);
     if (resolved.operation.sense) throw new Error("Sense operations cannot be enqueued as bounded requests");
+    if (this.operationConstraints(resolved).queueable === false) {
+      throw new Error(`Service '${resolved.serviceId}.${resolved.invoke}' cannot be queued`);
+    }
     const record = await this.createRecord(resolved, trustedEffect, "queued", context);
     if (record.status === "accepted") {
       this.pending.push({
@@ -765,6 +769,14 @@ export class DefaultServiceHost implements ServiceHost {
     return { snapshot: deeplyImmutableClone(built), failed: false };
   }
 
+  private operationConstraints(resolved: ResolvedOperation): ServiceOperationConstraints {
+    const declaration = resolved.declaration;
+    if (isBlueprintService(declaration)) return {};
+    return this.options.registry.describe()
+      .find(({ manifest }) => manifest.id === declaration.kind)
+      ?.manifest.operationConstraints?.[resolved.operation.operation] ?? {};
+  }
+
   private async execute(
     record: ServiceRequestRecord,
     resolved: ResolvedOperation,
@@ -780,6 +792,9 @@ export class DefaultServiceHost implements ServiceHost {
     };
     try {
       await this.store.put(active);
+      if (record.mode === "queued" && this.operationConstraints(resolved).queueable === false) {
+        throw new Error(`Service '${resolved.serviceId}.${resolved.invoke}' cannot be queued`);
+      }
       adapter ??= await this.adapter(resolved.serviceId);
       const request: ServiceRequest = {
         ...active.request,
@@ -812,7 +827,9 @@ export class DefaultServiceHost implements ServiceHost {
     } catch (error) {
       const original = error instanceof ServiceExecutionAttemptError ? error.original : error;
       const failedAttempt = error instanceof ServiceExecutionAttemptError ? error.record : active;
-      const retry = failedAttempt.mode === "queued" && failedAttempt.attempts < this.maxAttempts;
+      const constraints = this.operationConstraints(resolved);
+      const retry = failedAttempt.mode === "queued" && failedAttempt.attempts < this.maxAttempts
+        && constraints.queueable !== false && constraints.retryable !== false;
       const failed: ServiceRequestRecord = {
         ...failedAttempt,
         status: retry ? "accepted" : failedAttempt.mode === "queued" ? "dead-lettered" : "failed",
@@ -891,7 +908,9 @@ export class DefaultServiceHost implements ServiceHost {
     });
     if (report.ok) return this.complete(running, transformed, report.warnings);
 
-    const action = resolved.operation.onViolation ?? { action: "fail" as const };
+    const action = this.operationConstraints(resolved).retryable === false
+      ? { action: "fail" as const }
+      : resolved.operation.onViolation ?? { action: "fail" as const };
     const attempts = (running.guardrailAttempts ?? 0) + 1;
     if ((action.action === "retry" || action.action === "correction-prompt")
       && attempts < Math.min(action.maxAttempts ?? 2, this.maxGuardrailAttempts)) {

@@ -1,7 +1,7 @@
 {
-  "pullRequest": 91,
-  "base": "4f0a7e22a1ef11514790f320355980fb2ffb88a4",
+  "pullRequest": 93,
+  "base": "636bfe2c768d3eda1d14ca4c5efe3225cb542c40",
   "changesets": {
-    ".changeset/provider-setup-contracts.md": "---\n\"gik-controlface\": minor\n---\n\nAdd UI-independent service setup requirements, host readiness and setup-action descriptions, and explicit dependency checks for configured service kinds."
+    ".changeset/non-repeatable-service-operations.md": "---\n\"gik-controlface\": minor\n---\n\nAdd provider-owned operation constraints that prohibit queueing and automatic\ntransport/guardrail retries without granting invocation authority. Enforce the\nconstraints at queue admission and execution so non-repeatable writes cannot be\nretried after uncertain completion."
   }
 }

@@ -7,6 +7,7 @@ import {
   requireServiceDependency, serviceConfig,
   type BlueprintServiceIdentity, type ServiceAdapter, type ServiceDependencyRequirement,
   type ServiceDependencyStatus, type ServiceKindContext, type ServiceKindFactory, type ServiceRequest,
+  type ServiceOperationConstraints,
 } from "../src/index";
 import { InMemoryStateModel, JsonataExpressionProvider } from "../../kernel/src/index";
 
@@ -383,4 +384,78 @@ test.each(["host", "provider"])("rejecting async %s setup hooks report their cau
   });
   await new Promise<void>((resolve) => setImmediate(resolve));
   assert.equal(reported?.cause, failure);
+});
+
+function constrainedHost(constraints: ServiceOperationConstraints, failTransport = true) {
+  let created = 0;
+  let calls = 0;
+  const registry = new ServiceKindRegistry();
+  registry.register({
+    manifest: {
+      id: "writes", version: "1", configSchema: { type: "object" },
+      subjects: ["cell"], executionModes: ["immediate", "queued"],
+      operationConstraints: { send: constraints },
+    },
+    create() {
+      created++;
+      return {
+        provider: { id: "writes", version: "1" },
+        discover: async () => ({ provider: { id: "writes", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
+        async execute() {
+          calls++;
+          if (failTransport) throw new Error("Send may have completed before the connection failed");
+          return { output: { weight: 2 } };
+        },
+      };
+    },
+  });
+  const operation = { operation: "send", contract: "send/v1", settlement };
+  const host = new DefaultServiceHost({
+    blueprintId: "writes", blueprintRevision: "1", registry, maxAttempts: 2,
+    declarations: { mail: { kind: "writes", version: "1", operations: { deliver: operation } } },
+    state: new InMemoryStateModel(["work"]), expression: new JsonataExpressionProvider(),
+  });
+  const effect = { kind: "invoke" as const, node: "mail", control: { tool: "deliver", serviceRef: "mail" }, data: {} };
+  return { host, operation, effect, created: () => created, calls: () => calls };
+}
+
+test("non-repeatable operations reject explicit enqueue before materialization, without disabling immediate invocation", async () => {
+  const fixture = constrainedHost({ queueable: false, retryable: false });
+  await assert.rejects(() => fixture.host.enqueue(fixture.effect), /cannot be queued/);
+  assert.equal(fixture.created(), 0);
+  assert.deepEqual(await fixture.host.listRequests(), []);
+  await assert.rejects(() => fixture.host.invoke(fixture.effect), /may have completed/);
+  assert.equal(fixture.calls(), 1);
+  assert.equal(await fixture.host.runNext(), undefined);
+});
+
+test.each([true, false])("queued transport failure respects retry constraints and preserves legacy behavior: %s", async (restricted) => {
+  const fixture = constrainedHost(restricted ? { retryable: false } : {});
+  await fixture.host.enqueue(fixture.effect);
+  const first = await fixture.host.runNext();
+  assert.equal(first?.status, restricted ? "dead-lettered" : "accepted");
+  const second = await fixture.host.runNext();
+  assert.equal(second?.status, restricted ? undefined : "dead-lettered");
+  assert.equal(fixture.calls(), restricted ? 1 : 2);
+});
+
+test.each(["retry", "correction-prompt"] as const)("non-repeatable operations cannot repeat on response guardrail %s", async (action) => {
+  const fixture = constrainedHost({ retryable: false }, false);
+  Object.assign(fixture.operation, {
+    response: { validators: [{ kind: "jsonata", expr: "data.weight <= 1", message: "Invalid weight" }] },
+    onViolation: { action, maxAttempts: 3 },
+  });
+  await assert.rejects(() => fixture.host.invoke(fixture.effect), /guardrail violation \(fail\)/);
+  assert.equal(fixture.calls(), 1);
+});
+
+test("execution rechecks queue prohibition after a request has been admitted", async () => {
+  const constraints: { queueable?: false } = {};
+  const fixture = constrainedHost(constraints);
+  await fixture.host.enqueue(fixture.effect);
+  constraints.queueable = false;
+  assert.equal((await fixture.host.runNext())?.status, "dead-lettered");
+  assert.equal(fixture.created(), 0);
+  assert.equal(fixture.calls(), 0);
+  assert.equal(await fixture.host.runNext(), undefined);
 });
