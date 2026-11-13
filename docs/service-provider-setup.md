@@ -22,7 +22,7 @@ bypass endpoint admission, authorization snapshots or live kill switches.
 Non-idempotent providers such as Gmail send must declare both constraints; merely
 rejecting `mode: "queued"` in provider validation does not prevent explicit host
 enqueue calls. Publish the shared contract before consuming it in independent
-provider packages. and host dependencies
+provider packages.
 
 Provider setup is independent of UI. A settings page, CLI or deployment tool can
 satisfy the same requirements; a Blueprint does not launch a login flow.
