@@ -16,6 +16,7 @@ documentation, runnable Blueprints, Studio, and application-specific host setup.
 | --- | --- |
 | [Purpose-bearing Cells](dpp.md) | Full DPP manifest, context dataflow, correlation, lowering, and withdrawal |
 | [Cell Senses](senses.md) | Observation declarations, host reconciliation, delivery and durability limits |
+| [Service provider setup](service-provider-setup.md) | Host dependencies, configuration, authorization readiness, browser and headless setup |
 | [Architecture](02-architecture.md) | Provider boundaries, reduction, state/effect ownership, and composition |
 | [Protocol](03-protocol.md) | Portable wire messages and revision semantics |
 | [Conformance](../conformance/README.md) | Language-neutral execution cases and runner obligations |

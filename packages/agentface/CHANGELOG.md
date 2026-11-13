@@ -1,5 +1,14 @@
 # gik-agentface
 
+## 0.2.3
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+- Updated dependencies
+- Updated dependencies
+  - gik-controlface@0.6.0
+
 ## 0.2.2
 
 ### Patch Changes

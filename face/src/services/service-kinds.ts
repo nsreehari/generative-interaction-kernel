@@ -32,11 +32,17 @@ export interface ServiceKindManifest {
 
 export interface ServiceKindContext {
   hostCapabilities: ReadonlySet<string>;
+  /** The creating declaration's identity; shared adapters may serve other service IDs. */
   identity?: BlueprintServiceIdentity;
   resolveCredential?: (reference: string) => Promise<unknown>;
   clearCredential?: (reference: string) => void | Promise<void>;
   authorizeEndpoint?: (kind: string, endpoint: URL) => boolean | Promise<boolean>;
   execute?: (request: unknown) => Promise<unknown>;
+  /** Read a host-owned readiness snapshot. Never acquire credentials or start interactive setup here. */
+  inspectDependency?: (
+    requirement: Readonly<ServiceDependencyRequirement>,
+    identity: Readonly<BlueprintServiceIdentity>,
+  ) => ServiceDependencyStatus;
 }
 
 export interface ServiceDependency {
@@ -44,22 +50,118 @@ export interface ServiceDependency {
   ref?: string;
 }
 
+export interface ServiceDependencyRequirement extends ServiceDependency {
+  id: string;
+  title: string;
+  description?: string;
+  scheme?: string;
+  permissions?: readonly string[];
+}
+
+/** Describes an action implemented by the host, not code or authority supplied by a Blueprint. */
+export interface ServiceSetupAction {
+  id: string;
+  title: string;
+  description?: string;
+  inputSchema?: Record<string, unknown>;
+  requiresUserInteraction?: boolean;
+}
+
+export type ServiceDependencyStatus =
+  | { state: "ready"; actions?: readonly ServiceSetupAction[] }
+  | {
+    state: "missing" | "authorization-required" | "insufficient-permissions" | "unavailable";
+    message: string;
+    actions?: readonly ServiceSetupAction[];
+  };
+
+export interface ServiceDependencyDescription {
+  requirement: ServiceDependencyRequirement;
+  status: ServiceDependencyStatus;
+}
+
+export interface ServiceSetupReport {
+  identity: BlueprintServiceIdentity;
+  kind: string;
+  validation: ServiceValidationReport;
+  dependencies: ServiceDependencyDescription[];
+  ready: boolean;
+}
+
 /** Signals that an active service invocation cannot proceed until its host supplies a dependency. */
 export class UnsatisfiedServiceDependencyError extends Error {
   readonly code = "service-dependency-unsatisfied";
+  readonly dependencyStatus?: ServiceDependencyStatus;
 
   constructor(
     message: string,
     readonly dependency: ServiceDependency,
-    options?: ErrorOptions,
+    options?: ErrorOptions & { dependencyStatus?: ServiceDependencyStatus },
   ) {
     super(message, options);
     this.name = "UnsatisfiedServiceDependencyError";
+    this.dependencyStatus = options?.dependencyStatus;
+  }
+}
+
+function synchronousSetupResult<T>(value: T, message: string): T {
+  if (value !== null && (typeof value === "object" || typeof value === "function")
+    && "then" in value && typeof value.then === "function") {
+    const error = new Error(message);
+    // Preserve later rejection details on the reported contract error.
+    void Promise.resolve(value).catch((cause: unknown) => { error.cause = cause; });
+    throw error;
+  }
+  return value;
+}
+
+export function inspectServiceDependency(
+  context: ServiceKindContext,
+  requirement: ServiceDependencyRequirement,
+  serviceId: string,
+): ServiceDependencyStatus {
+  if (!requirement.id.trim() || !requirement.title.trim() || !requirement.kind.trim()
+    || (requirement.ref !== undefined && !requirement.ref.trim())
+    || (requirement.scheme !== undefined && !requirement.scheme.trim())
+    || requirement.permissions?.some((permission) => !permission.trim())) {
+    throw new Error("Service dependency requirements must have nonempty identifiers and descriptions");
+  }
+  if (!context.identity || typeof serviceId !== "string" || !serviceId.trim()) {
+    throw new Error("Service dependency inspection requires the current service identity");
+  }
+  const message = "Host dependency inspection must return a valid synchronous readiness snapshot";
+  const status = synchronousSetupResult<ServiceDependencyStatus>(context.inspectDependency
+    ? context.inspectDependency(structuredClone(requirement), { ...structuredClone(context.identity), serviceId })
+    : { state: "unavailable", message: "The host has not configured dependency inspection for this service" }, message);
+  if (!status || !["ready", "missing", "authorization-required", "insufficient-permissions", "unavailable"].includes(status.state)
+    || (status.state !== "ready" && !status.message?.trim())) {
+    throw new Error(message);
+  }
+  const actions = status.actions ?? [];
+  if (new Set(actions.map(({ id }) => id)).size !== actions.length
+    || actions.some(({ id, title }) => !id.trim() || !title.trim())) {
+    throw new Error("Host setup actions must have unique nonempty identifiers and titles");
+  }
+  return structuredClone(status);
+}
+
+/** Recheck live readiness before using a cached connection, including each observation delivery. */
+export function requireServiceDependency(
+  context: ServiceKindContext,
+  requirement: ServiceDependencyRequirement,
+  serviceId: string,
+): void {
+  const status = inspectServiceDependency(context, requirement, serviceId);
+  if (status.state !== "ready") {
+    throw new UnsatisfiedServiceDependencyError(status.message, requirement, { dependencyStatus: status });
   }
 }
 
 export interface ServiceKindFactory {
   readonly manifest: ServiceKindManifest;
+  /** Pure, non-secret requirements derived from validated service config and declared operations. */
+  describeDependencies?(declaration: NativeServiceDeclaration): readonly ServiceDependencyRequirement[];
+  /** Validate configuration without acquiring credentials, invoking services or starting setup. */
   validate?(
     declaration: NativeServiceDeclaration,
     context: ServiceKindContext
@@ -194,12 +296,53 @@ export class ServiceKindRegistry {
     return factory.validate?.(declaration, this.context) ?? { ok: true };
   }
 
+  async describeSetup(
+    identity: BlueprintServiceIdentity,
+    declaration: NativeServiceDeclaration,
+  ): Promise<ServiceSetupReport> {
+    const validation = await this.validate(declaration);
+    const dependencies = validation.ok ? this.dependencies(identity, declaration) : [];
+    return structuredClone({
+      identity, kind: declaration.kind, validation, dependencies,
+      ready: validation.ok && dependencies.every(({ status }) => status.state === "ready"),
+    });
+  }
+
+  private dependencies(
+    identity: BlueprintServiceIdentity,
+    declaration: NativeServiceDeclaration,
+  ): ServiceDependencyDescription[] {
+    const factory = this.factories.get(declaration.kind)!;
+    const message = `Service kind '${declaration.kind}' must describe dependencies as a synchronous array`;
+    const requirements = synchronousSetupResult(factory.describeDependencies
+      ? factory.describeDependencies(structuredClone(declaration)) : [], message);
+    if (!Array.isArray(requirements)) {
+      throw new Error(message);
+    }
+    if (new Set(requirements.map(({ id }) => id)).size !== requirements.length) {
+      throw new Error(`Service kind '${declaration.kind}' declares duplicate dependency identifiers`);
+    }
+    return requirements.map((requirement) => ({
+      requirement: structuredClone(requirement),
+      status: inspectServiceDependency({ ...this.context, identity }, requirement, identity.serviceId),
+    }));
+  }
+
+  private requireDependencies(identity: BlueprintServiceIdentity, declaration: NativeServiceDeclaration): void {
+    for (const { requirement, status } of this.dependencies(identity, declaration)) {
+      if (status.state !== "ready") {
+        throw new UnsatisfiedServiceDependencyError(status.message, requirement, { dependencyStatus: status });
+      }
+    }
+  }
+
   async materialize(
     identity: BlueprintServiceIdentity,
     declaration: NativeServiceDeclaration
   ): Promise<ServiceAdapter> {
     const report = await this.validate(declaration);
     if (!report.ok) throw new Error(`Invalid service '${identity.serviceId}': ${(report.errors ?? []).join("; ")}`);
+    this.requireDependencies(identity, declaration);
     const factory = this.factories.get(declaration.kind)!;
     const key = cacheKey(identity, declaration);
     const instanceContext = { ...this.context, identity };
@@ -239,6 +382,7 @@ export class ServiceKindRegistry {
     if (!validation.ok) {
       throw new Error(`Invalid service '${identity.serviceId}': ${(validation.errors ?? []).join("; ")}`);
     }
+    this.requireDependencies(identity, declaration);
     const key = cacheKey(identity, declaration);
     const existing = key ? this.adapters.get(key) : undefined;
     if (existing) {

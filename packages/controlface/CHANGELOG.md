@@ -1,5 +1,15 @@
 # gik-controlface
 
+## 0.6.0
+
+### Minor Changes
+
+- Add UI-independent service setup requirements, host readiness and setup-action descriptions, and explicit dependency checks for configured service kinds.
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+
 ## 0.5.0
 
 ### Minor Changes
