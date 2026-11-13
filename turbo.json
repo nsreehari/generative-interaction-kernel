@@ -1,5 +1,19 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "kernel/**",
+    "blueprint/**",
+    "face/**",
+    "adapters/**",
+    "transports/**",
+    "providers/**",
+    "schemas/**",
+    "packages/evaluators/schemas/**",
+    "scripts/sync-package-license.mjs",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "globalEnv": ["NODE_ENV", "GIK_BUILD_TOOLCHAIN"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -7,11 +7,12 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: npm-publish
+  group: ${{ github.event_name == 'release' && 'npm-publish' || format('npm-validate-{0}', github.ref) }}
   cancel-in-progress: false
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   validate:
@@ -21,6 +22,7 @@ jobs:
     outputs:
       channel: ${{ steps.release.outputs.channel }}
       commit: ${{ steps.release.outputs.commit }}
+      manifest_sha256: ${{ steps.pack.outputs.manifest_sha256 }}
     steps:
       - name: Checkout release commit
         uses: actions/checkout@v5
@@ -50,11 +52,15 @@ jobs:
           echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
+        id: node
         uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: npm
           registry-url: https://registry.npmjs.org
+
+      - name: Use pinned npm
+        run: npm install --global npm@11.6.2
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -66,14 +72,44 @@ jobs:
         if: github.event_name == 'release'
         run: node scripts/validate-release-channel.mjs "${{ steps.release.outputs.channel }}"
 
+      - name: Restore reviewed PR validation when explicitly enabled
+        id: validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALLOW_PR_VALIDATION_REUSE: ${{ vars.GIK_REUSE_PR_VALIDATION }}
+        run: npm run ci:validation -- restore full
+
+      - name: Restore build cache
+        if: steps.validation.outputs.reused != 'true'
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.node-version }}-npm11.6.2-${{ hashFiles('package-lock.json', 'turbo.json') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.node-version }}-npm11.6.2-${{ hashFiles('package-lock.json', 'turbo.json') }}-
+
       - name: Run complete release gate
+        if: steps.validation.outputs.reused != 'true'
+        env:
+          GIK_BUILD_TOOLCHAIN: ${{ steps.node.outputs.node-version }}-npm11.6.2
         run: npm run release:gate
 
-      - name: Verify packaged build output
-        run: npm run release:verify-artifacts
+      - name: Synchronize package licenses
+        if: steps.validation.outputs.reused == 'true'
+        run: npm run sync:package-licenses
 
-      - name: Inspect package contents
-        run: npm run release:inspect
+      - name: Pack and verify exact publication artifacts
+        id: pack
+        run: npm run release:pack
+
+      - name: Upload verified release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gik-npm-release
+          path: .artifacts/npm-release
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
 
   publish:
     name: Publish packages
@@ -107,24 +143,22 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "24"
-          cache: npm
           registry-url: https://registry.npmjs.org
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Use pinned npm
+        run: npm install --global npm@11.6.2
 
-      - name: Build publishable packages
-        run: npm run build:public-packages
-
-      - name: Verify packaged build output
-        run: npm run release:verify-artifacts
-
-      - name: Inspect package contents
-        run: npm run release:inspect
+      - name: Download verified release artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: gik-npm-release
+          path: .artifacts/npm-release
 
       - name: Publish with trusted publishing
-        run: npm run release:publish
+        run: npm run release:publish-artifacts
         env:
+          RELEASE_MANIFEST_SHA256: ${{ needs.validate.outputs.manifest_sha256 }}
+          RELEASE_CHANNEL: ${{ needs.validate.outputs.channel }}
           NPM_CONFIG_ACCESS: public
           NPM_CONFIG_PROVENANCE: true
 
@@ -153,3 +187,58 @@ jobs:
       contents: read
     with:
       commit: ${{ needs.validate.outputs.commit }}
+
+  announce:
+    name: Announce verified stable release
+    needs: [validate, verify-published]
+    if: github.event_name == 'release' && needs.verify-published.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_COMMIT: ${{ needs.validate.outputs.commit }}
+      RELEASE_MANIFEST_SHA256: ${{ needs.validate.outputs.manifest_sha256 }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.validate.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+      - name: Use pinned npm
+        run: npm install --global npm@11.6.2
+      - uses: actions/download-artifact@v5
+        with:
+          name: gik-npm-release
+          path: .artifacts/npm-release
+      - name: Create exact-version verified release manifest
+        run: npm run release:manifest -- write
+      - name: Create release-asset App token
+        id: manifest-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.GIK_MAINTAINER_APP_ID }}
+          private-key: ${{ secrets.GIK_MAINTAINER_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+      - name: Attach immutable verified manifest
+        env:
+          GH_TOKEN: ${{ steps.manifest-token.outputs.token }}
+        run: npm run release:manifest -- publish
+      - name: Create samples-only dispatch token
+        if: vars.GIK_SAMPLES_RELEASE_DISPATCH == 'true'
+        id: samples-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.GIK_MAINTAINER_APP_ID }}
+          private-key: ${{ secrets.GIK_MAINTAINER_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: gik-samples
+          permission-contents: write
+      - name: Notify samples after registry verification
+        if: vars.GIK_SAMPLES_RELEASE_DISPATCH == 'true'
+        env:
+          GH_TOKEN: ${{ steps.samples-token.outputs.token }}
+        run: gh api repos/nsreehari/gik-samples/dispatches --input .artifacts/gik-release-dispatch.json

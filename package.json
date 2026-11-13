@@ -48,6 +48,10 @@
     "release:verify-published": "node scripts/verify-published-packages.mjs",
     "release:version": "changeset version && node scripts/sync-workspace-dependencies.mjs",
     "release:publish": "changeset publish",
+    "release:pack": "node scripts/release-artifacts.mjs pack",
+    "release:publish-artifacts": "node scripts/release-artifacts.mjs publish",
+    "release:manifest": "node scripts/announce-release.mjs",
+    "ci:validation": "node scripts/workflow-validation.mjs",
     "changeset": "changeset"
   },
   "dependencies": {

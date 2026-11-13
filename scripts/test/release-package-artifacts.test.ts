@@ -1,7 +1,7 @@
 // Regression coverage for issue #36: published packages shipped without their
 // declared build output because the publish job never built the release commit.
-// These tests pin both the packed-contents verifier and the publication job
-// boundary that must build and verify before `changeset publish` runs.
+// Publication must use the exact verified archive, rather than rebuilding
+// different bytes after the release gate.
 
 import { test } from "vitest";
 import assert from "node:assert/strict";
@@ -178,18 +178,16 @@ test("verification covers every stable package and passes when entry points are 
   );
 });
 
-test("the publish job builds and verifies the release commit before publishing", () => {
-  const publishJob = workflow.slice(workflow.indexOf("\n  publish:"));
-
-  const build = publishJob.indexOf("npm run build:public-packages");
-  const verify = publishJob.indexOf("npm run release:verify-artifacts");
-  const inspect = publishJob.indexOf("npm run release:inspect");
-  const publish = publishJob.indexOf("npm run release:publish");
-
-  assert.ok(build > 0, "publish job must build packages");
-  assert.ok(verify > build, "publish job must verify packed output after building");
-  assert.ok(inspect > build, "publish job must inspect package contents after building");
-  assert.ok(publish > verify, "publication must run after verification");
+test("the publisher promotes verified artifacts without reinstalling, rebuilding or executing package scripts", () => {
+  const publishJob = workflow.slice(workflow.indexOf("\n  publish:"), workflow.indexOf("\n  verify-published:"));
+  const download = publishJob.indexOf("name: gik-npm-release");
+  const publish = publishJob.indexOf("npm run release:publish-artifacts");
+  assert.ok(download > 0 && publish > download);
+  assert.ok(publishJob.includes("RELEASE_MANIFEST_SHA256: ${{ needs.validate.outputs.manifest_sha256 }}"));
+  assert.ok(publishJob.includes("environment: npm-publish"));
+  assert.ok(publishJob.includes("id-token: write"));
+  assert.ok(!publishJob.includes("npm run build:"));
+  assert.ok(!publishJob.includes("npm install --no-audit"));
 });
 
 test("the publish job reverifies the release tag without requiring master to stay unchanged", () => {
@@ -206,7 +204,7 @@ test("the publish job reverifies the release tag without requiring master to sta
   assert.ok(!reverifyStep.includes("origin/master"));
 });
 
-test("the validate job keeps the release gate, verification, and inspection", () => {
+test("the validate job keeps the full gate and packs verified artifacts before protected publication", () => {
   const validateJob = workflow.slice(
     workflow.indexOf("\n  validate:"),
     workflow.indexOf("\n  publish:"),
@@ -215,8 +213,8 @@ test("the validate job keeps the release gate, verification, and inspection", ()
   for (const step of [
     "npm run release:validate",
     "npm run release:gate",
-    "npm run release:verify-artifacts",
-    "npm run release:inspect",
+    "npm run release:pack",
+    "name: gik-npm-release",
   ]) {
     assert.ok(validateJob.includes(step), `validate job must run ${step}`);
   }

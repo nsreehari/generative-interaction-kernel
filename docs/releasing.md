@@ -41,6 +41,34 @@ these checks are not skipped to optimize documentation changes.
 Production, configuration, and unknown paths run the complete `npm test`. Manual CI dispatch
 always uses the full gate. The npm dependency cache remains enabled.
 
+CI also preserves Turbo's `.turbo` task cache. Shared source roots outside the
+workspaces are global build inputs; cache entries are separated by OS,
+architecture, exact Node version, pinned npm 11.6.2 and lock/config hashes.
+Turbo additionally checks task inputs and dependency hashes. A cache hit is
+never itself a successful test result. Manual CI on `master` warms the
+default-branch cache; PR caches remain scoped to their merge ref.
+
+Successful CI uploads `gik-validation` for seven days. It contains only built
+workspace `dist` files and `gik-validation/1` evidence, never `node_modules`,
+credentials or local environment files. The evidence binds the Git tree,
+resolved and installed lock hashes, exact Node/npm, platform/architecture,
+runner image version, validation scope and output checksums to a run/attempt.
+Metadata events do not cancel useful in-flight source validation; their new
+required check reevaluates release policy and can restore identical successful
+validation. Manual dispatch always executes validation instead of restoring it.
+
+Post-merge PR promotion is disabled unless the repository variable
+`GIK_REUSE_PR_VALIDATION` is `true`. Enable only after reviewing the workflow
+and exercising a normal release. Promotion accepts successful internal
+`ci.yml` PR runs associated with that exact merged commit, independently
+verifies the validated commit's Git tree, and requires identical inputs and
+full test scope. Forks, policy-only checks, expired artifacts, different merge
+trees, changed tools/dependencies/images and absent evidence do not qualify:
+the normal complete release gate runs with an explicit summary. Corrupt
+matching evidence fails rather than becoming a cache miss. The publisher
+never executes downloaded artifact scripts. Disabling the variable restores
+the normal full gate without changing branch protection or approval.
+
 ## Automatic stable versions in the implementation PR
 
 The version App updates metadata **in the existing implementation PR**, not a
@@ -91,7 +119,8 @@ consumer verification, and `npm-publish` approval remain mandatory.
 
 1. Prepare and merge reviewed version metadata after `CI / Validate` passes.
 2. Confirm the version metadata passed `CI / Validate`; the release
-   workflow repeats the complete release gate against the tagged `master` commit.
+   workflow runs the complete gate against the tagged `master` commit, or
+   verifies equivalent full PR validation when promotion is explicitly enabled.
 3. Confirm `.changeset/pre.json` is in `next` prerelease mode and that the
    reviewed change contains `-next.N` package versions.
 4. Create a GitHub prerelease from the current `master` commit.
@@ -108,8 +137,8 @@ After the prerelease has been consumed successfully, exit Changesets
 prerelease mode and prepare stable versions in a reviewed change. Then:
 
 1. Confirm the merged stable version change passed `CI / Validate`; the
-   release workflow repeats the complete release gate against the tagged
-   `master` commit.
+   release workflow runs the complete gate against the tagged `master` commit,
+   or verifies equivalent full PR validation when promotion is explicitly enabled.
 2. Create a non-prerelease GitHub Release from the current `master` commit.
 3. Use a tag in the form `npm-YYYY-MM-DD.N`, for example
    `npm-2026-08-16.1`.
@@ -118,20 +147,31 @@ prerelease mode and prepare stable versions in a reviewed change. Then:
 The stable workflow rejects prerelease package versions and publishes with the
 `latest` npm dist-tag.
 
-The workflow rebuilds and tests the complete repository, validates the explicit
-package policy, verifies that every packed tarball contains the entry points its
-manifest declares, and inspects every npm tarball. Wildcard subpath exports such
-as `./schemas/*` are expanded against the workspace tree, so every file they
-expose must also be packed. The publication job repeats
-the build, artifact verification, and tarball inspection on the verified release
-commit before Changesets publishes only versions that do not already exist.
+The workflow validates the explicit package policy and channel, builds and
+tests the repository (or verifies equivalent validation), and runs
+`npm run release:pack`. This packs every stable workspace once, including its
+packaging lifecycle, and inspects the actual archives. Every declared entry
+point must be present. Wildcard exports such as `./schemas/*` expand against
+the workspace tree, so an omitted file cannot hide by being absent from the
+archive. Private/experimental/internal packages are never publication targets.
 
-Package inspection uses `npm pack --dry-run` for the stable workspaces selected
-by the release policy and is deliberately guarded to GitHub Actions. It runs
-packaging lifecycle checks without checking whether a version already exists
-on npm; unchanged published versions are inspected too. Changesets skips those
-versions during actual publication. Do not run npm publication or
-registry-inspection commands from restricted corporate networks.
+The `gik-npm-release` artifact holds the actual `.tgz` files and a
+`gik-release-artifacts/1` manifest for 30 days. The protected publisher downloads
+that artifact, checks its manifest against the producer job's SHA-256 output,
+checks every archive and reviewed package identity, and reverifies the release
+tag. It neither installs workspace dependencies nor rebuilds/repackages.
+`npm run release:publish-artifacts` publishes those exact archives in dependency
+order with trusted publishing, provenance and lifecycle execution disabled.
+Unchanged versions already published at planning time are skipped. A retry of
+an interrupted publication skips a newly published version only when its npm
+integrity equals the validated archive; different bytes fail explicitly.
+
+Registry authentication, transport and malformed responses remain errors;
+only an explicit registry HTTP 404 marks a version unpublished. Artifact digest mismatches
+are hard failures, not just the download action's warnings. Manual dispatch is
+still validation-only. The older `release:inspect`/`release:verify-artifacts`
+commands remain available for focused diagnostics and bootstrap. Do not run
+publication or registry-inspection commands from restricted corporate networks.
 
 ## Verify a publication from the public registry
 
@@ -167,6 +207,38 @@ because it installs packages from the public registry and verifies signatures
 and provenance against the public registry keys and Sigstore
 (`tuf-repo-cdn.sigstore.dev`); it fails closed when either is unreachable.
 
+## Verified cross-repository release handoff
+
+Only after stable publication **and** the clean registry-consumer gate succeed,
+the workflow attaches `gik-release-manifest.json` to the GitHub Release.
+`gik-release-manifest/1` identifies this repository, the exact source commit,
+release tag, successful verification workflow run ID, and every stable
+package's exact npm version, registry SRI integrity and allowlisted tarball URL.
+Newly published integrity must equal the previously verified archive.
+An identical existing asset is reused; a different one is never overwritten.
+
+Roll out the coordinated `gik-samples` receiver workflow first. Then set the
+GIK repository variable `GIK_SAMPLES_RELEASE_DISPATCH=true`; the existing
+maintainer App must be installed on samples with Contents write permission.
+A separately scoped samples-only App token sends `gik-release-verified` with
+`{tag, commit, manifestSha256}`. The receiver must independently verify the
+public release asset and successful source run, plan from trusted base code,
+and open/update one dependency PR rather than push to `main`. Normal samples
+CI and review remain required. Samples continues consuming npm packages,
+never a sibling checkout or GIK build outputs.
+
+Leave dispatch disabled until both coordinated changes are merged. Disabling
+it stops automatic downstream updates without stopping GIK publication or its
+consumer gate; the exact public manifest remains available for manual use.
+Publication and deployment are separate operations, not a recursive release
+trigger. Bootstrap workflows remain manual one-time registration tools.
+
+For rollout, compare required-check latency, workflow/job runner time, queue
+time, validation reuse notices, Turbo hit rate, artifact size/transfer time,
+and the number of downstream PRs/deployments per release. Do not infer savings
+solely from fewer jobs. Expired validation artifacts cause normal validation;
+retain final release archives/manifests for the documented rollback horizon.
+
 ## Authentication
 
 Configure each existing npm package to trust:
@@ -190,8 +262,8 @@ publish the first production release while GIK remains private.
 - A release tag must point to the current `master` commit.
 - Only one publication runs at a time.
 - Publication fails closed when a package would ship without a declared entry
-  point, because the publishing job builds and verifies the release commit it
-  publishes.
+  point: validation inspects the actual archives and publication verifies those
+  exact archives and their producer checksum against the release source.
 - The full release gate and package dry run complete before environment
   approval.
 - Publication never runs for a manually dispatched workflow; manual dispatch
@@ -202,5 +274,6 @@ publish the first production release while GIK remains private.
   provenance attestations for the whole installed dependency graph.
 
 Package publication is not transactional. If npm accepts one package and a
-later package fails, fix the cause and rerun the same workflow. Changesets
-skips versions already present and continues with unpublished versions.
+later package fails, fix the cause and rerun the same workflow. Artifact
+publication verifies completed versions by integrity and continues with
+unpublished versions; it never replaces an existing version.
