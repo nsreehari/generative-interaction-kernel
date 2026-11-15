@@ -87,6 +87,25 @@ export type CapabilityDescriptorMap = Record<string, CapabilityDescriptor>;
 /** Resolve a provider name to its descriptor map, the descriptor-side counterpart of {@link ProviderResolver}. */
 export type CapabilityDescriptorResolver = (from: string) => CapabilityDescriptorMap | undefined;
 
+export interface ProjectionProvider {
+  id: string;
+  views: Readonly<ProviderMap>;
+  capabilities: Readonly<CapabilityDescriptorMap>;
+}
+
+export function createProjectionProviderRegistry(providers: readonly ProjectionProvider[]) {
+  const views = new Map<string, ProviderMap>();
+  const capabilities = new Map<string, CapabilityDescriptorMap>();
+  for (const provider of providers) {
+    views.set(provider.id, { ...views.get(provider.id), ...provider.views });
+    capabilities.set(provider.id, { ...capabilities.get(provider.id), ...provider.capabilities });
+  }
+  return {
+    resolveViews: (from: string) => views.get(from),
+    resolveCapabilities: (from: string) => capabilities.get(from),
+  };
+}
+
 /**
  * Build the flat `alias:name -> CapabilityDescriptor` catalog `materializeBlueprint`'s
  * `capabilityCatalog` option expects, resolved through the SAME `externals.projectionViews`

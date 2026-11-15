@@ -7,3 +7,6 @@ export * from "../../../face/src/services/service-host";
 export * from "../../../face/src/services/service-kinds";
 export * from "../../../face/src/services/timer-service";
 export * from "../../../face/src/services/context-store";
+export * from "../../../face/src/services/settings";
+export * from "../../../face/src/services/setup";
+export * from "../../../face/src/services/orchestrator";

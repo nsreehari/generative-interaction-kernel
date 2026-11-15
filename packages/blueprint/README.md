@@ -4,6 +4,32 @@ Canonical Blueprint artifacts, Cells, two independent lowering axes (`serviceTie
 and `projectionTiers`/`projectionRecipes`), and validated lowering into
 `gik-kernel` executable programs.
 
+## Durable Execution Sessions
+
+`gik-blueprint/worker/session` exports `openDurableBlueprintSession`. It composes
+the existing durable transition adapter, Blueprint worker and Sense reconciler;
+it is not a second engine or a replacement for the React hosts.
+
+Supply a Blueprint, provider/refs, runtime identity and immutable external context,
+plus trusted `verifyBinding`, `prepare`, `close` and `onError` callbacks.
+`prepare(context, signal)` returns `executeEffect` and, when needed, `observe`.
+The session initializes only absent state, resumes compatible saved state, bootstraps
+new instances, and exposes `snapshot`, `changes`, `append`, `attachment` and `stop`.
+`append` accepts only declared events with valid payloads and checks their transition
+before journaling. It never grants business authority: hosts must authenticate and
+authorize ingress and registered effect executors.
+
+Sense signals enter the existing durable journal. Reconciliation follows committed
+binding intent, and shutdown cancels execution, drains in-flight receipts, closes
+observations and finally closes host storage. A changed authored Blueprint fails
+with `RUNTIME_INCOMPATIBLE`, without replacing saved state. Runtime state and applied
+service configuration do not mutate the authored Blueprint.
+
+Hosts own wake notifications through `subscribe`, retry policy through `effectRetry`
+(one attempt by default), application-specific recovery through `recover`, and
+redacted failure reporting through required `onError`. A stopped/faulted session
+rejects further work; it does not silently restart or replay application writes.
+
 Every Blueprint declares all four arrays. A recipe-free axis contains exactly one terminal tier and
 an empty recipe array. The removed `tiers` and `recipes` fields are not normalized or deprecated
 aliases; they are rejected.

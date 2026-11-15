@@ -36,6 +36,10 @@
     "./durable": {
       "types": "./dist/durable.d.ts",
       "import": "./dist/durable.js"
+    },
+    "./service-setup": {
+      "types": "./dist/service-setup.d.ts",
+      "import": "./dist/service-setup.js"
     }
   },
   "main": "./dist/index.js",
@@ -54,7 +58,7 @@
     "gik-kernel": "0.4.1"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/durable.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
+    "build": "tsup src/index.ts src/durable.ts src/service-setup.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
     "prepack": "node ../../scripts/sync-package-license.mjs packages/react"
   }
 }

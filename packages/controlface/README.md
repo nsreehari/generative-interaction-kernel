@@ -28,6 +28,58 @@ the narrower agent-safe projection with `gik-agentface`.
 
 ## Exported API
 
+### Host Composition And Setup
+
+`gik-controlface/services` also supplies:
+
+- `createServiceOrchestrator({ host, declarations, state, fallback })`: routes
+  declared service identities through the existing queued Cell source pipeline.
+  Other effects use the explicitly supplied fallback, or fail when none exists.
+- `createServiceSetupController({ blueprintId, blueprintRevision, declarations,
+  registry, configurations?, actions? })`: reports native service configuration,
+  provider schemas and dependency readiness without materializing adapters.
+  `validate()` checks configurations; `action()` rechecks the current report,
+  validates action input and invokes only a host-registered handler. Inspection
+  never starts setup or acquires credentials.
+- `openServiceSettings({ provider, refs, runtimeId, validate })`: stores bounded
+  non-secret scalar configuration through native durable leases/transitions.
+  `save(id, config, expectedGeneration)` stages; `apply(expectedGeneration)`
+  explicitly activates all staged settings. Concurrent/stale changes fail.
+  The required host validator admits known services/fields and provider schemas.
+  It must reject secrets and fields the user is not allowed to edit.
+- `configuredServiceDeclarations`: clones runtime declarations and overlays
+  configuration without mutating the authored Blueprint.
+
+An uncertain settings commit surfaces `SERVICE_SETTINGS_UNCERTAIN` and blocks
+further changes in that store instance. `read()` inspects its receipt; a confirmed
+receipt clears that latch. An absent receipt is not evidence that replay is safe.
+Hosts must retain their cross-session uncertain-outcome handling, scope refs/runtime
+identity to the authenticated workspace, and reconcile active configuration after
+reconnection. Persisting Apply does not itself restart a runtime.
+
+### Isolated Browser Capability Channels
+
+`gik-controlface/browser` has no React dependency or network client:
+
+- `createCapabilityChannel(port, handler, options?)`: bidirectional bounded JSON
+  requests/results, cancellation, timeouts, explicit closure and configurable
+  primitive error fields (`code` and `status` by default). Limits measure UTF-8
+  wire-message bytes. It never retries operations.
+- `openIsolatedCapabilityFrame(handler, { source, protocol, ...options })`: loads
+  a hidden host-owned same-origin HTTP resource in an opaque-origin,
+  `sandbox="allow-scripts"` frame and transfers one private MessagePort.
+- `acceptCapabilityPort(event, { source, origin, protocol })`: checks the child
+  handshake against trusted host-supplied identity. The child must accept once,
+  bind cleanup to its lifetime, and reject later handshakes.
+
+Hosts supply trusted URLs/protocols, strict CSP, action/operation allowlists,
+credential handling, authorization and binding rechecks. Frame isolation does
+not itself disable network access: the served child resource must carry the
+appropriate CSP. Aborting a request stops waiting and signals the handler; it
+does not undo a mutation or establish that a failed reply means nothing happened.
+Inspect uncertain operations rather than retrying them. Do not forward secrets,
+stack traces or financial payloads as error metadata.
+
 ### Live runtime
 
 - `ControlFace` is the host-side live runtime class exported from the package

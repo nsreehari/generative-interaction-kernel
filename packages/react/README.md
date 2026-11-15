@@ -32,6 +32,30 @@ export const App = () => (
 Omit `worker` when middleware, a backend, or an Azure Function owns execution. Existing
 `gik-blueprint-host` consumers should migrate to `BlueprintHost` from `gik-react`.
 
+## Service Setup And Provider Composition
+
+`gik-react/service-setup` exports `useServiceSetup(client, target)` and
+`ServiceSetupPanel`. The hook coordinates load/inspect, explicit Save and Apply,
+and fresh setup-action inspection through a host-supplied `ServiceSetupClient`.
+Use a stable client object and change `target` when the selected workspace or
+authorization context changes. Superseded operations are aborted and late results
+discarded; failed operations require explicit reload before another mutation.
+There is no automatic mutation retry or automatic authorization.
+
+The panel renders provider schemas, configuration errors, dependency reports and
+setup actions. The host supplies an explicit `editable(report, field)` policy.
+Constant fields remain read-only; unsupported non-scalar fields are not editable.
+`serviceTitle` customizes labels and `renderAction` supplies application-specific
+consent/forms. The client owns schema/authority validation at mutation time,
+credentials, setup-action dispatch and uncertainty inspection. `onApplied`
+activates a confirmed configuration through the host; it must not replace the
+authored Blueprint or discard runtime state.
+
+`createProjectionProviderRegistry(providers)` from `gik-react` combines explicitly
+named view/descriptor providers for the existing resolver props. Contributions
+with the same provider ID merge in order (later duplicate keys win), without
+changing Blueprint import/whitelist semantics.
+
 ## Presentation-local effects and state
 
 Component-internal interaction stays inside the component and requires no named effect. Host-local
