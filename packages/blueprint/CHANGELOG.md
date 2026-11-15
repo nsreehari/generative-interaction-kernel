@@ -1,5 +1,22 @@
 # gik-blueprint
 
+## 0.6.0
+
+### Minor Changes
+
+- Add reusable host composition over existing GIK primitives: durable Blueprint
+  execution sessions, staged service settings and setup, declared service routing,
+  isolated browser capability channels, durable-provider RPC adaptation and React
+  setup/provider composition. Application hosts retain credentials, capability
+  admission, business authorization and uncertain-write recovery policy.
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+- Updated dependencies
+- Updated dependencies
+  - gik-durable-runtime@0.10.0
+
 ## 0.5.0
 
 ### Minor Changes

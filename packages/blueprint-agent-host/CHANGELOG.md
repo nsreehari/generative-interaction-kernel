@@ -1,5 +1,14 @@
 # gik-blueprint-agent-host
 
+## 0.2.2
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+- Updated dependencies
+- Updated dependencies
+  - gik-durable-runtime@0.10.0
+
 ## 0.2.1
 
 ### Patch Changes

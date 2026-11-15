@@ -1,7 +1,7 @@
 {
-  "pullRequest": 93,
-  "base": "636bfe2c768d3eda1d14ca4c5efe3225cb542c40",
+  "pullRequest": 95,
+  "base": "62ffd8e0eaa99a77732b390b9836571c7b2c5639",
   "changesets": {
-    ".changeset/non-repeatable-service-operations.md": "---\n\"gik-controlface\": minor\n---\n\nAdd provider-owned operation constraints that prohibit queueing and automatic\ntransport/guardrail retries without granting invocation authority. Enforce the\nconstraints at queue admission and execution so non-repeatable writes cannot be\nretried after uncertain completion."
+    ".changeset/shared-host-composition.md": "---\n\"gik-blueprint\": minor\n\"gik-controlface\": minor\n\"gik-durable-runtime\": minor\n\"gik-react\": minor\n---\n\nAdd reusable host composition over existing GIK primitives: durable Blueprint\nexecution sessions, staged service settings and setup, declared service routing,\nisolated browser capability channels, durable-provider RPC adaptation and React\nsetup/provider composition. Application hosts retain credentials, capability\nadmission, business authorization and uncertain-write recovery policy."
   }
 }
