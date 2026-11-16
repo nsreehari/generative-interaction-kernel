@@ -484,7 +484,11 @@ export class DefaultServiceHost implements ServiceHost {
   /** Fresh, cheap checks run at every authorization checkpoint against the immutable
    * per-request snapshot: expiry, the idempotency requirement, and target-revision drift. These
    * never depend on the configured `authorizeInvocation` policy function, so they cannot be
-   * bypassed by a permissive or buggy policy. */
+   * bypassed by a permissive or buggy policy.
+   * These floors are not a substitute for live policy reauthorization at each checkpoint.
+   * Any host optimization that caches resolved grants to skip live reauthorization must also
+   * add an optional revocation epoch to `InvocationAuthorizationSnapshot` and compare it here
+   * against a host-supplied live epoch reader, failing closed when stale or unavailable. */
   private checkSnapshot(
     snapshot: InvocationAuthorizationSnapshot,
     request: Readonly<ServiceRequestInput>

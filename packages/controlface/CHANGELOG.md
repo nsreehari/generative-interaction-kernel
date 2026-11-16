@@ -1,5 +1,11 @@
 # gik-controlface
 
+## 0.7.1
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+
 ## 0.7.0
 
 ### Minor Changes
