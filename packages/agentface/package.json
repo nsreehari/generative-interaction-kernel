@@ -41,7 +41,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "gik-controlface": "0.8.0"
+    "gik-controlface": "0.7.1"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
