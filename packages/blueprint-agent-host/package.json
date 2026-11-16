@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "gik-agent-lifecycle-exp": "0.3.0",
-    "gik-durable-runtime": "0.10.0",
+    "gik-durable-runtime": "0.9.1",
     "gik-evaluators": "0.4.0"
   }
 }
