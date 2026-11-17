@@ -1,0 +1,203 @@
+{
+  "gik": "0.1",
+  "type": "blueprint",
+  "payload": {
+    "id": "durable-portfolio",
+    "kind": "advisory-reference",
+    "version": "1",
+    "structureMode": "fixed",
+    "serviceTiers": [{ "id": "runtime", "kind": "runtime-program" }],
+    "serviceRecipes": [],
+    "projectionTiers": [{ "id": "runtime", "kind": "runtime-program", "capabilities": [] }],
+    "projectionRecipes": [],
+    "runtime": {
+      "state": {
+        "charter": {
+          "purpose": "Help the owner understand their portfolio using evidence, not execute transactions.",
+          "successMeasures": ["Evidence gaps are visible", "Review actions have explicit progress"],
+          "constraints": ["Advisory only", "No trading", "Distinguish facts from judgments"]
+        },
+        "strategy": {
+          "revision": 1,
+          "approach": "Review evidence quality before proposing changes.",
+          "priorities": ["Identify missing evidence", "Explain uncertainty"]
+        },
+        "planActions": [
+          { "id": "collect-evidence", "description": "Identify missing evidence.", "status": "pending" },
+          { "id": "review-evidence", "description": "Review evidence with the owner.", "status": "pending" }
+        ],
+        "requestCondition": {
+          "requestId": "portfolio-review-1",
+          "status": "pending",
+          "desiredOutcome": "An evidence-grounded advisory review"
+        },
+        "operationalPulse": 0,
+        "progressPulse": 0,
+        "strategyPulse": 0,
+        "operationalAdvisory": null,
+        "progressAdvisory": null,
+        "strategyAdvisory": null
+      }
+    },
+    "cells": {
+      "operations": {
+        "id": "operations",
+        "inputs": [
+          { "token": "requestCondition" },
+          { "token": "planActions" },
+          { "token": "operationalPulse" }
+        ],
+        "events": {
+          "heartbeat": {
+            "payloadSchema": {
+              "type": "object",
+              "required": ["sequence"],
+              "additionalProperties": false,
+              "properties": { "sequence": { "type": "integer", "minimum": 1 } }
+            }
+          }
+        },
+        "behavior": {
+          "on": {
+            "heartbeat": [{
+              "do": "assign",
+              "target": "operationalPulse",
+              "guard": "$event.sequence > operationalPulse",
+              "args": { "from": "$event.sequence" }
+            }]
+          }
+        },
+        "compute": [{
+          "id": "operational-review",
+          "assign": "operationalAdvisory",
+          "expression": "inputs.operationalPulse > 0 ? {'kind':'operational','advisoryOnly':true,'sequence':inputs.operationalPulse,'requestId':inputs.requestCondition.requestId,'requestPending':inputs.requestCondition.status = 'pending','pendingActionIds':[inputs.planActions[status = 'pending'].id]} : null"
+        }],
+        "outputs": [{
+          "token": "operationalAdvisory",
+          "from": "computed.operationalAdvisory",
+          "when": "inputs.operationalPulse > 0"
+        }]
+      },
+      "progress": {
+        "id": "progress",
+        "inputs": [
+          { "token": "charter" },
+          { "token": "planActions" },
+          { "token": "progressPulse" }
+        ],
+        "events": {
+          "heartbeat": {
+            "payloadSchema": {
+              "type": "object",
+              "required": ["sequence"],
+              "additionalProperties": false,
+              "properties": { "sequence": { "type": "integer", "minimum": 1 } }
+            }
+          }
+        },
+        "behavior": {
+          "on": {
+            "heartbeat": [{
+              "do": "assign",
+              "target": "progressPulse",
+              "guard": "$event.sequence > progressPulse",
+              "args": { "from": "$event.sequence" }
+            }]
+          }
+        },
+        "compute": [{
+          "id": "progress-review",
+          "assign": "progressAdvisory",
+          "expression": "inputs.progressPulse > 0 ? {'kind':'progress','advisoryOnly':true,'sequence':inputs.progressPulse,'completedActions':$count(inputs.planActions[status = 'complete']),'totalActions':$count(inputs.planActions),'successMeasures':inputs.charter.successMeasures,'requiresJudgment':true} : null"
+        }],
+        "outputs": [{
+          "token": "progressAdvisory",
+          "from": "computed.progressAdvisory",
+          "when": "inputs.progressPulse > 0"
+        }]
+      },
+      "strategy": {
+        "id": "strategy",
+        "inputs": [
+          { "token": "charter" },
+          { "token": "strategy" },
+          { "token": "strategyPulse" }
+        ],
+        "events": {
+          "heartbeat": {
+            "payloadSchema": {
+              "type": "object",
+              "required": ["sequence"],
+              "additionalProperties": false,
+              "properties": { "sequence": { "type": "integer", "minimum": 1 } }
+            }
+          },
+          "revise": {
+            "payloadSchema": {
+              "type": "object",
+              "required": ["approach", "priorities"],
+              "additionalProperties": false,
+              "properties": {
+                "approach": { "type": "string", "minLength": 1 },
+                "priorities": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+              }
+            }
+          }
+        },
+        "behavior": {
+          "on": {
+            "heartbeat": [{
+              "do": "assign",
+              "target": "strategyPulse",
+              "guard": "$event.sequence > strategyPulse",
+              "args": { "from": "$event.sequence" }
+            }],
+            "revise": [{
+              "do": "assign",
+              "target": "strategy",
+              "args": { "from": "{'revision':strategy.revision + 1,'approach':$event.approach,'priorities':$event.priorities}" }
+            }]
+          }
+        },
+        "compute": [{
+          "id": "strategy-review",
+          "assign": "strategyAdvisory",
+          "expression": "inputs.strategyPulse > 0 ? {'kind':'strategy','advisoryOnly':true,'sequence':inputs.strategyPulse,'purpose':inputs.charter.purpose,'constraints':inputs.charter.constraints,'strategy':inputs.strategy,'requiresJudgment':true} : null"
+        }],
+        "outputs": [{
+          "token": "strategyAdvisory",
+          "from": "computed.strategyAdvisory",
+          "when": "inputs.strategyPulse > 0"
+        }]
+      },
+      "plan": {
+        "id": "plan",
+        "events": {
+          "revise": {
+            "payloadSchema": {
+              "type": "object",
+              "required": ["actionId", "description", "status"],
+              "additionalProperties": false,
+              "properties": {
+                "actionId": { "enum": ["collect-evidence", "review-evidence"] },
+                "description": { "type": "string", "minLength": 1 },
+                "status": { "enum": ["pending", "complete", "blocked"] }
+              }
+            }
+          }
+        },
+        "behavior": {
+          "on": {
+            "revise": [{
+              "do": "assign",
+              "target": "planActions",
+              "args": {
+                "from": "[$map(planActions, function($action) { $action.id = $event.actionId ? {'id':$action.id,'description':$event.description,'status':$event.status} : $action })]"
+              }
+            }]
+          }
+        }
+      }
+    }
+  }
+}

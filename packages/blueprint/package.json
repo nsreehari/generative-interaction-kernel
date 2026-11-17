@@ -1,6 +1,6 @@
 {
   "name": "gik-blueprint",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Canonical Blueprint artifact, Cell, tier, lowering recipe, and Kernel lowering contracts for GIK.",
   "license": "MIT",
   "author": "nsreehari",
