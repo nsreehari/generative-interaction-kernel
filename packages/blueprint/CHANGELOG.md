@@ -1,5 +1,11 @@
 # gik-blueprint
 
+## 0.5.1
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+
 ## 0.5.0
 
 ### Minor Changes
