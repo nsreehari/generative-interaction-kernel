@@ -5,6 +5,7 @@ import { test, vi } from "vitest";
 import {
   resolveDeclarativeFormInitialValue,
   runDeclarativeValidators,
+  validateBlueprintStructure,
   validateDeclarativeFormSpec,
   validateDeclarativeFormValues,
   validateProjectionRecipe,
@@ -267,8 +268,8 @@ test("runDeclarativeValidators rejects reactions in Blueprint Cells", () => {
   assert.ok(report.errors.some(({ detail }) => detail.includes("additional properties")));
 });
 
-test("runDeclarativeValidators validates every Cell in a Blueprint", () => {
-  const report = runDeclarativeValidators([{ kind: "blueprint" }], {
+test("Blueprint structural validation validates every Cell", () => {
+  const report = validateBlueprintStructure({
     gik: "0.1",
     type: "blueprint",
     payload: {
@@ -292,6 +293,50 @@ test("runDeclarativeValidators validates every Cell in a Blueprint", () => {
 
   assert.equal(report.ok, false);
   assert.ok(report.errors.some(({ detail }) => detail.includes("references a value not produced by compute")));
+});
+
+test("Blueprint guardrails require canonical validation rather than accepting structure alone", () => {
+  const value = {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "valid",
+      kind: "test",
+      version: "1",
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program", capabilities: [] }],
+      projectionRecipes: [],
+      runtime: {},
+    },
+  };
+  assert.equal(validateBlueprintStructure(value).ok, true);
+  const unavailable = runDeclarativeValidators([{ kind: "blueprint" }], value);
+  assert.equal(unavailable.ok, false);
+  assert.match(unavailable.errors[0].detail, /requires the canonical validateBlueprintArtifact option/);
+
+  const validateBlueprintArtifact = vi.fn();
+  assert.equal(runDeclarativeValidators([{ kind: "blueprint" }], value, { validateBlueprintArtifact }).ok, true);
+  assert.deepEqual(validateBlueprintArtifact.mock.calls, [[value]]);
+});
+
+test.each(["error", "warning"] as const)("canonical Blueprint failures retain %s severity and metadata", (level) => {
+  const report = runDeclarativeValidators([{
+    kind: "blueprint",
+    message: "Invalid generated Blueprint",
+    level,
+    code: "invalid-blueprint",
+    node: "generator",
+  }], {}, {
+    validateBlueprintArtifact: () => { throw new Error("duplicate capability owner"); },
+  });
+  assert.equal(report.ok, level === "warning");
+  assert.deepEqual(level === "warning" ? report.warnings : report.errors, [{
+    detail: "Invalid generated Blueprint: duplicate capability owner",
+    code: "invalid-blueprint",
+    node: "generator",
+  }]);
+  assert.deepEqual(level === "warning" ? report.errors : report.warnings, []);
 });
 
 test("blueprint-capability-acceptance rejects capabilities outside the accepted set, across recipe and materialized Cell shapes", () => {
@@ -540,8 +585,8 @@ test("validateProjectionRecipe rejects unknown recipe fields", () => {
   assert.equal(legacyPatch.ok, false);
 });
 
-test("Blueprint validation composes recipe-local semantic validation", () => {
-  const report = runDeclarativeValidators([{ kind: "blueprint" }], {
+test("Blueprint structural validation composes recipe-local semantic validation", () => {
+  const report = validateBlueprintStructure({
     gik: "0.1",
     type: "blueprint",
     payload: {

@@ -1438,6 +1438,51 @@ test("a Cell source's acceptanceCriteria retries under the operation's own onVio
   assert.equal((await host.listRequests())[0]?.guardrailAttempts, 1);
 });
 
+test.each(["response", "source"] as const)("canonical Blueprint %s guardrails trigger correction before admission", async (placement) => {
+  const corrected = {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "generated",
+      kind: "test",
+      version: "1",
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime-document", kind: "runtime-program", capabilities: ["semantic:decision"] }],
+      projectionRecipes: [],
+      runtime: {},
+    },
+  };
+  const invalid = structuredClone(corrected);
+  invalid.payload.projectionTiers.push({ id: "report-semantic", kind: "semantic", capabilities: ["semantic:decision"] });
+  const validators = [{ kind: "blueprint" as const }];
+  let calls = 0;
+  const host = createHost(async (request): Promise<ServiceExecutionResult> => {
+    calls += 1;
+    if (calls === 1) return { output: invalid };
+    const correction = request.eventPayload?.guardrailCorrection as { issues: Array<{ detail: string }> };
+    assert.match(correction.issues[0].detail, /semantic:decision.*declared by both tiers/);
+    return { output: corrected };
+  }, {
+    ...(placement === "response" ? { response: { validators } } : {}),
+    onViolation: { action: "correction-prompt", maxAttempts: 2 },
+  });
+  const sourceEffect = {
+    ...effect,
+    control: {
+      ...effect.control,
+      ...(placement === "source" ? { sourceAcceptanceCriteria: validators } : {}),
+    },
+  };
+
+  await host.invoke(sourceEffect);
+  assert.equal(calls, 2);
+  const [record] = await host.listRequests();
+  assert.equal(record.status, "completed");
+  assert.equal(record.guardrailAttempts, 1);
+  assert.deepEqual(record.result?.output, corrected);
+});
+
 test("host dead-letters queued transport failures at the configured limit", async () => {
   const host = createHost(async () => { throw new Error("provider unavailable"); }, { mode: "queued" }, { maxAttempts: 2 });
   const queue = new QueueFace(host);

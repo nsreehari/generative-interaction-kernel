@@ -276,3 +276,32 @@ test("Signal response stages retain the host-transformed request context for val
   await h.step([event]);
   assert.deepEqual(h.state.counter, { value: 1 });
 });
+
+test("Signal Blueprint response guardrails enforce canonical semantics", async () => {
+  const h = await harness();
+  const binding = h.binding();
+  binding.declaration.operations.observe!.response = {
+    transform: { kind: "jsonata", expr: "response.blueprint" },
+    validators: [{ kind: "blueprint" }],
+  };
+  const blueprint = {
+    gik: "0.1",
+    type: "blueprint",
+    payload: {
+      id: "generated",
+      kind: "test",
+      version: "1",
+      serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+      serviceRecipes: [],
+      projectionTiers: [{ id: "runtime", kind: "runtime-program", capabilities: ["semantic:decision"] }],
+      projectionRecipes: [],
+      runtime: {},
+    },
+  };
+  const signal = { id: "generated", name: "due", payload: { occurrence: 1, blueprint } };
+  // The mapped event still satisfies this binding's declared target payload.
+  binding.sense.output = { kind: "jsonata", expr: "{'value':1}" };
+  assert.doesNotThrow(() => createBlueprintSenseSignalEvent(binding, signal));
+  blueprint.payload.projectionTiers.push({ id: "semantic", kind: "semantic", capabilities: ["semantic:decision"] });
+  assert.throws(() => createBlueprintSenseSignalEvent(binding, signal), /response validation failed:.*semantic:decision.*declared by both tiers/);
+});

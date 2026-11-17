@@ -1,6 +1,7 @@
 import { cellSenses, evalSyncJsonata, runDeclarativeValidators } from "gik-evaluators";
 import type { CellSense, GIKEvent, Json, SenseSignal, ServiceDeclaration } from "gik-kernel";
 import { validateJsonValue } from "gik-kernel";
+import { validateBlueprintArtifact } from "./blueprint";
 import type { BlueprintTransitionResult, MaterializedBlueprint } from "./run-transition";
 
 export interface BlueprintSenseBinding {
@@ -85,6 +86,7 @@ export function mapBlueprintSenseSignal(binding: BlueprintSenseBinding, signal: 
     : signal.payload;
   const report = runDeclarativeValidators(operation.response?.validators ?? [], response, {
     bindings: { request: requestInput },
+    validateBlueprintArtifact,
   });
   if (!report.ok) throw new Error(`Sense response validation failed: ${report.errors.map(({ detail }) => detail).join("; ")}`);
   const payload = binding.sense.output

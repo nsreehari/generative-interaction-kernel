@@ -1,7 +1,7 @@
 {
   "name": "gik-blueprint-agent-host",
   "private": false,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Blueprint-specific trusted host lifecycle for agent proposals in GIK.",
   "license": "MIT",
   "author": "nsreehari",
@@ -46,6 +46,6 @@
   "dependencies": {
     "gik-agent-lifecycle-exp": "0.3.0",
     "gik-durable-runtime": "0.9.0",
-    "gik-evaluators": "0.4.0"
+    "gik-evaluators": "0.4.1"
   }
 }
