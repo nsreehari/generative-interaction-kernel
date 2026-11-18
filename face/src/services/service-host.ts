@@ -591,6 +591,8 @@ export class DefaultServiceHost implements ServiceHost {
     record: ServiceRequestRecord,
     authorization: Extract<ServiceInvocationAuthorizationDecision, { outcome: "rejected" | "confirmation-required" }>
   ): Promise<ServiceRequestRecord> {
+    const current = await this.store.get(record.request.id);
+    if (current?.status === "cancelled") return current;
     const rejected: ServiceRequestRecord = {
       ...record,
       status: authorization.outcome,
@@ -823,6 +825,8 @@ export class DefaultServiceHost implements ServiceHost {
     smokeTest = false,
   ): Promise<ServiceRequestRecord> {
     let adapter = boundAdapter;
+    const controller = smokeTest ? new AbortController() : undefined;
+    if (controller) this.controllers.set(record.request.id, controller);
     let active: ServiceRequestRecord = {
       ...record,
       status: "running" as const,
@@ -830,11 +834,17 @@ export class DefaultServiceHost implements ServiceHost {
       updatedAt: this.now().toISOString(),
     };
     try {
+      if (controller) {
+        const current = await this.store.get(record.request.id);
+        if (current?.status === "cancelled") return current;
+        controller.signal.throwIfAborted();
+      }
       await this.store.put(active);
       if (record.mode === "queued" && this.operationConstraints(resolved).queueable === false) {
         throw new Error(`Service '${resolved.serviceId}.${resolved.invoke}' cannot be queued`);
       }
       adapter ??= await this.adapter(resolved.serviceId);
+      controller?.signal.throwIfAborted();
       const request: ServiceRequest = {
         ...active.request,
         providerId: adapter.provider.id,
@@ -844,6 +854,7 @@ export class DefaultServiceHost implements ServiceHost {
         phase: "execution",
         request,
       }, active.authorizationSnapshot);
+      controller?.signal.throwIfAborted();
       active = {
         ...active,
         request,
@@ -852,6 +863,7 @@ export class DefaultServiceHost implements ServiceHost {
         updatedAt: this.now().toISOString(),
       };
       await this.store.put(active);
+      controller?.signal.throwIfAborted();
       if (active.status === "rejected" || active.status === "confirmation-required") {
         return active;
       }
@@ -861,11 +873,17 @@ export class DefaultServiceHost implements ServiceHost {
         effect,
         this.responseValidatorsFor(resolved, effect),
         smokeTest,
+        controller,
       );
       if (!attempt.result) return attempt.record;
-      if (smokeTest) return this.complete(attempt.record, attempt.result);
+      if (smokeTest) {
+        controller?.signal.throwIfAborted();
+        return await this.complete(attempt.record, attempt.result);
+      }
       return await this.validateResponse(attempt.record, attempt.result, resolved, effect, adapter);
     } catch (error) {
+      const current = await this.store.get(record.request.id);
+      if (current?.status === "cancelled") return current;
       const original = error instanceof ServiceExecutionAttemptError ? error.original : error;
       const failedAttempt = error instanceof ServiceExecutionAttemptError ? error.record : active;
       const constraints = this.operationConstraints(resolved);
@@ -886,6 +904,13 @@ export class DefaultServiceHost implements ServiceHost {
       }
       if (retry) this.pending.push({ id: failedAttempt.request.id, effect, resolved, adapter });
       return failed;
+    } finally {
+      if (controller) {
+        controller.abort();
+        if (this.controllers.get(record.request.id) === controller) {
+          this.controllers.delete(record.request.id);
+        }
+      }
     }
   }
 
@@ -895,8 +920,9 @@ export class DefaultServiceHost implements ServiceHost {
     effect: OrchestratorEffect,
     validators: readonly GuardrailRule[],
     smokeTest = false,
+    invocationController?: AbortController,
   ): Promise<{ record: ServiceRequestRecord; result?: ServiceExecutionResult }> {
-    const controller = new AbortController();
+    const controller = invocationController ?? new AbortController();
     const lifetime: InvocationLifetime = { controller, active: true };
     this.controllers.set(record.request.id, controller);
     try {
@@ -909,6 +935,7 @@ export class DefaultServiceHost implements ServiceHost {
         agentTools: this.projectAgentTools(trustedRequest, lifetime, record.authorizationSnapshot),
       };
       const immediatelyAuthorized = await this.revalidateExecutionAuthorization(record);
+      controller.signal.throwIfAborted();
       if (immediatelyAuthorized.status === "rejected"
         || immediatelyAuthorized.status === "confirmation-required") {
         return { record: immediatelyAuthorized };
@@ -923,9 +950,11 @@ export class DefaultServiceHost implements ServiceHost {
       return { record, result };
     } finally {
       lifetime.active = false;
-      if (!controller.signal.aborted) controller.abort();
-      if (this.controllers.get(record.request.id) === controller) {
-        this.controllers.delete(record.request.id);
+      if (!invocationController) {
+        if (!controller.signal.aborted) controller.abort();
+        if (this.controllers.get(record.request.id) === controller) {
+          this.controllers.delete(record.request.id);
+        }
       }
     }
   }

@@ -14,7 +14,7 @@ import { InMemoryStateModel, JsonataExpressionProvider } from "../../kernel/src/
 
 const settlement = { transform: { kind: "jsonata" as const, expr: "{'outcome':'completed'}" } };
 
-function diagnosticHost(adapter: ServiceAdapter, authorizeInvocation?: ServiceInvocationAuthorizer) {
+function diagnosticHost(adapter: ServiceAdapter | (() => Promise<ServiceAdapter>), authorizeInvocation?: ServiceInvocationAuthorizer) {
   const registry = new ServiceKindRegistry();
   registry.register({
     manifest: {
@@ -22,7 +22,7 @@ function diagnosticHost(adapter: ServiceAdapter, authorizeInvocation?: ServiceIn
       subjects: ["task"], executionModes: ["immediate", "queued"],
       supports: { probe: true, testSmoke: true },
     },
-    create: () => adapter,
+    create: typeof adapter === "function" ? adapter : () => adapter,
   });
   return new DefaultServiceHost({
     blueprintId: "diagnostics", blueprintRevision: "1", registry, authorizeInvocation,
@@ -131,7 +131,45 @@ test("uncertain smoke writes retain their error code and are never queued or ret
   assert.equal(await host.runNext(), undefined);
 });
 
-test("in-flight smoke tests use request cancellation and cannot return late success", async () => {
+test.each(["materialization", "authorization"] as const)("smoke cancellation during %s prevents provider dispatch", async (phase) => {
+  let started!: () => void;
+  const waiting = new Promise<void>((resolve) => { started = resolve; });
+  let finish!: () => void;
+  const pending = new Promise<void>((resolve) => { finish = resolve; });
+  let attempts = 0;
+  const adapter: ServiceAdapter = {
+    ...diagnosticAdapter(),
+    testSmoke() {
+      attempts++;
+      return { ok: true };
+    },
+  };
+  const host = diagnosticHost(async () => {
+    if (phase === "materialization") {
+      started();
+      await pending;
+    }
+    return adapter;
+  }, async (invocation) => {
+    if (phase === "authorization" && invocation.kind === "service-request" && invocation.phase === "execution") {
+      started();
+      await pending;
+    }
+    return { outcome: "authorized" };
+  });
+  const result = host.testSmoke(diagnosticEffect);
+  await waiting;
+  const [record] = await host.listRequests();
+  const cancelled = await host.cancel(record.request.id);
+  finish();
+  const completed = await result;
+  assert.equal(attempts, 0);
+  assert.equal(completed.ok, false);
+  assert.equal(completed.detail?.status, "cancelled");
+  assert.deepEqual(await host.getRequest(record.request.id), cancelled);
+});
+
+test.each(["success", "rejection"] as const)("in-flight smoke cancellation preserves its terminal record after late %s", async (outcome) => {
   let started!: () => void;
   const waiting = new Promise<void>((resolve) => { started = resolve; });
   let finish!: () => void;
@@ -142,15 +180,19 @@ test("in-flight smoke tests use request cancellation and cannot return late succ
       started();
       await pending;
       assert.equal(context.signal?.aborted, true);
+      if (outcome === "rejection") throw new Error("Late provider failure");
       return { ok: true };
     },
   });
   const result = host.testSmoke(diagnosticEffect);
   await waiting;
   const [record] = await host.listRequests();
-  await host.cancel(record.request.id);
+  const cancelled = await host.cancel(record.request.id);
   finish();
-  assert.equal((await result).ok, false);
+  const completed = await result;
+  assert.equal(completed.ok, false);
+  assert.equal(completed.detail?.status, "cancelled");
+  assert.deepEqual(await host.getRequest(record.request.id), cancelled);
 });
 
 function declaration(model: string, scope: NativeServiceDeclaration["scope"] = "per-cell"): NativeServiceDeclaration {
