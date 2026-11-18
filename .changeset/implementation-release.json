@@ -1,5 +1,7 @@
 {
   "pullRequest": 95,
-  "base": "64e289f4eb2ff5967350b9062c6128f3390a04c0",
-  "changesets": {}
+  "base": "bbc3b3db32489bde6cef6824e5a82a387e1cddee",
+  "changesets": {
+    ".changeset/shared-host-composition.md": "---\n\"gik-blueprint\": minor\n\"gik-controlface\": minor\n\"gik-durable-runtime\": minor\n\"gik-react\": minor\n---\n\nAdd reusable host composition over existing GIK primitives: durable Blueprint\nexecution sessions, staged service settings and setup, declared service routing,\nisolated browser capability channels, durable-provider RPC adaptation and React\nsetup/provider composition. Application hosts retain credentials, capability\nadmission, business authorization and uncertain-write recovery policy.\nSetup supports independent staged Save/Apply and an opt-in explicit Save And Apply."
+  }
 }
