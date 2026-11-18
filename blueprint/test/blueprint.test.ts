@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { InMemoryStateModel, unwrap, type Json, type ResolvedNode } from "gik-kernel";
+import { runDeclarativeValidators, validateBlueprintStructure } from "gik-evaluators";
 import {
   analyzeCellImpact,
   analyzeExploration,
@@ -114,6 +115,47 @@ function runState(cells: Record<string, string[]>) {
 }
 
 describe("gik-blueprint", () => {
+  it.each(["valid", "capability-ownership", "service-chain", "cell-identity"])(
+    "Blueprint guardrails match canonical validation for %s",
+    (scenario) => {
+      const value = {
+        gik: "0.1",
+        type: "blueprint",
+        payload: {
+          id: "guardrail",
+          kind: "test",
+          version: "1",
+          serviceTiers: [{ id: "runtime", kind: "runtime-program" }],
+          serviceRecipes: [],
+          projectionTiers: [{ id: "runtime", kind: "runtime-program", capabilities: ["semantic:decision"] }],
+          projectionRecipes: [],
+          runtime: {},
+          cells: { entry: { id: "entry" } },
+        },
+      };
+      if (scenario === "capability-ownership") {
+        value.payload.projectionTiers.push({ id: "report-semantic", kind: "semantic", capabilities: ["semantic:decision"] });
+      } else if (scenario === "service-chain") {
+        value.payload.serviceTiers.push({ id: "runtime", kind: "runtime-program" });
+      } else if (scenario === "cell-identity") {
+        value.payload.cells.entry.id = "different";
+      }
+
+      expect(validateBlueprintStructure(value).ok).toBe(true);
+      const report = runDeclarativeValidators([{ kind: "blueprint" }], value, { validateBlueprintArtifact });
+      if (scenario === "valid") {
+        expect(() => validateBlueprintArtifact(value)).not.toThrow();
+        expect(report).toEqual({ ok: true, errors: [], warnings: [] });
+      } else {
+        const canonical = tryValidateBlueprintArtifact(value);
+        expect(canonical.ok).toBe(false);
+        expect(canonical.error).toBeInstanceOf(Error);
+        expect(report.ok).toBe(false);
+        expect(report.errors[0].detail).toContain(canonical.error?.message);
+      }
+    },
+  );
+
   it("materializes and purely evaluates candidate Cell JSON for preflight", () => {
     const artifact = createBlueprint({
       id: "cell-preflight",

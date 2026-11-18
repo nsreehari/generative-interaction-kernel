@@ -1,5 +1,11 @@
 # gik-evaluators
 
+## 0.4.1
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+
 ## 0.4.0
 
 ### Minor Changes

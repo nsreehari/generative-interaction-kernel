@@ -90,8 +90,16 @@ field defaults, form defaults, and caller-provided values.
     document.
   - `blueprint-projection-recipe` — validates one projection-axis lowering recipe
     document.
-  - `blueprint` — validates one Blueprint document, including its embedded
-    Cells and both axes' recipes.
+  - `blueprint` — enforces canonical Blueprint artifact validation, including
+    cross-tier capability ownership and lowering-axis semantics. Pass
+    `{ validateBlueprintArtifact }` from `gik-blueprint` as the runner's options.
+    Without this callback the validator reports an error, never schema-only
+    success. Service hosts and Blueprint Sense responses supply it automatically.
+
+`validateBlueprintStructure(value)` performs only schema, embedded Cell, and
+recipe-local checks. It is the first pass used by the canonical Blueprint
+validator, not a substitute for artifact admission. The callback keeps this
+package independent of `gik-blueprint` and avoids a package dependency cycle.
 
 ### System-input helpers
 

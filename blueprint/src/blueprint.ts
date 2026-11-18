@@ -1,5 +1,5 @@
 import { lowerToProgram, type ExecutableProgramDefinition, type ProgramMessageFor } from "gik-kernel";
-import { cellSources, cellSenses, runDeclarativeValidators } from "gik-evaluators";
+import { cellSources, cellSenses, runDeclarativeValidators, validateBlueprintStructure } from "gik-evaluators";
 import { analyzeCellComposition } from "./cells";
 import {
   collectProjectionCapabilityUses,
@@ -441,10 +441,7 @@ export function validateBlueprintArtifact<TKind extends BlueprintFragmentKind>(
     return;
   }
 
-  const report = runDeclarativeValidators([{
-    kind: "blueprint",
-    message: "Invalid Blueprint artifact",
-  }], value as never);
+  const report = validateBlueprintStructure(value);
   if (!report.ok) {
     throw new BlueprintValidationError(
       report.errors.map(({ detail }) => detail).join("; "),

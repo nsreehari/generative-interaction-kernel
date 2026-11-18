@@ -7,6 +7,7 @@
 - Update published package inputs and exact workspace dependency pins.
 - Updated dependencies
   - gik-durable-runtime@0.9.1
+  - gik-evaluators@0.4.1
 
 ## 0.5.0
 

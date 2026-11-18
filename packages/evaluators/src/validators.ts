@@ -159,6 +159,9 @@ type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string
 export type DeclarativeValidatorRunOptions = {
   bindings?: Record<string, JsonValue>;
   jsonataValueMode?: "wrapped-data" | "root";
+  /** Canonical validator supplied by the Blueprint layer to avoid a dependency cycle.
+   * Required by `kind: "blueprint"`; throws when the artifact is invalid. */
+  validateBlueprintArtifact?: (value: unknown) => void;
 };
 
 const ajvErrorDetails = (errors: unknown): string[] => {
@@ -385,6 +388,26 @@ export function runDeclarativeValidators(
   value: JsonValue,
   options: DeclarativeValidatorRunOptions = {}
 ): DeclarativeValidationResult {
+  return runValidators(rawValidators, value, options);
+}
+
+/** Structural checks only, for the canonical Blueprint validator's first pass.
+ * Service guardrails must use `kind: "blueprint"` with the canonical validator instead. */
+export function validateBlueprintStructure(value: unknown): DeclarativeValidationResult {
+  return runValidators(
+    [{ kind: "blueprint", message: "Invalid Blueprint artifact" }],
+    value as JsonValue,
+    {},
+    true,
+  );
+}
+
+function runValidators(
+  rawValidators: readonly DeclarativeValidatorInput[] | unknown,
+  value: JsonValue,
+  options: DeclarativeValidatorRunOptions,
+  structureOnly = false,
+): DeclarativeValidationResult {
   const validators = normalizeDeclarativeValidators(rawValidators);
   if (validators.length === 0) return { ok: true, errors: [], warnings: [] };
   const jsonataInput = options.jsonataValueMode === "root" ? value : { data: value };
@@ -399,6 +422,18 @@ export function runDeclarativeValidators(
     (validator.level === "warning" ? warnings : errors).push(issue);
   };
   for (const validator of validators) {
+    if (validator.kind === "blueprint" && !structureOnly) {
+      if (!options.validateBlueprintArtifact) {
+        pushIssue(validator, `${validator.message}: kind 'blueprint' requires the canonical validateBlueprintArtifact option`);
+      } else {
+        try {
+          options.validateBlueprintArtifact(value);
+        } catch (error) {
+          pushIssue(validator, `${validator.message}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      continue;
+    }
     if (
       validator.kind === "blueprint-cell" ||
       validator.kind === "blueprint-tier" ||

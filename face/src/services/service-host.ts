@@ -1,4 +1,5 @@
 import { runDeclarativeValidators } from "../../../packages/evaluators/src/index";
+import { validateBlueprintArtifact } from "../../../blueprint/src/blueprint";
 import { senseLifecycle } from "../../../kernel/src/index";
 import type {
   ExpressionProvider,
@@ -683,7 +684,7 @@ export class DefaultServiceHost implements ServiceHost {
             input,
           })
         : input;
-      const report = runDeclarativeValidators(resolved.operation.request.validators, validatorInput, {});
+      const report = runDeclarativeValidators(resolved.operation.request.validators, validatorInput, { validateBlueprintArtifact });
       if (!report.ok) throw new Error(`Service request validation failed: ${report.errors.map((issue) => issue.detail).join("; ")}`);
     }
     return {
@@ -909,6 +910,7 @@ export class DefaultServiceHost implements ServiceHost {
     if (!validators.length) return this.complete(running, transformed);
     const report = runDeclarativeValidators(validators, response ?? null, {
       bindings: { request: running.request.input ?? null },
+      validateBlueprintArtifact,
     });
     if (report.ok) return this.complete(running, transformed, report.warnings);
 
