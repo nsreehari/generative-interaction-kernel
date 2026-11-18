@@ -1,5 +1,17 @@
 # gik-controlface
 
+## 0.8.0
+
+### Minor Changes
+
+- Add explicit provider smoke tests and truthful unsupported probe results. Smoke
+  tests retain normal host authorization, request recording, cancellation and
+  single-attempt execution without business-response settlement or retries.
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+
 ## 0.7.2
 
 ### Patch Changes
