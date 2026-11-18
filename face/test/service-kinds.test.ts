@@ -8,10 +8,192 @@ import {
   type BlueprintServiceIdentity, type ServiceAdapter, type ServiceDependencyRequirement,
   type ServiceDependencyStatus, type ServiceKindContext, type ServiceKindFactory, type ServiceRequest,
   type ServiceOperationConstraints,
+  type ServiceInvocationAuthorizer,
 } from "../src/index";
 import { InMemoryStateModel, JsonataExpressionProvider } from "../../kernel/src/index";
 
 const settlement = { transform: { kind: "jsonata" as const, expr: "{'outcome':'completed'}" } };
+
+function diagnosticHost(adapter: ServiceAdapter | (() => Promise<ServiceAdapter>), authorizeInvocation?: ServiceInvocationAuthorizer) {
+  const registry = new ServiceKindRegistry();
+  registry.register({
+    manifest: {
+      id: "diagnostic", version: "1", configSchema: { type: "object" },
+      subjects: ["task"], executionModes: ["immediate", "queued"],
+      supports: { probe: true, testSmoke: true },
+    },
+    create: typeof adapter === "function" ? adapter : () => adapter,
+  });
+  return new DefaultServiceHost({
+    blueprintId: "diagnostics", blueprintRevision: "1", registry, authorizeInvocation,
+    declarations: { sample: {
+      kind: "diagnostic", version: "1", operations: {
+        run: { operation: "run", contract: "sample/v1", mode: "queued", settlement,
+          response: { transform: { kind: "jsonata", expr: "$error('Business transform must not run for smoke tests')" } },
+          onViolation: { action: "retry", maxAttempts: 3 },
+        },
+      },
+    } },
+    state: new InMemoryStateModel(["work"]), expression: new JsonataExpressionProvider(),
+  });
+}
+const diagnosticEffect = {
+  kind: "invoke" as const, node: "settings", control: { tool: "run", serviceRef: "sample" }, data: { sample: true },
+};
+function diagnosticAdapter(): ServiceAdapter {
+  return {
+    provider: { id: "diagnostic", version: "1" },
+    discover: async () => ({ provider: { id: "diagnostic", version: "1" }, revision: "1", discoveredAt: "now", capabilities: [] }),
+    execute: () => assert.fail("Smoke tests must not fall back to execute"),
+  };
+}
+
+test("unsupported probes and smoke tests never report success or invoke business operations", async () => {
+  const host = diagnosticHost(diagnosticAdapter());
+  const unsupported = { ok: false, detail: { supported: false, code: "not-supported" } };
+  assert.deepEqual(await host.probeService("sample"), unsupported);
+  assert.deepEqual(await host.testSmoke(diagnosticEffect), unsupported);
+});
+
+test("probes honor cancellation and suppress late readiness results", async () => {
+  const controller = new AbortController();
+  const host = diagnosticHost({
+    ...diagnosticAdapter(),
+    probe: () => { controller.abort(); return { ok: true }; },
+  });
+  await assert.rejects(() => host.probeService("sample", { signal: controller.signal }), { name: "AbortError" });
+});
+
+test("probes receive the requested service identity rather than a caller-supplied identity", async () => {
+  const host = diagnosticHost({
+    ...diagnosticAdapter(),
+    probe: (context) => {
+      assert.equal(context.serviceId, "sample");
+      return { ok: true };
+    },
+  });
+  assert.equal((await host.probeService("sample", { serviceId: "another-service" })).ok, true);
+});
+
+test("smoke tests are separate single attempts with normal host authorization and no business settlement", async () => {
+  const phases: string[] = [];
+  let attempts = 0;
+  const host = diagnosticHost({
+    ...diagnosticAdapter(),
+    testSmoke(request) {
+      attempts++;
+      assert.equal(request.purpose, "smoke-test");
+      assert.deepEqual(request.input, { sample: true });
+      assert.equal(request.actorId, "operator");
+      return { ok: true, detail: { check: "sample-operation" } };
+    },
+  }, (invocation) => {
+    if (invocation.kind === "service-request") {
+      phases.push(invocation.phase);
+      assert.equal(invocation.request.purpose, "smoke-test");
+    }
+    return { outcome: "authorized" };
+  });
+  assert.deepEqual(await host.testSmoke(diagnosticEffect, { actorId: "operator" }), {
+    ok: true, detail: { check: "sample-operation" },
+  });
+  assert.equal(attempts, 1);
+  assert.ok(phases.includes("pre-materialization") && phases.includes("execution"));
+  const [record] = await host.listRequests();
+  assert.equal(record.mode, "immediate");
+  assert.equal(record.status, "completed");
+  assert.equal(await host.runNext(), undefined);
+});
+
+test.each(["rejected", "confirmation-required"] as const)("smoke tests do not bypass %s authorization", async (outcome) => {
+  const host = diagnosticHost({
+    ...diagnosticAdapter(), testSmoke: () => assert.fail("Authorization must block the sample operation"),
+  }, () => ({ outcome, reason: "operator-approval" }));
+  const result = await host.testSmoke(diagnosticEffect);
+  assert.equal(result.ok, false);
+  assert.equal(result.detail?.status, outcome);
+});
+
+test("uncertain smoke writes retain their error code and are never queued or retried", async () => {
+  let attempts = 0;
+  const host = diagnosticHost({
+    ...diagnosticAdapter(),
+    testSmoke() {
+      attempts++;
+      throw Object.assign(new Error("Inspect the external receipt before trying again"), { code: "sample-write-uncertain" });
+    },
+  });
+  const result = await host.testSmoke(diagnosticEffect);
+  assert.equal(result.ok, false);
+  assert.equal(result.detail?.code, "sample-write-uncertain");
+  assert.equal(result.detail?.status, "failed");
+  assert.equal(attempts, 1);
+  assert.equal(await host.runNext(), undefined);
+});
+
+test.each(["materialization", "authorization"] as const)("smoke cancellation during %s prevents provider dispatch", async (phase) => {
+  let started!: () => void;
+  const waiting = new Promise<void>((resolve) => { started = resolve; });
+  let finish!: () => void;
+  const pending = new Promise<void>((resolve) => { finish = resolve; });
+  let attempts = 0;
+  const adapter: ServiceAdapter = {
+    ...diagnosticAdapter(),
+    testSmoke() {
+      attempts++;
+      return { ok: true };
+    },
+  };
+  const host = diagnosticHost(async () => {
+    if (phase === "materialization") {
+      started();
+      await pending;
+    }
+    return adapter;
+  }, async (invocation) => {
+    if (phase === "authorization" && invocation.kind === "service-request" && invocation.phase === "execution") {
+      started();
+      await pending;
+    }
+    return { outcome: "authorized" };
+  });
+  const result = host.testSmoke(diagnosticEffect);
+  await waiting;
+  const [record] = await host.listRequests();
+  const cancelled = await host.cancel(record.request.id);
+  finish();
+  const completed = await result;
+  assert.equal(attempts, 0);
+  assert.equal(completed.ok, false);
+  assert.equal(completed.detail?.status, "cancelled");
+  assert.deepEqual(await host.getRequest(record.request.id), cancelled);
+});
+
+test.each(["success", "rejection"] as const)("in-flight smoke cancellation preserves its terminal record after late %s", async (outcome) => {
+  let started!: () => void;
+  const waiting = new Promise<void>((resolve) => { started = resolve; });
+  let finish!: () => void;
+  const pending = new Promise<void>((resolve) => { finish = resolve; });
+  const host = diagnosticHost({
+    ...diagnosticAdapter(),
+    async testSmoke(_request, context) {
+      started();
+      await pending;
+      assert.equal(context.signal?.aborted, true);
+      if (outcome === "rejection") throw new Error("Late provider failure");
+      return { ok: true };
+    },
+  });
+  const result = host.testSmoke(diagnosticEffect);
+  await waiting;
+  const [record] = await host.listRequests();
+  const cancelled = await host.cancel(record.request.id);
+  finish();
+  const completed = await result;
+  assert.equal(completed.ok, false);
+  assert.equal(completed.detail?.status, "cancelled");
+  assert.deepEqual(await host.getRequest(record.request.id), cancelled);
+});
 
 function declaration(model: string, scope: NativeServiceDeclaration["scope"] = "per-cell"): NativeServiceDeclaration {
   return {
