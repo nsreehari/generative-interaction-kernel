@@ -50,6 +50,25 @@ export function useServiceSetup(client: ServiceSetupClient, target: string) {
       }
     } finally { if (!signal.aborted) { acting.current = false; setBusy(false); } }
   }
+  function save(id: string, apply: boolean) {
+    return run(async (signal, beginMutation) => {
+      const report = (await client.inspect(configurations, signal)).find(report => report.id === id);
+      if (!report?.setup.validation.ok) throw new Error(report?.setup.validation.errors?.join("; ") || "Service configuration is invalid.");
+      signal.throwIfAborted();
+      beginMutation();
+      let saved = await client.save(id, structuredClone(configurations[id]), generation, signal);
+      signal.throwIfAborted();
+      if (apply) {
+        saved = await client.apply(saved.generation, signal);
+        signal.throwIfAborted();
+        client.onApplied(saved.activeConfigurations);
+      }
+      const reports = await client.inspect(saved.configurations, signal);
+      signal.throwIfAborted();
+      setGeneration(saved.generation); setReports(reports);
+      setStatus(apply ? "Settings saved and applied." : "Service configuration saved. Apply explicitly to activate it.");
+    });
+  }
   return {
     reports, configurations, ready, busy, error, status,
     reload: () => setReload(value => value + 1),
@@ -57,16 +76,8 @@ export function useServiceSetup(client: ServiceSetupClient, target: string) {
       if (!ready || acting.current) throw new Error("Service setup is not ready for editing.");
       setConfigurations(previous => ({ ...previous, [serviceId]: { ...previous[serviceId], [key]: value } }));
     },
-    save: (id: string) => run(async (signal, beginMutation) => {
-      const report = (await client.inspect(configurations, signal)).find(report => report.id === id);
-      if (!report?.setup.validation.ok) throw new Error(report?.setup.validation.errors?.join("; ") || "Service configuration is invalid.");
-      signal.throwIfAborted();
-      beginMutation();
-      const saved = await client.save(id, structuredClone(configurations[id]), generation, signal);
-      const reports = await client.inspect(saved.configurations, signal);
-      signal.throwIfAborted();
-      setGeneration(saved.generation); setReports(reports); setStatus("Service configuration saved. Apply explicitly to activate it.");
-    }),
+    save: (id: string) => save(id, false),
+    saveAndApply: (id: string) => save(id, true),
     apply: () => run(async (signal, beginMutation) => {
       beginMutation();
       const saved = await client.apply(generation, signal);
@@ -92,11 +103,12 @@ function record(value: unknown): value is Record<string, unknown> {
 }
 
 /** Renders supplied reports; trusted setup and action handlers are always supplied by the host. */
-export function ServiceSetupPanel({ model, title = "Service Configuration", serviceTitle, editable, renderAction }: {
+export function ServiceSetupPanel({ model, title = "Service Configuration", serviceTitle, editable, renderAction, saveMode = "stage" }: {
   model: ReturnType<typeof useServiceSetup>;
   title?: string;
   serviceTitle?: (report: ServiceSetupDescription) => string;
   editable: (report: ServiceSetupDescription, field: string) => boolean;
+  saveMode?: "stage" | "apply";
   renderAction?: (report: ServiceSetupDescription, dependency: ServiceDependencyDescription, action: ServiceSetupAction) => React.ReactNode;
 }) {
   return <section aria-label={title}>
@@ -127,7 +139,10 @@ export function ServiceSetupPanel({ model, title = "Service Configuration", serv
             }} />
         </label>;
       })}
-      <button disabled={!model.ready || model.busy} onClick={() => void model.save(report.id)}>Save Configuration</button>
+      <button disabled={!model.ready || model.busy}
+        onClick={() => void (saveMode === "apply" ? model.saveAndApply(report.id) : model.save(report.id))}>
+        {saveMode === "apply" ? "Save And Apply Configuration" : "Save Configuration"}
+      </button>
       {report.setup.dependencies.map(dependency => <div key={dependency.requirement.id}>
         <strong>{dependency.requirement.title}</strong>
         {dependency.status.state !== "ready" && <p>{dependency.status.message}</p>}
