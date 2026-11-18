@@ -35,7 +35,7 @@ import {
   type TransportProvider,
 } from "../../../kernel/src/index";
 import { checkpoint, compensate, effectsSince, getState, getTree, restore } from "./ops";
-import type { ServiceProbeResult, ServiceRequestRecord } from "../services/queueface";
+import type { ServiceAdapterContext, ServiceProbeResult, ServiceRequestContext, ServiceRequestRecord, ServiceSmokeTestResult } from "../services/queueface";
 import type { ServiceHost } from "../services/service-host";
 import type { ServiceKindDescription } from "../services/service-kinds";
 import {
@@ -318,9 +318,14 @@ export class ControlFace implements TransportBroker {
     return this.serviceHost?.listRequests() ?? Promise.resolve([]);
   }
 
-  probeService(serviceId: string): Promise<ServiceProbeResult> {
+  probeService(serviceId: string, context?: ServiceAdapterContext): Promise<ServiceProbeResult> {
     if (!this.serviceHost) throw new Error("ControlFace has no ServiceHost attached");
-    return this.serviceHost.probeService(serviceId);
+    return this.serviceHost.probeService(serviceId, context);
+  }
+
+  testSmoke(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSmokeTestResult> {
+    if (!this.serviceHost?.testSmoke) throw new Error("ControlFace has no smoke-test ServiceHost attached");
+    return this.serviceHost.testSmoke(effect, context);
   }
 
   /** Detach every connection (the caller owns any server lifecycle). */

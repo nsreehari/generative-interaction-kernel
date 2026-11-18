@@ -47,7 +47,8 @@ the narrower agent-safe projection with `gik-agentface`.
     includes `programPatch` and `transition` only when executable structure
     changed.
   - Service-host methods: `describeServiceKinds()`,
-    `listServiceRequests()`, and `probeService(serviceId)`. They use the
+    `listServiceRequests()`, `probeService(serviceId, context?)`, and
+    `testSmoke(effect, context?)`. They use the
     optional `serviceHost` from `ControlFaceOptions`.
 - `RuntimeFace` is the structural subset of `ControlFace` consumed by the
   exported tool-catalog helpers.
@@ -82,6 +83,31 @@ executor; it does not choose a database or authorize a store merely from its
 validation, and authorization to Sense establishment and deliveries. The host
 must wire those observations through Blueprint reconciliation and durable
 journal ingress; this is separate from bounded `invoke` calls.
+
+### Probes And Smoke Tests
+
+Kinds advertise `supports.probe` and `supports.testSmoke` independently.
+`adapter.probe(context)` checks readiness without executing business operations.
+An absent probe returns `{ ok: false, detail: { supported: false,
+code: "not-supported" } }`, never a successful connection check.
+
+`adapter.testSmoke(request, context)` exercises real provider behavior. For
+example, a Gmail send smoke test sends an actual sample email supplied by the
+caller. Hosts invoke `testSmoke(effect, context?)` explicitly from settings or
+diagnostic tooling, using the normal declared service/operation and sample input.
+This method does not run during discovery or setup inspection.
+
+Smoke tests use the same request transformations, host authorization snapshots,
+live execution checks, request store and cancellation as normal execution.
+Authorization receives `request.purpose: "smoke-test"` and the actual sample input.
+The host runs one immediate attempt, even for queued or Sense declarations.
+It does not apply business-response settlements, transforms or guardrail retries
+to diagnostic results. An unsupported adapter returns `ok: false` with
+`detail.supported: false`; it never falls back to `execute()`.
+Failures retain request status, error details (including uncertain-write codes)
+and authorization decisions. Inspect request records to cancel in-flight work.
+Providers return non-secret receipts in `detail`, not credentials or business
+records. The method is a host API, not an automatically exposed agent tool.
 
 - `QueueFace` is a thin wrapper over a supplied `ServiceHost`, with
   `submit(effect)`, `getRequest(id)`, `listRequests()`, and `cancel(id)`.

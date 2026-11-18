@@ -58,6 +58,8 @@ export interface InvocationAuthorizationTarget {
 }
 
 export interface ServiceRequestInput {
+  /** Explicit diagnostic invocation; it retains normal host execution authority. */
+  purpose?: "smoke-test";
   service: string;
   operation: string;
   input?: Json;
@@ -99,6 +101,9 @@ export interface ServiceProbeResult {
   ok: boolean;
   detail?: Record<string, Json>;
 }
+
+/** A real provider operation, potentially with side effects, invoked explicitly by a host. */
+export type ServiceSmokeTestResult = ServiceProbeResult;
 
 export interface ServiceSimulationResult {
   output?: Json;
@@ -256,6 +261,8 @@ export type ServiceInvocationAuthorizer = (
 ) => ServiceInvocationAuthorizationDecision | Promise<ServiceInvocationAuthorizationDecision>;
 
 export interface ServiceAdapterContext {
+  /** Current declared service, including when a cached adapter is shared. */
+  serviceId?: string;
   signal?: AbortSignal;
   effect?: OrchestratorEffect;
   /** Blueprint-declared response validators. Adapters may use an AJV schema to request
@@ -288,6 +295,7 @@ export interface ServiceAdapter {
     context: ServiceAdapterContext
   ): ServiceSimulationResult | Promise<ServiceSimulationResult>;
   probe?(context: ServiceAdapterContext): ServiceProbeResult | Promise<ServiceProbeResult>;
+  testSmoke?(request: ServiceRequest, context: ServiceAdapterContext): ServiceSmokeTestResult | Promise<ServiceSmokeTestResult>;
   execute(
     request: ServiceRequest,
     context: ServiceAdapterContext

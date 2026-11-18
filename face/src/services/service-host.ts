@@ -30,6 +30,8 @@ import type {
   ServiceInvocationAuthorizationDecision,
   ServiceInvocationAuthorizer,
   ServiceProbeResult,
+  ServiceSmokeTestResult,
+  ServiceAdapterContext,
   ServiceRequest,
   ServiceRequestContext,
   ServiceRequestInput,
@@ -57,7 +59,8 @@ export interface ServiceHost {
   validateService(serviceId: string): Promise<ServiceValidationReport>;
   describeServiceSetup?(serviceId: string): Promise<ServiceSetupReport>;
   discoverService(serviceId: string): Promise<ServiceCatalogSnapshot>;
-  probeService(serviceId: string): Promise<ServiceProbeResult>;
+  probeService(serviceId: string, context?: ServiceAdapterContext): Promise<ServiceProbeResult>;
+  testSmoke?(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSmokeTestResult>;
   preflight(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSimulationResult>;
   invoke(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<OrchestratorResult | void>;
   observe?(effect: OrchestratorEffect, options: ServiceObservationOptions, context?: ServiceRequestContext): Promise<{ close(): Promise<void> }>;
@@ -296,9 +299,37 @@ export class DefaultServiceHost implements ServiceHost {
     return (await this.adapter(serviceId)).discover();
   }
 
-  async probeService(serviceId: string): Promise<ServiceProbeResult> {
+  async probeService(serviceId: string, context: ServiceAdapterContext = {}): Promise<ServiceProbeResult> {
+    context.signal?.throwIfAborted();
     const adapter = await this.adapter(serviceId);
-    return adapter.probe?.({}) ?? { ok: true };
+    context.signal?.throwIfAborted();
+    const result = await adapter.probe?.({ ...context, serviceId })
+      ?? { ok: false, detail: { supported: false, code: "not-supported" } };
+    context.signal?.throwIfAborted();
+    return result;
+  }
+
+  async testSmoke(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSmokeTestResult> {
+    const trustedEffect = deeplyImmutableClone(effect);
+    const resolved = this.resolve(trustedEffect);
+    const record = await this.createRecord(resolved, trustedEffect, "immediate", context, "smoke-test");
+    const completed = record.status === "accepted"
+      ? await this.execute(record, resolved, trustedEffect, undefined, true)
+      : record;
+    if (completed.status === "completed" && completed.result) {
+      return { ok: completed.result.output === true, detail: completed.result.detail };
+    }
+    return {
+      ok: false,
+      detail: {
+        ...completed.errorDetail,
+        status: completed.status,
+        requestId: completed.request.id,
+        ...(completed.error ? { error: completed.error } : {}),
+        ...(completed.authorization?.outcome !== undefined
+          ? { authorization: asJson(completed.authorization) } : {}),
+      },
+    };
   }
 
   async preflight(effect: OrchestratorEffect, context?: ServiceRequestContext): Promise<ServiceSimulationResult> {
@@ -719,7 +750,8 @@ export class DefaultServiceHost implements ServiceHost {
     resolved: ResolvedOperation,
     effect: OrchestratorEffect,
     mode: "immediate" | "queued",
-    context?: ServiceRequestContext
+    context?: ServiceRequestContext,
+    purpose?: "smoke-test",
   ): Promise<ServiceRequestRecord> {
     const input = await this.requestInput(resolved, effect, context);
     const createdAt = this.now().toISOString();
@@ -728,6 +760,7 @@ export class DefaultServiceHost implements ServiceHost {
       id: this.idFactory(),
       capabilityId: resolved.operation.contract,
       createdAt,
+      ...(purpose ? { purpose } : {}),
     };
     const { snapshot, failed } = await this.buildAuthorizationSnapshot(authorizationRequest, context);
     const authorization = failed
@@ -786,7 +819,8 @@ export class DefaultServiceHost implements ServiceHost {
     record: ServiceRequestRecord,
     resolved: ResolvedOperation,
     effect: OrchestratorEffect,
-    boundAdapter?: ServiceAdapter
+    boundAdapter?: ServiceAdapter,
+    smokeTest = false,
   ): Promise<ServiceRequestRecord> {
     let adapter = boundAdapter;
     let active: ServiceRequestRecord = {
@@ -826,8 +860,10 @@ export class DefaultServiceHost implements ServiceHost {
         active,
         effect,
         this.responseValidatorsFor(resolved, effect),
+        smokeTest,
       );
       if (!attempt.result) return attempt.record;
+      if (smokeTest) return this.complete(attempt.record, attempt.result);
       return await this.validateResponse(attempt.record, attempt.result, resolved, effect, adapter);
     } catch (error) {
       const original = error instanceof ServiceExecutionAttemptError ? error.original : error;
@@ -857,7 +893,8 @@ export class DefaultServiceHost implements ServiceHost {
     adapter: ServiceAdapter,
     record: ServiceRequestRecord,
     effect: OrchestratorEffect,
-    validators: readonly GuardrailRule[]
+    validators: readonly GuardrailRule[],
+    smokeTest = false,
   ): Promise<{ record: ServiceRequestRecord; result?: ServiceExecutionResult }> {
     const controller = new AbortController();
     const lifetime: InvocationLifetime = { controller, active: true };
@@ -875,6 +912,12 @@ export class DefaultServiceHost implements ServiceHost {
       if (immediatelyAuthorized.status === "rejected"
         || immediatelyAuthorized.status === "confirmation-required") {
         return { record: immediatelyAuthorized };
+      }
+      if (smokeTest) {
+        const result = await adapter.testSmoke?.(adapterRequest, adapterContext)
+          ?? { ok: false, detail: { supported: false, code: "not-supported" } };
+        controller.signal.throwIfAborted();
+        return { record, result: { output: result.ok, detail: result.detail } };
       }
       const result = await adapter.execute(adapterRequest, adapterContext);
       return { record, result };

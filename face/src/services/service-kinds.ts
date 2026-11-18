@@ -30,6 +30,7 @@ export interface ServiceKindManifest {
   supports?: {
     discover?: boolean;
     probe?: boolean;
+    testSmoke?: boolean;
     simulate?: boolean;
     stream?: boolean;
     cancel?: boolean;
