@@ -32,6 +32,39 @@ export const App = () => (
 Omit `worker` when middleware, a backend, or an Azure Function owns execution. Existing
 `gik-blueprint-host` consumers should migrate to `BlueprintHost` from `gik-react`.
 
+## Service Setup And Provider Composition
+
+`gik-react/service-setup` exports `useServiceSetup(client, target)` and
+`ServiceSetupPanel`. The hook coordinates load/inspect, explicit Save and Apply,
+and fresh setup-action inspection through a host-supplied `ServiceSetupClient`.
+Use a stable client object and change `target` when the selected workspace or
+authorization context changes. Superseded operations are aborted and late results
+discarded; failed operations require explicit reload before another mutation.
+There is no automatic mutation retry or automatic authorization.
+For a single explicit Save-and-activate gesture, use `model.saveAndApply(id)`
+or `ServiceSetupPanel saveMode="apply"`. Save must confirm first; Apply uses its
+returned generation. A failed/uncertain Save never triggers Apply, and a
+failed/uncertain Apply is never retried. Reload to inspect before more changes.
+The default `saveMode="stage"` retains independent Save and Apply.
+
+The panel renders provider schemas, configuration errors, dependency reports and
+setup actions. The host supplies an explicit `editable(report, field)` policy.
+Constant fields remain read-only; unsupported non-scalar fields are not editable.
+`serviceTitle` customizes labels and `renderAction` supplies application-specific
+consent/forms. The client owns schema/authority validation at mutation time,
+credentials, setup-action dispatch and uncertainty inspection. `onApplied`
+activates a confirmed configuration through the host; it must not replace the
+authored Blueprint or discard runtime state.
+Application-specific grouping, ordering, hidden fields, advanced-details layout
+and branding can render directly from the headless hook; they do not belong in
+the durable settings or provider schemas. This supports Finbook's current
+Integrations UI without moving its Blueprint presentation declarations into GIK.
+
+`createProjectionProviderRegistry(providers)` from `gik-react` combines explicitly
+named view/descriptor providers for the existing resolver props. Contributions
+with the same provider ID merge in order (later duplicate keys win), without
+changing Blueprint import/whitelist semantics.
+
 ## Presentation-local effects and state
 
 Component-internal interaction stays inside the component and requires no named effect. Host-local

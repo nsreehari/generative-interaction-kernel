@@ -36,7 +36,17 @@ browser and filesystem consumers do not need to install them.
 - `gik-durable-runtime/connectors/browser-indexed-db`
 - `gik-durable-runtime/connectors/filesystem-mcp`
 - `gik-durable-runtime/connectors/azure-function`
+- `gik-durable-runtime/connectors/rpc`
 - `gik-durable-runtime/server/transports/http`
+
+`connectDurableProvider(call)` from `connectors/rpc` adapts an injected RPC function
+to the native `DurableProvider` contract. `durableProviderOperations` is the closed
+operation allowlist for a host dispatcher. Arguments retain native refs, revisions,
+leases, cursors and receipts; transport-only signals/undefined optional properties
+are removed before transmission. Only wake/snapshot reads forward cancellation.
+Mutations await their receipts even when a caller stops, and failures are never
+automatically retried. The connector does not choose a transport, authorize a
+namespace, authenticate callers or expose storage to a browser.
 
 ## Exported API
 

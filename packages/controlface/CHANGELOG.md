@@ -1,5 +1,20 @@
 # gik-controlface
 
+## 0.8.0
+
+### Minor Changes
+
+- Add reusable host composition over existing GIK primitives: durable Blueprint
+  execution sessions, staged service settings and setup, declared service routing,
+  isolated browser capability channels, durable-provider RPC adaptation and React
+  setup/provider composition. Application hosts retain credentials, capability
+  admission, business authorization and uncertain-write recovery policy.
+  Setup supports independent staged Save/Apply and an opt-in explicit Save And Apply.
+
+### Patch Changes
+
+- Update published package inputs and exact workspace dependency pins.
+
 ## 0.7.2
 
 ### Patch Changes

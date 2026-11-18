@@ -1,6 +1,6 @@
 {
   "name": "gik-controlface",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "Control-plane projection surface (full capability catalog) for the Generative Interaction Kernel.",
   "license": "MIT",
   "author": "nsreehari",
@@ -40,6 +40,10 @@
     "./services": {
       "types": "./dist/services.d.ts",
       "import": "./dist/services.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
     }
   },
   "main": "./dist/index.js",
@@ -49,12 +53,12 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "gik-blueprint": "0.5.1",
+    "gik-blueprint": "0.6.0",
     "gik-evaluators": "0.4.1",
     "gik-kernel": "0.4.1"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/blueprint.ts src/services.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
+    "build": "tsup src/index.ts src/blueprint.ts src/services.ts src/browser.ts --format esm --dts --sourcemap --minify --clean --tsconfig tsconfig.json",
     "prepack": "node ../../scripts/sync-package-license.mjs packages/controlface"
   }
 }
